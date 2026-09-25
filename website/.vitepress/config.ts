@@ -98,5 +98,11 @@ export default defineConfig({
     darkModeSwitchLabel: "主题",
     sidebarMenuLabel: "目录",
     returnToTopLabel: "回到顶部",
+    notFound: {
+      title: "页面未找到",
+      quote: "请检查地址，或返回首页继续查找文档。",
+      linkLabel: "返回首页",
+      linkText: "返回首页",
+    },
   },
 });

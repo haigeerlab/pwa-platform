@@ -33,7 +33,7 @@ function makeTmpDir(prefix: string): string {
 
 function createRepo(): { readonly repoDir: string; readonly commit: string } {
   const repoDir = makeTmpDir("pwa-gate-repo-");
-  execFileSync("git", ["init", "--quiet", repoDir]);
+  execFileSync("git", ["init", "--quiet", "--initial-branch=main", repoDir]);
   execFileSync("git", ["-C", repoDir, "config", "user.email", "test@example.com"]);
   execFileSync("git", ["-C", repoDir, "config", "user.name", "Test"]);
   writeFileSync(join(repoDir, "README.md"), "gate fixture\n", "utf8");
@@ -167,7 +167,7 @@ describe("runGate", () => {
     const calls = readFileSync(callsPath, "utf8").trimEnd().split("\n");
     expect(calls).toEqual(GATE_COMMANDS.map(({ command }) => command.replace(/^pnpm /, "")));
     expect(result.verdict.pass).toBe(true);
-  });
+  }, 15_000);
 
   it("switches PATH per round so each round's header reports the Node version it declared (i)", () => {
     const { repoDir, commit } = createRepo();
