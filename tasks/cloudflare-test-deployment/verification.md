@@ -287,3 +287,12 @@ React/Vue 项目、实际 origin、线上静态响应头与桌面 Chrome 首次�
 - 规格要求 `coverage.json` 含"覆盖结果与必需集"，但工具此前只写 `verifyReleaseGateCoverage` 的结果（`ok`、`missing`）。M7 按四项必需集、HC4 按五项必需集运行，两次的 `coverage.json` 却逐字节相同（`a4b1125b471e9e78`），单看该文件无法区分当时要求了哪些检查。
 - 工具改为写出 `{ requiredChecks, ok, missing }`；集成测试钉住上线后"全部通过"与上线前"历史不完整"两个场景的完整内容。包内 192 项测试连续两次通过，typecheck 与 lint 通过。
 - 已存档的 M7、P5、HC4 证据不改；它们的必需集以同目录的 `record.md` 为准。此后的运行，`coverage.json` 自身即可说明必需集。
+
+## 2026-09-25：免费额度与部署控制复核（F1a）
+
+- Cloudflare 控制台显示 Workers 当前方案为 Free；Billable Usage 的当前周期为 2026-09-21 至 10-20，已观测 9-21 至 9-25，费用与预测费用均为 $0.00。R2 账户 Class A 为 86 次、Class B 约 1.14k 次，账单表的存储量四舍五入显示 0 GB-months；这些是截至查询时的读数，不是未来费用上限。
+- 私有 `pwa-platform-release-artifacts` 桶的默认存储类别为 Standard，Public Access 为 Disabled，桶大小 10.02 MB；桶页显示 Class A 71 次、Class B 约 1.14k 次。账户账单与桶指标的统计范围不同，不应相加。
+- Pages 项目 API 显示 React、Vue 和既有移动冒烟站均为 Direct Upload（无 Git source）、`uses_functions=false`；当前成功生产部署分别是 `8589bf50-b6d2-493f-9551-ea4b7dd8adec`、`8472fc4d-ca25-45ca-a4f1-1237db6be642`、`5c65b498-31e7-4770-b237-1d79ade5a172`。四个 Pages 项目的历史部署记录数为文档站 22、React 36、Vue 19、冒烟站 15，共 92 条；记录数不能直接当作每月构建额度已使用数。
+- 文档站 Git 集成原先虽有 `production_deployments_enabled=false`、`preview_deployment_setting=none`，总开关 `deployments_enabled` 仍为 `true`。版本分支推送、发布记录分支推送和合并到 `main` 各留下 `github:push`、`is_skipped=true`、`idle` 的预览记录；没有产生新的成功生产部署。按 Cloudflare Pages API 的开关说明将总开关设为 `false`，随即独立 GET 确认三个开关分别为 `false`、`false`、`none`，生产分支仍为 `docs/v2026.09.25-2`，canonical 部署仍为 `69f08e16-03d4-4cdf-a9e1-427ca8a7fc79` 且成功。审计分支首次正常推送后再次 GET：部署记录总数仍为 22，最新 ID 仍为 `49c25e30-b3ee-45f6-a440-b3747c0193e8`（此前的 skipped 记录）；本次分支推送未留下新记录。合并到 `main` 后还需再核对一次，不为此额外推送。
+- React/Vue 当前生产部署均创建于 2026-09-22（UTC），完整七日存活证据尚不能由今天的审计得出；F2 继续 pending。F3 所需的真正第二台机器没有参与此次核验，继续 pending。本轮没有 Pages 上传、R2 对象写入或测试站身份变更。
+- Spec Guard 本地 `verify-artifacts` 为 2 通过、0 警告、0 失败；本模块 `documentation_impact` 为 `valid`，`documentation_verification` 因 F2/F3 仍待证据而为 `attention`，未提升交付状态。另对 `platform-governance` 运行的文档核验报 `invalid`：其规格已有两个 Documentation impact 表；本轮未改该规格，待该模块单独修复。

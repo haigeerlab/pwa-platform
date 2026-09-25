@@ -569,7 +569,8 @@ React/Vue 测试网页由 Pages Direct Upload 提供，私有 R2 Standard 桶存
 ### 剩余验收顺序
 
 1. **对齐记录（本地，零云端写入）：** 将计划、todo 与操作手册对齐到已记录的十七个部署索引和 `drill` 自动后置步骤；保留 T5 的 `pending` 状态。验证相对链接、`git diff --check` 和 Spec Guard 只读检查。
-2. **七日留存（只读云端请求）：** 以相关部署的实际创建时间为准，满七个自然日后分别运行 `pnpm audit:cloudflare:retention --target=react` 和 `--target=vue`；记录执行时间、所选部署 ID、R2 制品与线上指纹资源的核验结果。没有跨满七日的证据时继续标记 `pending`；审计失败先调查，不通过新部署掩盖缺口。
-3. **独立机器恢复（云端只读、本机写入）：** 在第二台机器上全新克隆并安装依赖，确认没有旧 `build/` 状态，按手册以最小权限凭据分别运行 `pnpm recover:cloudflare:site --target=react` 和 `--target=vue`；保存恢复命令输出、当前 canonical 部署 ID、发布包 SHA-256、归档资源核对和失败项。该演练不执行 Pages 部署、R2 上传或索引写入；同机隔离模拟不计作此项通过。
+2. **现场免费额度复核（F1a）：** 在不上传测试站、不写 R2 对象的前提下，记录账户方案与账单周期、R2 Standard 桶的访问范围和用量、三站 Pages 资源类型与生产部署；若文档站自动部署开关仍留下 Git 推送记录，调整控制项并回读生产部署。验收：现场读数写入验证记录，F2/F3 缺口保持 pending；在本分支推送及随后合并到 `main` 时核对记录数，不为此额外推送。
+3. **七日留存（只读云端请求）：** 以相关部署的实际创建时间为准，满七个自然日后分别运行 `pnpm audit:cloudflare:retention --target=react` 和 `--target=vue`；记录执行时间、所选部署 ID、R2 制品与线上指纹资源的核验结果。没有跨满七日的证据时继续标记 `pending`；审计失败先调查，不通过新部署掩盖缺口。
+4. **独立机器恢复（云端只读、本机写入）：** 在第二台机器上全新克隆并安装依赖，确认没有旧 `build/` 状态，按手册以最小权限凭据分别运行 `pnpm recover:cloudflare:site --target=react` 和 `--target=vue`；保存恢复命令输出、当前 canonical 部署 ID、发布包 SHA-256、归档资源核对和失败项。该演练不执行 Pages 部署、R2 上传或索引写入；同机隔离模拟不计作此项通过。
 
 两项真实验收都有证据后再评估 T5 与文档交付状态。H5、Android、iOS 和正式 V1 门禁仍按现有矩阵独立处理；Nuxt Worker 可行性失败不触发云端创建。
