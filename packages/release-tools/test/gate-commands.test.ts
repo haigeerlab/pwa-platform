@@ -29,6 +29,8 @@ describe("GATE_COMMANDS", () => {
 const CI_RUN_EXCLUSIONS: ReadonlySet<string> = new Set([
   // Diagnostic-only: prints the runner's preinstalled Chrome version, it doesn't run any gate command.
   "google-chrome --version",
+  // Documentation publishing is a CI check, but it is outside the PWA package release gate.
+  "pnpm docs:build",
 ]);
 
 describe("CI parity", () => {
