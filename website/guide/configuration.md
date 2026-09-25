@@ -53,11 +53,49 @@ export const POLICY: PwaPolicy = {
 
 把四个图标文件放在 Vite 的 <code>public/icons/</code>。安装元数据也支持描述、截图和快捷方式；截图与快捷方式图标必须真实存在于发布产物中。
 
+## 可选的截图与快捷方式
+
+若希望支持的浏览器显示截图或图标菜单中的快捷入口，可在同一份 <code>pwa.config.ts</code> 中基于上面的 <code>INSTALL</code> 新增完整配置，再把 Vite 插件的 <code>install: INSTALL</code> 改为 <code>install: INSTALL_WITH_EXTRAS</code>。浏览器决定是否展示这些字段；它们不会让应用自动拥有分享目标或文件关联能力。
+
+~~~ts
+// pwa.config.ts；接在上面的 INSTALL 声明之后
+export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
+  ...INSTALL,
+  screenshots: [
+    { src: "/screenshots/desktop.png", sizes: "1280x800", type: "image/png", formFactor: "wide" },
+  ],
+  shortcuts: [
+    {
+      name: "打开工作台",
+      url: "/dashboard",
+      icons: [
+        { src: "/icons/192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      ],
+    },
+  ],
+};
+~~~
+
+截图和快捷方式图标也要放在 <code>public/</code> 对应路径，快捷方式目标须处于应用 scope 内。子路径部署时，将上例的浏览器 URL 分别改为 <code>/app/screenshots/desktop.png</code>、<code>/app/dashboard</code> 和 <code>/app/icons/192.png</code>。构建校验会检查截图和快捷方式图标是否存在；业务仍需验证目标页面可打开。
+
 ## 生产身份要保持稳定
 
 <code>scope</code>、worker URL、manifest ID、挂载路径与缓存命名空间共同决定浏览器如何识别这个应用。生产注册后变更它们属于迁移，需要专门的架构决策和迁移计划。不要把一次普通发版当作修改身份的机会。
 
-如果应用部署在 <code>/app/</code>，Vite <code>base</code>、<code>scope</code>、<code>mountPath</code>、<code>startUrl</code> 和资源 URL 都要指向该路径。策略中的 <code>resources[].pathPrefix</code> 与 <code>offlineFallback.path</code> 则是**相对挂载路径**的路径：示例中的 <code>/offline.html</code> 会解析为 <code>/app/offline.html</code>，不要再写一遍 <code>/app</code>。
+如果应用部署在 <code>/app/</code>，必须把**浏览器看到的 URL** 改为带前缀的路径，同时保持策略路径相对挂载点。以同一个配置示例为基础，逐项替换：
+
+| 配置位置 | 根路径示例 | <code>/app/</code> 部署时 |
+| --- | --- | --- |
+| Vite <code>base</code> | <code>"/"</code> | <code>"/app/"</code> |
+| <code>IDENTITY.manifestId</code>、<code>scope</code>、<code>mountPath</code> | <code>"/"</code> | <code>"/app/"</code> |
+| <code>IDENTITY.serviceWorkerUrl</code> | <code>"/sw.js"</code> | <code>"/app/sw.js"</code> |
+| <code>IDENTITY.manifestUrl</code> | <code>"/manifest.webmanifest"</code> | <code>"/app/manifest.webmanifest"</code> |
+| <code>INSTALL.startUrl</code> | <code>"/"</code> | <code>"/app/"</code> |
+| <code>INSTALL.icons[].src</code> | <code>"/icons/192.png"</code> 等 | <code>"/app/icons/192.png"</code> 等 |
+| <code>POLICY.offlineFallback.path</code> | <code>"/offline.html"</code> | 仍为 <code>"/offline.html"</code> |
+| <code>POLICY.resources[].pathPrefix</code> | <code>"/assets"</code> 等 | 仍为 <code>"/assets"</code> 等 |
+
+例如策略中的 <code>/offline.html</code> 会解析为 <code>/app/offline.html</code>。不要在策略路径前重复写 <code>/app</code>，否则会变成 <code>/app/app/offline.html</code>。把图标放在项目的 <code>public/icons/</code>，构建后确认站点确实能从 <code>/app/icons/</code> 返回这些文件。若增加截图或快捷方式，也要将它们的 URL 改为部署路径内的真实文件或页面。
 
 ## 策略只声明意图
 

@@ -21,4 +21,4 @@
 
 ## 当前发布范围
 
-首批公开包支持 **Vite 8 + Vue 3** 或 **Vite 8 + React 19**。当前包版本是 <code>0.1.0-beta.1</code>。V1 的浏览器保证范围为 Chrome 桌面端当前和上一个稳定版；Android 尚不能按已支持平台对外承诺。详见[兼容范围](/reference/compatibility)。
+首批公开包支持 **Vite 8 + Vue 3** 或 **Vite 8 + React 19**。当前包版本是 <code>0.1.0-beta.1</code>。V1 桌面端发布通道以 Chrome 当前和上一个稳定版为必测目标；当前 beta 不等于已完成业务生产验收。Android 尚不能按已支持平台对外承诺。详见[兼容范围](/reference/compatibility)。
