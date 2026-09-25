@@ -11,7 +11,15 @@
 
 ## 2. 浏览器行为
 
-- [ ] 在线首次访问后完成注册与控制，再断网重新打开已访问的应用壳。
+### 首次接入的浏览器核验
+
+先运行生产构建，用 `vite preview` 本地排查，再到与配置一致的最终 HTTPS 地址重复以下步骤。不要用 `vite dev` 验收平台 worker。
+
+1. 在线打开应用入口。在 Chrome DevTools 的 **Application → Manifest** 检查 `id`、`start_url`、图标和 scope；在 **Application → Service workers** 等待 worker 变为 `activated`，核对脚本 URL 和注册 scope 与配置一致。
+2. **保持在线刷新一次页面**，在 DevTools Console 执行 `navigator.serviceWorker.controller?.scriptURL`，应得到配置的 worker URL。首次打开时即使注册成功、worker 已激活，当前页面仍可能显示 `undefined`：平台 worker 不会主动接管已打开的页面。
+3. 在 DevTools 的 **Network → Offline** 模拟断网，重新打开已访问的应用入口，确认应用壳可用；再访问未缓存路由，确认显示预期离线回退。测试时禁用浏览器 HTTP 缓存，避免它掩盖预缓存缺口。完成后恢复在线。
+
+- [ ] 按以上步骤确认注册、在线刷新后受控，以及离线重新打开已访问的应用壳。
 - [ ] 未缓存路由显示预期离线回退；私有 API、写请求和未分类请求不返回旧缓存。
 - [ ] 部署变更预缓存资源的新版，确认新 worker 等待、页面出现更新提示、用户确认后才接管。
 - [ ] 旧页面有未保存内容时，不会被平台或应用强制刷新。
