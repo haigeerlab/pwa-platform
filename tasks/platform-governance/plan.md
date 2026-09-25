@@ -356,17 +356,19 @@ G1 → 确认 → G2 → G3 → G4 → G5。G2 与 G3 的实现派给 `executor`
 
 ## Documentation delivery
 
-本表与 `spec/platform-governance.md` 末尾的 Documentation impact 表对应，列出本模块最近一次修订（"本地门禁工具入仓"）需要更新的文档。
+本表与 `spec/platform-governance.md` 的唯一 Documentation impact 表对应，列出本模块最近一次修订（“高频开发下的 CI 触发策略”）需要更新的文档。
 
 | Concern | Planned artifact | Rationale |
 |---|---|---|
-| local-ci-record | `docs/operations/local-ci-record-template.md`、`docs/adr/0031-local-gate-substitute-for-ci.md` | 执行规则改为使用 `pnpm gate:local` 生成记录，禁止手工转写退出码与哈希；ADR-0031 本身不变。 |
+| ci-baseline | `.github/workflows/ci.yml` | Ready PR 执行完整门禁，最终 main SHA 在发布前手动验证。 |
+| release-and-incident | `docs/operations/release-and-incident-runbook.md` | 发布门禁改为核对最终 main SHA 的手动 CI 运行。 |
 
 ## Documentation outcome
 
 | Concern | Outcome | Evidence | Rationale |
 |---|---|---|---|
-| local-ci-record | delivered | `docs/operations/local-ci-record-template.md`（`950fe3d`） | G4 写入了工具的调用方式与"不得手工转写"的规则；评审后的调用方式随 G4 修复同步。 |
+| ci-baseline | delivered | `tasks/platform-governance/verification.md` | Ready PR 与发布前手动触发已落实，验证记录载有运行证据。 |
+| release-and-incident | delivered | `docs/operations/release-and-incident-runbook.md` | 发布门禁已写明最终 main SHA 的手动 CI 验证。 |
 
 ## 修订：高频开发下的 CI 触发策略（2026-09-25）
 
