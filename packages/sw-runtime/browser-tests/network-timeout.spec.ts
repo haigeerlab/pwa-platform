@@ -158,6 +158,8 @@ test.describe("runtime cache timeout (ADR-0038)", () => {
 
     const online = await fetchJson(page, target);
     expect(online).toMatchObject({ item: "a" });
+    // Workbox may finish cache.put after the response reaches the page.
+    await expect.poll(() => page.evaluate(async (url) => Boolean(await caches.match(url)), target)).toBe(true);
 
     const before = await snapshotCaches(page);
     const stall = await stallRoute(context, target);
