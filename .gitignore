@@ -1,0 +1,20 @@
+node_modules/
+.pnpm-store/
+dist/
+.output/
+.nuxt/
+coverage/
+playwright-report/
+test-results/
+browser-build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+build/cloudflare/
+website/.vitepress/cache/
+website/.vitepress/dist/
+# push:keys' generated VAPID key pair (packages/examples-browser-e2e/.push-demo/vapid.json)
+.push-demo/
+.agent/state.json

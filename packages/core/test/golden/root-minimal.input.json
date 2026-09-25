@@ -1,0 +1,35 @@
+{
+  "identity": {
+    "appId": "docs",
+    "manifestId": "/",
+    "origin": "https://docs.example.com",
+    "scope": "/",
+    "serviceWorkerUrl": "/sw.js",
+    "manifestUrl": "/manifest.webmanifest",
+    "mountPath": "/",
+    "environment": "staging",
+    "cacheNamespaceSeed": "2026-09"
+  },
+  "install": null,
+  "policy": {
+    "schemaVersion": 1,
+    "install": { "enabled": false },
+    "offlineFallback": { "enabled": false },
+    "updateMode": "prompt",
+    "resources": [
+      { "pathPrefix": "/%61ssets", "resourceClass": "asset", "cache": "stale-while-revalidate" },
+      { "pathPrefix": "/admin", "resourceClass": "session-data", "cache": "none" }
+    ]
+  },
+  "topology": { "kind": "standalone-origin" },
+  "hostBuildOutput": {
+    "publicPath": "/",
+    "serviceWorkerFile": "sw.js",
+    "manifestFile": "manifest.webmanifest",
+    "files": [
+      { "path": "index.html", "fingerprinted": false, "contentHash": "8277e0910d750195" },
+      { "path": "assets/site.css", "fingerprinted": false, "contentHash": "b026324c6904b2a9" },
+      { "path": "admin/panel.js", "fingerprinted": true, "contentHash": "26ab0db90d72e28a" }
+    ]
+  }
+}

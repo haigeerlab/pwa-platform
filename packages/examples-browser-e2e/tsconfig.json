@@ -1,0 +1,18 @@
+{
+  // The Node side: the build configuration each example carries and the identity both share. The browser-side
+  // sources live in tsconfig.app.json, which has the DOM lib this one deliberately lacks.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "apps/shared/**/*.ts",
+    "apps/*/vite.config.ts",
+    "browser-tests/**/*.ts",
+    "browser-tests-network/**/*.ts",
+    "ssr-tests/**/*.ts",
+    "playwright.config.ts",
+    "playwright.network.config.ts"
+  ]
+}

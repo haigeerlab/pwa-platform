@@ -1,0 +1,406 @@
+// ---- index.d.ts ----
+export { CACHE_KINDS, appCachePrefix, cacheName, cacheNamespacePrefix, runtimeDataCacheName } from "./cache-namespace.js";
+export type { PwaCacheKind } from "./cache-namespace.js";
+export { DIAGNOSTIC_CODES, DIAGNOSTIC_MESSAGES, DIAGNOSTIC_SEVERITIES } from "./diagnostics.js";
+export type { PwaContractPath, PwaDiagnostic, PwaDiagnosticCode, PwaDiagnosticSeverity, PwaValidationResult, PwaWarningDiagnostic, } from "./diagnostics.js";
+export { LIFECYCLE_EVENT_TYPES, readLifecycleEvent } from "./events.js";
+export type { PwaEventEnvelope, PwaEventReadResult, PwaLifecycleEvent, PwaLifecycleEventType, } from "./events.js";
+export { INSTALL_DISPLAY_MODES, INSTALL_DISPLAY_OVERRIDES, INSTALL_ICON_PURPOSES, INSTALL_ORIENTATIONS, INSTALL_SCREENSHOT_FORM_FACTORS, INSTALL_SCREENSHOT_TYPES, } from "./identity.js";
+export type { AbsolutePath, PwaDisplayMode, PwaDisplayOverride, PwaIconPurpose, PwaIdentity, PwaInstallIcon, PwaInstallMetadata, PwaInstallScreenshot, PwaInstallScreenshotFormFactor, PwaInstallScreenshotType, PwaInstallShortcut, PwaOrientation, } from "./identity.js";
+export type { JsonPrimitive, JsonValue, PwaExtensionNamespace, PwaExtensions, } from "./json.js";
+export { REQUEST_BASELINE_DENIALS, TOPOLOGY_KINDS } from "./plan.js";
+export type { PwaArtifacts, PwaCacheNamespace, PwaHostBuildOutput, PwaOriginRegistry, PwaPathRule, PwaPathRuleAction, PwaOfflineWritePlan, PwaPlan, PwaPlanV1, PwaPlanV2, PwaPlanV3, PwaPlanOfflineFallback, PwaPrecacheEntry, PwaRegistryEntry, PwaRequestBaselineDenial, PwaRuntimeCachePlan, PwaTopology, PwaTopologyKind, } from "./plan.js";
+export { validateIdentity, validateInstallMetadata, validateOriginRegistry, validatePlan, validatePolicy, } from "./validate.js";
+export { CACHE_STRATEGIES, RESOURCE_CLASSES, UPDATE_MODES } from "./policy.js";
+export type { MountRelativePath, PwaCacheStrategy, PwaOfflineFallback, PwaOfflineWritePolicy, PwaOfflineWriteTarget, PwaPolicy, PwaPolicyV1, PwaPolicyV2, PwaPolicyV3, PwaResourceClass, PwaResourceRule, PwaRuntimeCachePolicy, PwaUpdateMode, } from "./policy.js";
+
+// ---- cache-namespace.d.ts ----
+import type { PwaIdentity } from "./identity.js";
+export declare const CACHE_KINDS: readonly ["precache", "runtime-pages", "runtime-data"];
+export type PwaCacheKind = (typeof CACHE_KINDS)[number];
+/** `pwa:<appId>:<environment>:` — every cache the app owns in one environment, across identity revisions. */
+export declare function appCachePrefix(identity: Pick<PwaIdentity, "appId" | "environment">): string;
+/** `pwa:<appId>:<environment>:<identity-revision>:` — recorded as `PwaPlan.cacheNamespace.prefix`. */
+export declare function cacheNamespacePrefix(identity: Pick<PwaIdentity, "appId" | "environment" | "cacheNamespaceSeed">): string;
+export declare function cacheName(identity: Pick<PwaIdentity, "appId" | "environment" | "cacheNamespaceSeed">, kind: PwaCacheKind): string;
+/** `<runtime-data cache name>-<configDigest>` — one cache per compiled runtime-cache configuration. */
+export declare function runtimeDataCacheName(identity: Pick<PwaIdentity, "appId" | "environment" | "cacheNamespaceSeed">, configDigest: string): string;
+
+// ---- diagnostics.d.ts ----
+export declare const DIAGNOSTIC_SEVERITIES: readonly ["error", "warning"];
+export type PwaDiagnosticSeverity = (typeof DIAGNOSTIC_SEVERITIES)[number];
+export declare const DIAGNOSTIC_CODES: readonly ["schema.invalid-type", "schema.invalid-value", "schema.missing-field", "schema.unknown-field", "schema.unsupported-version", "value.not-serializable", "path.invalid", "extensions.invalid-namespace", "identity.invalid-origin", "identity.invalid-environment", "identity.scope-excludes-mount-path", "identity.service-worker-outside-scope", "identity.manifest-outside-scope", "install.start-url-outside-scope", "install.missing-icon-variant", "install.invalid-color", "install.shortcut-url-outside-scope", "install.screenshot-size-out-of-range", "install.screenshot-aspect-ratio", "install.screenshot-aspect-mismatch", "install.screenshot-count", "install.screenshot-no-wide", "install.description-too-long", "policy.identity-override", "policy.unsafe-cache-strategy", "offline-write.disabled-configuration", "offline-write.enabled-configuration", "offline-write.target-required", "offline-write.duplicate-target-id", "offline-write.duplicate-target-path", "runtime-cache.disabled-configuration", "runtime-cache.enabled-configuration", "plan.incomplete-baseline-denials", "plan.cache-namespace-mismatch", "plan.offline-write-database-mismatch", "plan.offline-write-target-invalid", "plan.offline-write-duplicate-target-id", "plan.offline-write-duplicate-target-path", "compile.invalid-host-output", "compile.unsupported-topology", "compile.public-path-outside-scope", "compile.duplicate-path-prefix", "compile.allow-under-deny", "compile.install-metadata-missing", "compile.offline-fallback-not-built", "compile.offline-fallback-denied", "compile.asset-rule-unmatched", "compile.offline-write-target-invalid", "compile.runtime-strategy-unsupported", "compile.runtime-cache-unused", "verify.artifact-missing", "verify.artifact-path-mismatch", "verify.manifest-asset-missing", "verify.header-missing-directive", "verify.header-forbidden-directive", "verify.header-unreadable", "verify.baseline-invalid", "verify.baseline-missing", "verify.baseline-mismatch", "registry.child-outside-root", "registry.scope-overlap", "registry.duplicate-identity-field", "registry.entry-url-outside-scope", "registry.root-url-in-child-scope", "registry.cache-prefix-collision", "plan.registry-identity-mismatch", "plan.exclude-rules-mismatch", "plan.exclude-not-first", "compile.policy-rule-in-child-scope", "compile.offline-fallback-in-child-scope", "compile.host-file-in-child-scope", "compile.start-url-in-child-scope", "compile.shortcut-url-in-child-scope", "verify.root-plan-not-shared-origin", "verify.root-plan-missing-exclude", "verify.root-registry-older", "verify.root-registry-child-mismatch", "verify.root-registry-diverged", "verify.retention-history-invalid", "verify.retention-missing", "plan.precache-in-child-scope", "plan.offline-fallback-in-child-scope", "plan.start-url-in-child-scope", "plan.shortcut-url-in-child-scope"];
+export type PwaDiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
+/** Platform-authored message for every code; messages never contain input text. */
+export declare const DIAGNOSTIC_MESSAGES: Readonly<Record<PwaDiagnosticCode, string>>;
+/** JSON Pointer (RFC 6901) into the validated input; `""` addresses the root. */
+export type PwaContractPath = "" | `/${string}`;
+/**
+ * Machine-readable validation finding. `message` is platform-authored text and must never
+ * echo input values, auth state, push subscriptions, response bodies or tokens.
+ */
+export type PwaDiagnostic = {
+    readonly code: PwaDiagnosticCode;
+    readonly severity: PwaDiagnosticSeverity;
+    readonly path: PwaContractPath;
+    readonly message: string;
+};
+export type PwaWarningDiagnostic = {
+    readonly code: PwaDiagnosticCode;
+    readonly severity: "warning";
+    readonly path: PwaContractPath;
+    readonly message: string;
+};
+export type PwaValidationResult<T> = {
+    readonly ok: true;
+    readonly value: T;
+    readonly diagnostics: readonly PwaWarningDiagnostic[];
+} | {
+    readonly ok: false;
+    readonly diagnostics: readonly [PwaDiagnostic, ...PwaDiagnostic[]];
+};
+
+// ---- events.d.ts ----
+import type { PwaDiagnostic } from "./diagnostics.js";
+import type { JsonPrimitive, PwaExtensions } from "./json.js";
+export declare const LIFECYCLE_EVENT_TYPES: readonly ["registered", "install-eligible", "installed", "update-waiting", "update-applied", "activated", "offline-fallback", "cache-cleaned", "served-from-cache"];
+export type PwaLifecycleEventType = (typeof LIFECYCLE_EVENT_TYPES)[number];
+export type PwaEventEnvelope<TType extends string = PwaLifecycleEventType> = {
+    readonly version: 1;
+    readonly type: TType;
+    /** ISO 8601 timestamp. */
+    readonly timestamp: string;
+    readonly appId: string;
+    /** Non-sensitive flat metadata; never tokens, subscription endpoints or user data. */
+    readonly metadata: {
+        readonly [key: string]: JsonPrimitive;
+    };
+    readonly extensions?: PwaExtensions;
+};
+export type PwaLifecycleEvent = {
+    [TType in PwaLifecycleEventType]: PwaEventEnvelope<TType>;
+}[PwaLifecycleEventType];
+export type PwaEventReadResult = {
+    readonly kind: "known";
+    readonly event: PwaLifecycleEvent;
+} | {
+    readonly kind: "unknown";
+    readonly event: PwaEventEnvelope<string>;
+} | {
+    readonly kind: "invalid";
+    readonly diagnostics: readonly [PwaDiagnostic, ...PwaDiagnostic[]];
+};
+/**
+ * Reads a lifecycle event envelope without throwing. Envelopes whose event type this version does
+ * not know are returned as `unknown` so consumers can ignore them safely.
+ *
+ * Hand-written on purpose: browser runtimes call this, so it must not load the schema library.
+ */
+export declare function readLifecycleEvent(input: unknown): PwaEventReadResult;
+
+// ---- identity.d.ts ----
+/** Same-origin absolute URL path. */
+export type AbsolutePath = `/${string}`;
+export type PwaIdentity = {
+    readonly appId: string;
+    readonly manifestId: string;
+    readonly origin: string;
+    readonly scope: AbsolutePath;
+    readonly serviceWorkerUrl: AbsolutePath;
+    readonly manifestUrl: AbsolutePath;
+    readonly mountPath: AbsolutePath;
+    /** Lowercase slug (`[a-z][a-z0-9-]*`); each environment is a separate identity. */
+    readonly environment: string;
+    /** Identity revision segment of the cache namespace (ADR-0008). */
+    readonly cacheNamespaceSeed: string;
+};
+export declare const INSTALL_DISPLAY_MODES: readonly ["standalone", "minimal-ui", "fullscreen", "browser"];
+export type PwaDisplayMode = (typeof INSTALL_DISPLAY_MODES)[number];
+export declare const INSTALL_ICON_PURPOSES: readonly ["any", "maskable"];
+export type PwaIconPurpose = (typeof INSTALL_ICON_PURPOSES)[number];
+export type PwaInstallIcon = {
+    readonly src: AbsolutePath;
+    /** e.g. `192x192`. */
+    readonly sizes: string;
+    readonly type: string;
+    readonly purpose: PwaIconPurpose;
+};
+export declare const INSTALL_ORIENTATIONS: readonly ["any", "natural", "portrait", "portrait-primary", "portrait-secondary", "landscape", "landscape-primary", "landscape-secondary"];
+export type PwaOrientation = (typeof INSTALL_ORIENTATIONS)[number];
+export declare const INSTALL_DISPLAY_OVERRIDES: readonly ["window-controls-overlay", "fullscreen", "standalone", "minimal-ui", "browser"];
+export type PwaDisplayOverride = (typeof INSTALL_DISPLAY_OVERRIDES)[number];
+export declare const INSTALL_SCREENSHOT_TYPES: readonly ["image/png", "image/jpeg", "image/webp"];
+export type PwaInstallScreenshotType = (typeof INSTALL_SCREENSHOT_TYPES)[number];
+export declare const INSTALL_SCREENSHOT_FORM_FACTORS: readonly ["wide", "narrow"];
+export type PwaInstallScreenshotFormFactor = (typeof INSTALL_SCREENSHOT_FORM_FACTORS)[number];
+export type PwaInstallScreenshot = {
+    readonly src: AbsolutePath;
+    /** Single `widthxheight` pair, e.g. `1280x800`. */
+    readonly sizes: string;
+    readonly type: PwaInstallScreenshotType;
+    readonly formFactor?: PwaInstallScreenshotFormFactor;
+    readonly label?: string;
+};
+export type PwaInstallShortcut = {
+    readonly name: string;
+    /** Must be within the identity scope. */
+    readonly url: AbsolutePath;
+    readonly shortName?: string;
+    readonly description?: string;
+    readonly icons?: readonly PwaInstallIcon[];
+};
+export type PwaInstallMetadata = {
+    readonly startUrl: AbsolutePath;
+    readonly display: PwaDisplayMode;
+    readonly name: string;
+    readonly shortName: string;
+    readonly themeColor: string;
+    readonly backgroundColor: string;
+    readonly icons: readonly PwaInstallIcon[];
+    readonly description?: string;
+    readonly categories?: readonly string[];
+    readonly orientation?: PwaOrientation;
+    readonly displayOverride?: readonly PwaDisplayOverride[];
+    readonly screenshots?: readonly PwaInstallScreenshot[];
+    readonly shortcuts?: readonly PwaInstallShortcut[];
+};
+
+// ---- json.d.ts ----
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | readonly JsonValue[] | {
+    readonly [key: string]: JsonValue;
+};
+/** Namespaced extension key, e.g. `acme.analytics`. Runtime validation enforces the exact format. */
+export type PwaExtensionNamespace = `${string}.${string}`;
+export type PwaExtensions = {
+    readonly [namespace: PwaExtensionNamespace]: JsonValue;
+};
+
+// ---- plan.d.ts ----
+import type { PwaWarningDiagnostic } from "./diagnostics.js";
+import type { AbsolutePath, PwaIdentity, PwaInstallMetadata } from "./identity.js";
+import type { PwaCacheStrategy, PwaResourceClass, PwaUpdateMode } from "./policy.js";
+export declare const TOPOLOGY_KINDS: readonly ["standalone-origin", "shared-origin"];
+export type PwaTopologyKind = (typeof TOPOLOGY_KINDS)[number];
+export type PwaRegistryEntry = {
+    readonly appId: string;
+    readonly scope: AbsolutePath;
+    readonly serviceWorkerUrl: AbsolutePath;
+    readonly manifestId: string;
+    readonly manifestUrl: AbsolutePath;
+};
+/** Describes every application on one origin and environment (ADR-0019). */
+export type PwaOriginRegistry = {
+    readonly schemaVersion: 1;
+    /** Monotonically increasing; incremented whenever an entry is added, removed or changed. */
+    readonly registryVersion: number;
+    readonly origin: string;
+    readonly environment: string;
+    readonly root: PwaRegistryEntry;
+    /** At least one; pairwise non-overlapping and not nested within each other. */
+    readonly children: readonly PwaRegistryEntry[];
+};
+export type PwaTopology = {
+    readonly kind: "standalone-origin";
+} | {
+    readonly kind: "shared-origin";
+    readonly registry: PwaOriginRegistry;
+};
+export type PwaHostBuildOutput = {
+    readonly publicPath: AbsolutePath;
+};
+export type PwaArtifacts = {
+    /** POSIX path relative to the host build output directory. */
+    readonly serviceWorkerFile: string;
+    /** POSIX path relative to the host build output directory. */
+    readonly manifestFile: string;
+};
+export type PwaPrecacheEntry = {
+    readonly url: AbsolutePath;
+    readonly revision: string | null;
+};
+export type PwaCacheNamespace = {
+    /** Full prefix derived from the identity by `cacheNamespacePrefix` (ADR-0008). */
+    readonly prefix: string;
+};
+/** Canonical order; a valid plan lists every entry exactly once in this order. */
+export declare const REQUEST_BASELINE_DENIALS: readonly ["non-get", "cross-origin", "no-store", "opaque-response", "redirect", "websocket", "unclassified"];
+export type PwaRequestBaselineDenial = (typeof REQUEST_BASELINE_DENIALS)[number];
+export type PwaPathRuleAction = "exclude" | "deny" | PwaCacheStrategy;
+export type PwaPathRule = {
+    /** Absolute path prefix, already resolved against `mountPath` by the compiler. */
+    readonly pathPrefix: AbsolutePath;
+    readonly resourceClass: PwaResourceClass;
+    readonly action: PwaPathRuleAction;
+    readonly source: "platform" | "policy";
+};
+export type PwaPlanOfflineFallback = {
+    readonly enabled: false;
+} | {
+    readonly enabled: true;
+    readonly path: AbsolutePath;
+};
+/** Runtime-safe queue configuration compiled from a reviewed offline-write policy. */
+export type PwaOfflineWritePlan = {
+    readonly enabled: false;
+} | {
+    readonly enabled: true;
+    readonly databaseName: string;
+    readonly maxEntries: number;
+    readonly maxTotalBodyBytes: number;
+    readonly targets: readonly {
+        readonly id: string;
+        readonly pathPrefix: AbsolutePath;
+        readonly maxBodyBytes: number;
+    }[];
+};
+/** Runtime cache limits and cache-busting digest, compiled from a reviewed v3 runtime-cache policy. */
+export type PwaRuntimeCachePlan = {
+    readonly enabled: false;
+} | {
+    readonly enabled: true;
+    readonly maxEntries: number;
+    readonly maxEntryBytes: number;
+    readonly maxAgeSeconds: number;
+    readonly configDigest: string;
+};
+type PwaPlanFields = {
+    readonly identity: PwaIdentity;
+    readonly install: PwaInstallMetadata | null;
+    readonly hostBuildOutput: PwaHostBuildOutput;
+    readonly topology: PwaTopology;
+    readonly artifacts: PwaArtifacts;
+    readonly precache: readonly PwaPrecacheEntry[];
+    readonly cacheNamespace: PwaCacheNamespace;
+    readonly requestBaselineDenials: readonly PwaRequestBaselineDenial[];
+    readonly pathRules: readonly PwaPathRule[];
+    readonly offlineFallback: PwaPlanOfflineFallback;
+    readonly updateMode: PwaUpdateMode;
+    /** A valid plan carries warnings only; a compilation with errors does not produce a plan. */
+    readonly diagnostics: readonly PwaWarningDiagnostic[];
+    /** Same value as the policy; absent (not `undefined`) when the policy did not set it. */
+    readonly networkTimeoutSeconds?: number;
+};
+type Expand<T> = {
+    readonly [Key in keyof T]: T[Key];
+};
+/** Compiled v1 plan. Closed shape: exactly these 15 required fields plus the optional `networkTimeoutSeconds`, no extensions. */
+export type PwaPlanV1 = Expand<PwaPlanFields & {
+    readonly schemaVersion: 1;
+    readonly planVersion: 1;
+    readonly policyVersion: 1;
+}>;
+/** Compiled v2 plan. Its offline-write configuration is fully resolved before reaching a worker. */
+export type PwaPlanV2 = Expand<PwaPlanFields & {
+    readonly schemaVersion: 2;
+    readonly planVersion: 2;
+    readonly policyVersion: 2;
+    readonly offlineWrites: PwaOfflineWritePlan;
+}>;
+/** Compiled v3 plan. Its runtime-cache configuration is fully resolved before reaching a worker. */
+export type PwaPlanV3 = Expand<PwaPlanFields & {
+    readonly schemaVersion: 3;
+    readonly planVersion: 3;
+    readonly policyVersion: 3;
+    readonly offlineWrites: PwaOfflineWritePlan;
+    readonly runtimeCache: PwaRuntimeCachePlan;
+}>;
+export type PwaPlan = PwaPlanV1 | PwaPlanV2 | PwaPlanV3;
+export {};
+
+// ---- policy.d.ts ----
+import type { PwaExtensions } from "./json.js";
+export declare const RESOURCE_CLASSES: readonly ["asset", "navigation-public-static", "navigation-public-dynamic", "public-data", "session-data", "mutation", "stream", "unclassified"];
+export type PwaResourceClass = (typeof RESOURCE_CLASSES)[number];
+export declare const CACHE_STRATEGIES: readonly ["none", "cache-first", "network-first", "stale-while-revalidate"];
+export type PwaCacheStrategy = (typeof CACHE_STRATEGIES)[number];
+export declare const UPDATE_MODES: readonly ["prompt"];
+export type PwaUpdateMode = (typeof UPDATE_MODES)[number];
+/**
+ * Path prefix relative to `PwaIdentity.mountPath`. Matched on whole path segments,
+ * ignoring query and fragment; no glob, regular expression or callback forms exist.
+ */
+export type MountRelativePath = `/${string}`;
+export type PwaResourceRule = {
+    readonly pathPrefix: MountRelativePath;
+    readonly resourceClass: PwaResourceClass;
+    readonly cache: PwaCacheStrategy;
+};
+export type PwaOfflineFallback = {
+    readonly enabled: false;
+} | {
+    readonly enabled: true;
+    readonly path: MountRelativePath;
+};
+/** A reviewed mutation target that may later be explicitly persisted for offline delivery. */
+export type PwaOfflineWriteTarget = {
+    readonly id: string;
+    readonly pathPrefix: MountRelativePath;
+    readonly maxBodyBytes: number;
+};
+/** Queue limits and reviewed targets for the offline-write extension. */
+export type PwaOfflineWritePolicy = {
+    readonly enabled: boolean;
+    readonly maxEntries: number;
+    readonly maxTotalBodyBytes: number;
+    readonly targets: readonly PwaOfflineWriteTarget[];
+};
+export type PwaPolicyV1 = {
+    readonly schemaVersion: 1;
+    readonly install: {
+        readonly enabled: boolean;
+    };
+    readonly offlineFallback: PwaOfflineFallback;
+    readonly updateMode: PwaUpdateMode;
+    readonly resources: readonly PwaResourceRule[];
+    readonly extensions?: PwaExtensions;
+    /** Integer seconds (1-30). Applies to navigation and network-first runtime cache. Absent: no timeout. */
+    readonly networkTimeoutSeconds?: number;
+};
+export type PwaPolicyV2 = {
+    readonly schemaVersion: 2;
+    readonly install: {
+        readonly enabled: boolean;
+    };
+    readonly offlineFallback: PwaOfflineFallback;
+    readonly updateMode: PwaUpdateMode;
+    readonly resources: readonly PwaResourceRule[];
+    readonly extensions?: PwaExtensions;
+    readonly offlineWrites: PwaOfflineWritePolicy;
+    /** Integer seconds (1-30). Applies to navigation and network-first runtime cache. Absent: no timeout. */
+    readonly networkTimeoutSeconds?: number;
+};
+/** Limits for the platform's explicit opt-in runtime cache (public-read data and dynamic HTML). */
+export type PwaRuntimeCachePolicy = {
+    readonly enabled: boolean;
+    readonly maxEntries: number;
+    readonly maxEntryBytes: number;
+    readonly maxAgeSeconds: number;
+};
+export type PwaPolicyV3 = {
+    readonly schemaVersion: 3;
+    readonly install: {
+        readonly enabled: boolean;
+    };
+    readonly offlineFallback: PwaOfflineFallback;
+    readonly updateMode: PwaUpdateMode;
+    readonly resources: readonly PwaResourceRule[];
+    readonly extensions?: PwaExtensions;
+    readonly offlineWrites: PwaOfflineWritePolicy;
+    readonly runtimeCache: PwaRuntimeCachePolicy;
+    /** Integer seconds (1-30). Applies to navigation and network-first runtime cache. Absent: no timeout. */
+    readonly networkTimeoutSeconds?: number;
+};
+export type PwaPolicy = PwaPolicyV1 | PwaPolicyV2 | PwaPolicyV3;
+
+// ---- validate.d.ts ----
+import type { PwaValidationResult } from "./diagnostics.js";
+import type { PwaIdentity, PwaInstallMetadata } from "./identity.js";
+import type { PwaOriginRegistry, PwaPlan } from "./plan.js";
+import type { PwaPolicy } from "./policy.js";
+export declare function validateIdentity(input: unknown): PwaValidationResult<PwaIdentity>;
+/** `identity` must already be a validated identity; install URLs are checked against its scope. */
+export declare function validateInstallMetadata(input: unknown, identity: PwaIdentity): PwaValidationResult<PwaInstallMetadata>;
+export declare function validatePolicy(input: unknown): PwaValidationResult<PwaPolicy>;
+export declare function validatePlan(input: unknown): PwaValidationResult<PwaPlan>;
+export declare function validateOriginRegistry(input: unknown): PwaValidationResult<PwaOriginRegistry>;

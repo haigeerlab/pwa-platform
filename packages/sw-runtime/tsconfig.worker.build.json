@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.worker.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": [
+    "src/worker/**/*.ts",
+    "src/recovery-worker/**/*.ts",
+    "src/entries/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/messages/**/*.ts",
+    "src/push-payload/**/*.ts"
+  ]
+}

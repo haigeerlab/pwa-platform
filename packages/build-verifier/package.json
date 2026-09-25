@@ -1,0 +1,39 @@
+{
+  "name": "@pwa-platform/build-verifier",
+  "version": "0.1.0-beta.1",
+  "description": "Verify PWA Platform build and deployment facts.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  },
+  "dependencies": {
+    "@pwa-platform/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@pwa-platform/browser-test-harness": "workspace:*",
+    "@pwa-platform/core": "workspace:*",
+    "@types/node": "24.13.4"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "next"
+  }
+}

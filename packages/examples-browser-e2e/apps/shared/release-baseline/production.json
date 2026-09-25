@@ -1,0 +1,11 @@
+{
+  "appId": "pwaexample",
+  "manifestId": "/app/",
+  "origin": "https://example.pwa-platform.invalid",
+  "scope": "/app/",
+  "serviceWorkerUrl": "/app/sw.js",
+  "manifestUrl": "/app/manifest.webmanifest",
+  "mountPath": "/app/",
+  "environment": "production",
+  "cacheNamespaceSeed": "r1"
+}

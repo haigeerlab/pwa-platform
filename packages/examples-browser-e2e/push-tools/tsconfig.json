@@ -1,0 +1,11 @@
+{
+  // Like release-verifier/: keys.ts and send.ts run under Node's built-in type stripping (`node push-tools/*.ts`),
+  // so relative imports use explicit `.ts` extensions and the syntax is limited to what erases cleanly.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["./**/*.ts"]
+}

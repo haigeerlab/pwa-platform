@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "planVersion": 1,
+  "policyVersion": 1,
+  "identity": {
+    "appId": "engine-fixture",
+    "manifestId": "/",
+    "origin": "http://localhost",
+    "scope": "/",
+    "serviceWorkerUrl": "/sw.js",
+    "manifestUrl": "/manifest.webmanifest",
+    "mountPath": "/",
+    "environment": "staging",
+    "cacheNamespaceSeed": "b1"
+  },
+  "install": null,
+  "hostBuildOutput": {
+    "publicPath": "/"
+  },
+  "topology": {
+    "kind": "standalone-origin"
+  },
+  "artifacts": {
+    "serviceWorkerFile": "sw.js",
+    "manifestFile": "manifest.webmanifest"
+  },
+  "precache": [
+    {
+      "url": "/assets/app.3f9a2c7d.js",
+      "revision": null
+    },
+    {
+      "url": "/assets/logo.svg",
+      "revision": "a1b2c3d4e5f60718"
+    },
+    {
+      "url": "/offline.html",
+      "revision": "7d793037a0760186"
+    }
+  ],
+  "cacheNamespace": {
+    "prefix": "pwa:engine-fixture:staging:b1:"
+  },
+  "requestBaselineDenials": [
+    "non-get",
+    "cross-origin",
+    "no-store",
+    "opaque-response",
+    "redirect",
+    "websocket",
+    "unclassified"
+  ],
+  "pathRules": [],
+  "offlineFallback": {
+    "enabled": false
+  },
+  "updateMode": "prompt",
+  "diagnostics": []
+}

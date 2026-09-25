@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": []
+  },
+  "include": [
+    "src/build/**/*.ts",
+    "src/shared/**/*.ts",
+    "src/messages/**/*.ts",
+    "src/push-payload/**/*.ts",
+    "test/*.ts"
+  ]
+}
