@@ -1,6 +1,8 @@
 # Vite + React 接入
 
-适用范围：Vite 8、React 19.2 及以上。先按[包选择](/start/choose)安装，再完成以下步骤。示例使用域名根路径；子路径部署需要同步调整所有路径。
+适用范围：Vite 8、React 19.2 及以上且低于 20，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)安装，再完成以下步骤。示例使用域名根路径；子路径部署需要同步调整所有路径。
+
+本页的页面入口依赖构建期提供的 <code>virtual:pwa-config</code>。当前插件不支持 <code>vite dev</code>；本地验证请运行生产构建，再用 <code>vite preview</code> 打开产物。
 
 ## 1. 声明身份与策略
 
