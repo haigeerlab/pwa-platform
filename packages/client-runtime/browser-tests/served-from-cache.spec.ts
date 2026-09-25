@@ -130,6 +130,10 @@ test.describe("served-from-cache: stale-while-revalidate", () => {
 
     // First SWR read: no cache yet, waits for the network — no signal.
     await fetchOk(page, fixtureServer.url(RUNTIME_REVIEWS_LIST_URL));
+    // Workbox writes in the background; the fetch resolving does not mean the cache is warm yet.
+    await expect
+      .poll(() => page.evaluate(async (url) => (await caches.match(url)) !== undefined, fixtureServer.url(RUNTIME_REVIEWS_LIST_URL)))
+      .toBe(true);
     // Second SWR read: served from the now-warm cache, background-revalidates — one signal.
     await fetchOk(page, fixtureServer.url(RUNTIME_REVIEWS_LIST_URL));
     await waitForClientEvent(page, "served-from-cache");
