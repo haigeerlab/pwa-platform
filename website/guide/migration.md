@@ -23,6 +23,6 @@
 5. 用[安装与更新](/guide/updates)替代原来的自动接管或自建版本轮询提示。
 6. 用生产构建及预览验证，再在目标环境完成[上线前检查](/start/checklist)和 worker 切换演练。
 
-开发服务器不提供平台 worker；离线和更新行为要在生产构建及部署环境验证。旧项目若把带指纹的运行时配置文件放在产物根目录，需要先调整产物路径，让可预缓存的文件落入明确的路径前缀，再写相应的 <code>asset</code> 规则。
+当前插件只在生产构建中提供 <code>virtual:pwa-config</code> 和平台 worker；按接入示例替换页面入口后，<code>vite dev</code> 无法加载该虚拟模块。本地验证请使用 <code>vite build</code> + <code>vite preview</code>，离线和更新行为还需在目标部署环境复核。旧项目若把带指纹的运行时配置文件放在产物根目录，需要先调整产物路径，让可预缓存的文件落入明确的路径前缀，再写相应的 <code>asset</code> 规则。
 
 迁移时以本站的[当前包状态](/reference/packages)与[公共读取规则](/guide/public-read-cache)为准。已有 worker 的 URL、scope 和 manifest ID 涉及浏览器身份，必须在目标业务项目制定迁移与回滚方案，不能直接照搬新项目的配置示例。
