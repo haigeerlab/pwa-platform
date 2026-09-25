@@ -367,3 +367,30 @@ G1 → 确认 → G2 → G3 → G4 → G5。G2 与 G3 的实现派给 `executor`
 | Concern | Outcome | Evidence | Rationale |
 |---|---|---|---|
 | local-ci-record | delivered | `docs/operations/local-ci-record-template.md`（`950fe3d`） | G4 写入了工具的调用方式与"不得手工转写"的规则；评审后的调用方式随 G4 修复同步。 |
+
+## 修订：高频开发下的 CI 触发策略（2026-09-25）
+
+本修订执行 [platform-governance 规格](../../spec/platform-governance.md) 的同名章节。工作分支为 codex/ci-trigger-control，基于 main 的 cc8b8b6。目标是在保持完整质量门禁和发布提交证据的同时，避免每次 AI 辅助开发提交都启动三项 GitHub job。
+
+### C1：规格与计划
+
+在模块规格中替换旧的 main push 触发要求，记录 PR、手动发布验证、分支规则与文档影响；建立本地 todo。验收：旧要求与修订关系明确，任务均有验证标准。
+
+### C2：工作流触发
+
+修改 .github/workflows/ci.yml：目标为 main 的 PR 仅在指定事件触发；Draft PR job 跳过；增加 workflow_dispatch，移除 push；PR 旧运行可取消，手动发布运行保持独立；质量步骤和权限不变。验收：工作流语法可解析，静态检查证实触发、权限与 job 内容符合规格；PR 真实运行三项 job 通过。
+
+### C3：流程文档
+
+更新 CONTRIBUTING.md、docs/operations/documentation-site.md、docs/operations/release-and-incident-runbook.md 与 docs/DOCUMENTATION-BASELINE.md。验收：日常分支、Ready PR、最终 main SHA 的手动 CI、docs/v* 的手动发布顺序一致；相对链接有效。
+
+### C4：远端验证与 main 规则
+
+本地检查后推送工作分支、创建 PR，确认 Ready PR 的全部 job 通过。随后在 GitHub 为 main 启用要求 PR 与三个 CI job 的规则，并要求分支保持最新；确认规则指向正确仓库和分支后合并 PR。验收：main push 不再创建 CI，分支规则存在且无付费 runner 或部署行为；最终 main 的工作区和远端一致。
+
+### 风险与控制
+
+- 移除 main push 后，直接推送可能绕过验证：先建立分支规则，再合并工作流变更。
+- Draft PR 的跳过 job 在 GitHub 可显示成功：Draft 不可合并；ready_for_review 与后续 synchronize 必须重新运行，规则以 Ready PR 的真实结果为准。
+- PR 检查通过与合并提交 SHA 不同：任何正式发布前通过 workflow_dispatch 对最终 main SHA 再跑完整矩阵；运行 SHA 不符时不得发布。
+- GitHub Actions 用量与 Cloudflare 发布无直接关系；本任务不调用 Cloudflare 部署或 R2 写入。
