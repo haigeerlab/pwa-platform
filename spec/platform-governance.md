@@ -427,3 +427,24 @@ ADR-0031 规定了 GitHub 不可用期间"本地干净门禁"的执行方式，�
 | vue-react-adapters | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | workbox-engine | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | public-read-cache | follow | 本模块不改变该基线的权威文档或验收结论。 |
+
+## 修订：高频开发下的 CI 触发策略（2026-09-25）
+
+本节取代上文“每个 PR，以及 main 上的每次推送”与“main push 触发”的要求；质量检查的内容、只读权限、冻结安装及真实浏览器任务不变。
+
+- 日常提交保存在短期工作分支。分支 push 本身不运行 CI；进入 main 必须通过 PR。
+- CI 对目标为 main 的 PR 的 opened、reopened、synchronize、ready_for_review、converted_to_draft 事件响应。Draft PR 的耗时 job 跳过；转为 Ready 后立即执行，Ready 状态下每次更新都重新执行。PR 同一编号的新运行取消旧运行；手动发布验证不被 PR 运行取消。
+- 不再监听 main 或 docs/v* 的 push，也不设置周期触发。CI 提供 workflow_dispatch；发布负责人在最终 main 提交上手动执行完整矩阵，核对运行 SHA 与拟发布 SHA 相同。若 main 在验证后移动，重新验证新的发布提交。文档版本分支只能从这样验证过的 main 提交创建。
+- CI job 继续执行 Node 22、24 质量矩阵与 Chrome 浏览器任务。不得用路径过滤、提交信息跳过或只跑文档构建来让需要的 PR 检查缺失；不能把被跳过的 job 当成完成了质量验证。
+- main 的 GitHub 分支规则要求 PR、三个 CI job 均通过，并要求 PR 分支与 main 保持最新；不需要付费功能。规则在 PR 实跑通过后设置，再合入本修订。紧急变更也走 PR 与同样的门禁。
+- workflow 继续只有 contents: read，不读取 secret、不使用 pull_request_target、不执行部署。Cloudflare Pages 的文档版本分支手动发布流程独立于本 CI。
+
+验收：工作分支 push 无运行；Draft PR 不占用 runner 执行完整门禁；Ready PR 的三个 job 通过且后续代码更新重新运行；合并后 main push 不产生 CI；手动运行在选定 main SHA 上完整通过；分支规则阻止未通过 CI 的合并。
+
+### Documentation impact（本次修订）
+
+| Concern | Decision | Rationale |
+|---|---|---|
+| ci-baseline | update | 工作流触发与 main 分支规则改变；更新文档基线和贡献指南。 |
+| release-and-incident | update | 发布提交的 CI 改为手动验证最终 main SHA，原有发布门禁继续生效。 |
+| documentation-site | update | 文档版本分支发布前手动验证来源 main SHA；Cloudflare 部署控制不变。 |

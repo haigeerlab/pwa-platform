@@ -3,19 +3,20 @@ name: CI
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+  workflow_dispatch:
 
 # Least privilege: the workflow only reads the repository and never uses secrets.
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   quality:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     name: Quality (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -60,6 +61,7 @@ jobs:
         run: pnpm audit --ignore-registry-errors
 
   browser:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     name: Browser (Google Chrome stable, Node 24)
     runs-on: ubuntu-latest
     timeout-minutes: 20
