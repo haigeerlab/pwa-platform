@@ -19,9 +19,11 @@ Next、TanStack Start 和同源多 PWA 目前没有本表的发布目标。它�
 
 表中的 React、Vue 与冒烟站是 **Pages 静态 Direct Upload** 项目，本地 `build:cloudflare:site` 和 `--mode=dry-run` 不上传。`deploy:cloudflare:site --mode=deploy`、`--mode=preview-candidate` 与 `deploy:pages:react` 才会创建 Pages 部署；候选预览也应计入发布次数规划。发布前检查账户仍处于 Pages Free，按 Cloudflare 公布的每月 500 次部署、单站 20,000 个文件、单文件 25 MiB 的限额核对余量与本次产物；不要为此升级方案。纯静态请求免费且不限次数，加入 Pages Functions 或 `_worker.js` 后须重新评估请求计费。[Pages 限额](https://developers.cloudflare.com/pages/platform/limits/)；[静态资源计费](https://developers.cloudflare.com/pages/functions/pricing/)。
 
-按仓库现有登记，测试站网页由 Pages 提供；私有 **R2 Standard** 桶只存放发布制品与部署索引，公开访问已关闭，未登记 R2 对外网页入口。R2 Standard 的月度免费用量为 10 GB-month 存储、100 万次 Class A 操作和 1,000 万次 Class B 操作；Infrequent Access 不享有该免费用量，且另有读取与最短存储期限费用。超额按量计费，免费用量不是硬性费用上限；预算提醒只报告已产生的费用，用量统计和提醒可能滞后，不会阻止操作。该桶与文档站无关，但测试站 `main`／`drill` 的正常发布依赖它。每次执行 R2 上传或测试站部署前，应在 Cloudflare 的 Billable Usage 查看整个账户当前周期的 R2 存储、Class A、Class B 和已产生费用，并估算本次新增制品与读写；无法确认仍在免费用量内时，停在本地构建与只读检查，不执行上传。若要求严格保证零费用，现有 R2 发布链路须先改成有硬性限额的归档方案，不能仅凭本手册作保证。[R2 定价](https://developers.cloudflare.com/r2/pricing/)；[计费使用量](https://developers.cloudflare.com/billing/manage/billable-usage/)。
+按仓库现有登记，测试站网页由 Pages 提供；私有 **R2 Standard** 桶只存放发布制品与部署索引，公开访问已关闭，未登记 R2 对外网页入口。R2 Standard 的月度免费用量为 10 GB-month 存储、100 万次 Class A 操作和 1,000 万次 Class B 操作；Infrequent Access 不享有该免费用量，且另有读取与最短存储期限费用。超额按量计费，免费用量不是硬性费用上限；预算提醒只报告已产生的费用，用量统计和提醒可能滞后，不会阻止操作。该桶与文档站无关，但测试站 `main`／`drill` 的正常发布依赖它。每次执行 R2 上传或测试站部署前，应在 Cloudflare 的 Billable Usage 查看整个账户当前周期的 R2 存储、Class A、Class B 和已产生费用，并估算本次新增制品与读写；无法确认仍在免费用量内时，停在本地构建与检查，不执行上传。留存审计和恢复演练虽不写云端，R2 读取仍计入 Class B，也应在执行前核对用量。若要求严格保证零费用，现有 R2 发布链路须先改成有硬性限额的归档方案，不能仅凭本手册作保证。[R2 定价](https://developers.cloudflare.com/r2/pricing/)；[计费使用量](https://developers.cloudflare.com/billing/manage/billable-usage/)。
 
 Nuxt Worker 仍未创建；不要为测试站启用 Workers Paid、Argo、Cache Reserve 或其他未评估的付费产品。新增 Cloudflare 产品前先核对其正式名称、账户方案和计费维度。
+
+下一轮先使用现有部署证据：相关部署满七个自然日后分别对 React/Vue 运行只读留存审计，再在真正的第二台机器上按[恢复流程](#从-r2-恢复运营状态)验证两站当前 `main`。这两项不需要新建 Pages 部署或 R2 对象；只有代码变更或明确演练目标时，才按免费额度门禁集中安排下一次上传。文档站的版本分支发布节奏单独管理，不改变测试站 `main`／`drill` 槽位的已冻结身份。执行顺序见[模块计划](../../tasks/cloudflare-test-deployment/plan.md)。
 
 ## 名称、身份与槽位
 
@@ -110,7 +112,7 @@ pnpm r2:cloudflare:bundle --target=react --slot=main --sha256=<64 位摘要> --m
 
 传输只接受固定的私有 bucket `pwa-platform-release-artifacts`。账号 ID 取环境变量或现有钥匙串；桶级 S3 Access Key ID 与 Secret Access Key 分别取 `PWA_PLATFORM_R2_ACCESS_KEY_ID`、`PWA_PLATFORM_R2_SECRET_ACCESS_KEY` 或同名用途钥匙串项。不要把密钥传入命令行参数。2026-09-21 四槽 S3 SigV4 写入与读回均返回成功并逐字节匹配本地归档；凭据不得通过命令行参数、日志或仓库传递。
 
-十六个 Pages 部署（React main v1、六次 v2、drill v2；Vue main v1、六次 v2、drill v2）已按完整部署 ID 在 R2 写入由客户端条件写入保护的制品索引，并读回核对。记录脚本先验证归档在 R2、Pages 槽位当前部署 ID 及全部线上公开文件的 SHA-256，再使用 R2 `PutObject` 的 `If-None-Match: *` 条件写入；已有索引只能由该脚本核对，不能通过该路径覆盖。Bucket 未启用存储层 Object Lock，因此不能把客户端约束表述为存储层不可变：
+截至 2026-09-22，十七个 Pages 部署（React main v1、六次 v2、两次 drill v2；Vue main v1、六次 v2、一次 drill v2）已按完整部署 ID 在 R2 写入由客户端条件写入保护的制品索引，并读回核对。记录脚本先验证归档在 R2、Pages 槽位当前部署 ID 及全部线上公开文件的 SHA-256，再使用 R2 `PutObject` 的 `If-None-Match: *` 条件写入；已有索引只能由该脚本核对，不能通过该路径覆盖。Bucket 未启用存储层 Object Lock，因此不能把客户端约束表述为存储层不可变：
 
 ```bash
 pnpm r2:cloudflare:index --target=react --slot=main --sha256=<64 位摘要> --deployment-id=<完整部署 ID> --mode=record
@@ -119,19 +121,19 @@ pnpm r2:cloudflare:index --target=react --slot=main --sha256=<64 位摘要> --de
 pnpm r2:cloudflare:index --target=react --slot=main --sha256=<历史 SHA-256> --deployment-id=<历史完整部署 ID> --mode=history
 ```
 
-索引对象键为 `deployments/<host>/<slot>/<deployment-id>.json`。当前索引对应 React main v1 `4e5f259f-c985-4c2d-9c76-853c5b33a107`、初次 v2 `18824a5c-9103-41a5-953b-0efaedf4360a`、同版维护部署 `784a59f7-0bc7-479f-88d8-5f178772e919`、显示名隔离部署 `74c83661-8f62-44a1-9620-75ff3a05b8fc`、更新横幅部署 `edc7d9a1-af82-4fa2-a915-46696724598d`、页面新旧判断部署 `5c17e435-57ec-4faa-ad2b-7288cfd84333`、当前判断超时部署 `8589bf50-b6d2-493f-9551-ea4b7dd8adec`、drill `37de0c78-d26b-400f-8e8c-c0c9bf048bce`；Vue main v1 `96522b51-ed42-4d76-b06c-92325d63a909`、初次 v2 `5f1ac456-9416-4c35-bf72-b4b782d13e66`、同版维护部署 `224d7b68-dc16-467c-9394-9c4ddc4eaf17`、显示名隔离部署 `f1cf4dcb-fecc-49e7-a426-42a183b0a149`、更新横幅部署 `3a9b5ee5-f38d-4a2d-9515-7b9420b0cd72`、页面新旧判断部署 `e05fd502-8cf1-4e21-a610-8011c7346c49`、当前判断超时部署 `8472fc4d-ca25-45ca-a4f1-1237db6be642`、drill `6d1170ee-f135-4b04-8685-b07b949e6cd4`。现有 `main` 的部署命令自动完成上传后的索引记录、本地资产归档和保留审计；`drill` 的后置步骤仍按人工流程执行。
+索引对象键为 `deployments/<host>/<slot>/<deployment-id>.json`。当前索引对应 React main v1 `4e5f259f-c985-4c2d-9c76-853c5b33a107`、初次 v2 `18824a5c-9103-41a5-953b-0efaedf4360a`、同版维护部署 `784a59f7-0bc7-479f-88d8-5f178772e919`、显示名隔离部署 `74c83661-8f62-44a1-9620-75ff3a05b8fc`、更新横幅部署 `edc7d9a1-af82-4fa2-a915-46696724598d`、页面新旧判断部署 `5c17e435-57ec-4faa-ad2b-7288cfd84333`、当前判断超时部署 `8589bf50-b6d2-493f-9551-ea4b7dd8adec`、drill `37de0c78-d26b-400f-8e8c-c0c9bf048bce` 与 `ae41ddfd-6f1a-4a8e-91cb-ba25c4511852`；Vue main v1 `96522b51-ed42-4d76-b06c-92325d63a909`、初次 v2 `5f1ac456-9416-4c35-bf72-b4b782d13e66`、同版维护部署 `224d7b68-dc16-467c-9394-9c4ddc4eaf17`、显示名隔离部署 `f1cf4dcb-fecc-49e7-a426-42a183b0a149`、更新横幅部署 `3a9b5ee5-f38d-4a2d-9515-7b9420b0cd72`、页面新旧判断部署 `e05fd502-8cf1-4e21-a610-8011c7346c49`、当前判断超时部署 `8472fc4d-ca25-45ca-a4f1-1237db6be642`、drill `6d1170ee-f135-4b04-8685-b07b949e6cd4`。现有 `main` 的部署命令自动完成上传后的索引记录、本地资产归档和保留审计；已有基线的 `drill` 上传前预检、上传后索引与归档也已自动化，并在 React `drill` 实测；`drill` 按规格不做保留审计。
 
 归档契约固定为：
 
 1. 构建后、Pages 上传前，将完整 `site/`、`build.json`、冻结身份基线和文件摘要清单打成内容寻址的候选制品；先上传私有存储，再重新下载核对字节摘要，失败则停止 Pages 发布。对象键包含宿主、槽位和制品 SHA-256，已有键不得覆盖。
-2. Pages 上传后，以实际完整部署 ID 写入从部署到候选制品摘要的索引，保存记录时间、origin 和线上文件字节核验结果。当前十六个实际部署已有索引；`main` 的上传后索引、资产归档和保留审计已经自动串行，React/Vue 显示名隔离部署与当前更新横幅部署均返回 `postDeployIndexedAndArchived: true` 与 `retentionAudited: true`。`drill` 仍需手工记录；每次发布仍须记录执行人及浏览器现场结果。索引写入／读回失败即暂停下一次发布并进入恢复流程。`main` 与 `drill` 的记录互不替代。
+2. Pages 上传后，以实际完整部署 ID 写入从部署到候选制品摘要的索引，保存记录时间、origin 和线上文件字节核验结果。当前十七个实际部署已有索引；`main` 的上传后索引、资产归档和保留审计已经自动串行，React/Vue 显示名隔离部署与当前更新横幅部署均返回 `postDeployIndexedAndArchived: true` 与 `retentionAudited: true`。`drill` 的上传后索引与归档也已自动串行，React `drill` 实测返回 `postDeployIndexedAndArchived: true`；每次发布仍须记录执行人及浏览器现场结果。索引写入／读回失败即暂停下一次发布并进入恢复流程。`main` 与 `drill` 的记录互不替代。
 3. 保留审计从 Pages 官方部署列表分页读取成功的 `main` 生产历史，选取当前 canonical、按创建时间最新三次（R/R-1/R-2）及滚动七天内所有成功部署的并集；再从 R2 下载每个索引、manifest 与 tarball，验证摘要链、身份、回执和当前线上文件，并逐项请求并集中的指纹资源。React/Vue 当前各四次生产部署均被选中并通过。这个结果证明**当前**滚动窗口选择与对象可用性，因这些部署尚未经历完整七个自然日，不能写成已经存活七天。暂不设置自动删除生命周期规则。归档是**恢复输入**，不能把 R2 对象直接当成 Pages 对外静态资源。
 4. 存储凭据与 Pages 凭据分开：建议使用 [R2 官方说明的仅限该 bucket 的 Object Read & Write S3 凭据](https://developers.cloudflare.com/r2/api/tokens/)；不写入仓库、staging、构建回执或日志。Cloudflare 文档说明这种桶级权限适用于 S3 API，不能直接当成 REST API Token 使用。
 5. 回滚先验证目标生产部署 ID、其完整制品和仍需保留的**当前版**指纹资源。Cloudflare [原生回滚 API](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/deployments/methods/rollback/)只作用于先前成功的生产部署；旧部署不可能预先包含未来版本的指纹资源，因此原生回滚后还须检查这些资源是否可访问。本次 React/Vue v2 资源在回滚 v1 后仍返回正确字节，但这一观察不是未来版本的可用性保证；若缺失，立即用已归档的旧版 shell 与新旧指纹资源组合重新 Direct Upload。恢复 worker 清缓存是另一条独立操作。两站测试站已各完成一次 v2→v1→v2 原生回滚与桌面页面核验；此结果只支持测试站重复部署，不代表正式生产发布门禁通过。
 
 实际回滚顺序：先对当前版运行 `r2:cloudflare:index --mode=check`，对目标历史版运行 `--mode=history`；由项目所有者通过 Pages 控制台或官方 `POST /accounts/{account_id}/pages/projects/{project_name}/deployments/{deployment_id}/rollback` 切换生产部署。随后以 Pages 项目 API 的 `canonical_deployment.id` 确认指向目标，运行目标版索引 `--mode=check` 并逐项请求仍需保留的新旧指纹资源，最后在桌面浏览器确认页面版本。需要恢复新版本时，对它的历史索引先运行 `--mode=history`，再调用同一回滚 API 指向新部署；恢复后重新验证 `canonical_deployment`、线上文件和浏览器。`wrangler pages deployment list` 仍按创建时间排序，回滚后列表第一条不代表当前生效部署，不能用它作放行依据。API Token 只从本机钥匙串或环境变量注入，不写进 URL、命令行参数或日志。
 
-私有存储与十六个实际部署的制品、部署 ID 索引读回已运行；两站 Pages 原生生产槽位回滚及恢复也已演练。两站当前成功生产历史的滚动七天与 R/R-1/R-2 审计通过，缺失对象 404 与本地损坏制品拒绝反例通过；完整七日的时间跨度仍需自然经过后重跑。后续正式发布仍需独立机器恢复演练和真实设备证据；`drill` 的发布索引／归档尚未自动化。
+私有存储与十七个实际部署的制品、部署 ID 索引读回已运行；两站 Pages 原生生产槽位回滚及恢复也已演练。两站当前成功生产历史的滚动七天与 R/R-1/R-2 审计通过，缺失对象 404 与本地损坏制品拒绝反例通过；完整七日的时间跨度仍需自然经过后重跑。后续正式发布仍需独立机器恢复演练和真实设备证据；React `drill` 的发布索引／归档自动化已实测。
 
 ## 机器发布门禁（上线后核验，仅用于演练）
 
@@ -196,7 +198,7 @@ pnpm recover:cloudflare:site --target=react   # 或 vue；槽位固定为 main
 
 沿用[既有 Pages 冒烟站](pages-smoke-deploy.md)的最小权限 API Token 与本机钥匙串／环境变量注入方式。部署脚本不得回显 Token、账户 ID 或 Wrangler 登录缓存。Nuxt Workers 需要独立核对所需权限，不借用 Pages Token 假定可用。
 
-Cloudflare 原生 Pages 回滚只接受先前成功的**生产**部署，不能把预览部署当作生产回滚目标。`drill` 上重新 Direct Upload 正常 v2 是恢复演练，不是 Cloudflare 原生回滚；后者已在 React/Vue 两个测试项目以 v2→v1→v2 实测。Pages 部署回滚只能恢复某次静态部署；故障 worker 的清理仍要按[发布与事故手册](release-and-incident-runbook.md#回滚)部署恢复 worker，并核验只清理本应用缓存。两类操作分别记部署 ID。Pages 不保证历史部署中的指纹资源永久可用，因此新上传必须携带保留窗口内的资产并由线上请求核验。目前本机归档仍被 `.gitignore` 排除；四槽基础制品、两站初次 main v2 制品、同版维护制品、显示名隔离制品、更新横幅制品、页面新旧判断制品及判断超时制品、共十六个部署 ID 索引已另存 R2 并读回，`main` 自动保留审计已接入。迁移机器、清理 `build/` 或事故恢复前，要按制品摘要下载并校验，不能仅依赖本地目录。
+Cloudflare 原生 Pages 回滚只接受先前成功的**生产**部署，不能把预览部署当作生产回滚目标。`drill` 上重新 Direct Upload 正常 v2 是恢复演练，不是 Cloudflare 原生回滚；后者已在 React/Vue 两个测试项目以 v2→v1→v2 实测。Pages 部署回滚只能恢复某次静态部署；故障 worker 的清理仍要按[发布与事故手册](release-and-incident-runbook.md#回滚)部署恢复 worker，并核验只清理本应用缓存。两类操作分别记部署 ID。Pages 不保证历史部署中的指纹资源永久可用，因此新上传必须携带保留窗口内的资产并由线上请求核验。目前本机归档仍被 `.gitignore` 排除；四槽基础制品、两站初次 main v2 制品、同版维护制品、显示名隔离制品、更新横幅制品、页面新旧判断制品及判断超时制品、共十七个部署 ID 索引已另存 R2 并读回，`main` 自动保留审计已接入。迁移机器、清理 `build/` 或事故恢复前，要按制品摘要下载并校验，不能仅依赖本地目录。
 
 ## 维护者最短路径
 
@@ -216,7 +218,7 @@ Cloudflare 原生 Pages 回滚只接受先前成功的**生产**部署，不能�
 | Pages 原生 v2→v1→v2 回滚与线上指纹资源核验 | 已取得 | 两站 `main` |
 | 桌面 Chrome 原生安装、独立窗口、唯一显示名 | 已取得 | 用户配置中的 React/Vue 安装已核对；已安装窗口断网重载：Vue 在用户配置中，React/Vue 另在独立配置经 CDP 安装后复测 |
 | macOS Safari 渐进兼容（在线、受控、离线重载与离线兜底） | 已取得 | Safari 18.6 经 WebDriver；更新提示与“添加到程序坞”未测 |
-| 私有 R2 制品、部署索引、R/R-1/R-2 与滚动七天选择审计 | 已取得 | 十六个部署索引；`main` 后置步骤自动化 |
+| 私有 R2 制品、部署索引、R/R-1/R-2 与滚动七天选择审计 | 已取得 | 十七个部署索引；`main` 后置步骤自动化 |
 | 完整七个自然日的制品存活 | **pending** | 相关部署自然满七日后重跑 `audit:cloudflare:retention` |
 | 独立机器下载、校验与事故恢复 | **pending** | 一条命令恢复脚本已交付；2026-09-22 在同机全新克隆中隔离模拟通过（不等于独立机器）；真正的第二台机器尚未验证 |
 | `drill` 上传后索引、归档与审计自动化 | 已取得（审计除外） | 2026-09-22 起上传前预检与上传后索引、归档自动完成，React `drill` 部署 `ae41ddfd…` 实测；`drill` 按规格不做保留审计 |
