@@ -2,7 +2,7 @@
 
 ## 阶段与目标
 
-本计划依据[模块规格](../../spec/cloudflare-test-deployment.md)与[ADR-0029](../../docs/adr/0029-cloudflare-host-demo-isolation.md)。先完成目标登记和本地可核验构建，再逐个上线 React、Vue；Nuxt 先做 Workers 可行性验证。规划文档已形成；T1–T4 已完成本地隔离构建与 React/Vue 首次上线，T5 预览更新／恢复演练、私有 R2 四槽基础归档、两站 main 初次 v2、同版维护和显示名隔离制品、十个部署 ID 索引已通过；React/Vue main 均完成 v2→v1→v2 原生回滚，两站 main 后续部署均实测上传后自动索引／资产归档／保留审计；独立机器事故恢复仍未完成；T6 Nuxt Workers 可行性门禁已执行，启动失败，未部署。T7 手册、基线、验证记录与 Spec Guard 只读核验已收口；模块文档交付仍为 `pending`。
+本计划依据[模块规格](../../spec/cloudflare-test-deployment.md)与[ADR-0029](../../docs/adr/0029-cloudflare-host-demo-isolation.md)。先完成目标登记和本地可核验构建，再逐个上线 React、Vue；Nuxt 先做 Workers 可行性验证。规划文档已形成；T1–T4 已完成本地隔离构建与 React/Vue 首次上线，T5 预览更新／恢复演练、私有 R2 四槽基础归档及十七个部署 ID 索引已通过；React/Vue main 均完成 v2→v1→v2 原生回滚，两站 main 后续部署均实测上传后自动索引／资产归档／保留审计，React drill 也实测自动索引／归档；完整七日存活证据和独立机器事故恢复仍未完成；T6 Nuxt Workers 可行性门禁已执行，启动失败，未部署。T7 手册、基线、验证记录与 Spec Guard 只读核验已收口；模块文档交付仍为 `pending`。
 
 依赖顺序：T1 → T2 → T3 → T4 → T5；T2 → T6；T5、T6 → T7。每个宿主独立项目，PC/H5 同站不同测试证据。现有 `pwa-t15-mobile-smoke` 不迁移、不删除。
 
@@ -20,7 +20,7 @@
 |---|---|---|---|
 | capability-map | delivered | `spec/CAPABILITY-MAP.md` | 模块行、依赖和构建顺序已写入。 |
 | decisions | delivered | `docs/adr/0029-cloudflare-host-demo-isolation.md` | 部署拓扑已记录。 |
-| cloudflare-test-deployment | pending | `docs/operations/cloudflare-test-deployment.md` | 两站主站与预览槽位的桌面更新／恢复证据见 `tasks/cloudflare-test-deployment/verification.md`；私有 R2 四槽基础归档、两站 main v2、同版维护与显示名隔离制品及十个部署 ID 索引已验证；两站 Pages 原生生产回滚／恢复、自动后置索引／归档及滚动保留审计已实测；两站桌面 Chrome 原生安装、Vue 已安装窗口离线重载、唯一显示名更新和冷启动通过；独立机器事故恢复和完整七日时间跨度证据仍缺。 |
+| cloudflare-test-deployment | pending | `docs/operations/cloudflare-test-deployment.md` | 两站主站与预览槽位的桌面更新／恢复证据见 `tasks/cloudflare-test-deployment/verification.md`；私有 R2 四槽基础归档及十七个部署 ID 索引已验证；两站 Pages 原生生产回滚／恢复、main 自动后置索引／归档与滚动保留审计、React drill 自动索引／归档已实测；两站桌面 Chrome 原生安装、Vue 已安装窗口离线重载、唯一显示名更新和冷启动通过；独立机器事故恢复和完整七日时间跨度证据仍缺。 |
 
 ## T1：确定目标登记和命名
 
@@ -82,9 +82,9 @@ React、Vue 两站分别运行桌面 Chrome N/N-1 的现有场景，并在本期
 
 ### T5 当前证据与剩余顺序
 
-1. 私有 R2 Standard 桶、单桶最小权限凭据、四槽基础制品、React/Vue 初次 main v2、同版维护及显示名隔离制品均已上传并读回；十个实际部署 ID 均有条件写入保护的制品索引。React main 已验证移走本地副本后从 R2 重建。
+1. 私有 R2 Standard 桶、单桶最小权限凭据和四槽基础制品均已上传并读回；截至 2026-09-22，十七个实际部署 ID 有客户端条件写入保护的制品索引。React main 已验证移走本地副本后从 R2 重建。
 2. React/Vue `main` 的 v2 候选均在 Pages 上传前通过当前部署索引和候选 R2 制品预检；上传后分别记录完整部署 ID、线上文件 SHA-256 与索引，并归档 v1/v2 指纹资源。两站均已完成原生 v2→v1→v2 回滚；每次切换都核对页面版本、目标线上文件以及新旧指纹资源。`canonical_deployment` 才是当前生产部署依据，按创建时间排序的列表第一条在回滚后仍是新版本。
-3. `main` 的上传后自动 R2 索引、本地资产归档和保留审计已由 React/Vue 同版维护部署实测；缺失对象 404 与损坏本地副本拒绝反例已通过。`drill` 仍按人工步骤。后置步骤失败时保留现场并按已归档的目标部署恢复；再补独立机器的下载和事故恢复演练。滚动七天选择已自动核验，完整七日存活证据须待自然时间经过后重跑。
+3. `main` 的上传后自动 R2 索引、本地资产归档和保留审计已由 React/Vue 部署实测；React `drill` 的上传前预检与上传后自动索引、归档已实测，按规格不做保留审计。缺失对象 404 与损坏本地副本拒绝反例已通过。后置步骤失败时保留现场并按已归档的目标部署恢复；独立机器下载和事故恢复仍待演练。滚动七天选择已自动核验，完整七日存活证据须待自然时间经过后重跑。
 4. 稳定测试站可按当前门禁继续受控迭代；正式 V1 仍受移动端以及其他全局发布门禁约束。主站 v2 已在桌面 Chrome Offline 预设下经受控更新后重载；唯一查询导航由 Service Worker 返回，Vue 的网络失败明确回退到静态离线页，React 返回缓存应用壳；两站桌面原生安装 identity 和独立窗口已现场核验，Vue 安装窗口离线重载通过。Cloudflare 构建的 React/Vue 唯一显示名已部署，既有安装接受名称更新后的冷启动通过。
 
 ## T6：Nuxt Workers 可行性门禁
@@ -557,3 +557,19 @@ RC1 → 确认 → RC2 → 检查点 → RC3。
 ### 执行顺序（修订）
 
 HC1 → 确认 → HC2 → HC3 → 检查点 → HC4。
+
+## 修订：免费额度优先的 T5 收口（2026-09-25）
+
+### 发布约束
+
+React/Vue 测试网页由 Pages Direct Upload 提供，私有 R2 Standard 桶存放发布制品与部署索引；两者按各自账户额度核算，文档站的版本分支发布节奏单独管理。`main` 与 `drill` 是 Pages 槽位，保持各自已冻结的 PWA 身份。本轮收口先使用现有部署证据，不为重复取证创建 Pages 部署或 R2 对象。
+
+每次准备 R2 上传或 Pages 部署前，按[测试站手册的免费额度门禁](../../docs/operations/cloudflare-test-deployment.md#免费额度与云端写入)核对账户方案、当月 Pages 余量、R2 Standard 存储与 Class A/B 用量、本次产物及预计读写。任何一项无法确认仍在免费额度内，就停在本地构建与检查；预算提醒不能充当硬性费用上限。只读审计和恢复也会产生 R2 读取操作，执行前同样查看用量。仅在有代码变更或明确演练目标时集中安排下一次云端发布，不为刷新时间跨度证据重复上传；不启用未评估的付费产品。若项目要求严格保证零超额费用，应先更换有硬性限额的归档方案，再恢复依赖 R2 的发布。
+
+### 剩余验收顺序
+
+1. **对齐记录（本地，零云端写入）：** 将计划、todo 与操作手册对齐到已记录的十七个部署索引和 `drill` 自动后置步骤；保留 T5 的 `pending` 状态。验证相对链接、`git diff --check` 和 Spec Guard 只读检查。
+2. **七日留存（只读云端请求）：** 以相关部署的实际创建时间为准，满七个自然日后分别运行 `pnpm audit:cloudflare:retention --target=react` 和 `--target=vue`；记录执行时间、所选部署 ID、R2 制品与线上指纹资源的核验结果。没有跨满七日的证据时继续标记 `pending`；审计失败先调查，不通过新部署掩盖缺口。
+3. **独立机器恢复（云端只读、本机写入）：** 在第二台机器上全新克隆并安装依赖，确认没有旧 `build/` 状态，按手册以最小权限凭据分别运行 `pnpm recover:cloudflare:site --target=react` 和 `--target=vue`；保存恢复命令输出、当前 canonical 部署 ID、发布包 SHA-256、归档资源核对和失败项。该演练不执行 Pages 部署、R2 上传或索引写入；同机隔离模拟不计作此项通过。
+
+两项真实验收都有证据后再评估 T5 与文档交付状态。H5、Android、iOS 和正式 V1 门禁仍按现有矩阵独立处理；Nuxt Worker 可行性失败不触发云端创建。
