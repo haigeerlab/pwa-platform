@@ -33,4 +33,19 @@
     display: block;
     overflow-x: auto;
   }
+
+  .VPHomeContent.vp-doc table th:first-child,
+  .VPHomeContent.vp-doc table td:first-child {
+    min-width: 8.5rem;
+  }
+
+  .VPHomeContent.vp-doc table th:nth-child(2),
+  .VPHomeContent.vp-doc table td:nth-child(2) {
+    min-width: 10rem;
+  }
+
+  .VPHomeContent.vp-doc table th:nth-child(3),
+  .VPHomeContent.vp-doc table td:nth-child(3) {
+    min-width: 18rem;
+  }
 }

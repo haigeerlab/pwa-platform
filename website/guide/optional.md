@@ -7,7 +7,7 @@
 | Nuxt 适配 | <code>@pwa-platform/nuxt</code> | Nuxt 4.5.x 项目 | 仅独立 origin；尚未对外发布 |
 | Web Push | <code>@pwa-platform/push</code> | 用户同意后订阅通知 | 订阅保存、发送和失效清理由业务后端负责 |
 | 离线写队列 | <code>@pwa-platform/offline-write</code> | 显式暂存有限的写入意图 | 不拦截 fetch，不自动重放；业务负责幂等与冲突 |
-| 入口灾备 | <code>@pwa-platform/entry-resilience</code> | 域名迁移或现有入口不可达 | 备用入口由用户确认；不会迁移登录态或本地数据 |
+| 入口灾备 | <code>@pwa-platform/entry-resilience</code> | 域名迁移或现有入口不可达 | 旧应用壳须能从缓存启动，业务提前交入清单；用户确认跳转，新地址重新登录 |
 
 ## 公共读取缓存
 
