@@ -390,17 +390,17 @@ ADR-0031 规定了 GitHub 不可用期间"本地干净门禁"的执行方式，�
 
 ## Documentation impact
 
-本表按 Spec Guard 的要求，对文档基线中的每一个关注项给出本模块最近一次修订（"本地门禁工具入仓"）的决定。
+本表按 Spec Guard 的要求，对文档基线中的每一个关注项给出本模块最近一次修订（“高频开发下的 CI 触发策略”）的决定。
 
 | Concern | Decision | Rationale |
 |---|---|---|
-| architecture | follow | 权威文档 `docs/architecture/overview.md` 不变；新私有包只登记在其引用的 `docs/architecture/package-boundaries.md` 中。 |
+| architecture | follow | 本次 CI 触发修订不改变架构概览或分层边界。 |
 | browser-matrix | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | browser-release-evidence | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | browser-test-harness | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | build-verifier | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | capability-map | follow | 本修订不改变该基线的权威文档或验收结论。 |
-| ci-baseline | follow | 本修订不改变该基线的权威文档或验收结论。 |
+| ci-baseline | update | Ready PR 自动门禁与发布前手动验证最终 main SHA 取代 main push 触发。 |
 | client-runtime | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | cloudflare-test-deployment | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | decisions | follow | 本修订不改变该基线的权威文档或验收结论。 |
@@ -408,14 +408,14 @@ ADR-0031 规定了 GitHub 不可用期间"本地干净门禁"的执行方式，�
 | examples-browser-e2e | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | identity-release-baseline | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | lifecycle-and-recovery | follow | 本修订不改变该基线的权威文档或验收结论。 |
-| local-ci-record | update | 本修订把本地门禁记录改为由 `@pwa-platform/release-tools` 生成，模板的执行规则随之更新。 |
+| local-ci-record | follow | 本次 CI 触发修订不改变本地门禁记录规则。 |
 | offline-write-extension | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | package-distribution | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | product-direction | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | push-module | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | pwa-entry-resilience | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | recovery-drill | follow | 本修订不改变该基线的权威文档或验收结论。 |
-| release-and-incident | follow | 本修订不改变该基线的权威文档或验收结论。 |
+| release-and-incident | update | 发布提交的 CI 改为手动验证最终 main SHA，原有发布门禁继续生效。 |
 | release-gate-contract | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | release-orchestration-protocol | follow | 本修订不改变该基线的权威文档或验收结论。 |
 | shared-origin-topology | follow | 本修订不改变该基线的权威文档或验收结论。 |
@@ -441,10 +441,4 @@ ADR-0031 规定了 GitHub 不可用期间"本地干净门禁"的执行方式，�
 
 验收：工作分支 push 无运行；Draft PR 不占用 runner 执行完整门禁；Ready PR 的三个 job 通过且后续代码更新重新运行；合并后 main push 不产生 CI；手动运行在选定 main SHA 上完整通过；分支规则阻止未通过 CI 的合并。
 
-### Documentation impact（本次修订）
-
-| Concern | Decision | Rationale |
-|---|---|---|
-| ci-baseline | update | 工作流触发与 main 分支规则改变；更新文档基线和贡献指南。 |
-| release-and-incident | update | 发布提交的 CI 改为手动验证最终 main SHA，原有发布门禁继续生效。 |
-| documentation-site | update | 文档版本分支发布前手动验证来源 main SHA；Cloudflare 部署控制不变。 |
+本次修订的完整文档影响决定见上方唯一的 `Documentation impact` 表。`docs/operations/documentation-site.md` 已同步文档版本分支的发布顺序；它未作为文档基线的独立关注项登记。
