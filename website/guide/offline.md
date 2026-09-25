@@ -6,6 +6,8 @@
 
 策略里的 <code>asset</code> 规则控制哪些构建资源进入预缓存；<code>navigation-public-static</code> 规则控制公共导航。两者需要配合：仅写导航规则，不会让 HTML 或 JS 自动进入预缓存。最小规则见[身份与策略配置](/guide/configuration)。
 
+配置示例中的 <code>pathPrefix: "/"</code> 会匹配该 scope 内的所有导航。未开启 v3 公共动态页面缓存时，worker 会原样返回在线响应，**不会把网络返回的页面写入运行时缓存**；断网时依次尝试该 URL、去掉查询参数的路径及该路径的 <code>index.html</code>（仅限已预缓存的文件），最后显示通用离线页。因此私有路由也可能显示离线页，但不会从运行时缓存取出先前的个性化响应。若要用 v3 缓存动态 HTML，只能为经过评审的公共页面写明确的 <code>navigation-public-dynamic</code> 路径规则，不能将带登录态或权限差异的页面纳入其中。
+
 ## 默认离线页
 
 在策略中开启回退，声明离线页的资产规则，然后在 Vite 插件上写 <code>offlinePage: {}</code>：

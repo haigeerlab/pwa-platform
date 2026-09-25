@@ -45,6 +45,7 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 | 通知与后台任务 | 重新触达用户，断网后继续处理任务 | Web Push 与受限离线写队列仅在工作区；后台同步和周期同步尚未提供 |
 | 操作系统集成 | 通过分享、文件或启动入口进入应用 | manifest 快捷方式已在 beta 包；Share Target、File Handlers、Launch Handler 尚未提供 |
 | 工程交付 | 构建时发现产物问题，发布前验证真实行为 | 已发布 beta 包做构建校验；浏览器测试工具属于仓库内部，业务站点仍需自行验收 |
+| 本地开发 | 在开发服务器中调试页面与 PWA 行为 | 当前接入示例导入构建期虚拟模块，`vite dev` 无法启动；需用 `vite build` + `vite preview` 做本地验收 |
 
 ## 功能对照：现在能用到哪一层
 
@@ -70,13 +71,14 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 | Background Sync／Periodic Sync | 未提供 | 没有 worker 后台自动重放或周期同步；页面定时检查更新不能替代它们 |
 | Share Target／文件关联／Launch Handler | 未提供 | 当前 manifest 契约和生成器没有这些入口；需要时由业务另行评估 |
 | Service Worker 自动化测试工具 | 工作区实现 | 仓库有浏览器测试工具与示例；它们不是外部业务项目的公开接入包 |
+| `vite dev` 开发服务器 | 未提供 | 插件仅在构建时提供 `virtual:pwa-config`；照接入示例导入后，开发服务器无法解析该模块，需评估对现有开发流程的影响 |
 
 ## 接入自己的系统
 
 1. 按技术栈[选择公开包并安装固定 beta 版本](/start/choose)。当前公开接入面是 Vite 8 + Vue 3 或 React 19；Nuxt 包尚未公开。
 2. 从[完整配置示例](/guide/configuration)填写身份、安装信息和缓存策略。先确定真实 HTTPS 地址、部署路径、图标文件和哪些响应确实公开；生产身份首次注册后不能随普通发版更改。
 3. 按[Vue](/start/vue)或[React](/start/react)指南挂载构建插件、读取 `virtual:pwa-config`，并在应用启动后主动调用 `register()`。平台提供状态和方法，业务界面自行展示安装与更新操作。
-4. 做生产构建，用预览或目标 HTTPS 站点检查结果。当前插件不支持 `vite dev` 的 PWA 行为；上线前逐项完成[浏览器与发布检查](/start/checklist)。
+4. 做生产构建，用 `vite preview` 或目标 HTTPS 站点检查结果。照示例接入后 `vite dev` 无法解析构建期虚拟模块；上线前逐项完成[浏览器与发布检查](/start/checklist)。
 
 ## 从这里开始
 
