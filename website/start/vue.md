@@ -4,6 +4,8 @@
 
 本页的页面入口依赖构建期提供的 <code>virtual:pwa-config</code>。当前插件不支持 <code>vite dev</code>；本地验证请运行生产构建，再用 <code>vite preview</code> 打开产物。
 
+示例使用 <code>App.vue</code> 单文件组件，需要在 Vite 中启用 <code>@vitejs/plugin-vue</code>。已有 Vite + Vue 项目保留原有 Vue 插件；若尚未安装，先运行 <code>pnpm add -D @vitejs/plugin-vue@6.0.9</code>。
+
 ## 1. 声明身份与策略
 
 在项目根目录新增 <code>pwa.config.ts</code>，按[配置指南](/guide/configuration)填写真实 origin、名称和图标。生产身份首次注册后不能随意改动。
@@ -14,11 +16,13 @@
 // vite.config.ts
 import { pwa } from "@pwa-platform/vite";
 import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
 import { IDENTITY, INSTALL, POLICY } from "./pwa.config";
 
 export default defineConfig({
   base: "/",
   plugins: [
+    vue(),
     pwa({
       identity: IDENTITY,
       install: INSTALL,
@@ -30,7 +34,7 @@ export default defineConfig({
 });
 ~~~
 
-<code>offlinePage: {}</code> 要与策略中的离线回退及其资源规则一起使用；插件会生成离线页并把 manifest 链接注入 HTML。若项目已有 Vite 插件，保留它们，在 <code>plugins</code> 数组中加入 <code>pwa()</code> 即可。
+<code>offlinePage: {}</code> 要与策略中的离线回退及其资源规则一起使用；插件会生成离线页并把 manifest 链接注入 HTML。若项目还有其他 Vite 插件，保留它们，在 <code>plugins</code> 数组中加入 <code>pwa()</code> 即可。
 
 ## 3. 安装 Vue 绑定
 
