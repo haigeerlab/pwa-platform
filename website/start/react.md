@@ -72,6 +72,7 @@ declare module "virtual:pwa-config" {
 在组件中读取状态并提供用户操作：
 
 ~~~tsx
+// src/PwaActions.tsx
 import { usePwa } from "@pwa-platform/react";
 
 export function PwaActions() {
@@ -88,6 +89,8 @@ export function PwaActions() {
   );
 }
 ~~~
+
+在现有 <code>App.tsx</code> 中导入操作组件（<code>import { PwaActions } from "./PwaActions";</code>），并在现有 JSX 中渲染 <code>&lt;PwaActions /&gt;</code>，例如放在工具栏。上面的 <code>&lt;App /&gt;</code> 已位于 <code>PwaProvider</code> 内；只定义组件而不渲染，不会出现安装或更新按钮。
 
 这是最小 API 示例。完整更新界面要处理接管失败、跨标签页变化、未保存内容和刷新时机，见[安装与更新](/guide/updates)。
 
