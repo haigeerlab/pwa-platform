@@ -97,6 +97,8 @@ test.describe("stale-while-revalidate (public-data)", () => {
 
     const first = await fetchJson(page, fixtureServer.url(RUNTIME_REVIEWS_LIST_URL));
     expect(first).toMatchObject({ ok: true, body: { review: "v1" } });
+    // SWR can return the network response before its first cache write finishes.
+    await expect.poll(async () => hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_REVIEWS_LIST_URL)).toBe(true);
 
     await writeCatalogFile(RUNTIME_REVIEWS_LIST_URL, { review: "v2" });
 
