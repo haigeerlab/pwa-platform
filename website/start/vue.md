@@ -63,6 +63,8 @@ declare module "virtual:pwa-config" {
 
 ## 4. 在应用启动后注册
 
+将以下逻辑合入现有 <code>App.vue</code>，保留原有业务页面。安装与更新按钮只在对应状态出现；首次打开时两者可能都不可见，不能用按钮是否显示判断注册是否成功。
+
 ~~~vue
 <script setup lang="ts">
 import { usePwa } from "@pwa-platform/vue";
