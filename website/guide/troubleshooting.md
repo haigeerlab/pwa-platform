@@ -1,6 +1,16 @@
 # 常见问题
 
-先看构建日志中的诊断码及字段路径，再确认身份、策略和最终构建产物是否一致。浏览器问题请在生产构建部署后的 HTTPS 地址复现。
+先看构建日志中的诊断码及字段路径，再确认身份、策略和最终构建产物是否一致。浏览器问题可先用生产构建的 <code>vite preview</code> 在本机排查，再到实际 HTTPS 部署地址复核。
+
+## Worker 注册失败
+
+<code>register()</code> 会把浏览器注册错误作为 Promise 拒绝返回。先在浏览器控制台查看错误，再核对 worker URL 是否返回本次构建的脚本、响应类型是否正确，以及 URL 和 scope 是否与身份配置及实际部署路径一致。修复后可在同一页面再次调用 <code>register()</code>；失败的注册不会被平台记作成功。不要只依靠安装或更新按钮是否出现来判断注册状态，另见[浏览器核验](/start/checklist#首次接入的浏览器核验)。
+
+如果在调用 <code>register()</code> 之前就报缺少 <code>navigator.serviceWorker</code>，这是当前环境不提供该 API，不能靠重试注册解决。按[兼容范围](/reference/compatibility#不支持-service-worker-的环境)在业务入口检测支持，再决定是否挂载绑定。
+
+## 构建报告 manifest 链接冲突
+
+检查 <code>index.html</code> 和其他 HTML 入口：每页只能有一个 manifest 链接，地址须与 <code>IDENTITY.manifestUrl</code> 一致，或是同一 <code>IDENTITY.origin</code> 下该路径的完整 URL。相对地址和旧插件留下的重复链接应删除或改正；若无需保留自定义链接，全部移除后由平台在构建时注入。当前插件不接受 <code>&lt;base&gt;</code>；若业务依赖它，应先调整页面的路径与路由配置，再移除该标签。详见[配置规则](/guide/configuration)。
 
 ## 构建提示离线页不存在
 
@@ -12,7 +22,7 @@
 
 ## 构建成功，但断网仍然白屏
 
-确认 worker 已注册并控制页面；首次安装完成前不能离线验收。再核查入口 HTML、脚本、样式和启动所需的运行时配置是否都被 <code>asset</code> 规则覆盖。测试时清除或禁用浏览器 HTTP 缓存，避免它掩盖 Service Worker 预缓存缺口。
+确认 worker 已注册并控制页面；首次安装完成前不能离线验收。再核查入口 HTML、脚本、样式和启动所需的运行时配置是否都被 <code>asset</code> 规则覆盖。若有根目录下文件名每次构建都变化的启动脚本，按[自定义产物目录](/guide/migration#核对自定义构建产物)调整宿主输出与规则。测试时清除或禁用浏览器 HTTP 缓存，避免它掩盖 Service Worker 预缓存缺口。
 
 ## 有新部署，但没有更新提示
 
