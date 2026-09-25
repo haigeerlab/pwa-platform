@@ -38,4 +38,4 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 
 ## 安装提示的限制
 
-仅当 <code>installEligible</code> 为真时显示安装按钮，并在按钮点击中调用 <code>promptInstall()</code>。不同浏览器提供的安装提示能力不同；基础网页体验不能依赖安装事件才能工作。当前发布保证范围见[兼容性](/reference/compatibility)。
+仅当 <code>installEligible</code> 为真时显示安装按钮，并在按钮点击中调用 <code>promptInstall()</code>。不同浏览器提供的安装提示能力不同；基础网页体验不能依赖安装事件才能工作。当前的发布验收目标与证据边界见[兼容性](/reference/compatibility)。
