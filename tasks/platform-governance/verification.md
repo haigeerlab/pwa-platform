@@ -435,3 +435,9 @@
 - 超时之外，命令正常结束后留在后台的孙进程不会被清理，不影响结论。
 - `npm_*` 全部删除，可能影响依赖环境变量配置 registry 或代理的内网环境，属于安全失败。
 - GitHub 可用性的判断仍由签署人负责。本次演练中 `gh` 已登录另一个账号，项目所有者决定继续只走本地 git。
+
+## 修订：高频开发下的 CI 触发策略（2026-09-25）
+
+- 工作分支 `codex/ci-trigger-control` 推送提交 `0e20d8296e48d7b60e8b2512e84c70518a326472` 后，Actions 没有因分支 push 启动运行；创建目标为 main 的 Ready [PR #1](https://github.com/haigeerlab/pwa-platform/pull/1) 后，自动触发 [CI run #12](https://github.com/haigeerlab/pwa-platform/actions/runs/36109693098)（`pull_request`）。Node 22、Node 24 质量 job 与 Chrome 浏览器 job 全部成功。
+- [main 分支规则](https://github.com/haigeerlab/pwa-platform/settings/rules/23986228) 为 Active，只匹配 `main`，绕过列表为空；要求 PR、分支保持最新，以及来源为 GitHub Actions 的三个 check-run：`Quality (Node 22)`、`Quality (Node 24)`、`Browser (Google Chrome stable, Node 24)`。GitHub API 的 check-runs 返回这三个原始 job 名和 `success`；PR 页面组合显示的 `CI / ... (pull_request)` 不是规则要匹配的原始名称。规则修正后 PR 显示 3/3 检查通过，合并按钮开放。
+- 本地 `pnpm docs:build`、YAML 解析及触发／job 条件断言、编辑过的指南相对链接检查、`git diff --check` 均通过。没有运行 Cloudflare Pages 部署或 R2 写入。

@@ -10,7 +10,7 @@
 | capability-map | `spec/CAPABILITY-MAP.md` | verified | 项目所有者于 2026-09-15 批准模块边界、依赖方向、标识和构建顺序。 |
 | decisions | `docs/adr/` | verified | ADR 记录已接受、难以逆转的架构选择。 |
 | lifecycle-and-recovery | `docs/architecture/lifecycle.md` | target | 在实现存在前先确立所需运行时和部署行为。 |
-| ci-baseline | `.github/workflows/ci.yml` | target | 2026-09-25 修订为 Ready PR 自动门禁与发布前手动验证最终 main SHA；原 PR/main push 基线的证据见 `tasks/platform-governance/verification.md`。新触发策略待本修订 PR 实跑、main 分支规则及合并后无自动运行验证。 |
+| ci-baseline | `.github/workflows/ci.yml` | verified | 2026-09-25 修订为 Ready PR 自动门禁与发布前手动验证最终 main SHA；PR #1 的 Node 22／24 与 Chrome job 已通过，main 规则已启用且实际接受检查，证据见 `tasks/platform-governance/verification.md`。 |
 | supply-chain | `pnpm-workspace.yaml`、`docs/operations/dependency-changes.md` | verified | 供应链设置由 pnpm 在安装时强制执行，负向检查证明设置生效。 |
 | browser-matrix | `docs/architecture/browser-matrix.md` | target | 定义必测、参考、渐进兼容三档与 N / N-1 规则；首次实测由运行时模块的质量门禁完成。 |
 | v1-acceptance | `docs/architecture/v1-acceptance-matrix.md` | target | 定义各场景的负责模块、证据类型与通过标准；证据由负责模块交付时产出。 |
