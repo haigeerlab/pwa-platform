@@ -4,6 +4,8 @@
 
 公开站点：[pwa-platform-docs.pages.dev](https://pwa-platform-docs.pages.dev/)；源仓库为 [`haigeerlab/pwa-platform`](https://github.com/haigeerlab/pwa-platform)。Cloudflare Pages 项目名为 `pwa-platform-docs`，连接本仓库；日常合并到 `main` 不会自动部署文档。首次部署记录：提交 `16c715cfdfa3279cdd3e663b39c7a7f792c4a6ba`，部署 ID `1e9cbb2d-1661-4f89-b3f7-695272038cb8`。2026-09-25 集中发布记录：版本分支 `docs/v2026.09.25`，提交 `6659becac3c4d5bee46225f189c25ab9aa63522c`，生产部署 ID `2ebacb42-abff-4f59-b2bd-5f697c0a792c`；首页、包选择、Vue／React 接入页、搜索和 404 页面已在线核验。
 
+同日第二次集中发布：版本分支 `docs/v2026.09.25-2`，提交 `e0367bde2ce0224785494f8e40d09dfa4b24a08f`，[手动 CI #16](https://github.com/haigeerlab/pwa-platform/actions/runs/36112513408) 三项通过，生产部署 ID `69f08e16-03d4-4cdf-a9e1-427ca8a7fc79`。发布前账户仍为 Free，四个 Pages 项目累计 88 条部署记录；本次产物有 86 个文件、共 1,865,933 字节，最大文件 141,024 字节，未含 Functions 或 `_worker.js`。一次手动上传后，首页、包选择、Vue／React 接入、搜索、代码复制和 404 已在线核验，生产与预览自动部署仍关闭。
+
 ## 本地检查
 
 在仓库根目录运行：
@@ -39,7 +41,7 @@ pnpm exec wrangler pages deploy website/.vitepress/dist \
   --project-name=pwa-platform-docs --branch=docs/v2026.09.25
 ```
 
-本项目在 2026-09-25 已通过 Pages API 关闭生产分支自动部署，并把预览分支设为 `none`；项目仍连接 `haigeerlab/pwa-platform`，设置变更没有创建部署。Pages 的 `Production branch` 已切换为 `docs/v2026.09.25`，上线后生产和预览自动部署仍保持关闭。每次推送或发布前重新核对这些控制项；Build watch paths 仍为 include `*`、exclude 空，它不是此流程的部署门禁。来源：[Git 集成与手动部署](https://developers.cloudflare.com/pages/configuration/git-integration/)、[分支部署控制](https://developers.cloudflare.com/pages/configuration/branch-build-controls/)与[Wrangler 生产分支参数](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)。
+本项目在 2026-09-25 已通过 Pages API 关闭生产分支自动部署，并把预览分支设为 `none`；项目仍连接 `haigeerlab/pwa-platform`，设置变更没有创建部署。Pages 的 `Production branch` 当前指向 `docs/v2026.09.25-2`，上线后生产和预览自动部署仍保持关闭。每次推送或发布前重新核对这些控制项；Build watch paths 仍为 include `*`、exclude 空，它不是此流程的部署门禁。来源：[Git 集成与手动部署](https://developers.cloudflare.com/pages/configuration/git-integration/)、[分支部署控制](https://developers.cloudflare.com/pages/configuration/branch-build-controls/)与[Wrangler 生产分支参数](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)。
 
 ## Cloudflare Pages 配置
 
