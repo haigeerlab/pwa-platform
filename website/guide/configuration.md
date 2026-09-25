@@ -53,6 +53,8 @@ export const POLICY: PwaPolicy = {
 
 把四个图标文件放在 Vite 的 <code>public/icons/</code>。安装元数据也支持描述、截图和快捷方式；截图与快捷方式图标必须真实存在于发布产物中。
 
+插件会在构建时为每个 HTML 入口注入 manifest 链接，应用无需再写 <code>&lt;link rel="manifest"&gt;</code>。已有链接时，只保留一个，并将其 <code>href</code> 写为与 <code>IDENTITY.manifestUrl</code> 完全相同的根路径，或同一 <code>IDENTITY.origin</code> 下该路径的完整 URL；相对路径、不同地址和重复链接都会让构建失败。页面含 <code>&lt;base&gt;</code> 也会被拒绝，接入现有项目时先检查 <code>index.html</code> 及其他 HTML 入口。
+
 ## 可选的截图与快捷方式
 
 若希望支持的浏览器显示截图或图标菜单中的快捷入口，可在同一份 <code>pwa.config.ts</code> 中基于上面的 <code>INSTALL</code> 新增完整配置，再把 Vite 插件的 <code>install: INSTALL</code> 改为 <code>install: INSTALL_WITH_EXTRAS</code>。浏览器决定是否展示这些字段；它们不会让应用自动拥有分享目标或文件关联能力。
@@ -77,6 +79,12 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 ~~~
 
 截图和快捷方式图标也要放在 <code>public/</code> 对应路径，快捷方式目标须处于应用 scope 内。子路径部署时，将上例的浏览器 URL 分别改为 <code>/app/screenshots/desktop.png</code>、<code>/app/dashboard</code> 和 <code>/app/icons/192.png</code>。构建校验会检查截图和快捷方式图标是否存在；业务仍需验证目标页面可打开。
+
+## 只使用离线与更新，不启用平台安装提示
+
+若业务不使用平台的安装元数据和 <code>promptInstall()</code>，将上例 <code>POLICY.install</code> 改为 <code>{ enabled: false }</code>，并将 Vite 插件的 <code>install: INSTALL</code> 改为 <code>install: null</code>。这样平台仍生成 worker 并支持离线与更新，但不生成 manifest，也不接管浏览器的安装提示事件；页面侧 <code>promptInstall()</code> 会返回 <code>unavailable</code>。
+
+<code>IDENTITY.manifestUrl</code> 此时仍是必需的身份字段。应用须自行把 manifest 文件放在对应构建产物路径：根路径示例为 <code>public/manifest.webmanifest</code>，浏览器地址为 <code>/manifest.webmanifest</code>；部署在 <code>/app/</code> 时，仍放在 Vite 的 <code>public/</code>，浏览器地址改为 <code>/app/manifest.webmanifest</code>。缺少文件会使构建失败。插件仍会在 HTML 中注入该 manifest 的链接；浏览器是否提供安装入口取决于自备 manifest 和浏览器行为，关闭平台安装提示并不保证浏览器禁止安装。
 
 ## 生产身份要保持稳定
 

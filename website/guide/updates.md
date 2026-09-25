@@ -6,17 +6,17 @@
 
 | 状态 | 含义 |
 | --- | --- |
-| <code>registered</code> | worker 已注册 |
-| <code>installEligible</code> | 当前浏览器允许弹出安装提示 |
-| <code>installed</code> | 应用已安装 |
+| <code>registered</code> | 本次绑定观察到注册成功；调用 <code>logout()</code> 后不会自动变回 <code>false</code> |
+| <code>installEligible</code> | 本页收到过可用的安装提示事件；提示消费后仍可能为 <code>true</code> |
+| <code>installed</code> | 本页收到过 <code>appinstalled</code> 事件；不是设备上的持久安装状态 |
 | <code>updateWaiting</code> | 新 worker 下载完成，等待确认 |
 
 | 方法 | 用途 |
 | --- | --- |
-| <code>register()</code> | 应用启动后主动注册 worker |
-| <code>promptInstall()</code> | 在用户操作中显示浏览器安装提示 |
-| <code>applyUpdate()</code> | 用户确认后让等待中的 worker 接管 |
-| <code>checkForUpdate()</code> | 主动检查新 worker |
+| <code>register()</code> | 应用启动后主动注册 worker；失败时拒绝 Promise，修复后可重试 |
+| <code>promptInstall()</code> | 在用户操作中显示一次性提示；返回 <code>accepted</code>、<code>dismissed</code> 或 <code>unavailable</code> |
+| <code>applyUpdate()</code> | 用户确认后让等待中的 worker 接管；成功返回 <code>true</code>，没有等待版本返回 <code>false</code>，接管失败时拒绝 Promise |
+| <code>checkForUpdate()</code> | 主动检查；返回 <code>update-available</code>、<code>up-to-date</code> 或 <code>unavailable</code>，仍以 <code>updateWaiting</code> 决定是否提示接管 |
 | <code>logout()</code> | 执行平台管理的登出清理与注销 |
 
 Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端行为序列由测试保证一致。
@@ -42,4 +42,6 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 
 ## 安装提示的限制
 
-仅当 <code>installEligible</code> 为真时显示安装按钮，并在按钮点击中调用 <code>promptInstall()</code>。不同浏览器提供的安装提示能力不同；基础网页体验不能依赖安装事件才能工作。当前的发布验收目标与证据边界见[兼容性](/reference/compatibility)。
+收到 <code>installEligible</code> 后，可以在用户点击安装按钮时调用 <code>promptInstall()</code>。保存的提示只能使用一次；调用后即使用户选择 <code>dismissed</code>，该状态也可能仍为 <code>true</code>。在浏览器再次提供新提示前，下一次调用返回 <code>unavailable</code>。
+
+Vue／React 绑定不会因同页再次收到安装事件而把已为 <code>true</code> 的状态变成新的信号；入门示例首次点击后隐藏按钮，本页不会自动重新显示。需要后续重试的业务，应自行提供可见的再次尝试入口，并处理 <code>unavailable</code> 结果。不能把状态当成仍有可用提示的保证。不同浏览器提供的安装提示能力不同；基础网页体验不能依赖安装事件才能工作。当前的发布验收目标与证据边界见[兼容性](/reference/compatibility)。
