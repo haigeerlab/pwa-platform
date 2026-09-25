@@ -7,7 +7,7 @@
 // environment variables to non-empty, deliberately fake values, so `process.env.X || keychain(...)` never falls
 // back to the macOS keychain. The rest of the mode (upload, deployment diffing, Pages API readback) needs real
 // Cloudflare credentials and is exercised only by the real run in P5, never here.
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -17,6 +17,8 @@ import { describe, expect, it } from "vitest";
 const repoRoot = resolve(import.meta.dirname, "..", "..", "..", "..");
 const scriptPath = resolve(repoRoot, "scripts", "deploy-cloudflare-site.mjs");
 const source = readFileSync(scriptPath, "utf8");
+// The public repository starts from a clean snapshot, so the pre-drill commit is stored as a fixture.
+const beforeDrillSource = readFileSync(new URL("./fixtures/deploy-cloudflare-site.4594f56.mjs.txt", import.meta.url), "utf8");
 
 /**
  * Copies the real script into a fresh, empty temp root at "<root>/scripts/deploy-cloudflare-site.mjs" and runs it
@@ -208,11 +210,8 @@ describe("deploy-cloudflare-site.mjs drill post-deploy block (static checks)", (
     expect(block).not.toContain("audit:cloudflare:retention");
   });
 
-  it("keeps every line from HEAD 4594f56 unchanged: DR2 only inserted new lines, it never removed or edited one", () => {
-    const headSource = execFileSync("git", ["show", "4594f56:scripts/deploy-cloudflare-site.mjs"], {
-      cwd: repoRoot, encoding: "utf8",
-    });
-    const headLines = headSource.split("\n");
+  it("keeps every line from baseline 4594f56 unchanged: DR2 only inserted new lines, it never removed or edited one", () => {
+    const headLines = beforeDrillSource.split("\n");
     const currentLines = source.split("\n");
     let cursor = 0;
     for (const line of currentLines) {
@@ -221,10 +220,8 @@ describe("deploy-cloudflare-site.mjs drill post-deploy block (static checks)", (
     expect(cursor).toBe(headLines.length);
   });
 
-  it("main's repeat-upload preflight block is byte-identical to HEAD 4594f56", () => {
-    const headSource = execFileSync("git", ["show", "4594f56:scripts/deploy-cloudflare-site.mjs"], {
-      cwd: repoRoot, encoding: "utf8",
-    });
+  it("main's repeat-upload preflight block is byte-identical to baseline 4594f56", () => {
+    const headSource = beforeDrillSource;
     const marker = 'if (mode !== "check" && slot === "main" && deployments.length > 0) {';
     const headStart = headSource.indexOf(marker);
     const headEnd = headSource.indexOf('\n  if (mode === "deploy") {', headStart);
@@ -234,10 +231,8 @@ describe("deploy-cloudflare-site.mjs drill post-deploy block (static checks)", (
     expect(source).toContain(headBlock);
   });
 
-  it("main's post-deploy block is byte-identical to HEAD 4594f56", () => {
-    const headSource = execFileSync("git", ["show", "4594f56:scripts/deploy-cloudflare-site.mjs"], {
-      cwd: repoRoot, encoding: "utf8",
-    });
+  it("main's post-deploy block is byte-identical to baseline 4594f56", () => {
+    const headSource = beforeDrillSource;
     const marker = 'if (slot === "main" && deployments.length > 0) {';
     const headStart = headSource.indexOf(marker);
     const headEnd = headSource.indexOf('\n  }\n}', headStart);
