@@ -10,7 +10,7 @@
 | capability-map | `spec/CAPABILITY-MAP.md` | verified | 项目所有者于 2026-09-15 批准模块边界、依赖方向、标识和构建顺序。 |
 | decisions | `docs/adr/` | verified | ADR 记录已接受、难以逆转的架构选择。 |
 | lifecycle-and-recovery | `docs/architecture/lifecycle.md` | target | 在实现存在前先确立所需运行时和部署行为。 |
-| ci-baseline | `.github/workflows/ci.yml` | verified | 定义 PR 与 main 推送的质量门禁；PR #39 上 Node 22 与 24 通过，有意制造的 lint 失败报红、撤销后恢复为绿，证据见 `tasks/platform-governance/verification.md`。browser job 的实跑证据在 browser-test-harness 模块质量门禁中取得。 |
+| ci-baseline | `.github/workflows/ci.yml` | target | 2026-09-25 修订为 Ready PR 自动门禁与发布前手动验证最终 main SHA；原 PR/main push 基线的证据见 `tasks/platform-governance/verification.md`。新触发策略待本修订 PR 实跑、main 分支规则及合并后无自动运行验证。 |
 | supply-chain | `pnpm-workspace.yaml`、`docs/operations/dependency-changes.md` | verified | 供应链设置由 pnpm 在安装时强制执行，负向检查证明设置生效。 |
 | browser-matrix | `docs/architecture/browser-matrix.md` | target | 定义必测、参考、渐进兼容三档与 N / N-1 规则；首次实测由运行时模块的质量门禁完成。 |
 | v1-acceptance | `docs/architecture/v1-acceptance-matrix.md` | target | 定义各场景的负责模块、证据类型与通过标准；证据由负责模块交付时产出。 |
