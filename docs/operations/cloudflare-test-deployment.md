@@ -21,6 +21,8 @@ Next、TanStack Start 和同源多 PWA 目前没有本表的发布目标。它�
 
 按仓库现有登记，测试站网页由 Pages 提供；私有 **R2 Standard** 桶只存放发布制品与部署索引，公开访问已关闭，未登记 R2 对外网页入口。R2 Standard 的月度免费用量为 10 GB-month 存储、100 万次 Class A 操作和 1,000 万次 Class B 操作；Infrequent Access 不享有该免费用量，且另有读取与最短存储期限费用。超额按量计费，免费用量不是硬性费用上限；预算提醒只报告已产生的费用，用量统计和提醒可能滞后，不会阻止操作。该桶与文档站无关，但测试站 `main`／`drill` 的正常发布依赖它。每次执行 R2 上传或测试站部署前，应在 Cloudflare 的 Billable Usage 查看整个账户当前周期的 R2 存储、Class A、Class B 和已产生费用，并估算本次新增制品与读写；无法确认仍在免费用量内时，停在本地构建与检查，不执行上传。留存审计和恢复演练虽不写云端，R2 读取仍计入 Class B，也应在执行前核对用量。若要求严格保证零费用，现有 R2 发布链路须先改成有硬性限额的归档方案，不能仅凭本手册作保证。[R2 定价](https://developers.cloudflare.com/r2/pricing/)；[计费使用量](https://developers.cloudflare.com/billing/manage/billable-usage/)。
 
+2026-09-25 现场复核：账户 Workers 方案仍为 Free，当前账单周期费用和预测费用均为 $0.00；私有 R2 Standard 桶约 10.02 MB，账户 Class A 86 次、Class B 约 1.14k 次。React、Vue 与冒烟站仍是独立 Direct Upload 项目，均未启用 Pages Functions。四个 Pages 项目共 92 条历史部署记录，其中可被跳过的 `idle` 记录不能直接当作每月构建额度消耗。详细时间、项目和部署 ID 见[验证记录](../../tasks/cloudflare-test-deployment/verification.md)。
+
 Nuxt Worker 仍未创建；不要为测试站启用 Workers Paid、Argo、Cache Reserve 或其他未评估的付费产品。新增 Cloudflare 产品前先核对其正式名称、账户方案和计费维度。
 
 下一轮先使用现有部署证据：相关部署满七个自然日后分别对 React/Vue 运行只读留存审计，再在真正的第二台机器上按[恢复流程](#从-r2-恢复运营状态)验证两站当前 `main`。这两项不需要新建 Pages 部署或 R2 对象；只有代码变更或明确演练目标时，才按免费额度门禁集中安排下一次上传。文档站的版本分支发布节奏单独管理，不改变测试站 `main`／`drill` 槽位的已冻结身份。执行顺序见[模块计划](../../tasks/cloudflare-test-deployment/plan.md)。
@@ -60,7 +62,7 @@ pnpm audit:cloudflare:retention --target=react
 2. 对照构建计划核查 manifest ID、scope、worker URL、origin 和预缓存列表；检查当前及保留窗口所需的带指纹资产均可继续提供。缺失旧资产归档时停止稳定槽位上传。
 3. Pages 只上传 `site/` 根，明确指定项目名及 `main` 分支。首次 v1 部署 ID：React `4e5f259f-c985-4c2d-9c76-853c5b33a107`；Vue `96522b51-ed42-4d76-b06c-92325d63a909`。当前 v2 部署 ID：React 判断超时部署 `8589bf50-b6d2-493f-9551-ea4b7dd8adec`（此前页面新旧判断部署 `5c17e435-57ec-4faa-ad2b-7288cfd84333`、更新横幅部署 `edc7d9a1-af82-4fa2-a915-46696724598d`、显示名隔离部署 `74c83661-8f62-44a1-9620-75ff3a05b8fc`、同版维护部署 `784a59f7-0bc7-479f-88d8-5f178772e919`，初次 v2 为 `18824a5c-9103-41a5-953b-0efaedf4360a`）；Vue 判断超时部署 `8472fc4d-ca25-45ca-a4f1-1237db6be642`（此前页面新旧判断部署 `e05fd502-8cf1-4e21-a610-8011c7346c49`、更新横幅部署 `3a9b5ee5-f38d-4a2d-9515-7b9420b0cd72`、显示名隔离部署 `f1cf4dcb-fecc-49e7-a426-42a183b0a149`、同版维护部署 `224d7b68-dc16-467c-9394-9c4ddc4eaf17`，初次 v2 为 `5f1ac456-9416-4c35-bf72-b4b782d13e66`）。真实上传时的完整 `build.json` 已封装在各自 R2 制品中；本地 staging 此后可能为下一次构建而改变。实际 URL 见登记表；云端上线是独立操作，不由本地 dry-run 自动触发。
 4. 在真实 HTTPS URL 检查 `/app/`、manifest、worker、离线页、指纹资源的状态码、内容类型与缓存头。Pages 对 `.html` 可能重定向为扩展名省略路径，离线页要检查源路径和最终响应。动态 SSR 响应头由 Worker 实际返回，不套用 Pages `_headers`。
-5. 分别完成 React/Vue 桌面在线、离线、提示更新与恢复演练；记录浏览器完整版本和失败／跳过项。更新提示、恢复 worker 和离线启动已在 `drill` 通过；两个 `main` 现为 v2，原生 Pages v2→v1→v2 回滚、受控更新、桌面 Chrome Offline 预设下的 v2 重载和静态离线页打开均已观察。带唯一查询参数的导航在 Network `Offline` 下均由 Service Worker 返回 200；Vue 同时记录到内部请求 `ERR_INTERNET_DISCONNECTED` 并显示预缓存离线页，React 返回缓存应用壳。React/Vue 均已从真实 Chrome 安装确认框安装为独立应用 ID，并在独立窗口核对各自 origin、v2、注册和 installed 状态；Vue 已安装窗口的断网重载由 Service Worker 提供应用壳与指纹脚本。Cloudflare 构建分别覆盖唯一显示名 `PWA Platform React Demo` 与 `PWA Platform Vue Demo`，本地共享 fixture 保持原名；既有安装接受 Chrome 的应用名称更新后，按精确 ID 冷启动均显示新名称和正确 origin。Android、移动端原生安装和远端 CI 未完成时不写成 V1 发布通过。
+5. 分别完成 React/Vue 桌面在线、离线、提示更新与恢复演练；记录浏览器完整版本和失败／跳过项。更新提示、恢复 worker 和离线启动已在 `drill` 通过；两个 `main` 现为 v2，原生 Pages v2→v1→v2 回滚、受控更新、桌面 Chrome Offline 预设下的 v2 重载和静态离线页打开均已观察。带唯一查询参数的导航在 Network `Offline` 下均由 Service Worker 返回 200；Vue 同时记录到内部请求 `ERR_INTERNET_DISCONNECTED` 并显示预缓存离线页，React 返回缓存应用壳。React/Vue 均已从真实 Chrome 安装确认框安装为独立应用 ID，并在独立窗口核对各自 origin、v2、注册和 installed 状态；Vue 已安装窗口的断网重载由 Service Worker 提供应用壳与指纹脚本。Cloudflare 构建分别覆盖唯一显示名 `PWA Platform React Demo` 与 `PWA Platform Vue Demo`，本地共享 fixture 保持原名；既有安装接受 Chrome 的应用名称更新后，按精确 ID 冷启动均显示新名称和正确 origin。Android、移动端原生安装和测试站发布门禁自动化未完成时不写成 V1 发布通过。
 
 ## 隔离预览槽位的重复部署与恢复
 
@@ -209,7 +211,7 @@ Cloudflare 原生 Pages 回滚只接受先前成功的**生产**部署，不能�
 
 ## 当前状态：PC 试点与正式 V1 门禁
 
-截至 2026-09-21，本模块完成的是 **PC 桌面 Chrome 测试部署试点**，不是正式 V1 发布批准。
+截至 2026-09-25，本模块完成的是 **PC 桌面 Chrome 测试部署试点**，不是正式 V1 发布批准。
 
 | 项目 | 状态 | 证据或缺口 |
 |---|---|---|
@@ -224,7 +226,7 @@ Cloudflare 原生 Pages 回滚只接受先前成功的**生产**部署，不能�
 | `drill` 上传后索引、归档与审计自动化 | 已取得（审计除外） | 2026-09-22 起上传前预检与上传后索引、归档自动完成，React `drill` 部署 `ae41ddfd…` 实测；`drill` 按规格不做保留审计 |
 | Nuxt SSR Worker | **不通过** | 本地启动门禁失败；不得宣称支持 |
 | H5、Android、iOS 实机与移动端原生安装 | 延后 | 项目所有者要求 PC 优先 |
-| 远端 GitHub CI | 缺失 | GitHub 暂不可用，仅有本地 lint、typecheck、test |
+| 远端 GitHub CI | 通用 Ready PR 检查已恢复；测试站发布门禁未接入 | [CI #17](https://github.com/haigeerlab/pwa-platform/actions/runs/36115265290) 的 Node 22／24 与浏览器三项通过；测试站上线前机器核验仍按本手册独立执行 |
 
 正式 V1 发布仍以[生产发布浏览器证据](browser-release-evidence.md)和[发布与事故手册](release-and-incident-runbook.md)为准，其中 Android N/N-1、移动端原生安装与远端 CI 不能由本表的桌面结果替代。
 
