@@ -14,7 +14,7 @@
 // vite.config.ts
 import { pwa } from "@pwa-platform/vite";
 import { defineConfig } from "vite";
-import { IDENTITY, INSTALL, POLICY } from "./pwa.config";
+import { IDENTITY, INSTALL, POLICY } from "./pwa.config.ts";
 
 export default defineConfig({
   base: "/",
@@ -29,6 +29,8 @@ export default defineConfig({
   ],
 });
 ~~~
+
+Vite 8 默认构建能解析省略扩展名的导入，但会提示未来原生配置加载器不支持；这里写出 <code>.ts</code> 扩展名。若现有项目的类型检查报 <code>TS5097</code>，请在检查 <code>vite.config.ts</code> 的 TypeScript 配置中启用 <code>allowImportingTsExtensions</code>，并保持 <code>noEmit</code>。
 
 ## 3. 提供页面绑定并主动注册
 

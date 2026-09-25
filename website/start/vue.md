@@ -17,7 +17,7 @@
 import { pwa } from "@pwa-platform/vite";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
-import { IDENTITY, INSTALL, POLICY } from "./pwa.config";
+import { IDENTITY, INSTALL, POLICY } from "./pwa.config.ts";
 
 export default defineConfig({
   base: "/",
@@ -33,6 +33,8 @@ export default defineConfig({
   ],
 });
 ~~~
+
+Vite 8 默认构建能解析省略扩展名的导入，但会提示未来原生配置加载器不支持；这里写出 <code>.ts</code> 扩展名。若现有项目的类型检查报 <code>TS5097</code>，请在检查 <code>vite.config.ts</code> 的 TypeScript 配置中启用 <code>allowImportingTsExtensions</code>，并保持 <code>noEmit</code>。
 
 <code>offlinePage: {}</code> 要与策略中的离线回退及其资源规则一起使用；插件会生成离线页并把 manifest 链接注入 HTML。若项目还有其他 Vite 插件，保留它们，在 <code>plugins</code> 数组中加入 <code>pwa()</code> 即可。
 
