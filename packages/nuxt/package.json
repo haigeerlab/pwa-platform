@@ -1,0 +1,42 @@
+{
+  "name": "@pwa-platform/nuxt",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  },
+  "peerDependencies": {
+    "nuxt": ">=4.5.0 <4.6.0",
+    "vue": "^3.5.0"
+  },
+  "dependencies": {
+    "@pwa-platform/client-runtime": "workspace:*",
+    "@pwa-platform/contracts": "workspace:*",
+    "@pwa-platform/sw-runtime": "workspace:*",
+    "@pwa-platform/vite": "workspace:*",
+    "@pwa-platform/vue": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@pwa-platform/browser-test-harness": "workspace:*",
+    "@pwa-platform/core": "workspace:*",
+    "@types/node": "24.13.4",
+    "nuxt": "4.5.2",
+    "vue": "3.5.42"
+  }
+}

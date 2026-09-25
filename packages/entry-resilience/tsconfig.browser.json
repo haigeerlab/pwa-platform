@@ -1,0 +1,19 @@
+{
+  // The Node side of the real-browser tests: the Playwright config, the specs and the site builder. The fixture
+  // app's own sources run in the browser and are checked by tsconfig.app.json instead.
+  //
+  // `src/virtual.d.ts` is included so scenarios.spec.ts's type-only import from `../src/client/index.js` (EM4,
+  // tasks/pwa-entry-resilience/plan.md) resolves: that module imports the virtual config module's declared type,
+  // which is otherwise only visible to tsconfig.app.json's own program.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "browser-tests/*.ts",
+    "test/support/*.ts",
+    "playwright.config.ts",
+    "src/virtual.d.ts"
+  ]
+}

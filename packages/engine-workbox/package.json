@@ -1,0 +1,47 @@
+{
+  "name": "@pwa-platform/engine-workbox",
+  "version": "0.1.0-beta.1",
+  "description": "Internal Workbox precache and runtime-cache engine for PWA Platform.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/build/index.d.ts",
+      "import": "./dist/build/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/index.d.ts",
+      "import": "./dist/worker/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json && tsc --project tsconfig.worker.build.json",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.worker.json && tsc --noEmit --project tsconfig.browser.json"
+  },
+  "dependencies": {
+    "@pwa-platform/contracts": "workspace:*",
+    "workbox-core": "7.4.1",
+    "workbox-expiration": "7.4.1",
+    "workbox-precaching": "7.4.1",
+    "workbox-strategies": "7.4.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@pwa-platform/browser-test-harness": "workspace:*",
+    "@types/node": "24.13.4",
+    "vite": "8.3.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "next"
+  }
+}

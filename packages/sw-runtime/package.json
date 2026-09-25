@@ -1,0 +1,65 @@
+{
+  "name": "@pwa-platform/sw-runtime",
+  "version": "0.1.0-beta.1",
+  "description": "Service worker and recovery runtime for PWA Platform.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/build/index.d.ts",
+      "import": "./dist/build/index.js"
+    },
+    "./worker": {
+      "types": "./dist/worker/index.d.ts",
+      "import": "./dist/worker/index.js"
+    },
+    "./recovery-worker": {
+      "types": "./dist/recovery-worker/index.d.ts",
+      "import": "./dist/recovery-worker/index.js"
+    },
+    "./messages": {
+      "types": "./dist/messages/index.d.ts",
+      "import": "./dist/messages/index.js"
+    },
+    "./push-payload": {
+      "types": "./dist/push-payload/index.d.ts",
+      "import": "./dist/push-payload/index.js"
+    },
+    "./platform-worker-entry": {
+      "types": "./dist/entries/platform-worker-entry.d.ts",
+      "import": "./dist/entries/platform-worker-entry.js"
+    },
+    "./recovery-worker-entry": {
+      "types": "./dist/entries/recovery-worker-entry.d.ts",
+      "import": "./dist/entries/recovery-worker-entry.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json && tsc --project tsconfig.worker.build.json",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.worker.json && tsc --noEmit --project tsconfig.browser.json"
+  },
+  "dependencies": {
+    "@pwa-platform/contracts": "workspace:*",
+    "@pwa-platform/engine-workbox": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@pwa-platform/browser-test-harness": "workspace:*",
+    "@pwa-platform/core": "workspace:*",
+    "@types/node": "24.13.4",
+    "vite": "8.3.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "next"
+  }
+}

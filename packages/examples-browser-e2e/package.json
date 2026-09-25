@@ -1,0 +1,32 @@
+{
+  "name": "@pwa-platform/examples-browser-e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "test:browser:network": "playwright test --config playwright.network.config.ts",
+    "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.app.json && tsc --noEmit --project release-verifier/tsconfig.json && tsc --noEmit --project push-tools/tsconfig.json",
+    "push:keys": "node push-tools/keys.ts",
+    "push:send": "node push-tools/send.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@pwa-platform/browser-test-harness": "workspace:*",
+    "@pwa-platform/build-verifier": "workspace:*",
+    "@pwa-platform/contracts": "workspace:*",
+    "@pwa-platform/entry-resilience": "workspace:*",
+    "@pwa-platform/push": "workspace:*",
+    "@pwa-platform/react": "workspace:*",
+    "@pwa-platform/vite": "workspace:*",
+    "@pwa-platform/vue": "workspace:*",
+    "@types/node": "24.13.4",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "vite": "8.3.0",
+    "vue": "3.5.42"
+  }
+}

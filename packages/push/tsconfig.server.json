@@ -1,0 +1,16 @@
+{
+  // A stricter check than tsconfig.json: proves src/server/ type-checks with lib ES only, no DOM at all. Sending,
+  // encryption, VAPID signing and subscription storage are the business backend's own job (ADR-0021,
+  // spec/push-module.md "设计 / 4. 后端入口"), so this entry must run unmodified in Node and any other non-browser
+  // runtime; a DOM-only global creeping in here would only be caught by this project, since tsconfig.json's default
+  // lib includes DOM (test/**/*.ts needs it, e.g. for TextEncoder in byte-limit tests).
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2022"],
+    "types": []
+  },
+  "include": [
+    "src/server/**/*.ts"
+  ]
+}

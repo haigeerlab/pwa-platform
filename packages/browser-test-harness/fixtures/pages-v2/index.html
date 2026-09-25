@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PWA platform harness page</title>
+    <!-- An inline empty icon stops browsers from requesting /favicon.ico, keeping request records deterministic. -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <!-- Framework-free and deliberately inert: tests register workers explicitly. -->
+    <main data-harness-marker>ready</main>
+  </body>
+</html>

@@ -1,0 +1,344 @@
+import { Buffer } from "node:buffer";
+import { createHash } from "node:crypto";
+import { execFileSync, spawnSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { relative, resolve } from "node:path";
+import { URL } from "node:url";
+
+const projects = { react: "pwa-platform-react-demo", vue: "pwa-platform-vue-demo" };
+const args = Object.fromEntries(process.argv.slice(2).map((item) => {
+  const match = /^--([a-z0-9-]+)=(.*)$/.exec(item);
+  if (!match || !match[2]) throw new Error(`Invalid argument: ${item}`);
+  return [match[1], match[2]];
+}));
+if (Object.keys(args).some((key) => !["target", "slot", "mode", "artifact-sha256", "current-sha256"].includes(key))) {
+  throw new Error("Unsupported Cloudflare deployment argument");
+}
+const target = args.target;
+const slot = args.slot ?? "main";
+const mode = args.mode ?? "check";
+if (!Object.hasOwn(projects, target)) throw new Error("Target must be react or vue");
+if (slot !== "main" && slot !== "drill") throw new Error("Slot must be main or drill");
+const branch = slot === "main" ? "main" : "drill";
+const environment = slot === "main" ? "production" : "preview";
+if (!["check", "preflight", "deploy", "preview-candidate"].includes(mode)) {
+  throw new Error("Mode must be check, preflight, deploy or preview-candidate");
+}
+if (mode === "preview-candidate" && slot !== "main") throw new Error("preview-candidate mode requires --slot=main");
+// Argument layer, before any file is read: whenever --artifact-sha256 is supplied at all (any slot, any mode) its
+// format must be a 64-character lowercase hex SHA-256. Drill's presence requirement (once a baseline exists) is
+// checked later, after the baseline file has been read but still before credentials() (module spec, "修订：`drill`
+// 上传前预检与上传后自动步骤" → "契约增量" → "预检").
+if (args["artifact-sha256"] !== undefined && !/^[a-f0-9]{64}$/.test(args["artifact-sha256"])) {
+  throw new Error("--artifact-sha256 must be a 64-character lowercase hex SHA-256");
+}
+const root = resolve(import.meta.dirname, "..");
+const buildRoot = resolve(root, "build", "cloudflare", target, slot);
+const site = resolve(buildRoot, "site");
+const receiptRaw = readFileSync(resolve(buildRoot, "build.json"), "utf8");
+const receipt = JSON.parse(receiptRaw);
+// Checked before credentials or any Cloudflare call: a preview candidate without a plan is useless to the
+// pre-deploy verifier, so refuse it while nothing has been touched yet.
+if (mode === "preview-candidate" && receipt.plan == null) {
+  throw new Error("Build receipt has no plan; rebuild before uploading a preview candidate");
+}
+if (receipt.target !== target || receipt.slot !== slot || receipt.project !== projects[target] || receipt.uploadDirectory !== site) {
+  throw new Error("Build receipt does not match the registered target and staging directory");
+}
+if (receipt.origin.endsWith(".invalid")) throw new Error("A placeholder origin cannot be deployed");
+if (!["v1", "v2", "recovery"].includes(receipt.release) || (slot === "main" && receipt.release === "recovery")) {
+  throw new Error("Release variant is not allowed for this Pages slot");
+}
+const baselineDirectory = resolve(root, "packages", "examples-browser-e2e", "apps", "shared", "release-baseline");
+const mainBaseline = JSON.parse(readFileSync(resolve(baselineDirectory, `${target}-main.json`), "utf8"));
+const candidateIdentity = { ...mainBaseline, appId: slot === "main" ? mainBaseline.appId :
+  (target === "react" ? "pwareactdrill" : "pwavuedrill"), origin: receipt.origin };
+const baselinePath = resolve(baselineDirectory, `${target}-${slot}.json`);
+const baseline = existsSync(baselinePath) ? JSON.parse(readFileSync(baselinePath, "utf8")) : null;
+// Drill's preflight/deploy activation condition mirrors main's "existing deployment" condition with "baseline file
+// exists" instead: the first bootstrap upload (no baseline yet) is untouched and does not require an artifact.
+// Still before credentials(): a missing artifact must never reach a keychain or Cloudflare API lookup.
+if (slot === "drill" && baseline && mode !== "check" && args["artifact-sha256"] === undefined) {
+  throw new Error("Drill preflight or deploy requires --artifact-sha256 once a baseline is frozen");
+}
+if (JSON.stringify(receipt.identity) !== JSON.stringify(candidateIdentity) ||
+  (baseline && JSON.stringify(candidateIdentity) !== JSON.stringify(baseline)) ||
+  (!baseline && receipt.release !== "v1")) {
+  throw new Error("Build receipt does not match the PWA identity, first release, or frozen baseline");
+}
+const actualFiles = listFiles(site).sort();
+const expectedFiles = Object.keys(receipt.files).sort();
+if (JSON.stringify(actualFiles) !== JSON.stringify(expectedFiles)) throw new Error("Staging file list changed after build");
+const required = ["_headers", "app/index.html", "app/offline.html", "app/sw.js", "app/pwa-recovery-worker.js", "app/manifest.webmanifest"];
+for (const file of required) if (!actualFiles.includes(file)) throw new Error(`Missing required upload file: ${file}`);
+// From the examples' entry-recovery adoption (spec/examples-browser-e2e.md). Allowed, not required: a staging
+// directory built before that adoption must stay deployable without a rebuild.
+const entryRecoveryFiles = ["app/pwa-entry.html", "app/entry-manifest.json"];
+for (const file of actualFiles) {
+  if (required.includes(file)) continue;
+  if (entryRecoveryFiles.includes(file)) continue;
+  if (/^app\/icons\/(?:192|512)(?:-maskable)?\.png$/.test(file)) continue;
+  // Manifest screenshots (spec/examples-browser-e2e.md 2026-09-24 revision; site file allowlist registered in
+  // spec/cloudflare-test-deployment.md's "增补：站点文件白名单的登记（2026-09-24）"). Allowed, not required.
+  if (/^app\/screenshots\/(?:wide|narrow)\.png$/.test(file)) continue;
+  if (/^app\/assets\/[a-zA-Z0-9_-]+-[a-zA-Z0-9_-]{8,}\.(?:js|css|png|svg|webp)$/.test(file)) continue;
+  throw new Error(`Unexpected upload file: ${file}`);
+}
+if (receipt.release === "recovery" && receipt.files["app/sw.js"] !== receipt.files["app/pwa-recovery-worker.js"]) {
+  throw new Error("Recovery release did not publish its recovery worker at the Service Worker URL");
+}
+for (const file of actualFiles) {
+  const hash = createHash("sha256").update(readFileSync(resolve(site, file))).digest("hex");
+  if (hash !== receipt.files[file]) throw new Error(`Staging file changed after build: ${file}`);
+}
+const env = credentials();
+const entries = wrangler(["pages", "project", "list", "--json"], env);
+const project = entries.find((entry) => entry["Project Name"] === projects[target]);
+if (!project) throw new Error("Registered Pages project does not exist in the selected account");
+const domains = String(project["Project Domains"] ?? "").split(/[,\s]+/).filter(Boolean);
+const canonical = `https://${projects[target]}.pages.dev`;
+if (!domains.includes(`${projects[target]}.pages.dev`) ||
+  receipt.origin !== (slot === "main" ? canonical : `https://drill.${projects[target]}.pages.dev`)) {
+  throw new Error("Built PWA origin does not match the registered Pages slot");
+}
+const entriesForEnvironment = wrangler([
+  "pages", "deployment", "list", `--project-name=${projects[target]}`, `--environment=${environment}`, "--json",
+], env);
+if (!Array.isArray(entriesForEnvironment)) throw new Error("Cannot establish prior deployment history");
+const deployments = entriesForEnvironment.filter((entry) => entry.Branch === branch);
+const activeDeploymentId = slot === "main" && deployments.length > 0 ?
+  await currentProductionDeploymentId(projects[target], branch, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN) :
+  deployments[0]?.Id;
+if (activeDeploymentId && !deployments.some((entry) => entry.Id === activeDeploymentId)) {
+  throw new Error("Active Pages deployment is missing from this slot's history");
+}
+let retainedAssets = 0;
+if (deployments.length > 0 && slot === "drill" && !baseline) {
+  if (deployments.length !== 1) throw new Error("Unbaselined drill slot has more than its bootstrap deployment");
+  const workerResponse = await globalThis.fetch(`${receipt.origin}/app/sw.js`);
+  if (workerResponse.status === 200 && String(workerResponse.headers.get("content-type")).includes("javascript")) {
+    throw new Error("Drill slot already serves a worker but has no frozen identity baseline");
+  }
+} else if (deployments.length > 0) {
+  const archivePath = resolve(root, "build", "cloudflare", target, "retained", slot, "manifest.json");
+  if (!existsSync(archivePath)) throw new Error("Existing deployment has no retained asset archive");
+  const archive = JSON.parse(readFileSync(archivePath, "utf8"));
+  if (archive.project !== receipt.project || archive.origin !== receipt.origin || archive.target !== target || archive.slot !== slot ||
+    archive.deploymentId !== activeDeploymentId || receipt.retention?.sourceDeploymentId !== archive.deploymentId ||
+    JSON.stringify(receipt.retention.assets) !== JSON.stringify(archive.assets)) {
+    throw new Error("Retained assets do not match the current production deployment");
+  }
+  for (const [path, expected] of Object.entries(archive.assets)) {
+    if (receipt.files[path] !== expected) throw new Error(`Staging omitted a retained asset: ${path}`);
+    const response = await globalThis.fetch(`${receipt.origin}/${path}`);
+    if (response.status !== 200 || createHash("sha256").update(Buffer.from(await response.arrayBuffer())).digest("hex") !== expected) {
+      throw new Error(`Current production does not serve retained asset: ${path}`);
+    }
+    retainedAssets++;
+  }
+  if (retainedAssets === 0) throw new Error("Existing deployment has no fingerprinted assets in its archive");
+}
+
+// preview-candidate is a self-contained branch: it never reaches the repeat-production-upload preflight or the
+// `mode === "deploy"` block below (module spec, "上线前核验" → "上传候选到预览分支": isolated from `main`'s
+// production upload machinery). It uploads the already-validated `main` staging directory to the fixed literal
+// `--branch=candidate`, confirms exactly one new preview deployment appeared, reads it back from the Pages API, and
+// prints a single fact line. It never writes R2 indexes, an archive, a release bundle, an audit, or a baseline.
+if (mode === "preview-candidate") {
+  const { uniqueDeploymentOrigin } = await import(
+    new URL("../packages/examples-browser-e2e/release-verifier/unique-origin.ts", import.meta.url)
+  );
+  const listCandidateDeployments = () => wrangler([
+    "pages", "deployment", "list", `--project-name=${projects[target]}`, "--environment=preview", "--json",
+  ], env).filter((entry) => entry.Branch === "candidate");
+  const before = new Set(listCandidateDeployments().map((entry) => entry.Id));
+  const upload = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+    "exec", "wrangler", "pages", "deploy", site, `--project-name=${projects[target]}`, "--branch=candidate",
+  ], { cwd: root, env, stdio: "inherit" });
+  if (upload.error) throw upload.error;
+  if (upload.status !== 0) process.exit(upload.status ?? 1);
+  const after = listCandidateDeployments();
+  const newDeployments = after.filter((entry) => !before.has(entry.Id));
+  if (newDeployments.length !== 1) {
+    // The upload itself succeeded, so a preview deployment most likely exists: say so, so nobody retries blindly.
+    throw new Error(`Preview upload finished but ${newDeployments.length} new candidate-branch deployments were listed (expected exactly 1); inspect the candidate branch before retrying`);
+  }
+  const deploymentId = newDeployments[0].Id;
+  const response = await globalThis.fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/pages/projects/${projects[target]}/deployments/${deploymentId}`,
+    { headers: { Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}` } },
+  );
+  if (!response.ok) throw new Error(`Preview deployment ${deploymentId} exists but its Pages API readback returned HTTP ${response.status}`);
+  const body = await response.json();
+  const readback = body.result;
+  const expectedOrigin = uniqueDeploymentOrigin(projects[target], deploymentId);
+  const readbackOrigin = typeof readback?.url === "string" && URL.canParse(readback.url) ? new URL(readback.url).origin : null;
+  if (!body.success || readback?.environment !== "preview" || readback.deployment_trigger?.metadata?.branch !== "candidate" ||
+    !expectedOrigin.ok || readbackOrigin !== expectedOrigin.origin) {
+    throw new Error(`Preview deployment ${deploymentId} exists but failed readback verification`);
+  }
+  process.stdout.write(JSON.stringify({
+    target, slot: "main", mode: "preview-candidate", deploymentId, url: readback.url,
+    environment: readback.environment, branch: readback.deployment_trigger.metadata.branch,
+    stagingReceiptSha256: createHash("sha256").update(receiptRaw).digest("hex"),
+  }) + "\n");
+} else {
+  process.stdout.write(JSON.stringify({ target, slot, release: receipt.release, project: projects[target], origin: receipt.origin, uploadDirectory: site, fileCount: actualFiles.length, firstDeployment: deployments.length === 0 || (slot === "drill" && !baseline), retainedAssets, mode }) + "\n");
+  if (mode !== "check" && slot === "main" && deployments.length > 0) {
+    const candidate = args["artifact-sha256"];
+    const current = args["current-sha256"];
+    if (!/^[a-f0-9]{64}$/.test(candidate ?? "") || !/^[a-f0-9]{64}$/.test(current ?? "") || candidate === current) {
+      throw new Error("Repeat production upload requires distinct candidate and current R2 artifact SHA-256 values");
+    }
+    const bundle = resolve(root, "build", "cloudflare", "release-bundles", target, slot, `${candidate}.tar.gz`);
+    const unpack = spawnSync("tar", ["-xOzf", bundle, "build.json"], { encoding: "utf8", maxBuffer: 8 * 1024 * 1024 });
+    if (unpack.error || unpack.status !== 0 ||
+      JSON.stringify(JSON.parse(unpack.stdout)) !== JSON.stringify({ ...receipt, uploadDirectory: "site" })) {
+      throw new Error("Candidate R2 artifact does not match the validated Pages staging receipt");
+    }
+    for (const command of [
+      ["r2:cloudflare:bundle", `--target=${target}`, `--slot=${slot}`, `--sha256=${candidate}`, "--mode=verify"],
+      ["r2:cloudflare:index", `--target=${target}`, `--slot=${slot}`, `--sha256=${current}`,
+        `--deployment-id=${activeDeploymentId}`, "--mode=check"],
+      ["audit:cloudflare:retention", `--target=${target}`],
+    ]) {
+      const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, { cwd: root, encoding: "utf8" });
+      if (result.error || result.status !== 0) throw new Error(`Repeat production upload failed ${command[0]} preflight`);
+    }
+  }
+  // Drill's own preflight, parallel to main's block above and never merged into it (module spec, "修订：`drill`
+  // 上传前预检与上传后自动步骤" → "契约增量" → "预检"; plan "#### DR2" → "架构决定"). Activation is "baseline exists" rather
+  // than main's "existing deployment", per the contract's 生效条件. It only confirms the candidate R2 artifact
+  // matches the validated staging receipt and re-verifies the uploaded bundle; unlike main it does not check the
+  // current deployment's R2 index (drill deployments have historically had none) and does not run the retention
+  // audit (drill carries no real users).
+  if (mode !== "check" && slot === "drill" && baseline) {
+    const candidate = args["artifact-sha256"];
+    const bundle = resolve(root, "build", "cloudflare", "release-bundles", target, "drill", `${candidate}.tar.gz`);
+    const unpack = spawnSync("tar", ["-xOzf", bundle, "build.json"], { encoding: "utf8", maxBuffer: 8 * 1024 * 1024 });
+    if (unpack.error || unpack.status !== 0 ||
+      JSON.stringify(JSON.parse(unpack.stdout)) !== JSON.stringify({ ...receipt, uploadDirectory: "site" })) {
+      throw new Error("Candidate R2 artifact does not match the validated Pages staging receipt");
+    }
+    const verify = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+      "r2:cloudflare:bundle", `--target=${target}`, "--slot=drill", `--sha256=${candidate}`, "--mode=verify",
+    ], { cwd: root, encoding: "utf8" });
+    if (verify.error || verify.status !== 0) throw new Error("Drill deployment preflight failed r2:cloudflare:bundle");
+  }
+  if (mode === "deploy") {
+    const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+      "exec", "wrangler", "pages", "deploy", site, `--project-name=${projects[target]}`, `--branch=${branch}`,
+    ], { cwd: root, env, stdio: "inherit" });
+    if (result.error) throw result.error;
+    if (result.status !== 0) process.exit(result.status ?? 1);
+    if (slot === "main" && deployments.length > 0) {
+      const publishedId = await currentProductionDeploymentId(
+        projects[target], branch, env.CLOUDFLARE_ACCOUNT_ID, env.CLOUDFLARE_API_TOKEN,
+      );
+      if (publishedId === activeDeploymentId) {
+        throw new Error("Pages upload returned without a new active production deployment; inspect the remote release before retrying");
+      }
+      for (const command of [
+        ["r2:cloudflare:index", `--target=${target}`, `--slot=${slot}`, `--sha256=${args["artifact-sha256"]}`,
+          `--deployment-id=${publishedId}`, "--mode=record"],
+        ["archive:cloudflare:site", `--target=${target}`, `--slot=${slot}`, `--deployment-id=${publishedId}`],
+        ["audit:cloudflare:retention", `--target=${target}`],
+      ]) {
+        const post = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, {
+          cwd: root, env, stdio: "inherit",
+        });
+        if (post.error || post.status !== 0) {
+          throw new Error(`Pages deployment ${publishedId} is live but ${command[0]} failed; recover or finalize it before another upload`);
+        }
+      }
+      process.stdout.write(JSON.stringify({
+        target, slot, deploymentId: publishedId, postDeployIndexedAndArchived: true, retentionAudited: true,
+      }) + "\n");
+    }
+    // Drill's own post-deploy steps, parallel to main's block above and never merged into it (module spec, "修订：
+    // `drill` 上传前预检与上传后自动步骤" → "契约增量" → "识别新部署" and "后置步骤"). New-deployment identification reuses
+    // preview-candidate's approach: `deployments` above is the drill-branch preview list captured before this
+    // upload, so diffing it against a fresh listing must find exactly one new Id. No retention audit runs for
+    // drill (module spec, "本修订不做的事").
+    if (slot === "drill" && baseline) {
+      const before = new Set(deployments.map((entry) => entry.Id));
+      const after = wrangler([
+        "pages", "deployment", "list", `--project-name=${projects[target]}`, "--environment=preview", "--json",
+      ], env).filter((entry) => entry.Branch === "drill");
+      const newDeployments = after.filter((entry) => !before.has(entry.Id));
+      if (newDeployments.length !== 1) {
+        throw new Error(`Pages upload finished but ${newDeployments.length} new drill deployments were listed (expected exactly 1); inspect the drill branch before retrying`);
+      }
+      const publishedId = newDeployments[0].Id;
+      for (const command of [
+        ["r2:cloudflare:index", `--target=${target}`, "--slot=drill", `--sha256=${args["artifact-sha256"]}`,
+          `--deployment-id=${publishedId}`, "--mode=record"],
+        ["archive:cloudflare:site", `--target=${target}`, "--slot=drill", `--deployment-id=${publishedId}`],
+      ]) {
+        const post = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, {
+          cwd: root, env, stdio: "inherit",
+        });
+        if (post.error || post.status !== 0) {
+          throw new Error(`Drill deployment ${publishedId} is live but ${command[0]} failed; recover or finalize it before another upload`);
+        }
+      }
+      process.stdout.write(JSON.stringify({
+        target, slot: "drill", deploymentId: publishedId, postDeployIndexedAndArchived: true,
+      }) + "\n");
+    }
+  }
+}
+
+async function currentProductionDeploymentId(projectName, productionBranch, accountId, token) {
+  const response = await globalThis.fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects/${projectName}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) throw new Error(`Pages project lookup returned HTTP ${response.status}`);
+  const body = await response.json();
+  const active = body.result?.canonical_deployment;
+  if (!body.success || body.result?.production_branch !== productionBranch ||
+    active?.environment !== "production" || active.latest_stage?.status !== "success") {
+    throw new Error("Cannot verify the active successful Pages production deployment");
+  }
+  return active.id;
+}
+
+function credentials() {
+  const token = process.env.CLOUDFLARE_API_TOKEN || keychain("PWA Platform Cloudflare Pages");
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || keychain("PWA Platform Cloudflare Pages Account ID");
+  if (!token || !accountId) throw new Error("Pages Token and account ID must come from environment or Keychain");
+  return { ...process.env, CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: accountId };
+}
+
+function keychain(service) {
+  if (process.platform !== "darwin") return undefined;
+  try {
+    return execFileSync("/usr/bin/security", ["find-generic-password", "-a", process.env.USER ?? "", "-s", service, "-w"], {
+      encoding: "utf8", stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function wrangler(command, env) {
+  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", ["exec", "wrangler", ...command], {
+    cwd: root, env, encoding: "utf8",
+  });
+  if (result.error || result.status !== 0) throw new Error(`Cloudflare read failed: ${command.slice(0, 3).join(" ")}`);
+  try {
+    return JSON.parse(result.stdout);
+  } catch {
+    throw new Error("Cloudflare returned a non-JSON response");
+  }
+}
+
+function listFiles(directory) {
+  const result = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true, recursive: true })) {
+    const path = resolve(entry.parentPath, entry.name);
+    if (entry.isSymbolicLink()) throw new Error("Upload directory must not contain symlinks");
+    if (entry.isFile()) result.push(relative(directory, path).replaceAll("\\", "/"));
+  }
+  return result;
+}

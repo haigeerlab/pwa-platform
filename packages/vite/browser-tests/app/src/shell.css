@@ -1,0 +1,9 @@
+/* Part of the precached app shell: a second asset makes the precache list more than one entry. */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+
+#shell::after {
+  content: " v1";
+}

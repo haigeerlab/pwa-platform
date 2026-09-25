@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  Static fixture page for @pwa-platform/push's browser tests (tasks/push-module/plan.md T7 part B). It is served by
+  the harness's fixture server at /app/ (global-setup.ts copies this directory and the built page entry into
+  browser-build/). The classic worker at /app/sw.js has no push logic — this suite exercises the page entry
+  (getPushState/subscribePush/unsubscribePush) against a real registration, not push delivery or notification
+  display (sw-runtime's push.spec.ts covers that).
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>push fixture</title>
+  </head>
+  <body>
+    <main data-shell>push fixture</main>
+    <script type="module">
+      import { getPushState, PwaPushClientError, subscribePush, unsubscribePush } from "/client.js";
+      // Exposed for Playwright's page.evaluate to call directly; nothing here reaches a network endpoint.
+      window.__pwaPush = { getPushState, subscribePush, unsubscribePush, PwaPushClientError };
+    </script>
+  </body>
+</html>

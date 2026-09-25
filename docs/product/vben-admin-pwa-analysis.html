@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>vben-admin PWA 分析</title>
+    <style>
+      :root {
+        --canvas: #f4f6f8;
+        --surface: #ffffff;
+        --surface-muted: #f8fafc;
+        --ink: #172033;
+        --ink-muted: #526176;
+        --line: #dce3ec;
+        --brand: #075985;
+        --brand-deep: #0c3655;
+        --brand-soft: #e5f3fa;
+        --critical: #9a3412;
+        --critical-soft: #fff2ea;
+        --ok: #166534;
+        --ok-soft: #e8f5ec;
+        --warn: #854d0e;
+        --warn-soft: #fdf6e3;
+        --radius: 0.5rem;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--canvas);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+          "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        font-size: 1rem;
+        line-height: 1.65;
+      }
+      a { color: var(--brand); }
+      h1, h2, h3, p { margin-top: 0; }
+      code { padding: 0.05rem 0.3rem; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 0.25rem; font-size: 0.85em; overflow-wrap: anywhere; }
+      .shell { width: min(100% - 2rem, 70rem); margin: 0 auto; padding: 1.5rem 0 3rem; }
+      .report { overflow: hidden; background: var(--surface); border: 1px solid var(--line); }
+      header { padding: 2.5rem; color: #fff; background: var(--brand-deep); }
+      .eyebrow { margin-bottom: 0.75rem; color: #b8e1f4; font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.08em; }
+      h1 { margin-bottom: 0.625rem; font-size: clamp(2rem, 5vw, 3.25rem); line-height: 1.15; letter-spacing: -0.03em; }
+      .subtitle { max-width: 44rem; margin-bottom: 0.75rem; color: #dcecf5; font-size: 1.0625rem; }
+      .meta { margin-bottom: 0; color: #b8e1f4; font-size: 0.8125rem; }
+      header code { color: #fff; background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.25); }
+      .content { padding: 2.5rem; }
+      section + section { margin-top: 2.5rem; }
+      h2 { margin-bottom: 0.75rem; font-size: 1.375rem; line-height: 1.3; }
+      h3 { margin-bottom: 0.75rem; font-size: 1rem; }
+      .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+      .card, .callout { padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius); }
+      .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+      .readiness { background: var(--brand-soft); border-left: 0.375rem solid var(--brand); }
+      .critical { background: var(--critical-soft); border-left: 0.375rem solid var(--critical); }
+      .critical strong { color: var(--critical); }
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+      .panel { padding: 1.25rem; background: var(--surface-muted); border: 1px solid var(--line); }
+      ul, ol { padding-left: 1.25rem; }
+      li + li { margin-top: 0.4rem; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+      th, td { padding: 0.875rem; border-bottom: 1px solid var(--line); vertical-align: top; text-align: left; }
+      th { color: var(--ink-muted); background: var(--surface-muted); }
+      .table-wrap { overflow-x: auto; border: 1px solid var(--line); }
+      .table-wrap table { min-width: 42rem; }
+      .callout { background: var(--brand-soft); border-left: 0.375rem solid var(--brand); }
+      .src { color: var(--ink-muted); font-size: 0.8125rem; }
+      .tag { display: inline-block; padding: 0 0.5rem; border-radius: 999px; font-size: 0.8125rem; font-weight: 700; white-space: nowrap; }
+      .yes { color: var(--ok); background: var(--ok-soft); }
+      .part { color: var(--warn); background: var(--warn-soft); }
+      .no { color: var(--critical); background: var(--critical-soft); }
+      footer { padding: 1.25rem 2.5rem; color: var(--ink-muted); background: var(--surface-muted); border-top: 1px solid var(--line); font-size: 0.8125rem; }
+      @media (max-width: 48rem) {
+        .shell { width: 100%; padding: 0; }
+        .report { border: 0; }
+        header, .content { padding: 1.5rem 1rem; }
+        .summary, .two-col { grid-template-columns: 1fr; }
+        footer { padding: 1.25rem 1rem; }
+      }
+      @media print {
+        body { background: #fff; font-size: 10pt; }
+        .shell { width: 100%; padding: 0; }
+        .report { border: 0; }
+        header, .content { padding: 1.5rem; }
+        section, .callout { break-inside: avoid; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <article class="report" aria-labelledby="report-title">
+        <header>
+          <p class="eyebrow">竞品分析 · 接入评估</p>
+          <h1 id="report-title">vue-vben-admin PWA 分析</h1>
+          <p class="subtitle">vben 实现了哪些 PWA 能力，我们平台能从中学到什么，以及它能否用我们的平台快速接入并获得 PWA 全功能。</p>
+          <p class="meta">vben <code>df014ae</code>（2026-09-13）· 平台 <code>feat/ssr-adapters</code> <code>4e1676d</code> · 只读源码分析，“需实测”条目未经浏览器验证 · 2026-09-18 · 已补真实接入试验，见<a href="#trial-title" style="color:#fff">试验结果</a></p>
+        </header>
+
+        <div class="content">
+          <section class="summary" aria-labelledby="summary-title">
+            <div class="card readiness">
+              <h2 id="summary-title">结论</h2>
+              <ul>
+                <li><strong>vben 的 PWA 基本是空壳</strong>：默认关闭；开启后也不预缓存、无运行时缓存、不注册 Service Worker，只剩一份 manifest。</li>
+                <li><strong>vben 真正值得借鉴的</strong>是与 SW 无关的“新版本检测”组件。</li>
+                <li><strong>vben 能接入我们的平台</strong>：Vite 8、Vue 3.5、配置合并均匹配，接入后获得安装、预缓存、离线页、受控更新、私有数据默认拒绝缓存、恢复 worker。</li>
+              </ul>
+            </div>
+            <aside class="card critical" aria-label="关键限制">
+              <h3>但“快速 + 全功能”目前做不到</h3>
+              <p><strong>快速：</strong>平台包全部 <code>private</code>、未发布，外部项目无法直接安装，这是第一阻断项。</p>
+              <p><strong>全功能：</strong>运行时缓存、Push、后台同步、Badging、分享目标、manifest 增强字段均未实现，分别在 v1.1 / v2 / v3 路线图或尚未规划。</p>
+            </aside>
+          </section>
+
+          <section aria-labelledby="matrix-title">
+            <h2 id="matrix-title">PWA 全功能对照</h2>
+            <p>左列为完整 PWA 的能力基准，右两列分别是 vben 现状和我们平台的实现状态（以代码为准，不含路线图）。</p>
+            <div class="table-wrap" tabindex="0" aria-label="PWA 能力对照表">
+              <table>
+                <thead><tr><th scope="col">类别</th><th scope="col">能力</th><th scope="col">vben</th><th scope="col">我们的平台</th></tr></thead>
+                <tbody>
+                  <tr><td>可安装</td><td>Manifest 基础字段</td><td><span class="tag part">部分</span> 无 <code>id</code>/<code>scope</code>，<code>start_url</code> 写死 <code>/</code>，图标外链 unpkg</td><td><span class="tag yes">已实现</span> 由 <code>PwaIdentity</code> 与安装元数据生成</td></tr>
+                  <tr><td>可安装</td><td>shortcuts、screenshots、share_target 等增强字段</td><td><span class="tag no">无</span></td><td><span class="tag no">未实现</span></td></tr>
+                  <tr><td>可安装</td><td>安装引导（beforeinstallprompt）</td><td><span class="tag no">无</span></td><td><span class="tag yes">已实现</span> <code>promptInstall()</code></td></tr>
+                  <tr><td>生命周期</td><td>SW 注册</td><td><span class="tag no">无</span> <code>injectRegister: false</code> 且无手动注册</td><td><span class="tag yes">已实现</span> 应用显式调用 <code>register()</code></td></tr>
+                  <tr><td>生命周期</td><td>更新检测与提示</td><td><span class="tag part">替代方案</span> 非 SW 的 ETag 轮询 + 刷新</td><td><span class="tag part">部分</span> 仅 <code>prompt</code> 模式；无主动检查更新</td></tr>
+                  <tr><td>缓存</td><td>预缓存</td><td><span class="tag no">无</span> <code>globPatterns: []</code></td><td><span class="tag yes">已实现</span> 带版本、清理旧条目、命名空间隔离</td></tr>
+                  <tr><td>缓存</td><td>运行时缓存</td><td><span class="tag no">无</span></td><td><span class="tag no">未实现</span> 类型接受策略但 worker 不执行，路线图 v1.1</td></tr>
+                  <tr><td>缓存</td><td>私有数据默认拒绝</td><td><span class="tag no">无显式规则</span></td><td><span class="tag yes">已实现</span> 未分类与私有请求不接手</td></tr>
+                  <tr><td>离线</td><td>离线导航降级</td><td><span class="tag no">无</span> <code>offline.vue</code> 只是演示路由</td><td><span class="tag yes">已实现</span> 网络优先 + 离线页</td></tr>
+                  <tr><td>离线</td><td>离线写入 / Background Sync</td><td><span class="tag no">无</span></td><td><span class="tag no">未实现</span> 路线图 v3</td></tr>
+                  <tr><td>互动</td><td>Push 通知</td><td><span class="tag no">无</span></td><td><span class="tag no">未实现</span> 路线图 v2</td></tr>
+                  <tr><td>系统集成</td><td>Periodic Sync、Badging</td><td><span class="tag no">无</span></td><td><span class="tag no">未规划</span></td></tr>
+                  <tr><td>运维</td><td>登出清理</td><td><span class="tag no">无</span></td><td><span class="tag part">部分</span> <code>logout()</code> 只注销 worker（v1 无私有缓存可清）</td></tr>
+                  <tr><td>运维</td><td>紧急下线 / 回滚</td><td><span class="tag no">无</span></td><td><span class="tag yes">已实现</span> 恢复 worker</td></tr>
+                  <tr><td>运维</td><td>可观测性</td><td><span class="tag no">无</span></td><td><span class="tag part">部分</span> 页面侧 4 个事件；worker 侧 3 个事件未发出</td></tr>
+                  <tr><td>拓扑</td><td>同源多应用子路径</td><td>—</td><td><span class="tag no">未实现</span> 路线图 v2 topology</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section aria-labelledby="vben-title">
+            <h2 id="vben-title">vben 的实现细节</h2>
+            <div class="two-col">
+              <div class="panel">
+                <h3>vite-plugin-pwa 接入</h3>
+                <ul>
+                  <li><code>vite-plugin-pwa ^1.3.0</code>，定义在 <code>internal/vite-config/src/plugins/index.ts:174-188</code>。</li>
+                  <li>默认 <code>injectRegister: false</code>、<code>workbox.globPatterns: []</code>，应用侧从不覆盖。插件源码表明此时只注入 manifest 链接，不注入注册脚本。</li>
+                  <li>开关 <code>VITE_PWA</code>：所有 <code>.env.production</code> 均为 <code>false</code>，仅 CI 部署时用 <code>sed</code> 为 4 个应用改为 <code>true</code>。</li>
+                  <li>生产路由为 hash 模式。文档站另有一套独立、较完整的 PWA 配置。</li>
+                </ul>
+              </div>
+              <div class="panel">
+                <h3>新版本检测组件（非 SW）</h3>
+                <ul>
+                  <li><code>packages/effects/layouts/src/widgets/check-updates/check-updates.vue</code>，默认开启。</li>
+                  <li>每分钟 <code>HEAD</code> 请求首页，比较 <code>ETag</code> / <code>Last-Modified</code>；页面回到前台立即检查；localhost 跳过。</li>
+                  <li>发现变化弹出不可关闭的对话框，确认后 <code>location.reload()</code>。</li>
+                  <li>用户可在偏好设置中关闭。</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="learn-title">
+            <h2 id="learn-title">平台值得学习与参考的地方</h2>
+            <div class="table-wrap" tabindex="0" aria-label="参考点表">
+              <table>
+                <thead><tr><th scope="col">参考点</th><th scope="col">vben 的做法</th><th scope="col">对平台的启示</th></tr></thead>
+                <tbody>
+                  <tr><td>主动版本探测</td><td>HEAD 比对 ETag，前台可见时检查</td><td>浏览器主要在导航时检查新 worker，单页后台长时间不刷新就发现不了新版本。建议 client-runtime 提供可选的“主动检查更新”（按间隔及 <code>visibilitychange</code> 调用 <code>registration.update()</code>），不改变 <code>prompt</code> 语义。</td></tr>
+                  <tr><td>更新提示 UI 归应用</td><td>对话框、文案、间隔由布局与偏好设置控制</td><td>与 ADR-0013 一致；可在示例中提供后台布局风格的提示组件参考。</td></tr>
+                  <tr><td>构建开关</td><td><code>VITE_PWA</code> 控制插件启用</td><td>可考虑官方的构建期关闭方式，便于灰度与排障；关闭时必须能发布恢复 worker。</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout" style="margin-top: 1rem">
+              <h3>反面参考（平台已规避或应在文档中强调）</h3>
+              <ul>
+                <li><strong>半开启</strong>：生成了 <code>sw.js</code> 却不注册、不预缓存，团队误以为“已有 PWA”。接入文档应明确“未调用 <code>register()</code> 即无 PWA”。</li>
+                <li><strong><code>start_url</code> 不跟随部署路径</strong>：平台由 <code>PwaIdentity</code> 统一推导，已规避。</li>
+                <li><strong>图标外链第三方 CDN</strong>：平台要求图标随构建产物发布，已规避。</li>
+                <li><strong>靠 CI <code>sed</code> 开启</strong>：行为不在版本库中，难以追溯；平台身份与策略写在代码里。</li>
+              </ul>
+            </div>
+          </section>
+
+          <section aria-labelledby="fit-title">
+            <h2 id="fit-title">vben 能否接入我们的平台</h2>
+            <div class="table-wrap" tabindex="0" aria-label="接入匹配度表">
+              <table>
+                <thead><tr><th scope="col">条件</th><th scope="col">平台要求</th><th scope="col">vben 现状</th><th scope="col">结论</th></tr></thead>
+                <tbody>
+                  <tr><td>Vite</td><td><code>^8.0.0</code></td><td><code>^8.2.2</code></td><td><span class="tag yes">满足</span></td></tr>
+                  <tr><td>Vue</td><td><code>^3.4.0</code></td><td><code>^3.5.40</code></td><td><span class="tag yes">满足</span></td></tr>
+                  <tr><td>追加插件</td><td>把 <code>pwa()</code> 加入插件</td><td><code>mergeConfig</code> 合并，插件数组拼接</td><td><span class="tag yes">满足</span></td></tr>
+                  <tr><td><code>base</code></td><td>同源绝对路径，首尾带 <code>/</code></td><td><code>VITE_BASE=/</code></td><td><span class="tag yes">满足</span> 子路径须写成 <code>/admin/</code></td></tr>
+                  <tr><td>部署拓扑</td><td>仅 <code>standalone-origin</code></td><td>每个应用独立部署</td><td><span class="tag yes">满足</span> 多应用共域名需等 v2</td></tr>
+                  <tr><td>路由模式</td><td>导航网络优先，断网回退 <code>index.html</code> / 离线页</td><td>hash 路由</td><td><span class="tag yes">已实测可用</span></td></tr>
+                  <tr><td>与版本检测共存</td><td>SW 不接手非 GET；导航网络优先</td><td>HEAD 轮询 + <code>reload()</code></td><td><span class="tag part">不冲突</span> 但需合并成一个“新版本”提示</td></tr>
+                  <tr><td>获取包</td><td>全部 <code>private</code>、<code>0.0.0</code></td><td>外部独立仓库</td><td><span class="tag no">阻断</span> 需先发布</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="two-col" style="margin-top: 1rem">
+              <div class="panel">
+                <h3>接入步骤</h3>
+                <ol>
+                  <li>保持 <code>VITE_PWA=false</code>，删除 CI 中的 <code>sed</code>。</li>
+                  <li>安装 <code>@pwa-platform/vite</code>、<code>@pwa-platform/vue</code>（前提：平台已发布）。</li>
+                  <li>在 <code>vite.plugins</code> 中加入 <code>pwa({ identity, policy, install, topology })</code>：<code>scope</code> 与 <code>VITE_BASE</code> 一致；为 <code>js/</code>、<code>jse/</code>、<code>css/</code> 等产物目录声明 <code>asset</code> 规则；接口前缀声明为 <code>session-data</code> / <code>mutation</code>；配置离线页。</li>
+                  <li>图标放入 <code>public/</code>。</li>
+                  <li><code>app.use(createPwa({ config }))</code>，布局中调用 <code>usePwa().register()</code>。</li>
+                  <li>把 <code>applyUpdate()</code> 与 check-updates 对话框合并；登出调用 <code>logout()</code>。</li>
+                  <li><code>vite build</code> + <code>vite preview</code> 验证，Chrome 桌面与 Android 验收。</li>
+                </ol>
+              </div>
+              <div class="panel">
+                <h3>接入后仍缺的“全功能”</h3>
+                <ul>
+                  <li>运行时缓存：字典、菜单等公共只读数据无法离线（v1.1）。</li>
+                  <li>Push：工单、审批提醒无法推送（v2）。</li>
+                  <li>离线写入：表单无法离线提交（v3）。</li>
+                  <li>Periodic Sync、Badging：未规划。</li>
+                  <li>manifest 增强字段：无快捷方式、截图、分享目标。</li>
+                  <li>自动更新与主动检查更新：未提供。</li>
+                  <li>同源多应用子路径：v2 topology。</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section aria-labelledby="rec-title">
+            <h2 id="rec-title">建议</h2>
+            <ol>
+              <li><strong>先发布平台包，再把 vben 作为接入样本。</strong>定义最小发布形式（私有 registry 或 git tag）。</li>
+              <li><strong>（已完成，<a href="../adr/0020-client-update-check.md">ADR-0020</a>）为 client-runtime 规划“主动检查更新”。</strong>后台应用的刚需，不涉及身份与缓存命名空间，需先写规格。</li>
+              <li><strong>（已完成，<a href="../guides/migrate-from-vite-plugin-pwa.md">迁移指南</a>）接入文档补“从 vite-plugin-pwa 迁移”。</strong>覆盖关闭原插件、产物目录规则、hash 路由、合并已有版本检测。</li>
+              <li><strong>（已完成，见下节）用 vben 做一次真实浏览器验收</strong>，确认 hash 路由离线降级、大体积产物的预缓存安装耗时与成功率、两套更新提示同时出现时的交互。</li>
+              <li><strong>对外按路线图分期说明“全功能”。</strong>当前可承诺的是安全 PWA 基线；公共数据缓存在 v1.1，Push 在 v2。</li>
+            </ol>
+          </section>
+
+          <section aria-labelledby="trial-title">
+            <h2 id="trial-title">真实接入试验结果（2026-09-18）</h2>
+            <p>vben <code>df014ae</code> 的 <code>apps/web-antd</code> 接入平台 <code>main</code>（<code>25d927d</code>）构建出的 Vite 插件与 Vue 绑定，在本机 Chrome 153.0.8010.50 中验证。平台代码未做任何修改。</p>
+            <div class="table-wrap" tabindex="0" aria-label="试验结果表">
+              <table>
+                <thead><tr><th scope="col">场景</th><th scope="col">结果</th><th scope="col">要点</th></tr></thead>
+                <tbody>
+                  <tr><td>A. 按源码现状接入，断网启动</td><td><span class="tag no">失败</span></td><td>根目录的 <code>_app-config-*.js</code> 没有被预缓存，断网时页面一直停在启动动画</td></tr>
+                  <tr><td>B. 配置文件移到 <code>config/</code> 并加规则</td><td><span class="tag yes">通过</span></td><td>断网时首页与 hash 路由都能完整渲染登录页</td></tr>
+                  <tr><td>C. 更新</td><td><span class="tag yes">通过</span></td><td>手动与 60 秒自动检查都能发现新版本；确认后新 worker 接管，页面未被重新加载</td></tr>
+                  <tr><td>D. 私有数据</td><td><span class="tag yes">通过</span></td><td>缓存里只有静态资源；跨源接口与同源 <code>/api</code> 都没有被接管</td></tr>
+                  <tr><td>E. 可安装性</td><td><span class="tag part">发现缺口</span></td><td>Vite 插件不注入 <code>&lt;link rel="manifest"&gt;</code>，要由应用手写；补上后满足安装条件</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout" style="margin-top: 1rem">
+              <ul>
+                <li><strong>预缓存规模：</strong>215 个条目，约 3.77 MB；本机回环地址上首个 worker 激活用时约 1.3–3.4 秒。</li>
+                <li><strong>测试方法上的坑：</strong>带指纹的资源返回 <code>immutable</code>，浏览器 HTTP 缓存会掩盖没被预缓存的文件；离线验证前必须先清空 HTTP 缓存。</li>
+                <li><strong>仍未验证：</strong>真实安装流程、旧 vite-plugin-pwa 缓存残留、Chrome Android。</li>
+                <li><strong>待决定的平台输入：</strong>Vite 插件是否自动注入 manifest 链接（已实现，见 <a href="../adr/0022-vite-injects-manifest-link.md">ADR-0022</a>）；是否支持根目录下带哈希的单个文件。</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+
+        <footer>
+          可编辑源稿：<a href="./vben-admin-pwa-analysis.md">Markdown 版本</a>
+          · 分析对象：<a href="https://github.com/vbenjs/vue-vben-admin">vbenjs/vue-vben-admin</a>
+        </footer>
+      </article>
+    </main>
+  </body>
+</html>

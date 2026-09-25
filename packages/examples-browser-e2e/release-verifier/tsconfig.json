@@ -1,0 +1,13 @@
+{
+  // This directory runs under Node's built-in TypeScript type stripping, not tsc's own emit, so relative imports
+  // use explicit `.ts` extensions and the syntax is restricted to what erases cleanly (see the module spec's
+  // "组装与结论" runtime decision). Extends the package's Node-side config, not tsconfig.app.json, which has the
+  // DOM lib these files never need.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true
+  },
+  "include": ["./**/*.ts"]
+}

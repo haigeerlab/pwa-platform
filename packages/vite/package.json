@@ -1,0 +1,49 @@
+{
+  "name": "@pwa-platform/vite",
+  "version": "0.1.0-beta.1",
+  "description": "Vite build integration for PWA Platform.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "test": "vitest run",
+    "test:browser": "playwright test",
+    "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.browser.json && tsc --noEmit --project tsconfig.app.json"
+  },
+  "peerDependencies": {
+    "vite": "^8.0.0"
+  },
+  "dependencies": {
+    "@pwa-platform/build-verifier": "workspace:*",
+    "@pwa-platform/client-runtime": "workspace:*",
+    "@pwa-platform/contracts": "workspace:*",
+    "@pwa-platform/core": "workspace:*",
+    "@pwa-platform/engine-workbox": "workspace:*",
+    "@pwa-platform/sw-runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@pwa-platform/browser-test-harness": "workspace:*",
+    "@types/node": "24.13.4",
+    "vite": "8.3.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "next"
+  }
+}

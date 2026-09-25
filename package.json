@@ -1,0 +1,43 @@
+{
+  "name": "pwa-platform",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "scripts": {
+    "docs:dev": "vitepress dev website",
+    "docs:build": "vitepress build website",
+    "docs:preview": "vitepress preview website",
+    "build": "node scripts/run-workspace.mjs build",
+    "build:pages:react": "pnpm --filter @pwa-platform/examples-browser-e2e exec vite build --config apps/react/vite.config.ts --outDir ../../browser-build/react/v1/app --emptyOutDir",
+    "deploy:pages:react": "node scripts/deploy-pages-react.mjs",
+    "build:cloudflare:site": "node scripts/build-cloudflare-site.mjs",
+    "deploy:cloudflare:site": "node scripts/deploy-cloudflare-site.mjs",
+    "archive:cloudflare:site": "node scripts/archive-cloudflare-site.mjs",
+    "bundle:cloudflare:site": "node scripts/package-cloudflare-site.mjs",
+    "restore:cloudflare:site": "node scripts/restore-cloudflare-site.mjs",
+    "r2:cloudflare:bundle": "node scripts/cloudflare-r2-bundle.mjs",
+    "r2:cloudflare:index": "node scripts/cloudflare-r2-deployment-index.mjs",
+    "audit:cloudflare:retention": "node scripts/audit-cloudflare-retention.mjs",
+    "verify:cloudflare:release": "node scripts/verify-cloudflare-release.mjs",
+    "recover:cloudflare:site": "node scripts/recover-cloudflare-site.mjs",
+    "lint": "eslint .",
+    "test": "node scripts/run-workspace.mjs test",
+    "test:browser": "node scripts/run-workspace.mjs test:browser",
+    "typecheck": "node scripts/run-workspace.mjs typecheck",
+    "check:publish": "node scripts/check-package-distribution.mjs",
+    "gate:local": "node packages/release-tools/dist/bin.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.70.0",
+    "vitepress": "2.0.0-alpha.20",
+    "vitest": "^5.0.0",
+    "wrangler": "^4.134.0"
+  }
+}

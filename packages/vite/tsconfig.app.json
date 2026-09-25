@@ -1,0 +1,16 @@
+{
+  // The fixture application's own sources. They run in a browser, so they need the DOM lib and the virtual
+  // module's declaration — neither of which belongs in the Node-side configs.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": [
+    "browser-tests/app/src/**/*.ts",
+    "browser-tests/shared-origin-root-app/src/**/*.ts",
+    "browser-tests/shared-origin-child-app/src/**/*.ts",
+    "src/virtual.d.ts"
+  ]
+}

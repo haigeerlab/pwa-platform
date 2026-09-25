@@ -1,0 +1,30 @@
+packages:
+  - "packages/*"
+
+# Supply-chain rules (docs/operations/dependency-changes.md). Defaults are spelled out on purpose so
+# the rules do not depend on the pnpm version or on anyone's user-level configuration.
+minimumReleaseAge: 1440
+# An explicit minimumReleaseAge already turns strict mode on. It is spelled out so that removing the line
+# above cannot silently fall back to loose mode, which adds immature versions to the exclude list by itself.
+minimumReleaseAgeStrict: true
+minimumReleaseAgeIgnoreMissingTime: false
+blockExoticSubdeps: true
+trustPolicy: no-downgrade
+# Re-verify every lockfile entry against minimumReleaseAge and trustPolicy on each install.
+trustLockfile: false
+strictDepBuilds: true
+# ssr-adapters T1 (owner-approved 2026-09-17). semver@6.3.1 is the 2023-07-10 security backport on the 6.x line,
+# published by hand without provenance after 7.5.1 already carried it; the date-based comparison across release
+# lines reads that as a downgrade. Reached only through nuxt -> @nuxt/vite-builder -> @vitejs/plugin-vue-jsx ->
+# @babel/core@7.29.7 (semver ^6.3.1). No known advisory. Remove when @babel/core drops semver 6 (Babel 8), when
+# Nuxt stops pulling plugin-vue-jsx, or when the ssr-adapters Nuxt packages are removed.
+trustPolicyExclude:
+  - semver@6.3.1
+# esbuild's postinstall only validates and shortcuts the binary that the per-platform optional dependency
+# @esbuild/<platform> already provides. The Nuxt build and Wrangler's static Pages deploy both work without it.
+allowBuilds:
+  esbuild@0.28.1: false
+  esbuild@0.28.2: false
+  # Wrangler's Direct Upload only sends prebuilt static assets. workerd is needed for local Worker emulation,
+  # which this repository does not use for Pages smoke deployment.
+  workerd@1.20260917.1: false

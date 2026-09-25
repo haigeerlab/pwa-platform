@@ -1,0 +1,19 @@
+{
+  // The examples' own sources. They run in a browser, so they need the DOM lib and the virtual module's
+  // declaration — neither of which belongs in the Node-side config.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // Only affects .tsx files, so the Vue example (plain .ts) is unaffected. Vite's built-in esbuild performs the
+    // same automatic transform at build time, which is why no @vitejs/plugin-react is needed.
+    "jsx": "react-jsx"
+  },
+  // Both extensions. This list once held only `*.ts`, which left the React example's app.tsx and main.tsx outside
+  // the program: typecheck passed while checking none of the React code (found in the T9 review).
+  "include": [
+    "apps/*/src/**/*.ts",
+    "apps/*/src/**/*.tsx"
+  ]
+}

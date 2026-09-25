@@ -1,0 +1,11 @@
+{
+  "appId": "pwareactdrill",
+  "manifestId": "/app/",
+  "origin": "https://drill.pwa-platform-react-demo.pages.dev",
+  "scope": "/app/",
+  "serviceWorkerUrl": "/app/sw.js",
+  "manifestUrl": "/app/manifest.webmanifest",
+  "mountPath": "/app/",
+  "environment": "test",
+  "cacheNamespaceSeed": "r1"
+}

@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Least privilege: the workflow only reads the repository and never uses secrets.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # engines.node is >=22; both lines are LTS.
+        node: ["22", "24"]
+    steps:
+      - name: Check out repository
+        # Actions are pinned to full commit SHAs; the comment names the verified tag.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm and Node.js, install with frozen lockfile
+        # pnpm version comes from packageManager in package.json.
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@${{ matrix.node }}
+          cache: true
+          require-lockfile: true
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Build documentation site
+        run: pnpm docs:build
+
+      - name: Test
+        run: pnpm test
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Dependency audit (report only)
+        # Advisories are reported but do not fail the job; handling follows docs/operations/dependency-changes.md.
+        continue-on-error: true
+        run: pnpm audit --ignore-registry-errors
+
+  browser:
+    name: Browser (Google Chrome stable, Node 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm and Node.js, install with frozen lockfile
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+
+      - name: Show preinstalled Google Chrome version
+        # Browser tests use this runner-provided Chrome (channel "chrome"); the workflow never downloads browsers.
+        run: google-chrome --version
+
+      - name: Browser tests
+        run: pnpm test:browser

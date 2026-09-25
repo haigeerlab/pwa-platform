@@ -1,0 +1,42 @@
+{
+  "name": "@pwa-platform/react",
+  "version": "0.1.0-beta.1",
+  "description": "React 19 binding for PWA Platform.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit --project tsconfig.json"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0"
+  },
+  "dependencies": {
+    "@pwa-platform/client-runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@pwa-platform/vue": "workspace:*",
+    "@types/react": "19.3.0",
+    "react": "19.3.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "next"
+  }
+}

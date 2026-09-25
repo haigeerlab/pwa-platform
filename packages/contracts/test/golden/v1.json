@@ -1,0 +1,90 @@
+{
+  "identity": {
+    "appId": "shop",
+    "manifestId": "/app/",
+    "origin": "https://shop.example.com",
+    "scope": "/app/",
+    "serviceWorkerUrl": "/app/sw.js",
+    "manifestUrl": "/app/manifest.webmanifest",
+    "mountPath": "/app",
+    "environment": "production",
+    "cacheNamespaceSeed": "r1"
+  },
+  "install": {
+    "startUrl": "/app/",
+    "display": "standalone",
+    "name": "Shop",
+    "shortName": "Shop",
+    "themeColor": "#0f172a",
+    "backgroundColor": "#ffffff",
+    "icons": [
+      { "src": "/app/icons/192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+      { "src": "/app/icons/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+      { "src": "/app/icons/maskable.png", "sizes": "192x192 512x512", "type": "image/png", "purpose": "maskable" }
+    ]
+  },
+  "policy": {
+    "schemaVersion": 1,
+    "install": { "enabled": true },
+    "offlineFallback": { "enabled": true, "path": "/offline" },
+    "updateMode": "prompt",
+    "resources": [
+      { "pathPrefix": "/assets", "resourceClass": "asset", "cache": "cache-first" },
+      { "pathPrefix": "/", "resourceClass": "navigation-public-static", "cache": "network-first" },
+      { "pathPrefix": "/api/catalog", "resourceClass": "public-data", "cache": "stale-while-revalidate" },
+      { "pathPrefix": "/api/account", "resourceClass": "session-data", "cache": "none" },
+      { "pathPrefix": "/api/orders", "resourceClass": "mutation", "cache": "none" },
+      { "pathPrefix": "/live", "resourceClass": "stream", "cache": "none" }
+    ],
+    "extensions": { "acme.analytics": { "sampled": true, "rate": 0.1 } }
+  },
+  "policyWithoutOptionalFields": {
+    "schemaVersion": 1,
+    "install": { "enabled": false },
+    "offlineFallback": { "enabled": false },
+    "updateMode": "prompt",
+    "resources": []
+  },
+  "plan": {
+    "schemaVersion": 1,
+    "planVersion": 1,
+    "policyVersion": 1,
+    "identity": {
+      "appId": "shop",
+      "manifestId": "/app/",
+      "origin": "https://shop.example.com",
+      "scope": "/app/",
+      "serviceWorkerUrl": "/app/sw.js",
+      "manifestUrl": "/app/manifest.webmanifest",
+      "mountPath": "/app",
+      "environment": "production",
+      "cacheNamespaceSeed": "r1"
+    },
+    "install": null,
+    "hostBuildOutput": { "publicPath": "/app/" },
+    "topology": { "kind": "standalone-origin" },
+    "artifacts": { "serviceWorkerFile": "sw.js", "manifestFile": "manifest.webmanifest" },
+    "precache": [
+      { "url": "/app/index.html", "revision": "a1b2c3" },
+      { "url": "/app/assets/main.3f9a.js", "revision": null }
+    ],
+    "cacheNamespace": { "prefix": "pwa:shop:production:r1:" },
+    "requestBaselineDenials": ["non-get", "cross-origin", "no-store", "opaque-response", "redirect", "websocket", "unclassified"],
+    "pathRules": [
+      { "pathPrefix": "/app/api/account", "resourceClass": "session-data", "action": "deny", "source": "platform" },
+      { "pathPrefix": "/app/assets", "resourceClass": "asset", "action": "cache-first", "source": "policy" }
+    ],
+    "offlineFallback": { "enabled": false },
+    "updateMode": "prompt",
+    "diagnostics": [
+      { "code": "install.invalid-color", "severity": "warning", "path": "/themeColor", "message": "Color is not a hex color and cannot be verified." }
+    ]
+  },
+  "event": {
+    "version": 1,
+    "type": "offline-fallback",
+    "timestamp": "2026-09-15T08:00:00.000+08:00",
+    "appId": "shop",
+    "metadata": { "resourceClass": "navigation-public-dynamic", "cached": false, "attempts": 2, "reason": null }
+  }
+}
