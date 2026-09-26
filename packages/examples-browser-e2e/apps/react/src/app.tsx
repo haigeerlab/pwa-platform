@@ -4,12 +4,17 @@
 // The element ids match the Vue example exactly. That is the interface contract the two examples share, and it is
 // what lets the end-to-end suite run one set of assertions against both bindings.
 import { usePwa } from "@pwa-platform/react";
+import { PwaUpdateNotice } from "@pwa-platform/react/ui";
+import "@pwa-platform/react/update-notice.css";
 import { checkEntryRecovery } from "@pwa-platform/entry-resilience/client";
 import type { EntryRecoveryResult } from "@pwa-platform/entry-resilience";
 import { useEffect, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import { SHELL_URL } from "../../shared/identity.js";
+import { UPDATE_NOTICE_MESSAGES_EN } from "../../shared/update-notice-messages.js";
 import { PushPanel } from "./push-panel.js";
 import { APP_VERSION } from "./version.js";
+
+declare const __PWA_DRILL_NOTICE__: boolean;
 
 export type AppProps = {
   /** Application state of its own, owned by `Root` so that bumping it re-renders the provider too. */
@@ -221,7 +226,7 @@ export function App(props: AppProps): ReactElement {
           application: Update/Later while a version waits, an in-flight state while confirming, a Reload prompt
           once control has actually moved, and Retry if the takeover times out. The platform never reloads the
           page itself (V1 acceptance matrix). */}
-      {bannerMode !== null ? (
+      {!__PWA_DRILL_NOTICE__ && bannerMode !== null ? (
         <div id="update-banner" role="status" style={BANNER_STYLE}>
           {bannerMode === "prompt" ? (
             <>
@@ -259,6 +264,8 @@ export function App(props: AppProps): ReactElement {
           ) : null}
         </div>
       ) : null}
+
+      {__PWA_DRILL_NOTICE__ ? <PwaUpdateNotice messages={UPDATE_NOTICE_MESSAGES_EN} /> : null}
 
       {/* Shown only while the browser has offered installation and the app is not installed yet. */}
       {state.installEligible ? (

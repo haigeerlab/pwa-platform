@@ -211,6 +211,28 @@ test("normal status with the main entry reachable: nothing is shown", async ({ p
   expect(result).toEqual({ kind: "none", diagnostics: [] });
 });
 
+test("only the current origin fails: a reachable alternate stays available", async ({ page }) => {
+  await installAndControl(page, sites.primary);
+  const update = await entryUpdate(page, manifestPayload(sites.alternate.origin, { status: "normal", sequence: 1 }));
+  expect(update).toEqual({ accepted: true, sequence: 1 });
+  expect(await entryCheck(page)).toEqual({ kind: "none", diagnostics: [] });
+
+  await sites.close(sites.primary);
+  const result = await entryCheck(page, "/app/orders/42");
+  expect(result.kind).toBe("available");
+  if (result.kind !== "available") throw new Error("expected a reachable alternate");
+  expect(result.status).toBe("unconfirmed-outage");
+
+  await page.goto(sites.primary.url(result.recoveryPageUrl));
+  const button = page.locator("button");
+  await expect(button).toContainText(new URL(sites.alternate.origin).host);
+  expect(new URL(page.url()).origin).toBe(sites.primary.origin);
+
+  await Promise.all([page.waitForURL((url) => url.origin === sites.alternate.origin), button.click()]);
+  await expect(page.locator("#alternate")).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("pwa-return")).toBe("/app/orders/42");
+});
+
 test("device offline: no entry is shown, and the recovery page offers nothing to click", async ({ page, context }) => {
   await installAndControl(page, sites.primary);
 

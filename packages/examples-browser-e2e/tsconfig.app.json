@@ -4,7 +4,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": [],
+    "types": ["vite/client"],
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     // Only affects .tsx files, so the Vue example (plain .ts) is unaffected. Vite's built-in esbuild performs the
     // same automatic transform at build time, which is why no @vitejs/plugin-react is needed.

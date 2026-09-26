@@ -36,31 +36,31 @@
 | Nuxt 4 | `@pwa-platform/nuxt` | 暂未对外发布，仅在工作区内可用 |
 | 需要 Web 推送 | 再加 `@pwa-platform/push` | 暂未发布，见 [Push 接入说明](push-integration.md) |
 | 需要离线暂存写操作 | 再加 `@pwa-platform/offline-write` | 暂未发布，需要 v2 策略 |
-| 需要换域名后的入口灾备 | 再加 `@pwa-platform/entry-resilience` | 暂未发布 |
+| 需要换域名后的入口灾备 | 再加 `@pwa-platform/entry-resilience` | 已发布 0.1.0；业务须提前交入清单 |
 
 ### 安装命令
 
-9 个包已发布到 npm，当前版本是 **`0.1.0-beta.2`**（2026-09-26；首批 `0.1.0-beta.0` 于 2026-09-20 发布）。这是 **beta 版，不代表稳定生产版**。
+10 个包已发布到 npm，当前正式版本是 **`0.1.0`**（首批 beta 包于 2026-09-20 发布）。正式包不代表接入它的业务应用已通过生产验收。
 
 ```bash
 # Vue 项目
-pnpm add @pwa-platform/vue@0.1.0-beta.2
-pnpm add -D @pwa-platform/vite@0.1.0-beta.2
+pnpm add @pwa-platform/vue@0.1.0
+pnpm add -D @pwa-platform/vite@0.1.0
 
 # React 项目
-pnpm add @pwa-platform/react@0.1.0-beta.2
-pnpm add -D @pwa-platform/vite@0.1.0-beta.2
+pnpm add @pwa-platform/react@0.1.0
+pnpm add -D @pwa-platform/vite@0.1.0
 
 # 需要在配置文件里导入 PwaIdentity 等类型时，另加
-pnpm add -D @pwa-platform/contracts@0.1.0-beta.2
+pnpm add -D @pwa-platform/contracts@0.1.0
 ```
 
 注意事项：
 
-- **请写明版本号。** npm `next` 指向 beta.2，而 `latest` 仍指向 beta.1；不带版本号不会安装到本页所述的 Vite 5 与可选 UI 能力。两个标签都不是稳定生产版。
-- **peer 依赖需要项目自带**：已发布的 `0.1.0-beta.2` 要求 `vite` `^5.0.0 || ^8.0.0`；`vue` 为 `^3.4.0`、`react` 为 `^19.2.0`。React 绑定不要求 `react-dom`，渲染器由你的应用决定。
+- **建议固定版本号。** npm `latest` 指向 0.1.0；固定版本可使业务项目的升级可控。
+- **peer 依赖需要项目自带**：已发布的 `0.1.0` 要求 `vite` `^5.0.0 || ^8.0.0`；`vue` 为 `^3.4.0`、`react` 为 `^19.2.0`。React 绑定不要求 `react-dom`，渲染器由你的应用决定。
 - 其余内部包（core、sw-runtime 等）由包管理器自动解析，不需要手动安装。
-- 能装上不等于能上线：业务应用上线前仍要通过自己的生产发布检查。当前包的发布记录见 [beta.2 发布记录](../../tasks/package-distribution/release-2026-09-26-beta2.md)。
+- 能装上不等于能上线：业务应用上线前仍要通过自己的生产发布检查。正式版验收结果见[验证记录](../../tasks/stable-release-qualification/verification.md)。
 
 **不要直接依赖**以下包：`contracts`、`core`、`engine-workbox`、`sw-runtime`、`client-runtime`、`build-verifier`。它们会作为传递依赖自动安装。唯一的例外是：写配置文件时可以从 `@pwa-platform/contracts` 导入**类型**（`PwaIdentity`、`PwaPolicy`、`PwaInstallMetadata`）。
 
@@ -117,7 +117,7 @@ pnpm add -D @pwa-platform/contracts@0.1.0-beta.2
   | `logout()` | 用户登出时清理平台持有的敏感缓存 |
 
   Vue 里状态是 `Ref`（读 `pwa.state.value.updateWaiting`），React 里是快照值。两边的状态变化序列由测试保证一致。
-- **不做什么**：beta.2 的 Vue／React 默认更新提示需要业务显式挂载并导入 CSS；不挂载时业务可自行绘制。安装按钮仍由业务实现。平台不在更新后自动刷新页面，也不默认开启定时检查（需通过 `updateCheck` 显式开启）。
+- **不做什么**：0.1.0 的 Vue／React 默认更新提示需要业务显式挂载并导入 CSS；不挂载时业务可自行绘制。安装按钮仍由业务实现。平台不在更新后自动刷新页面，也不默认开启定时检查（需通过 `updateCheck` 显式开启）。
 - **入口**：
 
   ```ts
@@ -235,7 +235,7 @@ pnpm add -D @pwa-platform/contracts@0.1.0-beta.2
 2. **不能注入自己的 Service Worker 代码或 Workbox 配置。** 你只能通过策略（`PwaPolicy`）声明意图。
 3. **敏感请求默认不缓存。** 私有数据、写操作、流媒体和没有被策略归类的请求都不会进入缓存。想缓存某类请求，必须在策略里明确声明，而且不能突破安全基线。
 4. **界面归你。** 平台只提供状态和方法，不弹任何提示，也不替你刷新页面。
-5. **当前 beta 尚不作生产浏览器保证。** v1 计划按桌面端通道发布（[ADR-0030](../adr/0030-desktop-release-channel.md)），Chrome 桌面端当前版和上一个稳定版是必测目标。**Chrome Android 尚未通过完整发布矩阵、不做任何保证**：已有少量真机安装、离线和更新的单项证据，但 Android N/N-1、各框架原生安装与恢复演练没有闭合，不能由这些单项结果推断基础网页、安装或推送已受支持。平台无法阻止 Android 用户访问你的应用，所以如果你的用户主要在手机上，请把这一点告诉产品负责人，不要对外宣称支持 Android。平台首次按 `desktop+android` 通道发布之后，这一条才会改变。
+5. **正式包不代替业务应用的生产浏览器验收。** v1 计划按桌面端通道发布（[ADR-0030](../adr/0030-desktop-release-channel.md)），Chrome 桌面端当前版和上一个稳定版是必测目标。**Chrome Android 尚未通过完整发布矩阵、不做任何保证**：已有少量真机安装、离线和更新的单项证据，但 Android N/N-1、各框架原生安装与恢复演练没有闭合，不能由这些单项结果推断基础网页、安装或推送已受支持。平台无法阻止 Android 用户访问你的应用，所以如果你的用户主要在手机上，请把这一点告诉产品负责人，不要对外宣称支持 Android。平台首次按 `desktop+android` 通道发布之后，这一条才会改变。
 
 ## 5. 给平台维护者
 

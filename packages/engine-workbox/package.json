@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/engine-workbox",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0",
   "description": "Internal Workbox precache and runtime-cache engine for PWA Platform.",
   "license": "MIT",
   "type": "module",
@@ -42,6 +42,6 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public",
-    "tag": "next"
+    "tag": "latest"
   }
 }

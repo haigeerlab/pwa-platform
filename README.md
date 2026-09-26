@@ -4,7 +4,7 @@
 
 `pwa-platform` 是一个与框架无关的 PWA 基础设施，用于构建可安装、具备韧性的 Web 应用。它统一处理 Service Worker 生命周期、安全缓存、离线降级、更新体验和构建校验；每个接入应用仍自行拥有产品策略。
 
-仓库的模块级能力已完成交付；生产发布仍以各通道的验收门禁为准。Vite、Vue、React 接入所需的九个包已发布 npm `0.1.0-beta.2`（`next`；`latest` 仍为 beta.1）；Nuxt 与其他可选包仍是工作区私有包。各模块状态与未取得的证据见下文。
+仓库的模块级能力已完成交付；业务应用生产发布仍以各通道的验收门禁为准。十个公开包统一为 npm 正式版 `0.1.0`（`latest`），包括可选的入口恢复包。Nuxt、Push 与离线写入包仍是工作区私有包。各模块状态与未取得的证据见下文。
 
 ## 范围
 
@@ -66,12 +66,12 @@ PwaIdentity + PwaPolicy + 宿主构建产物
 **发布就绪**
 
 - `release-gate-contract`、`release-orchestration-protocol`、`browser-release-evidence`：发布门禁的覆盖判定、外部发布系统的协议，以及生产发布所需浏览器证据的记录模板。
-- `package-distribution`：九个公开包首批于 2026-09-20 以 `0.1.0-beta.0` 发布到 npm，随后发布 [beta.1](tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](tasks/package-distribution/release-2026-09-26-beta2.md)。beta.2 加入 Vite 5 兼容与可选更新提示 UI；完整变化见 [CHANGELOG](CHANGELOG.md)。
+- `package-distribution`：九个公开包首批于 2026-09-20 以 `0.1.0-beta.0` 发布到 npm，随后发布 [beta.1](tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](tasks/package-distribution/release-2026-09-26-beta2.md)；正式版 `0.1.0` 加入入口恢复包。完整变化见 [CHANGELOG](CHANGELOG.md)。
 - `cloudflare-test-deployment`：React 与 Vue 示例的 Cloudflare 测试部署。**尚未完成**：完整七日保留期的复核，以及在另一台机器上的恢复；业务项目接入发布门禁已由项目所有者决定延后（[待办](tasks/cloudflare-test-deployment/todo.md)）。
 
 **尚未取得或尚未放行**
 
-- **V1 正式发布尚未放行**：桌面发布演练中，机器发布门禁的保留检查仍在等待历史发布补齐（[演练清单](tasks/platform-governance/desktop-release-rehearsal.md)）。
+- **业务应用 V1 生产发布尚未放行**：桌面发布演练中，机器发布门禁的保留检查仍在等待历史发布补齐（[演练清单](tasks/platform-governance/desktop-release-rehearsal.md)）。这与本仓库 npm 库包的发布判定不同。
 - **Chrome Android N 与 N-1 的证据一直未取得**，各模块按"未执行"登记；桌面 N-1 只在部分模块中取得。
 - 真实 CI 运行、生产或类生产环境的验证，以各模块验证记录中"未取得的证据"一节为准。
 
@@ -96,10 +96,10 @@ React 示例的安卓 PWA 冒烟验收使用 Cloudflare Pages Direct Upload。�
 
 每个 PR 和 main 上的每次推送，CI 都会以冻结 lockfile 在 Node 22 与 24 上运行 lint、构建、测试和 typecheck，并在 runner 预装的 Google Chrome 稳定版上（Node 24）运行 `pnpm test:browser`（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）。依赖安装受仓库的供应链规则约束，见[依赖变更流程](docs/operations/dependency-changes.md)。
 
-## npm 包预发布
+## npm 正式包
 
-npm 组织 scope 为 `@pwa-platform`。已发布的九包是 `contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`vue` 与 `react`，当前统一版本 `0.1.0-beta.2`、MIT 许可证。`next` 指向 beta.2，`latest` 仍指向 beta.1；接入 Vite 5 或默认更新 UI 时必须显式固定 beta.2，**不代表稳定生产版**。业务应用通常安装一个框架绑定以及构建期的 `@pwa-platform/vite`，内部依赖由包管理器解析。详见[beta.2 发布记录](tasks/package-distribution/release-2026-09-26-beta2.md)。
+npm 组织 scope 为 `@pwa-platform`。已发布的十包是 `contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`entry-resilience`、`vue` 与 `react`，统一版本 `0.1.0`、MIT 许可证。`latest` 指向正式版；业务应用通常安装一个框架绑定以及构建期的 `@pwa-platform/vite`，内部依赖由包管理器解析。需要入口灾备时另装 `@pwa-platform/entry-resilience`。npm 包正式发布不代表某个业务应用已通过生产部署门禁。
 
-`browser-test-harness`、`examples-browser-e2e`、`nuxt`、`push`、`offline-write`、`entry-resilience` 继续保持私有，不在首批分发范围（`entry-resilience` 的接入方式与 2026-09-23 的信任模型变更见[入口恢复接入说明](docs/guides/entry-recovery-integration.md)）。详细的本地发布顺序、tarball 验收和后续生产门禁见 [npm 包发布流程](docs/operations/npm-package-release.md)。
+`browser-test-harness`、`examples-browser-e2e`、`nuxt`、`push`、`offline-write` 继续保持私有，不在正式版分发范围。入口恢复的接入方式与信任模型见[入口恢复接入说明](docs/guides/entry-recovery-integration.md)。详细的本地发布顺序、tarball 验收和后续生产门禁见 [npm 包发布流程](docs/operations/npm-package-release.md)。
 
 所有工作区依赖继续使用 `workspace:*`；`pnpm pack` / `pnpm publish` 会在产物中改写为同版本依赖。npm 包可安装不等于业务项目已通过生产部署验收。

@@ -81,7 +81,8 @@ test.describe("network-first (public-data)", () => {
 
     const online = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
     expect(online).toMatchObject({ ok: true, body: { item: "online-body" } });
-    expect(hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_CATALOG_ITEMS_URL)).toBe(true);
+    // NetworkFirst can return the network response before Workbox finishes the cache write under event.waitUntil.
+    await expect.poll(async () => hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_CATALOG_ITEMS_URL)).toBe(true);
 
     await context.setOffline(true);
     const offline = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));

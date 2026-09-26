@@ -19,6 +19,12 @@ for (const example of EXAMPLES) {
       expect(registration?.scope).toBe(fixtureServer.url(SHELL_URL));
     });
 
+    test("the published example's recovery page uses the same English locale as its offline page", async ({ page, fixtureServer }) => {
+      await page.goto(fixtureServer.url("/app/pwa-entry.html"));
+      await expect(page.locator("html")).toHaveAttribute("lang", "en");
+      await expect(page).toHaveTitle("Alternative entry");
+    });
+
     test("every site version exists and serves its own worker", async ({ page, fixtureServer }) => {
       // Without this, a global-setup that silently skipped a version would leave the smoke test green, and the
       // failure would surface later as a confusing update or recovery test. Each version must serve a worker, and

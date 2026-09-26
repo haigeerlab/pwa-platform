@@ -22,6 +22,7 @@ const config: UserConfig = defineConfig({
   // The identity's scope. The fixture server serves a version directory as the site root, so the app lives at /app/.
   base: SHELL_URL,
   envDir: false,
+  define: { __PWA_DRILL_NOTICE__: process.env.PWA_PLATFORM_CF_SLOT === "drill" },
   build: {
     // Unminified so a failing end-to-end test can be read, and so the injected precache manifest stays legible.
     minify: false,
@@ -36,7 +37,7 @@ const config: UserConfig = defineConfig({
       offlinePage: { locale: "en" },
     }),
     // spec/pwa-entry-resilience.md's "构建集成": runs alongside `pwa()`, never in place of it.
-    pwaEntryResilience({ identity, maxValidityDays: 30 }),
+    pwaEntryResilience({ identity, maxValidityDays: 30, locale: "en" }),
     cloudflarePlanCapture(),
   ],
 });

@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/core",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0",
   "description": "Compile PWA Platform policies into deployment plans.",
   "license": "MIT",
   "type": "module",
@@ -29,6 +29,6 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public",
-    "tag": "next"
+    "tag": "latest"
   }
 }

@@ -288,7 +288,8 @@ type PwaOfflinePageMessages = {
 - `<html lang>` 取所选 `locale`；`<meta charset="utf-8">` 与 viewport；`<title>` 取 `documentTitle`。
 - 应用名称：`install` 不为 `null` 时显示 `install.name`，否则不显示。
 - 标题、说明、重试按钮。所有文案与应用名称在构建期经 HTML 转义后写入静态 HTML；页面不依赖脚本就能显示完整内容。
-- 一段内联脚本：点击重试时 `location.reload()`；收到 `online` 事件时自动重新加载。脚本是固定文本，不含任何来自配置的值。
+- 一段固定内联脚本：点击重试时 `location.reload()`；`online` 事件触发连通性探测，探测成功后自动刷新。脚本不含任何来自配置的值。
+- 2026-09-26 真机补充：iPhone 主屏幕网页 App 在实体断网时仍可能报告 `navigator.onLine=true`，恢复联网后也没有派发 `online`、`focus` 或 `visibilitychange`。因此离线页可见时每 10 秒、以及收到 `online` 事件时，向当前控制它的同源公开 worker 脚本发送 `HEAD` 请求，`cache: no-store`，3 秒超时；仅 2xx 响应触发刷新。Android Wi-Fi 刚开启时 `online` 可能早于实际联网；该事件也必须先探测，不能直接刷新进入浏览器错误页。`HEAD` 按既有路由判定直接透传，不读取业务页面、私有接口或第三方地址，也不进入 PWA 缓存；没有 controller、页面不可见、请求失败或非 2xx 时保留离线页与手动重试按钮。脚本仍为固定文本，严格 CSP 的 `connect-src` 需允许本源请求。
 - 默认样式、宿主 `css`、内联脚本三段的 CSP 哈希都经 `this.info` 输出，不写入文件，与恢复页相同；接入说明写明严格 CSP 的站点需要把它们加进响应头。
 
 **class 与变量（公开契约，发布后改名即破坏性变更）**
