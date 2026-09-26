@@ -28,6 +28,25 @@
 
 根应用需要一份受版本控制的登记表，并从中生成子 scope 的排除规则：不能预缓存子应用文件、接管子路径请求或替子应用返回根离线页。**先发布根应用的排除规则，再发布子应用**；移除时反向执行。发布子应用前还要核对线上根应用的计划已经包含相应排除。
 
+### 本地根路径与线上移动子路径 {#root-mobile-paths}
+
+本地两个项目可以各自在开发服务器的 `/` 调试；`vite dev` 不注册平台 worker。生产构建须按**浏览器实际访问路径**分别配置，不能把按根路径构建的移动项目只靠代理挂到 `/m/`：
+
+| 配置 | 根应用 | `/m/` 子应用 |
+| --- | --- | --- |
+| Vite `base`、worker `scope` | `/` | `/m/` |
+| `IDENTITY.mountPath` | `/` | `/m` |
+| `IDENTITY.manifestId` | `/` | `/m/` |
+| `IDENTITY.serviceWorkerUrl` | `/sw.js` | `/m/sw.js` |
+| `IDENTITY.manifestUrl` | `/manifest.webmanifest` | `/m/manifest.webmanifest` |
+| `INSTALL.startUrl` | `/` | `/m/` |
+
+两份身份使用相同的生产 `origin`、`environment`，不同的 `appId`，并在各自构建中传入同一版本的 `topology: { kind: "shared-origin", registry }`。根应用的发布计划必须先排除 `/m/`，子应用发布时用线上根计划通过 `release-order` 检查。服务器把 `/m` 重定向到 `/m/`；上线前逐项核对资源、图标、manifest、worker 和离线页的最终 URL。若移动站不注册 PWA，根 worker 仍应排除这个独立站点的路径。
+
+### 一部 Android 与一部 iPhone 能验证什么
+
+两部手机都能用于真实设备测试：Android Chrome 和 iPhone Safari 各测在线、离线、安装入口、更新提示、明确刷新与恢复，并分别记录浏览器和系统版本。iPhone Safari 属于渐进兼容范围，不要求第二部 iPhone。当前 `desktop` 发布通道只承诺桌面 Chrome N/N-1；`desktop+android` 通道按现有浏览器矩阵还要求 Android Chrome N/N-1，且以两台关闭自动更新的实体设备保留旧版本。因此只有一部 Android 时仍可完成其当前版本的功能测试，但不能把未测的另一个 Chrome 版本记为通过，也不能据此宣称 Android 正式支持。
+
 ## 更新与旧资源保留
 
 新 worker 等待期间，旧页面仍可能请求旧版指纹资源。发布系统不能只保留最新一版：发布 R 时，R、R-1、R-2 的带指纹资源都必须可获取；更早版本的资源须从被下一次发布取代之日起保留满 7 天，以两项要求中更长的窗口为准。一次 Vite 构建不会替发布系统执行历史保留检查。
