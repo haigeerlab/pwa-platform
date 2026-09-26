@@ -15,6 +15,8 @@
 
 Next、TanStack Start 和同源多 PWA 目前没有本表的发布目标。它们不随 React/Vue 项目附带上传。
 
+**2026-09-26 当前 Vue 隔离槽：** `drill` 为正常 v2 部署 `5422f6b7-53a5-4962-b0be-a5b02630c1da`，私有 R2 发布包 SHA-256 为 `c7816e1645af60b2779eb46ec91a33543e8c84c2ace65a3bfc7a5fd447e45af5`；部署索引读回验证 23 个公开文件，本地归档保留 10 个指纹资源。此前缺失的 `394afa95-77d7-430a-8966-2e3e29868115` 归档已按历史回执与线上字节恢复，并补齐私有 R2 制品与索引。Android Chrome 与 iPhone Safari 的 v1→v2、显式刷新及真实断网结果见[更新提示验证记录](../../tasks/update-notice-ui/verification.md)。以下历史部署计数和 ID 清单保留其原记录日期；进行下一次发布时应以当前 Pages 部署及 R2 索引为准。
+
 ## 免费额度与云端写入
 
 表中的 React、Vue 与冒烟站是 **Pages 静态 Direct Upload** 项目，本地 `build:cloudflare:site` 和 `--mode=dry-run` 不上传。`deploy:cloudflare:site --mode=deploy`、`--mode=preview-candidate` 与 `deploy:pages:react` 才会创建 Pages 部署；候选预览也应计入发布次数规划。发布前检查账户仍处于 Pages Free，按 Cloudflare 公布的每月 500 次部署、单站 20,000 个文件、单文件 25 MiB 的限额核对余量与本次产物；不要为此升级方案。纯静态请求免费且不限次数，加入 Pages Functions 或 `_worker.js` 后须重新评估请求计费。[Pages 限额](https://developers.cloudflare.com/pages/platform/limits/)；[静态资源计费](https://developers.cloudflare.com/pages/functions/pricing/)。
