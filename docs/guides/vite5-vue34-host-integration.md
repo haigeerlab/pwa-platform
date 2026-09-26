@@ -2,7 +2,7 @@
 
 > 供内部业务仓库中的开发者或 AI 执行。本文按已提供的包清单、Vite 配置和锁文件提炼；它们不是业务源码或部署证据。示例使用占位域名和应用名，不包含内部配置原文。
 >
-> **版本边界：**当前源码已验证 Node 22.22.0、pnpm 8.6.5、Vite 5.0.0、Vue 3.4.0，并提供可选更新提示 UI；npm 上的 `0.1.0-beta.1` 仍只声明 Vite 8，也不含该 UI。业务仓库应等含 Vite 5 与 UI 的新版正式发布后固定同一批平台包版本。若只是预发布验证，可在明确选择本地 tarball 的前提下运行，不把它当成已发布支持。
+> **版本边界：**npm 已发布的 `0.1.0-beta.2` 支持 Vite 5 并提供可选更新提示 UI；独立消费项目以 Node 22.22.0、pnpm 8.6.5、Vite 5.0.0、Vue 3.4.0 完成安装、类型检查和构建。业务仓库应固定同一批 beta.2 平台包；`latest` 仍指向只支持 Vite 8 的 beta.1，不能省略版本号。本作业单不是私有业务仓库的验收结果。
 
 ## 1. 先在业务仓库核对
 
@@ -12,6 +12,7 @@
 
 ## 2. 移除旧 PWA，保留业务构建链
 
+- 固定安装同一批平台版本：`pnpm add @pwa-platform/vue@0.1.0-beta.2`，以及 `pnpm add -D @pwa-platform/vite@0.1.0-beta.2 @pwa-platform/contracts@0.1.0-beta.2`。`contracts` 仅在业务配置直接导入其类型时需要。
 - 从 `vite.config.ts` 移除 `VitePWA(...)` 和对应导入；从应用入口移除旧注册调用、旧更新提示与旧 manifest 链接。新旧插件不能同时生成同一 scope 的 worker/manifest。
 - 删除 `vite-plugin-pwa`；`src/sw.ts` 与 `workbox-*` 依赖仅在确认没有其他引用后清理。不要顺手改动 Vue Router、Vuex、业务 API、混淆或打包目录。
 - 保留 Vite 的 `base: "/"` 和 `build.assetsDir: "static/assets"`，除非实际部署路径另有证据。平台策略的预缓存资源规则要覆盖 `/static/assets`，不能沿用通常示例里的 `/assets`。
@@ -96,7 +97,7 @@ plugins: [
 
 ## 5. Vue 入口、更新提示与颜色
 
-在含 Vite 5 支持的新版包中，给项目已有的 `tsconfig` 增加 `@pwa-platform/vite/virtual` 类型引用；已有 `compilerOptions.types` 时追加，别覆盖其余类型。应用入口从 `virtual:pwa-config` 取得配置并安装 `createPwa({ config, updateCheck: { intervalMs: 1_800_000 } })`。长时间保持打开的单页应用建议显式开启 `updateCheck`；`vite dev` 只渲染普通页面，注册逻辑应限定在生产构建。
+在 beta.2 中，给项目已有的 `tsconfig` 增加 `@pwa-platform/vite/virtual` 类型引用；已有 `compilerOptions.types` 时追加，别覆盖其余类型。应用入口从 `virtual:pwa-config` 取得配置并安装 `createPwa({ config, updateCheck: { intervalMs: 1_800_000 } })`。长时间保持打开的单页应用建议显式开启 `updateCheck`；`vite dev` 只渲染普通页面，注册逻辑应限定在生产构建。
 
 ```vue
 <!-- 现有根布局内，仅展示 PWA 相关部分 -->

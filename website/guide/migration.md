@@ -1,6 +1,6 @@
 # 从 vite-plugin-pwa 迁移
 
-适用于已使用 <code>vite-plugin-pwa</code> 的 Vite + Vue 3 或 Vite + React 19 应用。迁移前先确认 Vite 8、框架版本和部署路径符合[兼容范围](/reference/compatibility)，并盘点线上已有的 worker URL、scope、manifest ID 和注册用户；已投产的 worker 切换需要单独的迁移与回滚方案。
+适用于已使用 <code>vite-plugin-pwa</code> 的 Vite + Vue 3 或 Vite + React 19 应用。迁移前先确认 Vite 5／8、框架版本和部署路径符合[兼容范围](/reference/compatibility)，并盘点线上已有的 worker URL、scope、manifest ID 和注册用户；已投产的 worker 切换需要单独的迁移与回滚方案。
 
 ## 配置对应关系
 
@@ -23,7 +23,7 @@
 5. 用[安装与更新](/guide/updates)替代原来的自动接管或自建版本轮询提示。
 6. 用生产构建及预览验证，再在目标环境完成[上线前检查](/start/checklist)和 worker 切换演练。
 
-当前插件只在生产构建中提供 <code>virtual:pwa-config</code> 和平台 worker；按接入示例替换页面入口后，<code>vite dev</code> 无法加载该虚拟模块。本地验证请使用 <code>vite build</code> + <code>vite preview</code>，离线和更新行为还需在目标部署环境复核。
+beta.2 的 <code>vite dev</code> 可加载 <code>virtual:pwa-config</code>，但不生成平台 worker；开发入口只应在生产构建注册。离线和更新请使用 <code>vite build</code> + <code>vite preview</code>，并在目标部署环境复核。
 
 ## 核对自定义构建产物
 

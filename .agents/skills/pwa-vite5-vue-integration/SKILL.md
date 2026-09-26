@@ -9,7 +9,7 @@ This skill is for an AI working **inside the business application's repository**
 
 ## Version gate
 
-- Read the installed `@pwa-platform/vite` and `@pwa-platform/vue` package metadata. Published `0.1.0-beta.1` does **not** declare Vite 5 support and does **not** contain `./ui` or `./update-notice.css`. Use a later, actually published, fixed version that contains both. A local tarball is only for an explicitly requested pre-release trial; report it as such.
+- Read the installed `@pwa-platform/vite` and `@pwa-platform/vue` package metadata. Use the fixed, published `0.1.0-beta.2` for both: it declares Vite 5 support and includes `./ui` and `./update-notice.css`. The npm `latest` tag still points to beta.1, so specify beta.2 explicitly. Do not mix platform package versions.
 - Keep the host's Vite 5, Vue 3.4, Vue Router and Vuex versions unless a concrete incompatibility is reproduced. Confirm the exact Node, pnpm, TypeScript, and `tsconfig` settings in the real repo. Do not infer compatibility from a peer range alone.
 
 ## Inspect before changing

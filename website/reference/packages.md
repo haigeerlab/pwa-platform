@@ -1,14 +1,14 @@
 # 包与公开入口
 
-业务应用先按[包选择](/start/choose)确定直接依赖。以下状态以当前仓库的 <code>0.1.0-beta.1</code> 分发记录为准。
+业务应用先按[包选择](/start/choose)确定直接依赖。以下状态以已发布的 <code>0.1.0-beta.2</code> 分发记录为准；npm `latest` 仍为 beta.1，请固定版本安装。
 
 ## 业务直接使用
 
 | 包 | 作用 | 状态 |
 | --- | --- | --- |
 | <code>@pwa-platform/vite</code> | Vite 构建插件，生成并校验平台产物 | npm beta |
-| <code>@pwa-platform/vue</code> | <code>createPwa()</code>、<code>usePwa()</code> | npm beta |
-| <code>@pwa-platform/react</code> | <code>PwaProvider</code>、<code>usePwa()</code> | npm beta |
+| <code>@pwa-platform/vue</code> | <code>createPwa()</code>、<code>usePwa()</code>；可选 <code>./ui</code> 与 <code>./update-notice.css</code> | npm beta |
+| <code>@pwa-platform/react</code> | <code>PwaProvider</code>、<code>usePwa()</code>；可选 <code>./ui</code> 与 <code>./update-notice.css</code> | npm beta |
 | <code>@pwa-platform/contracts</code> | 配置 TypeScript 类型；仅在直接导入类型时单独安装 | npm beta |
 
 <code>@pwa-platform/vite</code> 是构建配置中明确允许直接使用的底层入口。其余常规运行时能力应通过 Vue 或 React 绑定调用。

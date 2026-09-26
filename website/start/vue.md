@@ -1,11 +1,11 @@
 # Vite + Vue 接入
 
-适用范围：Vite 8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)安装，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
+适用范围：Vite 5／8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)固定安装 beta.2，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
 
-本页的页面入口依赖构建期提供的 <code>virtual:pwa-config</code>。当前插件不支持 <code>vite dev</code>；本地验证请运行生产构建，再用 <code>vite preview</code> 打开产物。
+beta.2 在 <code>vite dev</code> 和生产构建中都提供 <code>virtual:pwa-config</code>；开发服务不生成平台 worker。安装、离线与更新仍须运行生产构建，再用 <code>vite preview</code> 或目标 HTTPS 站点验收。
 示例要求浏览器提供 <code>navigator.serviceWorker</code>；若业务系统还要在不提供此 API 的环境运行，请先看[兼容范围中的降级说明](/reference/compatibility#不支持-service-worker-的环境)。
 
-示例使用 <code>App.vue</code> 单文件组件，需要在 Vite 中启用 <code>@vitejs/plugin-vue</code>。已有 Vite + Vue 项目保留原有 Vue 插件；若尚未安装，先运行 <code>pnpm add -D @vitejs/plugin-vue@6.0.9</code>。
+示例使用 <code>App.vue</code> 单文件组件，需要在 Vite 中启用 <code>@vitejs/plugin-vue</code>。已有 Vite + Vue 项目保留原有 Vue 插件；若尚未安装，应按所用 Vite 主版本选择兼容的插件版本并核对其 peer 依赖。
 
 ## 1. 声明身份与策略
 
@@ -53,15 +53,10 @@ app.use(createPwa({ config, updateCheck: { intervalMs: 1_800_000 } }));
 app.mount("#app");
 ~~~
 
-为虚拟模块增加类型声明：
+为虚拟模块增加类型：在已有 <code>tsconfig</code> 的 <code>compilerOptions.types</code> 中追加 <code>@pwa-platform/vite/virtual</code>，保留项目原有类型。
 
-~~~ts
-// src/virtual-pwa.d.ts
-declare module "virtual:pwa-config" {
-  import type { createPwa } from "@pwa-platform/vue";
-  const config: Parameters<typeof createPwa>[0]["config"];
-  export default config;
-}
+~~~json
+{ "compilerOptions": { "types": ["vite/client", "@pwa-platform/vite/virtual"] } }
 ~~~
 
 ## 4. 在应用启动后注册
@@ -76,6 +71,7 @@ import { onMounted, ref } from "vue";
 const pwa = usePwa();
 const installAttempted = ref(false);
 onMounted(() => {
+  if (!import.meta.env.PROD) return;
   void pwa.register().catch((error: unknown) => {
     console.error("PWA worker 注册失败", error);
   });

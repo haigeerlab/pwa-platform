@@ -4,7 +4,7 @@
 
 `pwa-platform` 是一个与框架无关的 PWA 基础设施，用于构建可安装、具备韧性的 Web 应用。它统一处理 Service Worker 生命周期、安全缓存、离线降级、更新体验和构建校验；每个接入应用仍自行拥有产品策略。
 
-仓库的模块级能力已完成交付；生产发布仍以各通道的验收门禁为准。首批 Vite、Vue、React 接入所需的九个包已发布 npm `0.1.0-beta.1`；Nuxt 与其他可选包仍是工作区私有包。各模块状态与未取得的证据见下文。
+仓库的模块级能力已完成交付；生产发布仍以各通道的验收门禁为准。Vite、Vue、React 接入所需的九个包已发布 npm `0.1.0-beta.2`（`next`；`latest` 仍为 beta.1）；Nuxt 与其他可选包仍是工作区私有包。各模块状态与未取得的证据见下文。
 
 ## 范围
 
@@ -36,7 +36,7 @@ PwaIdentity + PwaPolicy + 宿主构建产物
 - 发布后已在线刷新过的页面：只需确认更新，把离线版本切到新版；
 - 不做操作：该应用所有标签页关闭后，下次打开时新 worker 自动生效。
 
-平台只提供状态与方法，提示界面由应用实现。触发条件、内部步骤、推荐交互与 React／Vue 写法见[更新提示接入指南](docs/guides/update-prompt.md)。
+平台提供状态与方法，也提供显式挂载的 Vue／React 默认更新提示；应用仍可自行实现，并决定何时刷新。触发条件、内部步骤与接入写法见[安装与更新指南](website/guide/updates.md)。
 
 ## 开发状态
 
@@ -66,7 +66,7 @@ PwaIdentity + PwaPolicy + 宿主构建产物
 **发布就绪**
 
 - `release-gate-contract`、`release-orchestration-protocol`、`browser-release-evidence`：发布门禁的覆盖判定、外部发布系统的协议，以及生产发布所需浏览器证据的记录模板。
-- `package-distribution`：九个公开包首批于 2026-09-20 以 `0.1.0-beta.0` 发布到 npm，2026-09-24 发布 `0.1.0-beta.1`（[首批记录](tasks/package-distribution/release-2026-09-20.md)、[beta.1 记录](tasks/package-distribution/release-2026-09-24.md)、[CHANGELOG](CHANGELOG.md)）。beta.1 包含 `public-read-cache`、默认离线页、manifest 扩展字段与网络超时。
+- `package-distribution`：九个公开包首批于 2026-09-20 以 `0.1.0-beta.0` 发布到 npm，随后发布 [beta.1](tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](tasks/package-distribution/release-2026-09-26-beta2.md)。beta.2 加入 Vite 5 兼容与可选更新提示 UI；完整变化见 [CHANGELOG](CHANGELOG.md)。
 - `cloudflare-test-deployment`：React 与 Vue 示例的 Cloudflare 测试部署。**尚未完成**：完整七日保留期的复核，以及在另一台机器上的恢复；业务项目接入发布门禁已由项目所有者决定延后（[待办](tasks/cloudflare-test-deployment/todo.md)）。
 
 **尚未取得或尚未放行**
@@ -98,7 +98,7 @@ React 示例的安卓 PWA 冒烟验收使用 Cloudflare Pages Direct Upload。�
 
 ## npm 包预发布
 
-npm 组织 scope 为 `@pwa-platform`。首批已发布 `contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`vue` 与 `react`，当前统一版本 `0.1.0-beta.1`、MIT 许可证。`next` 与 `latest` 都指向此版（`latest` 由 npm 首次发布时自动设置，beta.1 发布后改指到此版），**不代表稳定生产版**。业务应用通常安装一个框架绑定以及构建期的 `@pwa-platform/vite`，内部依赖由包管理器解析。详见[发布记录](tasks/package-distribution/release-2026-09-20.md)。
+npm 组织 scope 为 `@pwa-platform`。已发布的九包是 `contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`vue` 与 `react`，当前统一版本 `0.1.0-beta.2`、MIT 许可证。`next` 指向 beta.2，`latest` 仍指向 beta.1；接入 Vite 5 或默认更新 UI 时必须显式固定 beta.2，**不代表稳定生产版**。业务应用通常安装一个框架绑定以及构建期的 `@pwa-platform/vite`，内部依赖由包管理器解析。详见[beta.2 发布记录](tasks/package-distribution/release-2026-09-26-beta2.md)。
 
 `browser-test-harness`、`examples-browser-e2e`、`nuxt`、`push`、`offline-write`、`entry-resilience` 继续保持私有，不在首批分发范围（`entry-resilience` 的接入方式与 2026-09-23 的信任模型变更见[入口恢复接入说明](docs/guides/entry-recovery-integration.md)）。详细的本地发布顺序、tarball 验收和后续生产门禁见 [npm 包发布流程](docs/operations/npm-package-release.md)。
 

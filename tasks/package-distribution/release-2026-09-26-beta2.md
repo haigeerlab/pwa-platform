@@ -1,12 +1,12 @@
-# npm 预发布候选记录：0.1.0-beta.2（2026-09-26）
+# npm 预发布记录：0.1.0-beta.2（2026-09-26）
 
-> 状态：**候选已验证，尚未发布**。本记录不代表 npm 已上传、文档站已部署或内部业务项目已完成接入。
+> 状态：**九包已发布到 npm 并完成 registry 内容核验**。文档站尚未部署，内部业务项目尚未完成接入验收。
 
 ## 范围与源码
 
-九个公开包统一为 `0.1.0-beta.2`：`contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`vue`、`react`。候选源码为分支 `codex/vite5-update-ui-beta2` 的固定提交 `7dd0b285e939a444517662b5521bf875c4644a0f`。本记录本身是后续文档提交，不改变该提交的包产物。拟继续使用 `next` 标签；上传前仍须核对 npm 账号、组织权限、2FA、`latest`／`next` 当前指向和版本占用情况。
+九个公开包统一为 `0.1.0-beta.2`：`contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`vue`、`react`。发布源码为分支 `codex/vite5-update-ui-beta2` 的固定提交 `7dd0b285e939a444517662b5521bf875c4644a0f`。本记录及后续说明是文档提交，不改变该提交的包产物。发布使用 `next` 标签；`latest` 仍为 beta.1。
 
-本候选加入 Vite 5 适配、Vue／React 可选更新提示 UI 及业务接入文档与 Skill。对比页将已发布的 beta.1 与工作区新增能力分开描述，未把候选版写成已发布。更新提示默认不会自动刷新：用户确认后先接管新 worker，再显式刷新；位置、文案、背景／文字色值和刷新处理可由业务配置。Vue／React 在候选验证中还修复了恢复 worker 瞬时等待状态使提示误显示“更新已完成”的问题。
+本版加入 Vite 5 适配、Vue／React 可选更新提示 UI 及业务接入文档与 Skill。对比页在发布前将 beta.1 与候选能力分开描述，发布后已更新为 beta.2 实际状态。更新提示默认不会自动刷新：用户确认后先接管新 worker，再显式刷新；位置、文案、背景／文字色值和刷新处理可由业务配置。Vue／React 在候选验证中还修复了恢复 worker 瞬时等待状态使提示误显示“更新已完成”的问题。
 
 ## 固定提交的干净检出门禁
 
@@ -54,6 +54,14 @@
 
 ## Registry 状态与后续发布边界
 
-2026-09-26 04:54 UTC 只读查询公共 npm registry：九包均能查到 beta.1，均未查到 `0.1.0-beta.2`。真正上传前必须重新查版本与 dist-tag；本次未核对发布账号／2FA，也未执行 `pnpm publish`、变更 dist-tag 或部署文档站。
+2026-09-26 04:54 UTC 和实际上传前，公共 npm registry 的九包均有 beta.1、没有 beta.2。用户确认 npm 账号已登录并指示继续发布后，核对 `npm whoami` 为 `jianian`，`latest`／`next` 均在 beta.1；从上述固定提交的干净检出执行 `pnpm publish --access public --tag next --no-git-checks`。npm 在首包与 `client-runtime` 各要求一次浏览器授权，由账号所有者完成。九包均返回发布成功，按依赖顺序逐包查询 registry；新版本文档曾短暂 404，等待传播后全部可查。
 
-按[package-distribution 规格](../../spec/package-distribution.md)，“实际上传另行执行”，只有所有者明确指示后才按[预发布流程](../../docs/operations/npm-package-release.md)上传九包并逐包核对 registry 内容。私有业务项目尚未提供仓库；它的 PurgeCSS、混淆、真实 scope／origin、旧 PWA 清理和浏览器安装／更新验收需在其仓库依接入 Skill 完成。未经真实域名响应头、离线与恢复演练及发布通道矩阵证据，不宣称该业务项目生产就绪。
+Registry `time` 记录的首末发布时间为 **2026-09-26T05:11:52.834Z–05:20:31.120Z**。九包 `next` 均指向 `0.1.0-beta.2`，`latest` 均仍指向 `0.1.0-beta.1`；没有修改 `latest`。需要 Vite 5 或可选 UI 的业务必须明确安装 beta.2。
+
+逐包 `npm pack @pwa-platform/<包>@0.1.0-beta.2` 从 registry 下载。`contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`vue`、`react` 的压缩包与上文干净检出候选逐字节相同；`client-runtime`、`vite` 的压缩包字节不同，但解包后只在 `package.json` 字段顺序上有差异，解析后的 JSON 完全相同，其余文件逐字节相同。两包 registry tarball SHA-256 分别是 `75cc6c55926d06cf9c2d1d4692fa09a27fb0b70d4a2dc5df82a65996fb8df90f` 与 `5d823e4b000dd987818cad5d800b6e8fb9eda10b133a38f6ab4c661165a8706a`；其余七包哈希见候选表。
+
+额外从 npm 直接安装 `@pwa-platform/vite@0.1.0-beta.2`、`@pwa-platform/vue@0.1.0-beta.2` 到独立 Node v22.22.0／pnpm 8.6.5／Vite 5.0.0／Vue 3.4.0 项目，类型检查、生产构建和 `vite dev` 冒烟均通过；构建产生 manifest、主 worker、恢复 worker 和更新提示 CSS。
+
+已发布 tarball 内的三个包 README 仍写着“beta.1 尚不含 Vite 5／UI”；这是候选打包时漏改的**文档错误**，不影响包内容和上述运行验证，同一 npm 版本不可覆盖。仓库 README 已更正，后续版本的 tarball 需带入更正。文档站本次只更新源码、尚未按[独立发布流程](../../docs/operations/documentation-site.md)部署。
+
+私有业务项目尚未提供仓库；它的 PurgeCSS、混淆、真实 scope／origin、旧 PWA 清理和浏览器安装／更新验收需在其仓库依接入 Skill 完成。未经真实域名响应头、离线与恢复演练及发布通道矩阵证据，不宣称该业务项目生产就绪。

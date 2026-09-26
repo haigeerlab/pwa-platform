@@ -1,8 +1,8 @@
 # Vite + React 接入
 
-适用范围：Vite 8、React 19.2 及以上且低于 20，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)安装，再完成以下步骤。示例使用域名根路径；子路径部署需要同步调整所有路径。
+适用范围：Vite 5／8、React 19.2 及以上且低于 20，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)固定安装 beta.2，再完成以下步骤。示例使用域名根路径；子路径部署需要同步调整所有路径。
 
-本页的页面入口依赖构建期提供的 <code>virtual:pwa-config</code>。当前插件不支持 <code>vite dev</code>；本地验证请运行生产构建，再用 <code>vite preview</code> 打开产物。
+beta.2 在 <code>vite dev</code> 和生产构建中都提供 <code>virtual:pwa-config</code>；开发服务不生成平台 worker。安装、离线与更新仍须运行生产构建，再用 <code>vite preview</code> 或目标 HTTPS 站点验收。
 示例要求浏览器提供 <code>navigator.serviceWorker</code>；若业务系统还要在不提供此 API 的环境运行，请先看[兼容范围中的降级说明](/reference/compatibility#不支持-service-worker-的环境)。
 
 ## 1. 声明身份与策略
@@ -48,6 +48,7 @@ import App from "./App";
 function Registrar() {
   const { register } = usePwa();
   useEffect(() => {
+    if (!import.meta.env.PROD) return;
     void register().catch((error: unknown) => {
       console.error("PWA worker 注册失败", error);
     });
@@ -65,13 +66,10 @@ createRoot(document.getElementById("root")!).render(
 );
 ~~~
 
-~~~ts
-// src/virtual-pwa.d.ts
-declare module "virtual:pwa-config" {
-  import type { PwaProviderProps } from "@pwa-platform/react";
-  const config: PwaProviderProps["config"];
-  export default config;
-}
+在已有 <code>tsconfig</code> 的 <code>compilerOptions.types</code> 中追加 <code>@pwa-platform/vite/virtual</code>，保留项目原有类型：
+
+~~~json
+{ "compilerOptions": { "types": ["vite/client", "@pwa-platform/vite/virtual"] } }
 ~~~
 
 在组件中读取状态并提供用户操作：

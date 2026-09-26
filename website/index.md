@@ -30,10 +30,10 @@ features:
     linkText: 阅读能力对照
 ---
 
-PWA Platform 是供多个业务应用复用的 PWA 基础设施。业务团队声明应用身份和缓存意图，平台生成 manifest、Service Worker 与离线页，并在构建时核对产物。安装按钮、更新提示和业务数据仍由应用负责。
+PWA Platform 是供多个业务应用复用的 PWA 基础设施。业务团队声明应用身份和缓存意图，平台生成 manifest、Service Worker 与离线页，并在构建时核对产物。安装按钮和业务数据仍由应用负责；更新提示可选用平台默认 UI 或自行实现。
 
 ::: warning 当前发布状态
-Vite、Vue 和 React 接入包已发布为 **0.1.0-beta.1**。这是预发布版本，不代表业务应用已通过生产发布验收。Nuxt 和可选功能包仍是工作区私有包。
+Vite、Vue 和 React 接入包已发布为 **0.1.0-beta.2**（`next`）；npm `latest` 仍指向 beta.1，安装时请写明版本。这是预发布版本，不代表业务应用已通过生产发布验收。Nuxt 和可选功能包仍是工作区私有包。
 :::
 
 ## PWA 解决哪些问题
@@ -45,11 +45,11 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 | 安装与入口 | 用户从桌面再次打开应用，看到正确的名称和图标 | 已发布 beta 包生成稳定 ID 的 manifest 并提供安装状态；按钮和引导界面由应用实现 |
 | 离线与弱网 | 已访问的应用壳断网仍可打开，部分公共内容可用 | 已发布 beta 包提供预缓存、离线回退和显式公共读取缓存；不会让所有页面、API 自动离线 |
 | 数据安全 | 避免把账号数据、写请求或流媒体留在缓存里 | 已发布 beta 包默认拒绝这些请求和未分类请求；业务必须正确识别真正公开的响应 |
-| 更新与故障恢复 | 新版本由用户确认后接管，坏 worker 有恢复路径 | 已发布 beta 包提供等待更新、主动检查和恢复 worker；应用负责提示与刷新，发布方负责恢复部署 |
+| 更新与故障恢复 | 新版本由用户确认后接管，坏 worker 有恢复路径 | 已发布 beta 包提供等待更新、主动检查、可选更新提示 UI 和恢复 worker；应用控制刷新，发布方负责恢复部署 |
 | 通知与后台任务 | 重新触达用户，断网后继续处理任务 | Web Push 与受限离线写队列仅在工作区；后台同步和周期同步尚未提供 |
 | 操作系统集成 | 通过分享、文件或启动入口进入应用 | manifest 快捷方式已在 beta 包；Share Target、File Handlers、Launch Handler 尚未提供 |
 | 工程交付 | 构建时发现产物问题，发布前验证真实行为 | 已发布 beta 包做构建校验；浏览器测试工具属于仓库内部，业务站点仍需自行验收 |
-| 本地开发 | 在开发服务器中调试页面与 PWA 行为 | 当前接入示例导入构建期虚拟模块，`vite dev` 无法启动；需用 `vite build` + `vite preview` 做本地验收 |
+| 本地开发 | 在开发服务器中调试页面与 PWA 行为 | beta.2 的 `vite dev` 可解析页面配置；worker 与预缓存仍只在生产构建生成，离线验收使用 `vite build` + `vite preview` |
 
 ## 功能对照：现在能用到哪一层
 
@@ -63,7 +63,8 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 | 弱网超时回退 | beta 有条件 | [显式设置 `networkTimeoutSeconds`](/guide/offline)；用于导航与 `network-first` 公共读取，不给所有业务请求设超时 |
 | 按规则缓存公共 GET | beta 有条件 | [PwaPolicy v3 显式开启](/guide/public-read-cache)；仅同源公共响应，业务负责证明内容与身份无关 |
 | 私有、写入、流媒体和未分类请求默认拒绝缓存 | beta 可用 | [安全基线](/architecture/security)不可被允许规则覆盖；业务仍须正确分类和设置响应头 |
-| 用户确认后更新 | beta 可用 | [等待更新与接管](/guide/updates)由平台提供；提示、保护未保存内容和刷新由应用负责 |
+| 用户确认后更新 | beta 可用 | [等待更新与接管](/guide/updates)由平台提供；可选默认提示 UI，未保存内容保护与刷新时机由应用决定 |
+| 可选更新提示 UI | beta 可用 | Vue／React 需显式挂载组件和导入 CSS；位置、文案与按钮色值可配置，不自动刷新 |
 | 主动／定时检查更新 | beta 有条件 | `checkForUpdate()` 与可选 `updateCheck` 是页面侧检查；不是 Periodic Sync API |
 | 恢复 worker、清理本应用缓存 | beta 有条件 | [构建产物与恢复流程](/operations/release)已提供；发布方必须部署并演练，不能把它当作通用开关 |
 | 同源根应用与子路径应用隔离 | beta 有条件 | [共享 origin 部署](/operations/release)需要登记表、根应用排除规则和发布顺序校验 |
@@ -75,14 +76,14 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 | Background Sync／Periodic Sync | 未提供 | 没有 worker 后台自动重放或周期同步；页面定时检查更新不能替代它们 |
 | Share Target／文件关联／Launch Handler | 未提供 | 当前 manifest 契约和生成器没有这些入口；需要时由业务另行评估 |
 | Service Worker 自动化测试工具 | 工作区实现 | 仓库有浏览器测试工具与示例；它们不是外部业务项目的公开接入包 |
-| `vite dev` 开发服务器 | 未提供 | 插件仅在构建时提供 `virtual:pwa-config`；照接入示例导入后，开发服务器无法解析该模块，需评估对现有开发流程的影响 |
+| `vite dev` 开发服务器 | beta 可用 | `virtual:pwa-config` 在开发时可解析页面配置；开发环境不生成或注册平台 worker |
 
 ## 接入自己的系统
 
-1. 按技术栈[选择公开包并安装固定 beta 版本](/start/choose)。当前公开接入面是 Vite 8 + Vue 3 或 React 19；Nuxt 包尚未公开。
+1. 按技术栈[选择公开包并安装固定 beta.2 版本](/start/choose)。当前公开接入面是 Vite 5／8 + Vue 3 或 React 19；Nuxt 包尚未公开。
 2. 从[完整配置示例](/guide/configuration)填写身份、安装信息和缓存策略。先确定真实 HTTPS 地址、部署路径、图标文件和哪些响应确实公开；生产身份首次注册后不能随普通发版更改。
-3. 按[Vue](/start/vue)或[React](/start/react)指南挂载构建插件、读取 `virtual:pwa-config`，并在应用启动后主动调用 `register()`。平台提供状态和方法，业务界面自行展示安装与更新操作。
-4. 做生产构建，用 `vite preview` 或目标 HTTPS 站点检查结果。照示例接入后 `vite dev` 无法解析构建期虚拟模块；上线前逐项完成[浏览器与发布检查](/start/checklist)。
+3. 按[Vue](/start/vue)或[React](/start/react)指南挂载构建插件、读取 `virtual:pwa-config`，并在应用启动后主动调用 `register()`。安装按钮由业务实现；更新提示可选用[默认 UI](/guide/updates#可选的默认更新提示-beta-2)或自行展示。
+4. 做生产构建，用 `vite preview` 或目标 HTTPS 站点检查离线与更新结果。`vite dev` 可用于普通页面开发，但不会生成平台 worker；上线前逐项完成[浏览器与发布检查](/start/checklist)。
 
 ## 从这里开始
 

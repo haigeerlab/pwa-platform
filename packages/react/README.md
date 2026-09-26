@@ -4,7 +4,7 @@ React 19 binding for PWA Platform.
 
 Use `PwaProvider` and `usePwa()` in a React 19 application. Also configure `@pwa-platform/vite` for build artifacts.
 
-The current source adds an opt-in update notice (not present in the published `0.1.0-beta.1`):
+The published `0.1.0-beta.2` package includes an opt-in update notice:
 
 ```tsx
 import { PwaUpdateNotice } from "@pwa-platform/react/ui";

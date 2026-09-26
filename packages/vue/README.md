@@ -4,7 +4,7 @@ Vue 3 binding for PWA Platform.
 
 Use `createPwa()` and `usePwa()` in a Vue 3 application. Also configure `@pwa-platform/vite` for build artifacts.
 
-The current source adds an opt-in update notice (not present in the published `0.1.0-beta.1`):
+The published `0.1.0-beta.2` package includes an opt-in update notice:
 
 ```ts
 import { PwaUpdateNotice } from "@pwa-platform/vue/ui";
