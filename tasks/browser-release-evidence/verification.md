@@ -40,5 +40,6 @@
 - 首次页面读取时尚未受 worker 控制；在线重载后页面仍显示 `v2`、`registered`，且 `navigator.serviceWorker.controller.scriptURL` 为该站 `/app/sw.js`。
 - 通过 Chrome DevTools Protocol 仅对该公开页面模拟断网并重载：页面完成加载、仍显示 `v2`、`registered`，继续由 `/app/sw.js` 控制。检查结束已恢复在线网络模拟设置，并再次确认页面与 worker 状态。此项是**浏览器模拟断网**，不是关闭手机网络后的实测。
 - 同一设备的公开 React 测试站 <https://pwa-platform-react-demo.pages.dev/app/> 在线重载后显示 `v2`、`registered`，由该站 `/app/sw.js` 控制；注册 scope 为 `/app/`，活动 worker 为 `activated`，缓存键为 `pwa:pwareactdemo:test:r1:precache`。仅对该页面模拟断网并重载后，页面仍显示 `v2`、`registered` 且保持受控；随后已恢复在线网络模拟设置并确认页面状态。
+- React 站点的 Chrome 菜单显示“安装并创建快捷方式”；进入后，对话框显示“创建快捷方式”和“添加”。未点击“添加”，没有取得已安装、独立窗口或 `display-mode` 证据，不能把该菜单观察算作原生安装通过。
 - 本次未执行原生安装、独立窗口、真实断网、未知路径离线兜底、新版本部署后的更新提示／用户确认、恢复 worker 演练或 iPhone Safari。两个公开站均为较早的 `v2` 示例，不能据此证明 npm `0.1.0-beta.2` 更新 UI 的真机效果。
 - 仅一台 Android，未形成经 Google Play 轮换保留的 Chrome Android N/N-1 两机证据；本记录不填作 `desktop+android` 通道通过，也不改变上文历史模块验收结论。
