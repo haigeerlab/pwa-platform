@@ -142,3 +142,5 @@ function reloadAfterBusinessCheck(): void {
 ## 给 AI 执行者
 
 把本仓库的 [`.agents/skills/pwa-vite5-vue-integration`](../../.agents/skills/pwa-vite5-vue-integration/SKILL.md) 整个目录复制到宿主仓库同名路径，即可供 AI 执行者使用。Skill 会先读取实际宿主源码再实施；本手册的占位值和片段都不能直接视为最终配置。
+
+详细构建日志、业务域名、文件路径和测试截图留在宿主仓库；向公开平台仓库反馈时，只提交脱敏后的结果和能独立复现的平台问题。

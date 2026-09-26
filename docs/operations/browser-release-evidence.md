@@ -30,6 +30,12 @@ PWA_HARNESS_CHROME_PATH="/path/to/chrome" pnpm test:browser --filter <package>
 
 为保留 Android N-1，维护两台关闭自动更新的实体设备。每个新的稳定版发布后，只将原 N-1 设备经 Google Play 更新为新 N；另一台继续保留为 N-1。不得使用 APK 侧载替代此流程。记录设备型号即可，不记录设备序列号、账户或其他个人数据。
 
+## 只有一部 Android 和一部 iPhone 时
+
+仍可做**探索性真机冒烟**，并记录发现的问题。使用一部 Android 上已安装的 Chrome、以及一部 iPhone 上的 Safari，分别检查首次在线打开、再次打开、断网后访问、安装到主屏幕、长时间停留后的更新提示、用户确认接管与明确刷新；在有两个同源页面的浏览器中再检查多页面状态。长期停留场景需让业务启用主动检查更新；测试更新需要一个受控的新版部署，不能用反复刷新同一版本代替。iPhone 按 [Apple 的 Safari 主屏幕添加流程](https://support.apple.com/guide/iphone/open-as-web-app-iphea86e5236/27/ios/27)操作，Android 使用 [Chrome 实际提供的安装入口](https://developer.chrome.com/blog/how_chrome_helps_users_install_the_apps_they_value/)；不要假设两端会显示相同的安装提示。
+
+每次记录站点与部署版本、设备型号、系统和浏览器完整版本、测试日期、执行者、每步实际观察及失败证据；截图应先去掉账户和业务数据。模拟器与桌面移动视口可用于排查布局，但不能替代上述真机观察。Android 只有一部时无法同时保留 Chrome N 与 N-1，所以这份冒烟记录**不能**填成 `desktop+android` 通道的 N/N-1 通过证据。若本次只按 `desktop` 通道发布，Android 行继续填“不在本通道”；iPhone 结果按[浏览器矩阵](../architecture/browser-matrix.md)记为渐进兼容观察，不把它当作通道门禁通过。
+
 ## 发布证据记录模板
 
 以下模板是一份待填写的生产记录，不是已取得的通过证据。

@@ -1,6 +1,6 @@
 # npm 预发布记录：0.1.0-beta.2（2026-09-26）
 
-> 状态：**九包已发布到 npm 并完成 registry 内容核验**。文档站尚未部署，真实宿主尚未完成接入验收。
+> 状态：**九包已发布到 npm 并完成 registry 内容核验**。文档站已部署，真实宿主尚未完成接入验收。
 
 ## 范围与源码
 
@@ -62,6 +62,6 @@ Registry `time` 记录的首末发布时间为 **2026-09-26T05:11:52.834Z–05:2
 
 额外从 npm 直接安装 `@pwa-platform/vite@0.1.0-beta.2`、`@pwa-platform/vue@0.1.0-beta.2` 到独立 Node v22.22.0／pnpm 8.6.5／Vite 5.0.0／Vue 3.4.0 项目，类型检查、生产构建和 `vite dev` 冒烟均通过；构建产生 manifest、主 worker、恢复 worker 和更新提示 CSS。
 
-已发布 tarball 内的三个包 README 仍写着“beta.1 尚不含 Vite 5／UI”；这是候选打包时漏改的**文档错误**，不影响包内容和上述运行验证，同一 npm 版本不可覆盖。仓库 README 已更正，后续版本的 tarball 需带入更正。文档站本次只更新源码、尚未按[独立发布流程](../../docs/operations/documentation-site.md)部署。
+已发布 tarball 内的三个包 README 仍写着“beta.1 尚不含 Vite 5／UI”；这是候选打包时漏改的**文档错误**，不影响包内容和上述运行验证，同一 npm 版本不可覆盖。仓库 README 已更正，后续版本的 tarball 需带入更正。文档站已从 [PR #11](https://github.com/haigeerlab/pwa-platform/pull/11) 的合并提交通过独立流程部署，版本分支为 `docs/v2026.09.26-2`，生产部署 ID 为 `51302de8-3013-41c2-b471-c645526f32bb`；详细核验见[文档站发布记录](../../docs/operations/documentation-site.md)。
 
 真实宿主的 CSS 清理、混淆、scope／origin、旧 PWA 清理和浏览器安装／更新验收需在其仓库依接入 Skill 完成。未经真实域名响应头、离线与恢复演练及发布通道矩阵证据，不宣称该宿主生产就绪。
