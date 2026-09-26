@@ -101,7 +101,14 @@ describe("package manifest", () => {
       "./vite": { types: "./dist/vite/index.d.ts", import: "./dist/vite/index.js" },
       "./client": { types: "./dist/client/index.d.ts", import: "./dist/client/index.js" },
     });
-    expect(manifest["private"]).toBe(true);
+    expect(manifest["private"]).not.toBe(true);
+    expect(manifest["version"]).toBe("0.1.0");
+    expect(manifest["license"]).toBe("MIT");
+    expect(manifest["publishConfig"]).toEqual({
+      registry: "https://registry.npmjs.org/",
+      access: "public",
+      tag: "latest",
+    });
     expect(manifest["files"]).toEqual(["dist"]);
     // Pure functions only: nothing in this package runs on import.
     expect(manifest["sideEffects"]).toBe(false);
@@ -109,7 +116,7 @@ describe("package manifest", () => {
 
   it("depends only on the sibling vite-adapter package, as a workspace dependency", () => {
     expect(manifest["dependencies"]).toEqual({ "@pwa-platform/vite": "workspace:*" });
-    expect(manifest["peerDependencies"]).toEqual({ vite: "^8.0.0" });
+    expect(manifest["peerDependencies"]).toEqual({ vite: "^5.0.0 || ^8.0.0" });
   });
 });
 

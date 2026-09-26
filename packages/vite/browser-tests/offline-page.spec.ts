@@ -85,13 +85,50 @@ test.describe("default offline page, built-in zh-CN copy", () => {
     // A value on this document's window: a reload builds a new window, so its absence proves the reload happened.
     await page.evaluate(() => Reflect.set(window, "__beforeReconnect", true));
 
-    // No click: only the `online` event can trigger this reload.
+    // No click: the online event probes connectivity immediately instead of waiting for the interval.
     const reloaded = page.waitForEvent("load");
     await context.setOffline(false);
     await reloaded;
 
     expect(await page.evaluate(() => Reflect.get(window, "__beforeReconnect") === true)).toBe(false);
     // Online, the same address now reaches the network instead of the offline fallback.
+    await expect(page.locator(".pwa-offline__heading")).toHaveCount(0);
+  });
+
+  test("a network probe recovers when the browser omits the online event", async ({ page, context, fixtureServer }) => {
+    test.setTimeout(45_000);
+    await page.addInitScript(() => {
+      window.addEventListener("online", (event) => event.stopImmediatePropagation(), { capture: true });
+    });
+    await installAndControl(page, fixtureServer, SHELL_URL, WORKER_URL);
+    await context.setOffline(true);
+    await page.goto(fixtureServer.url(NEVER_VISITED));
+    await expect(page.locator(".pwa-offline__heading")).toBeVisible();
+    await page.evaluate(() => Reflect.set(window, "__beforeReconnect", true));
+
+    const reloaded = page.waitForEvent("load", { timeout: 25_000 });
+    await context.setOffline(false);
+    await reloaded;
+
+    expect(await page.evaluate(() => Reflect.get(window, "__beforeReconnect") === true)).toBe(false);
+    await expect(page.locator(".pwa-offline__heading")).toHaveCount(0);
+  });
+
+  test("an early online event waits for real connectivity before reloading", async ({ page, context, fixtureServer }) => {
+    test.setTimeout(45_000);
+    await installAndControl(page, fixtureServer, SHELL_URL, WORKER_URL);
+    await context.setOffline(true);
+    await page.goto(fixtureServer.url(NEVER_VISITED));
+    await expect(page.locator(".pwa-offline__heading")).toBeVisible();
+
+    const prematureLoad = page.waitForEvent("load", { timeout: 2_500 });
+    await page.evaluate(() => window.dispatchEvent(new Event("online")));
+    await expect(prematureLoad).rejects.toThrow();
+    await expect(page.locator(".pwa-offline__heading")).toBeVisible();
+
+    const connectedLoad = page.waitForEvent("load", { timeout: 25_000 });
+    await context.setOffline(false);
+    await connectedLoad;
     await expect(page.locator(".pwa-offline__heading")).toHaveCount(0);
   });
 });

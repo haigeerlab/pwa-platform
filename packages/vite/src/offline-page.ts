@@ -33,15 +33,32 @@ export const OFFLINE_PAGE_MESSAGES: Readonly<Record<PwaOfflinePageLocale, PwaOff
 };
 
 /**
- * Fixed inline script text — spec: "点击重试时 location.reload()；收到 online 事件时自动重新加载". Never contains
+ * Fixed inline script text — spec/vite-adapter.md's iPhone reconnection amendment. HEAD requests to the public
+ * controlling worker bypass the platform's GET-only cache router and avoid probing a business route. Never contains
  * any value from plugin configuration; tests assert the same text is emitted for every config so this stays true.
  */
 export const OFFLINE_PAGE_SCRIPT = `document.querySelector(".pwa-offline__retry").addEventListener("click", () => {
   location.reload();
 });
-window.addEventListener("online", () => {
-  location.reload();
-});
+let probeInFlight = false;
+const probeConnection = () => {
+  const workerUrl = navigator.serviceWorker?.controller?.scriptURL;
+  if (probeInFlight || document.visibilityState !== "visible" || !workerUrl) return;
+  probeInFlight = true;
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), 3_000);
+  fetch(workerUrl, { method: "HEAD", cache: "no-store", signal: abort.signal })
+    .then((response) => {
+      if (response.ok) location.reload();
+    })
+    .catch(() => {})
+    .finally(() => {
+      clearTimeout(timeout);
+      probeInFlight = false;
+    });
+};
+window.addEventListener("online", probeConnection);
+setInterval(probeConnection, 10_000);
 `;
 
 const HTML_ESCAPES: Readonly<Record<string, string>> = {

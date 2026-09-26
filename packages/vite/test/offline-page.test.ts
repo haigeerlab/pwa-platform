@@ -1,5 +1,5 @@
 // spec/vite-adapter.md's "修订：平台默认离线页（2026-09-24，已评审通过）" -> "测试策略增量": built-in copy, message
-// overrides, HTML escaping, appName presence, the fixed retry/online-reload script, and CSP hashes. Option
+// overrides, HTML escaping, appName presence, the fixed retry/reconnection script, and CSP hashes. Option
 // validation (diagnostic codes) is OP3's scope, not this module's — every input here is already "validated".
 import { describe, expect, it } from "vitest";
 import {
@@ -153,10 +153,12 @@ describe("renderOfflinePage: lang attribute", () => {
 });
 
 describe("OFFLINE_PAGE_SCRIPT", () => {
-  it("clicks .pwa-offline__retry to reload, and reloads on the online event", () => {
+  it("keeps manual reload and probes after online events without reading business data", () => {
     expect(OFFLINE_PAGE_SCRIPT).toContain('.pwa-offline__retry');
     expect(OFFLINE_PAGE_SCRIPT).toContain("location.reload()");
-    expect(OFFLINE_PAGE_SCRIPT).toContain('addEventListener("online"');
+    expect(OFFLINE_PAGE_SCRIPT).toContain('addEventListener("online", probeConnection)');
+    expect(OFFLINE_PAGE_SCRIPT).toContain("navigator.serviceWorker?.controller?.scriptURL");
+    expect(OFFLINE_PAGE_SCRIPT).toContain('method: "HEAD", cache: "no-store"');
   });
 
   it("is identical across renders regardless of locale, messages, css or appName", async () => {

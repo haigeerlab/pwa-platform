@@ -1,9 +1,9 @@
-import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { matchesLivePagesFile } from "./live-pages-file.mjs";
 
 const projects = { react: "pwa-platform-react-demo", vue: "pwa-platform-vue-demo" };
 const bucket = "pwa-platform-release-artifacts";
@@ -75,11 +75,11 @@ if (slot === "main") {
   throw new Error("Deployment ID is not the latest Pages preview deployment");
 }
 let onlineFiles = 0;
+const liveSettleDeadline = Date.now() + (mode === "record" ? 30_000 : 0);
 for (const [path, expected] of Object.entries(receipt.files)) {
   if (path === "_headers") continue;
   if (mode !== "history") {
-    const response = await globalThis.fetch(`${origin}/${path}`);
-    if (response.status !== 200 || sha256(Buffer.from(await response.arrayBuffer())) !== expected) {
+    if (!await matchesLivePagesFile(`${origin}/${path}`, expected, { deadline: liveSettleDeadline })) {
       throw new Error(`Live Pages file differs from release bundle: ${path}`);
     }
   }

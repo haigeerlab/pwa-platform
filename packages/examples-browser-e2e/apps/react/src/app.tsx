@@ -10,6 +10,7 @@ import { checkEntryRecovery } from "@pwa-platform/entry-resilience/client";
 import type { EntryRecoveryResult } from "@pwa-platform/entry-resilience";
 import { useEffect, useRef, useState, type CSSProperties, type ReactElement } from "react";
 import { SHELL_URL } from "../../shared/identity.js";
+import { UPDATE_NOTICE_MESSAGES_EN } from "../../shared/update-notice-messages.js";
 import { PushPanel } from "./push-panel.js";
 import { APP_VERSION } from "./version.js";
 
@@ -264,7 +265,7 @@ export function App(props: AppProps): ReactElement {
         </div>
       ) : null}
 
-      {__PWA_DRILL_NOTICE__ ? <PwaUpdateNotice /> : null}
+      {__PWA_DRILL_NOTICE__ ? <PwaUpdateNotice messages={UPDATE_NOTICE_MESSAGES_EN} /> : null}
 
       {/* Shown only while the browser has offered installation and the app is not installed yet. */}
       {state.installEligible ? (

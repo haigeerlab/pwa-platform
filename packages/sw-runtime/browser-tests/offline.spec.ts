@@ -66,7 +66,8 @@ test.describe("offline startup", () => {
 
     await page.goto(fixtureServer.url(DENIED_URL));
     await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
-    expect(fixtureServer.requests()).toEqual([]);
+    // Chrome may check the worker script independently of this navigation. The denied URL itself must never reach the server offline.
+    expect(fixtureServer.requests().filter(({ path }) => path === DENIED_URL)).toEqual([]);
   });
 
   test("never answers an unclassified navigation", async ({ page, context, fixtureServer }) => {
