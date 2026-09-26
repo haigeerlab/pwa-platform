@@ -10,6 +10,8 @@
 
 同日第四次集中发布：版本分支 `docs/v2026.09.25-4`，提交 `f5f59129c9288c87c3a518320d030dee20d382e5`，来自 [PR #8](https://github.com/haigeerlab/pwa-platform/pull/8)；[最终 main 手动 CI](https://github.com/haigeerlab/pwa-platform/actions/runs/36149953841) 三项通过，生产部署 ID `55edcdcc-bbbc-4813-a9b6-0ce30e0c11fa`。发布前账户为 Free，四个 Pages 项目累计 93 条部署记录；本次产物有 86 个文件、共 1,915,567 字节，最大文件 141,024 字节，未含 Functions 或 `_worker.js`。一次手动上传后，首页能力矩阵、包选择、Vue／React 接入、登出后重注册说明、首次浏览器核验、搜索、代码复制和 404 已在线核验；生产与预览自动部署仍关闭，未写入 R2。
 
+2026-09-26 文档发布：版本分支 `docs/v2026.09.26-2` 固定于 [PR #11](https://github.com/haigeerlab/pwa-platform/pull/11) 合并提交 `228dfd52eca3142430039eb35e7cdf2fce070f82`；[最终 main 手动 CI](https://github.com/haigeerlab/pwa-platform/actions/runs/36226024074) 的 Node 22、Node 24 和 Chrome 三项通过。发布前四个 Pages 项目本月合计 95 条部署记录；产物有 89 个文件、共 2,059,621 字节，最大文件 141,024 字节，没有 Functions 或 `_worker.js`。推送版本分支和切换生产分支均未产生部署，随后一次手动上传生成生产部署 ID `51302de8-3013-41c2-b471-c645526f32bb`。线上核验了首页、工具能力对照、更新提示文档、根路径与 `/m/` 子路径配置、搜索、代码复制及 404；部署 SHA 与版本分支一致，生产、预览和总自动部署开关仍关闭。账户 Free 套餐上次于 2026-09-25 核实；本次 Pages API Token 没有读取账户套餐的权限，未重新确认套餐状态。
+
 ## 本地检查
 
 在仓库根目录运行：
