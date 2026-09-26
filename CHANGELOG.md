@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-beta.2 (2026-09-26)
+
+Third npm prerelease of the same nine packages. This release supports existing Vite 5 + Vue 3.4 applications while retaining the Vite 8 path. Upgrade all `@pwa-platform/*` packages together. The published `next` tag points to this version; `latest` remains on beta.1.
+
+- **Vite 5 compatibility:** `@pwa-platform/vite` declares `vite: ^5.0.0 || ^8.0.0` and `node: >=22.0.0`. Independent Vite 5 and Vite 8 consumers cover development, production builds and generated PWA assets. The virtual configuration module is available during `vite dev`; its type-only export is available at `@pwa-platform/vite/virtual`.
+- **Optional update notice:** Vue and React expose `PwaUpdateNotice` from their separate `./ui` entry and styles from `./update-notice.css`. Mounting it opts in to a small update card with four positions, message overrides and configurable colors, including the primary button background and text. The host can supply a `reloadPage` callback; the component does not refresh automatically. Brief waiting signals are ignored to avoid a false completion prompt during worker recovery. Existing root imports do not load the UI or its CSS.
+- **Build output check:** the Vite adapter rechecks the recorded bundle entries in `writeBundle` and fails if a later plugin changed their bytes after the PWA plan was compiled.
+
+This release does not include the private Nuxt, Push, offline-write or entry-resilience packages. It does not establish production readiness for an adopting application; that application's deployment, cache headers, update flow and recovery still need validation.
+
 ## 0.1.0-beta.1 (2026-09-24)
 
 Second npm prerelease of the same nine `@pwa-platform/*` packages. Everything below is opt-in: an application that changes nothing gets the same policy, compiled plan and injected worker configuration as with `0.1.0-beta.0`, although the platform worker and page scripts themselves change with the platform code.

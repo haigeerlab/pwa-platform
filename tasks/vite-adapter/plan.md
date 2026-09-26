@@ -496,12 +496,76 @@ T2 按"bundle 是产物的唯一真相源"实现，T3 实施时实测发现这�
 
 | Concern | Planned artifact | Rationale |
 |---|---|---|
-| decisions | `docs/adr/0036-platform-default-offline-page.md` | 平台提供默认离线页及其与 ADR-0013 的关系。 |
+| decisions | `docs/adr/` | ADR-0036 记录默认离线页，ADR-0015 补充 Vite 5 的开发服务与构建兼容决定。 |
 | vite-adapter | `spec/vite-adapter.md`、`docs/adr/0015-vite-plugin-build-pipeline.md`、`docs/adr/0022-vite-injects-manifest-link.md` | 规格修订、验证记录与离线页接入说明。 |
 
 ## Documentation outcome
 
 | Concern | Outcome | Evidence | Rationale |
 |---|---|---|---|
-| decisions | delivered | `docs/adr/0036-platform-default-offline-page.md` | ADR-0036 已接受：平台提供可选的默认离线页，及其与 ADR-0013 的关系。 |
-| vite-adapter | delivered | `tasks/vite-adapter/verification.md` | 规格修订、验证记录与[默认离线页接入说明](../../docs/guides/offline-page.md)已交付。 |
+| decisions | delivered | `docs/adr/0036-platform-default-offline-page.md`、`docs/adr/0015-vite-plugin-build-pipeline.md` | ADR-0036 记录默认离线页；ADR-0015 已补充 Vite 5、开发服务和构建产物核验的决定。 |
+| vite-adapter | delivered | `tasks/vite-adapter/verification.md` | 两次规格修订、验证记录与接入说明已交付；真实业务项目验收仍按本计划的开放任务执行。 |
+
+## 修订计划：Vite 5 业务接入兼容（2026-09-26，已确认）
+
+依据：[Vite 5 兼容规格](../../spec/vite-adapter.md#修订vite-5-业务接入兼容2026-09-26)。项目所有者已在 2026-09-26 确认继续。本计划只处理构建适配、开发服务可启动与兼容证据；默认更新 UI、竞品对照和 npm 发布各自按其模块决策推进。任务清单在 [todo.md](todo.md)。
+
+### 已确认事实与设计选择
+
+- 首个应用锁定 Vite 5.0.0、Vue 3.4.0、TypeScript 5.2.2、pnpm 8.6.5；现有 `VitePWA` 使用 `injectManifest`、自定义 `src/sw.ts` 和 `autoUpdate`，但从未上线。宿主将移除旧 PWA 链路，因此没有线上旧 worker 的迁移任务。
+- 平台 worker 继续由宿主的 Vite `build()` 打包。兼容性由真实 Vite 5/8 消费方构建和浏览器行为证明，不能通过扩大 peer 字符串推断。
+- peer 只列通过门禁的主版本。先保留 Vite 8 基线，再增加 Vite 5；是否加入 6/7 由另一次验证决定。
+- 开发服务仅交付可解析的页面侧虚拟配置，应用在开发模式不调用 `register()`；不在 `vite dev` 生成或注册真实 worker，也不拿开发服务验收离线能力。
+
+### V5-1：建立版本与产物基线
+
+**范围：** 固定 Vite 5.0.0、一个后期 5.x、Vite 8.3.0 的独立消费方夹具与可复现命令；记录 `Plugin` 类型、`generateBundle`/`writeBundle`、public 文件、HTML 注入、worker 子构建、资源文件名在三个版本的实际结果。加入 Vue 3.4.0、TypeScript 5.2.2 和 pnpm 8.6.5 的安装与类型检查夹具。
+
+**验收：** 每个版本有安装、配置类型检查、构建与产物清单的明确通过或失败记录；失败指向具体差异，而非 peer 校验报错。构建结果与产物哈希可重复。
+
+**验证：** 隔离消费方的冻结安装、`tsc --noEmit`、`vite build`；记录命令及版本到本模块 `verification.md`。依赖：规格草案评审。预计 3–5 个测试/夹具文件。
+
+### V5-2：修正构建兼容并扩大 peer 范围
+
+**范围：** 只修 V5-1 证实的不兼容点，覆盖插件类型、Vite 钩子、子构建输出、指纹识别与 public 文件采集；通过后修改 `packages/vite/package.json` 的 peer 和对应导入边界测试。保留 Vite 8 原有配置与产物语义。
+
+**验收：** Vite 5.0.0、后期 5.x 和 8.3.0 均完成构建，计划与最终文件内容一致；manifest、worker、恢复 worker 与预缓存校验通过；Vite 8 既有测试不断言放宽。未验证版本不写入 peer。
+
+**验证：** `pnpm --filter @pwa-platform/vite test`、`typecheck`、`build`，三版本消费方构建与逐文件内容核对。依赖：V5-1。每个发现的问题单独作为小改动处理，单次不超过约 5 个文件。
+
+### V5-3：恢复业务日常开发入口
+
+**范围：** 让插件在 `vite dev` 解析 `virtual:pwa-config`，不执行构建期 PWA 产物流程；Vue 接入示例在开发模式只渲染普通页面，不调用 `register()`。生产构建与更新行为保持原契约。
+
+**验收：** Vite 5 和 8 的 `vite dev` 均能加载导入虚拟模块的业务入口；开发模式无平台 worker 注册；生产模式仍需显式注册且已有浏览器场景通过。
+
+**验证：** 两版本启动开发服务并在浏览器查看页面与 Service Worker 注册列表；运行 vite 包单元与浏览器回归。依赖：V5-2。预计 3–5 个源码/测试文件，文档另列。
+
+### V5-4：复刻典型业务构建链并做浏览器验收
+
+**范围：** 用隔离夹具覆盖 Vue/JSX、CSS 清理、压缩、自定义资源目录和 `enforce: "post"` 的混淆。移除旧 `VitePWA` 后加入平台插件；真实宿主仍须在自身源码与部署环境中验收，不以最小夹具替代。
+
+**验收：** 没有重复 manifest/worker；最终 JS/CSS 字节与计划哈希一致；混淆插件固定 `seed` 后相同源码连续构建两次逐文件 SHA-256 一致，改动源码后 worker 会变化；离线应用壳可加载；更新先等待，用户确认后接管，页面刷新由宿主控制。PurgeCSS 对接入页面样式的影响有实际核对记录；默认更新 UI 的专项样式验收归后续 UI 修订。
+
+**验证：** 真实 Chrome 的注册、离线、更新与多标签页场景；复核构建产物清单。依赖：V5-2、V5-3；真实项目验收还依赖业务源码与部署信息。夹具和项目验收分别记录。
+
+### 检查点与交付
+
+- V5-2 后：三版本的生产构建与类型检查通过，Vite 8 回归通过。
+- V5-4 后：真实浏览器场景通过，记录尚未取得的业务部署证据；同步 `docs/adr/0015-vite-plugin-build-pipeline.md`、兼容页、Vue 接入指南和迁移指南中的版本/开发行为。发布候选另走 `package-distribution` 门禁，未发布前网站继续写实际 npm 支持范围。
+- 交付前在干净目录跑冻结安装、lint、build、test、typecheck、相关 browser tests；审阅 lockfile 及包 tarball，写入 `verification.md`。
+
+### V5-5：业务仓库可执行的文档与 AI Skill
+
+**范围：** 交付通用化的 Vite 5 + Vue 3.4 接入手册和可复制的项目级 Skill，不复制内部附件原文。业务执行者先核对真实源码、旧 worker 与注册入口，再按实际部署身份配置平台、检查构建插件顺序和可重复性，并用真实浏览器验收。平台侧不进入内部仓库，也不代业务宣称完成接入。
+
+**验收：** 手册给出安装版本门槛、核心配置示例、UI 色值配置、PurgeCSS 与混淆检查、生产部署证据；Skill 有明确触发范围、读取路径和停止条件，复制到业务仓库后可由 AI 使用。文档不得把未发布源码写成当前 npm 能力。
+
+### 风险与待补事实
+
+| 风险或未知 | 处理 |
+|---|---|
+| Vite 5 的 Rollup 与 Vite 8 的 Rolldown 产物、钩子时序不同 | V5-1 先测事实，V5-2 只按失败点修复，两个主版本持续回归 |
+| 混淆插件在平台采集后改写 chunk，或随机改写已赋指纹名的 JS | V5-4 比较最终字节与计划；插件放在 `pwa()` 前，并固定 `options.seed`、重复构建比对。仍不稳定时暂停该业务接入，不放宽指纹和发布保留规则 |
+| 平台开发服务出现真实 worker 注册 | V5-3 用浏览器注册列表作反证；开发入口不调用 `register()` |
+| 业务项目 Node 22 小版本、源码与线上响应头未提供 | 版本声明先限于已验证环境；真实项目与部署验收单独记录，不宣称已通过 |

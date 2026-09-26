@@ -16,10 +16,13 @@ const ENTRY = "index.ts";
 describe("package manifest", () => {
   const manifest = JSON.parse(read("../package.json")) as Record<string, unknown>;
 
-  it("publishes exactly one entry, built from src/index.ts", () => {
+  it("keeps the root entry separate from the opt-in UI and stylesheet", () => {
     expect(manifest["exports"]).toEqual({
       ".": { types: "./dist/index.d.ts", import: "./dist/index.js" },
+      "./ui": { types: "./dist/ui.d.ts", import: "./dist/ui.js" },
+      "./update-notice.css": "./dist/update-notice.css",
     });
+    expect(manifest["sideEffects"]).toEqual(["./dist/update-notice.css"]);
     expect(manifest["private"]).toBeUndefined();
     expect(manifest["files"]).toEqual(["dist"]);
   });
@@ -119,6 +122,7 @@ describe("dependency boundaries", () => {
     const reach = closure(ENTRY, files);
     expect(reach.packages.filter((line) => !isAllowed(line.slice(line.indexOf(": ") + 2)))).toEqual([]);
     expect(reach.unresolved).toEqual([]);
+    expect(reach.files).not.toContain("ui.ts");
   });
 
   it("never reaches the vue package", () => {
@@ -162,9 +166,10 @@ describe("dependency boundaries", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("never reloads, navigates, polls or touches cache storage", () => {
+  it("keeps facade code free of reloads and every source free of navigation, polling and cache storage", () => {
     const offenders = [...files].flatMap(([file, text]) =>
-      FORBIDDEN_CALLS.filter(([pattern]) => pattern.test(text)).map(([, label]) => `${file}: ${label}`),
+      FORBIDDEN_CALLS.filter(([pattern, label]) => !(file === "ui.ts" && label === "a page reload") && pattern.test(text))
+        .map(([, label]) => `${file}: ${label}`),
     );
     expect(offenders).toEqual([]);
   });

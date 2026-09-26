@@ -17,3 +17,20 @@
 - **发布顺序**：发布子应用前，用线上根应用的计划运行发布校验的 `release-order` 检查（见[运维手册](../operations/release-and-incident-runbook.md#同源拓扑的发布与移除顺序)）。
 - **当前只支持 Vite 接入**：`@pwa-platform/nuxt` 仍只支持独立源。
 - **子 worker 安装之前**，断网访问子路径得到浏览器的网络错误，而不是任何离线页。
+
+### 本地开发与线上子路径
+
+本地 `vite dev` 可以分别在两个端口的 `/` 打开桌面与移动项目；开发服务不注册平台 worker。线上若在同一个 HTTPS origin 的 `/` 提供桌面应用、在 `/m/` 提供移动应用，两份**生产构建**必须分别使用最终挂载路径，且共用一份登记表：
+
+| 配置 | 桌面根应用 | 移动子应用 |
+|---|---|---|
+| Vite `base` | `/` | `/m/` |
+| 身份 `scope` | `/` | `/m/` |
+| 身份 `mountPath` | `/` | `/m` |
+| 身份 `manifestId` | `/` | `/m/` |
+| worker / manifest URL | `/sw.js`、`/manifest.webmanifest` | `/m/sw.js`、`/m/manifest.webmanifest` |
+| 安装 `startUrl` | `/` | `/m/` |
+
+两份身份还需使用不同的 `appId`；`origin` 和 `environment` 须一致。根、子应用各自以 `topology: { kind: "shared-origin", registry }` 构建，其中登记表包含这两个身份的 `appId`、`scope`、worker URL、manifest ID 和 manifest URL。可运行的根／子配置见 [Vite 同源浏览器夹具](../../packages/vite/browser-tests/shared-origin-fixture-site.ts)；业务应用需替换为自己的域名与安装信息。
+
+本地开发地址与线上地址可以不同；要核对的是**发布产物**中的脚本、图标、manifest、worker、预缓存 URL 和服务器路由是否都落在上述线上路径。不要把以 `base: "/"` 构建的移动产物仅靠反向代理挂到 `/m/`：资源 URL、安装入口与 worker scope 不会因此自动改对。服务器应把 `/m` 重定向到 `/m/`，并避免让路径规范化绕过 scope 边界。根 worker 的计划必须先包含对 `/m/` 的排除，再部署子应用，并用线上根计划完成 `release-order` 校验。

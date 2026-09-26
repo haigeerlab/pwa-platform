@@ -8,6 +8,10 @@
 
 2026-09-18 后续修订：插件在构建时向每个 HTML 入口注入 manifest 链接，已有的正确链接原样保留，见 [ADR-0022](0022-vite-injects-manifest-link.md)。
 
+2026-09-26 后续修订：插件在开发服务中提供 `virtual:pwa-config`，构建钩子仍只在生产构建运行；Vite 5.0.0、5.4.21 与 8.3.0 的独立消费方验证后，peer 范围改为 `^5.0.0 || ^8.0.0`。类型专用的 `@pwa-platform/vite/virtual` 子路径随包交付，供宿主 TypeScript 配置引用。`writeBundle` 还会比对计划采集时与最终 bundle 中同名文件的内容哈希；后置插件若改写已采集的字节，构建会失败，避免预缓存计划与发布文件分叉。本修订的证据见[验证记录](../../tasks/vite-adapter/verification.md)。
+
+上述同次构建校验不能证明两次构建的指纹 URL 与内容稳定。隔离构建夹具中的随机混淆步骤在未设置固定种子时，实测同名 JS 会生成不同字节，而 worker 因指纹 URL 未变也不变。采用此类构建步骤的宿主须固定随机输入并重复构建比对；不改变 `fingerprinted` 与 `revision: null` 的契约，因为该契约还用于旧资产保留及不可变资源响应头验证。若重复构建仍不稳定，不能发布该宿主接入。
+
 ## 背景
 
 在此之前，平台的每个包都只交付"被调用的能力"，没有一条路径能从应用配置走到可部署产物：`compilePlan` 等着别人递文件清单，`injectPrecacheManifest` 与 `injectWorkerConfig` 等着别人递打包好的 worker 源码，`createClientConfig` 等着别人把配置送进页面，`verifyArtifacts` 等着别人告诉它发布了哪些路径。这些"别人"全是本模块。
@@ -16,7 +20,7 @@
 
 ## 决策
 
-- **形态是单个 Vite 插件工厂**，`apply: "build"`、`enforce: "post"`。应用只声明 identity、policy、install、topology 四项（与 `PwaCompileInput` 一一对应，独缺 `hostBuildOutput`——那一项应用无从填对）。选项在插件创建时即校验，不等到构建：一个写错的 origin 应当在开发者还看着 `vite.config` 时失败。
+- **形态是单个 Vite 插件工厂**，原始决定为 `apply: "build"`、`enforce: "post"`；2026-09-26 修订后移除 `apply`，使开发服务也能解析虚拟配置，产物钩子仍仅在构建时执行。应用只声明 identity、policy、install、topology 四项（与 `PwaCompileInput` 一一对应，独缺 `hostBuildOutput`——那一项应用无从填对）。选项在插件创建时即校验，不等到构建：一个写错的 origin 应当在开发者还看着 `vite.config` 时失败。
 
 - **产物清单有两个来源，缺一不可。** `generateBundle` 的 bundle 给出 chunk 与 asset；`publicDir` 的文件则由包内唯一读盘的模块补齐。**Vite 在写盘阶段把 `publicDir` 原样复制到输出，这些文件不进 bundle、不经任何插件钩子**（实测：磁盘 4 个文件，`generateBundle` 与 `writeBundle` 都只看得见 2 个）。应用的图标、`robots.txt`、离线页通常就放在那里。
 
@@ -51,6 +55,6 @@
 - **`install` 为 `null` 时 manifest 无人生成，这是平台留下的缺口。** `policy.install.enabled` 为 false 时 `plan.install` 为 `null`，插件没有元数据可映射；但 `hostBuildOutput.manifestFile` 仍是必填，且 `compilePlan` 会校验它等于 `identity.manifestUrl`。当前由"应用自备该文件，缺失即构建失败"兜住（项目所有者 2026-09-16 决定）。另两条出路是生成最小 manifest、或让 contracts 在 `install` 为 `null` 时不再要求 `manifestFile`——后者改动已交付包的公开契约，须另立 ADR。
 - **ADR-0012 规定的注入顺序是约定，不是代码能强制的约束。** 两个注入点是彼此独立的字符串，先后替换产出的字节完全相同（实测）。实现遵守该顺序并在注释中写明这一点，避免后人以为有测试在守护它。
 - **public 文件与 bundle 条目同名时构建失败。** Vite 会让一方覆盖另一方且不报错（实测：后者胜出），而同一 URL 两份字节正是计划要排除的分叉。
-- **`vite` 是 peer 依赖**（`^8.0.0`），宿主自带；插件不捆绑第二份 Vite。Vite 8 的底层打包器是 rolldown，`build.rollupOptions` 已标废弃，配置写 `rolldownOptions`。
+- **`vite` 是 peer 依赖**（当前源码 `^5.0.0 || ^8.0.0`），宿主自带；插件不捆绑第二份 Vite。Vite 5 的底层打包器是 Rollup，Vite 8 是 Rolldown；两者分别验证。npm `0.1.0-beta.1` 的 peer 仍为 `^8.0.0`，本修订发布前不得把 Vite 5 写成已发布包的支持范围。
 - 浏览器自测中的 fixture 站点全部由插件真实构建产出，不含手工摆放的文件；对它做变异时，破坏必须能通过构建、只在浏览器里失败，否则验证的是构建期校验而非端到端行为。
 - 规格见 [spec/vite-adapter.md](../../spec/vite-adapter.md)，依赖边界见[包边界](../architecture/package-boundaries.md)。

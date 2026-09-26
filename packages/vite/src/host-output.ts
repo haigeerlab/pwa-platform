@@ -70,6 +70,26 @@ export function bundleSourceFiles(
   return files;
 }
 
+/** Snapshot the bundle's bytes before later generateBundle hooks can mutate its entries. */
+export function hashBundleFiles(bundle: PwaBundle): ReadonlyMap<string, string> {
+  return new Map(Object.entries(bundle).map(([fileName, entry]) => [
+    fileName,
+    hashOfContent(entry.type === "chunk" ? entry.code : entry.source),
+  ]));
+}
+
+/** A later generateBundle hook must not change bytes already recorded in the plan. */
+export function assertUnchangedBundleFiles(bundle: PwaBundle, expected: ReadonlyMap<string, string>): void {
+  for (const [fileName, entry] of Object.entries(bundle)) {
+    const plannedHash = expected.get(fileName);
+    if (plannedHash === undefined) continue;
+    const content = entry.type === "chunk" ? entry.code : entry.source;
+    if (hashOfContent(content) !== plannedHash) {
+      throw new Error(`A build plugin changed ${fileName} after the PWA plan was compiled; the precache would publish different bytes.`);
+    }
+  }
+}
+
 /**
  * Collects a file list into a `PwaCompileHostOutput`: hashes, fingerprint flags, and the worker and manifest file
  * names relative to `base`. This is the one place both `pwa()` and `buildPwaArtifacts` derive what they hand to

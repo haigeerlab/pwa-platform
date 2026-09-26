@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/sw-runtime",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Service worker and recovery runtime for PWA Platform.",
   "license": "MIT",
   "type": "module",

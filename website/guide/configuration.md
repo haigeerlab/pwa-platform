@@ -105,6 +105,8 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 例如策略中的 <code>/offline.html</code> 会解析为 <code>/app/offline.html</code>。不要在策略路径前重复写 <code>/app</code>，否则会变成 <code>/app/app/offline.html</code>。把图标放在项目的 <code>public/icons/</code>，构建后确认站点确实能从 <code>/app/icons/</code> 返回这些文件。若增加截图或快捷方式，也要将它们的 URL 改为部署路径内的真实文件或页面。
 
+若同一域名下同时部署根应用与 `/m/` 子应用，还需要共享登记表和根 worker 排除规则，按[同源多应用部署示例](/operations/release#root-mobile-paths)配置并发布。
+
 ## 策略只声明意图
 
 应用不能向平台注入任意 Service Worker 代码、Workbox 路由或 callback。平台会把策略编译为 <code>PwaPlan</code>，自动合并不可覆盖的安全拒绝规则。完整资源分类与准入条件见[缓存安全模型](/architecture/security)。

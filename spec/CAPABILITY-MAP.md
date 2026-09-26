@@ -23,6 +23,8 @@
 | vite-adapter | 将 Vite 构建输出与 PwaPlan 编译、Worker 注入、产物验证连接起来。 | client-runtime, build-verifier, workbox-engine |
 | vue-react-adapters | 提供 Vue 3 与 React 19 的薄 facade 与状态绑定。 | vite-adapter |
 | examples-browser-e2e | 提供 Vue/React 示例和真实浏览器的安装、离线、更新、登出验证矩阵。 | vue-react-adapters |
+| update-notice-ui | 为 Vue 与 React 提供显式启用的默认更新提示，可调整位置、文案和视觉变量，保留业务自行渲染提示的选择。 | vue-react-adapters, examples-browser-e2e |
+| capability-comparison | 用可追溯的官方资料比较 PWA 接入工具的职责和能力，并区分 npm 已发布版本与当前工作区；在文档站提供完整对照和首页入口。 | package-distribution, update-notice-ui |
 | ssr-adapters | 支持 Nuxt 4 的 SSR 路由分类、Nitro 产物与客户端注册；TanStack Start 未通过可行性门槛（2026-09-17），推迟到其 GA 且生产托管路径稳定后另行评估。 | vite-adapter, examples-browser-e2e |
 | shared-origin-topology | 为固定根路径与子路径 PWA 提供身份登记、scope 排除和发布顺序校验。 | policy-compiler, build-verifier |
 | push-module | 提供可选订阅、通知展示、点击导航与后端 SDK 契约。 | client-runtime, sw-runtime |
@@ -36,7 +38,7 @@
 | public-read-cache | 以 PwaPolicy v3 显式开启同源公共读取的运行时缓存：响应准入、配额与时效、激活/登出/恢复清理，以及页面可感知的缓存来源信号；私有与会话数据仍一律拒绝。 | contracts-foundation, policy-compiler, browser-test-harness, workbox-engine, sw-runtime, client-runtime, vite-adapter, ssr-adapters, offline-write-extension |
 | network-timeout | 以 `PwaPolicy` 可选的 `networkTimeoutSeconds` 显式开启网络超时：导航超时后使用既有离线回退，network-first 运行时缓存超时后使用缓存并以 `network-timeout` 通知页面；未写时行为与产物不变。 | contracts-foundation, policy-compiler, workbox-engine, sw-runtime, client-runtime, public-read-cache |
 
-Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout
+Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout
 
 ---
 

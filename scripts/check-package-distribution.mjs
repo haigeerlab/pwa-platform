@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ordered = ['contracts', 'core', 'engine-workbox', 'build-verifier', 'sw-runtime', 'client-runtime', 'vite', 'vue', 'react'];
 const expected = new Set(ordered.map((name) => `@pwa-platform/${name}`));
-const version = '0.1.0-beta.1';
+const version = '0.1.0-beta.2';
 const license = readFileSync(join(root, 'packages', 'contracts', 'LICENSE'), 'utf8');
 const published = new Set();
 for (const name of ordered) {
@@ -28,7 +28,8 @@ for (const name of ordered) {
     }
   }
   for (const entry of Object.values(pkg.exports ?? {})) {
-    for (const target of Object.values(entry)) {
+    const targets = typeof entry === 'string' ? [entry] : Object.values(entry);
+    for (const target of targets) {
       if (typeof target === 'string' && !existsSync(join(directory, target))) {
         throw new Error(`Missing export: ${name} ${target}`);
       }

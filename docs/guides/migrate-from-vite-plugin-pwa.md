@@ -1,18 +1,20 @@
 # 从 vite-plugin-pwa 迁移到 PWA 平台
 
 > 适用对象：使用 Vite 构建、当前用 `vite-plugin-pwa` 提供 PWA 能力的 Vue 3 或 React 19 单页应用。
-> 依据：本仓库 `main` 上已有的能力，截至 2026-09-18。示例配置取自 `packages/examples-browser-e2e/apps/`；vue-vben-admin 的情况见[分析报告](../product/vben-admin-pwa-analysis.md)。
+> 依据：本仓库 `0.1.0-beta.2` 公开包与当前源码，截至 2026-09-26；Vite 5 与开发服务行为已随 beta.2 发布。示例配置取自 `packages/examples-browser-e2e/apps/`；vue-vben-admin 的情况见[分析报告](../product/vben-admin-pwa-analysis.md)。
 > 标注“**需实测**”的内容只在源码层面核对过，还没有在真实接入中验证。第四节的 vben 专项已在 2026-09-18 做过真实接入试验，结果见[分析报告第七节](../product/vben-admin-pwa-analysis.md#七真实接入试验结果2026-09-18)。
+
+Vite 5 + Vue 3.4 应用可优先使用[业务项目接入作业单](vite5-vue34-host-integration.md)；若有混淆或 CSS 清理插件，仍须在宿主仓库检查插件链。
 
 ## 一、先确认能不能迁
 
 | 条件 | 要求 | 不满足时 |
 |---|---|---|
-| Vite | `^8.0.0`（`@pwa-platform/vite` 的 peer 依赖） | 先升级 Vite |
+| Vite | 已发布 beta.2：`^5.0.0 || ^8.0.0` | 固定安装 beta.2，并用真实业务构建验证 |
 | 框架 | Vue `^3.4.0` 或 React `^19.2.0` | 其他框架没有绑定，只能直接用 client-runtime，本指南不覆盖 |
 | `base` | 同源的绝对路径，以 `/` 开头、以 `/` 结尾，例如 `/` 或 `/admin/` | 相对路径 `./` 与完整 URL 会在构建时报错 |
 | 部署形态 | 一个源上只有这一个 PWA，或按 [ADR-0019](../adr/0019-shared-origin-registry-and-exclude.md) 登记的根应用与子路径应用 | 其他形态暂不支持 |
-| 包的获取 | 平台各包目前都是 `private: true`，没有发布 | **当前的阻断项**。只能以工作区方式引入；发布方式确定之前，外部仓库无法直接安装 |
+| 包的获取 | 九个 npm 包已发布 `0.1.0-beta.2`，`next` 指向此版 | `latest` 仍指向 beta.1；显式安装 beta.2 |
 
 ## 二、能力对照
 
@@ -20,7 +22,7 @@
 |---|---|---|
 | `VitePWA({ manifest })` | `pwa({ identity, install, policy, topology })`，manifest 由 `identity` 与 `install` 生成 | `id`、`scope`、`start_url` 由身份统一推导，不能单独写错 |
 | `workbox.globPatterns` | `policy.resources` 中 `resourceClass: "asset"` 的规则 | 按路径前缀声明，不用 glob。没有规则覆盖的构建产物不会被预缓存 |
-| `workbox.runtimeCaching` | 暂无 | 平台 v1 不执行任何运行时缓存（路线图 v1.1）。原来依赖运行时缓存的接口与图片，迁移后都直接走网络 |
+| `workbox.runtimeCaching` | `PwaPolicy v3` 可显式缓存同源公共 GET | 仅经公共响应准入的读取可使用 `network-first` 或 `stale-while-revalidate`；私有、写入、流媒体和未分类请求仍不缓存，见[公共读取缓存](public-read-cache.md) |
 | `navigateFallback` | `policy.offlineFallback` | 平台的导航是网络优先；断网时依次尝试同一 URL、目录下的 `index.html`、离线页 |
 | `registerType: "prompt"` + `useRegisterSW` | 绑定里的 `state.updateWaiting` + `applyUpdate()` | 只有提示模式，不跳过等待，也不自动刷新页面 |
 | `registerType: "autoUpdate"` | 不支持 | 平台要求用户确认后才切换版本（[ADR-0005](../adr/0005-update-prompt-and-recovery-worker.md)） |
@@ -28,7 +30,7 @@
 | 定时 `registration.update()` | `checkForUpdate()` 与 `updateCheck: { intervalMs }` | 见[第三节第 6 步](#6-更新提示与主动检查更新)，[ADR-0020](../adr/0020-client-update-check.md) |
 | 私有接口：需要自己不配缓存规则 | 默认拒绝：未分类、会话数据、写操作、流媒体一律不接管 | 更安全，但要把接口前缀声明清楚 |
 | 登出时自己清缓存 | `logout()` 注销注册 | v1 不缓存私有数据；启用 v2 离线写时，worker 先清专属队列，失败则不注销 |
-| 开发环境 `devOptions` | 不提供 | `vite dev` 下没有 worker，要用 `vite build` + `vite preview` 验证 |
+| 开发环境 `devOptions` | beta.2 的 `vite dev` 可加载页面配置，但不生成 worker | 开发入口不要调用 `register()`；用 `vite build` + `vite preview` 验证离线与更新 |
 
 ## 三、迁移步骤
 
@@ -113,6 +115,8 @@ export default defineConfig({
 
 插件在构建时生成 manifest、打包平台 worker 并注入预缓存清单，最后校验产物；缺少计划需要的产物时，构建失败。
 
+**有构建后混淆的项目：**把 `pwa()` 放在混淆插件之后。若混淆插件在 Vite 生成指纹文件名后改写代码，还必须设置固定随机种子，并在相同源码上连续构建两次，比对所有同名 JS/CSS 的 SHA-256。隔离 Vite 5 夹具中的混淆步骤未设置固定随机种子时，实测同名 JS 内容不同而 worker 不变；设置固定种子后才稳定。不能用关闭指纹或只刷新页面掩盖这一问题，因为旧页面仍可能请求同名但内容已改变的资源。
+
 图标与离线页放进 `public/`，路径要与 `INSTALL.icons` 和 `offlineFallback.path` 对应。不要引用第三方 CDN 上的图标。
 
 **manifest 链接由插件注入。** 构建时，插件会在每个 HTML 入口的 `<head>` 里注入 `<link rel="manifest" href="<identity.manifestUrl>">`，`index.html` 里不用再写（[ADR-0022](../adr/0022-vite-injects-manifest-link.md)）。如果原来已经手写了：
@@ -122,13 +126,13 @@ export default defineConfig({
 
 ### 4. 声明虚拟模块的类型
 
-插件通过虚拟模块 `virtual:pwa-config` 把页面配置交给应用。在 `src/virtual.d.ts` 中声明：
+插件通过虚拟模块 `virtual:pwa-config` 把页面配置交给应用。beta.2 可在 `tsconfig.json` 的 `compilerOptions.types` 中加入 `"@pwa-platform/vite/virtual"`，同时保留项目原有类型：
 
-```ts
-declare module "virtual:pwa-config" {
-  import type { createPwa } from "@pwa-platform/vue"; // React 项目改用 PwaProvider 的 config 属性类型
-  const config: Parameters<typeof createPwa>[0]["config"];
-  export default config;
+```json
+{
+  "compilerOptions": {
+    "types": ["vite/client", "@pwa-platform/vite/virtual"]
+  }
 }
 ```
 
@@ -149,7 +153,7 @@ app.use(createPwa({ config }));
 import { usePwa } from "@pwa-platform/vue";
 
 const pwa = usePwa();
-void pwa.register(); // 必须由应用调用，绑定不会自动注册
+if (import.meta.env.PROD) void pwa.register(); // 只在生产包注册；绑定不会自动注册
 ```
 
 React：
@@ -159,10 +163,10 @@ import config from "virtual:pwa-config";
 import { PwaProvider, usePwa } from "@pwa-platform/react";
 
 <PwaProvider config={config}>{children}</PwaProvider>;
-// 组件内：const pwa = usePwa(); useEffect(() => { void pwa.register(); }, [pwa]);
+// 组件内：const pwa = usePwa(); useEffect(() => { if (import.meta.env.PROD) void pwa.register(); }, [pwa]);
 ```
 
-绑定返回的 `state` 包含 `registered`、`installEligible`、`installed`、`updateWaiting` 四个布尔值；方法有 `register`、`promptInstall`、`applyUpdate`、`logout`、`checkForUpdate`。界面（按钮、弹窗、文案）由应用自己写。
+绑定返回的 `state` 包含 `registered`、`installEligible`、`installed`、`updateWaiting` 四个布尔值；方法有 `register`、`promptInstall`、`applyUpdate`、`logout`、`checkForUpdate`。beta.2 已发布可显式挂载的可选更新提示，使用方式见[安装与更新](../../website/guide/updates.md)。安装按钮仍由应用决定。
 
 ### 6. 更新提示与主动检查更新
 
@@ -221,10 +225,9 @@ app.use(createPwa({ config, updateCheck: { intervalMs: 5 * 60_000 } })); // Vue
 
 ## 五、迁移后暂时得不到的能力
 
-- 运行时缓存（公共接口、图片、字体）：路线图 v1.1。
-- 推送通知：push-module 正在开发中。
-- 离线写入与后台同步：路线图 v3。
-- manifest 增强字段（`shortcuts`、`screenshots`、`share_target` 等）、自动更新模式、周期同步、角标：未提供。
+- 任意运行时缓存：只支持显式允许的同源公共 GET；私有、写入、流媒体和未分类请求不缓存。
+- 推送通知与显式离线写队列：工作区包尚未公开发布；后台同步也未提供。
+- manifest 的 `share_target`、自动更新模式、周期同步、角标：未提供；`shortcuts` 与 `screenshots` 已在 beta 包中提供。
 
 ## 六、迁移时的注意事项
 

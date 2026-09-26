@@ -88,8 +88,12 @@ function isFileSystem(specifier: string): boolean {
 describe("package manifest", () => {
   const manifest = JSON.parse(read("../package.json")) as Record<string, unknown>;
 
-  it("publishes a single entry built from src/index.ts", () => {
-    expect(manifest["exports"]).toEqual({ ".": { types: "./dist/index.d.ts", import: "./dist/index.js" } });
+  it("publishes one runtime entry and one virtual-module type entry", () => {
+    expect(manifest["exports"]).toEqual({
+      ".": { types: "./dist/index.d.ts", import: "./dist/index.js" },
+      "./virtual": { types: "./dist/virtual.d.ts" },
+    });
+    expect(manifest["typesVersions"]).toEqual({ "*": { virtual: ["dist/virtual.d.ts"] } });
     expect(manifest["private"]).toBeUndefined();
     expect(manifest["files"]).toEqual(["dist"]);
     // Nothing in this package runs on import: the plugin is created by calling pwa().
@@ -106,7 +110,7 @@ describe("package manifest", () => {
       "@pwa-platform/sw-runtime": "workspace:*",
     });
     // The host brings its own Vite; bundling a second copy would run two plugin pipelines against one build.
-    expect(manifest["peerDependencies"]).toEqual({ vite: "^8.0.0" });
+    expect(manifest["peerDependencies"]).toEqual({ vite: "^5.0.0 || ^8.0.0" });
   });
 });
 

@@ -30,7 +30,7 @@
 ## 依赖
 
 - **运行时依赖**：`@pwa-platform/contracts`、`@pwa-platform/core`、`@pwa-platform/engine-workbox`、`@pwa-platform/sw-runtime`、`@pwa-platform/client-runtime`、`@pwa-platform/build-verifier`，均为 `workspace:*`。**不新增第三方依赖。**
-- **peer 依赖**：`vite`（`^8.0.0`）。宿主应用自己安装 Vite，插件不捆绑它。
+- **peer 依赖**：当前源码为 `vite`（`^5.0.0 || ^8.0.0`）；已发布的 `0.1.0-beta.1` 仍为 `^8.0.0`。宿主应用自己安装 Vite，插件不捆绑它。
 - **开发依赖**：均已在 lockfile 中：`@pwa-platform/browser-test-harness`、`@playwright/test@1.63.0`、`vite@8.3.0`、`@types/node@24.13.4`。
 - **`node:` 内建模块**：本模块是构建期 Node 插件，允许使用 `node:crypto`（内容哈希）、`node:path`（路径拼接）与 `node:url`（把 `import.meta.resolve` 的 `file://` URL 转成路径），三者都是纯函数、不触碰 IO。**`node:fs` 只允许出现在 `public-files.ts` 一个模块里**，由导入守卫按文件钉死，写法与 build-verifier 的 `baseline-file.ts` 相同；其余模块一律是纯函数，只消费传入的数据。
 
@@ -57,7 +57,7 @@ export function pwa(options: PwaViteOptions): Plugin;
 
 四个字段与 `PwaCompileInput` 一一对应，唯独缺 `hostBuildOutput`——那一项由插件采集，应用不填，也无从填对。
 
-插件 `apply: "build"`、`enforce: "post"`：它必须在应用的其他插件产出全部文件之后才能采集清单。
+插件 `enforce: "post"`：它必须在应用的其他插件产出全部文件之后才能采集清单。原始实现的 `apply: "build"` 已在本页 2026-09-26 修订中移除，以便开发服务解析页面配置；产物钩子依然只在构建时运行。
 
 ### 构建期的执行顺序
 
@@ -183,7 +183,7 @@ pnpm --filter @pwa-platform/vite test:browser
 
 ### 已确认的前提（项目所有者，2026-09-18）
 
-1. 只在构建时注入。插件 `apply: "build"`，开发服务器没有 worker，也没有 manifest。
+1. 只在构建时注入 worker 与构建产物。开发服务器没有 worker，页面侧虚拟配置可解析；开发期若需要 manifest，需由应用自备公开文件。
 2. 每个 HTML 入口都注入，多页应用逐页处理。
 3. 页面已有 `rel` 含 `manifest` 的 `<link>` 时：地址与 `identity.manifestUrl` 一致就不再插入；不一致就让构建失败。
 4. 无论 `install` 是否为 `null` 都注入：两种情况下 `manifestUrl` 上都有文件，`null` 时由应用自备（本规格“开放问题”一节）。
@@ -351,25 +351,25 @@ type PwaOfflinePageMessages = {
 
 ## Documentation impact
 
-本表覆盖 2026-09-24 修订；原交付不回填（见下一节）。
+本表覆盖 2026-09-24 与 2026-09-26 两次修订；原交付不回填（见下一节）。
 
 | Concern | Decision | Rationale |
 |---|---|---|
 | product-direction | follow | 可选的默认页面，不改变产品范围。 |
 | architecture | follow | 不新增分层；页面由既有插件产出。 |
-| developer-entry | follow | README 不变，接入方式写在接入说明中。 |
+| developer-entry | follow | 根 README 不变；Vite 5 的 Vue 接入与迁移写入专题指南。 |
 | capability-map | follow | 不新增模块。 |
-| decisions | create | ADR-0036：平台默认离线页与 ADR-0013 的关系。 |
+| decisions | update | ADR-0036 记录默认离线页；ADR-0015 补充 Vite 5 和开发服务决定。 |
 | lifecycle-and-recovery | follow | 离线导航回退的判定不变。 |
 | ci-baseline | follow | 不改变 CI 工作流。 |
-| supply-chain | follow | 不新增依赖。 |
-| browser-matrix | follow | 按既有矩阵登记。 |
+| supply-chain | follow | 平台运行时与仓库锁文件不新增依赖；隔离消费方在临时目录安装。 |
+| browser-matrix | follow | 既有浏览器分档不变；Vite 5 场景记录于模块验证文件。 |
 | v1-acceptance | follow | 可选能力，不进入 V1 验收矩阵。 |
 | identity-release-baseline | follow | 不改变身份。 |
 | release-and-incident | follow | 不改变发布与事故流程。 |
 | recovery-drill | follow | 不涉及。 |
 | browser-release-evidence | follow | 不改变证据模板。 |
-| package-distribution | follow | 不改变分发范围。 |
+| package-distribution | follow | 新 beta 的发布另走该模块门禁；未发布前网站仍写 beta.1 的真实范围。 |
 | cloudflare-test-deployment | follow | 示例是否开启由后续示例修订决定。 |
 | browser-test-harness | follow | 复用既有 harness。 |
 | workbox-engine | follow | 不涉及。 |
@@ -379,20 +379,59 @@ type PwaOfflinePageMessages = {
 | release-gate-contract | follow | 不涉及。 |
 | local-ci-record | follow | 不涉及。 |
 | release-orchestration-protocol | follow | 不涉及。 |
-| vite-adapter | update | 本模块规格的修订与接入说明。 |
+| vite-adapter | update | 本模块规格、计划、验证记录与接入说明。 |
 | client-runtime | follow | 不涉及。 |
-| vue-react-adapters | follow | 不涉及。 |
+| vue-react-adapters | follow | Vue 3.4 消费方回归，不改绑定公开接口。 |
 | examples-browser-e2e | follow | 示例接入另行决定。 |
 | pwa-entry-resilience | follow | 只对齐命名与做法，不改该模块。 |
 | ssr-adapters | follow | Nuxt 暂不支持该选项。 |
 | shared-origin-topology | follow | 不涉及。 |
 | push-module | follow | 不涉及。 |
 | public-read-cache | follow | 不涉及。 |
+| update-notice-ui | follow | 业务接入手册引用可选组件及色值接口，不修改 UI 模块契约。 |
+| capability-comparison | follow | 本次仅清理宿主接入文档，不改变公开能力对照。 |
 
 ## 文档影响表未回填（2026-09-23）
 
-本模块**没有** `Documentation impact` 表，因此 spec-guard 的文档核验对它报 `invalid`。**这是预期结果，不表示文档缺失或有错。**
+本模块在 2026-09-23 时**没有** `Documentation impact` 表，因此当时 spec-guard 的文档核验报 `invalid`。这是当时的历史记录；2026-09-24 修订已新增上表。
 
 项目所有者 2026-09-23 决定：只为仍在演进的模块（`pwa-entry-resilience`、`examples-browser-e2e`）补这张表，已交付的模块不回填。理由是该表的作用在于**动工前**想清楚会波及哪些事实源；对早已交付的模块事后补填，只能从文档现状反推当时的判断，得到的是形式合规而非新的事实。
 
 本模块的文档交付情况以[文档基线](../docs/DOCUMENTATION-BASELINE.md)中对应关注项那一行为准。若本模块日后再次进入修订，应在那次修订中补齐该表。
+
+## 修订：Vite 5 业务接入兼容（2026-09-26）
+
+### 目标与依据
+
+目标兼容场景为 Vite 5.0.0 与 Vue 3.4.0；隔离消费方还覆盖 TypeScript 5.2.2 和 pnpm 8.6.5。迁移自 `vite-plugin-pwa` 的业务应用需要按自身的构建插件、部署路径和既有 worker 上线历史决定迁移步骤。
+
+让公开的 `@pwa-platform/vite` 在上述 Vite 5 环境中可安装、可构建、可在真实浏览器完成注册、离线与受控更新，同时保持 Vite 8 的既有行为。Vue 3.4.0 消费方也须通过类型检查与浏览器场景，不能只凭 `@pwa-platform/vue` 的 peer 范围推断兼容。
+
+### 范围与边界
+
+- 在实际验证通过后，将 Vite peer 范围扩为经测试的主版本；未验证的 Vite 6/7 不随意宣称支持。
+- 使用宿主安装的 Vite 打包两个平台 worker；Vite 5 的 Rollup 输出与 Vite 8 的 Rolldown 输出分别验证。保留现有身份、scope、缓存准入、worker 确认接管和构建失败语义。
+- 接入示例导入 `virtual:pwa-config` 后，`vite dev` 应能启动普通业务页面，但开发服务不注册平台 worker。生产 PWA 行为仍由 `vite build`、`vite preview` 和目标部署环境验证。
+- npm 包须实际携带 `virtual:pwa-config` 的类型声明，供 TypeScript 的 `Bundler` 和 `Node` 模块解析方式使用。
+- `writeBundle` 须比对计划编译时与最终 bundle 中同名文件的内容哈希。后置插件改写 JS/CSS 时构建失败，业务可调整插件顺序使平台插件在改写完成后采集。
+- 对 Vite 已赋予指纹文件名的 JS/CSS，业务构建插件必须保证同一输入生成相同字节；否则同一 URL 会发布不同内容，现有预缓存、旧资产保留和 `Cache-Control` 契约无法同时成立。使用随机混淆等构建步骤时须固定随机输入，并在相同源码上连续构建两次比较文件名与 SHA-256。没有这项证据不得宣称该宿主可安全更新。
+- 真实业务配置中的混淆与 CSS 清理必须纳入构建核对；平台计划中的资源路径、内容哈希和最终产物须一致。没有业务源码时先用复刻配置的最小夹具，不把夹具通过误称为真实项目验收。
+- 不保留两套同时生效的 PWA 插件或两个注册入口；业务项目移除 `vite-plugin-pwa`、旧 `sw.ts` 与直接 Workbox 依赖的具体清理，以业务源码的引用核对为准，不在本模块擅自删除。
+- 本修订不加入默认更新提示 UI；该需求需另行修订框架绑定的界面边界与 ADR-0013。
+
+### 验收
+
+1. Vite 5.0.0、一个固定的后期 5.x 版本和 Vite 8.3.0 的独立消费方夹具，均能安装平台包、通过配置类型检查并构建出可校验的 manifest、平台 worker、恢复 worker 与预缓存清单；产物路径与内容哈希对应最终字节。
+2. Vite 5 夹具在真实 Chrome 中通过首次注册、离线导航、等待更新、确认接管；确认前页面不自动刷新，确认后是否刷新仍归宿主决定。
+3. 使用 Vue 3.4.0、TypeScript 5.2.2 与 pnpm 8.6.5 的消费方可完成安装、类型检查、生产构建；`vite dev` 可显示业务页面且不注册 worker。Vite 8 与现有 Vue/React 浏览器场景不回归。
+4. 隔离夹具的混淆步骤使用固定种子后，连续两次同源构建的同名 JS/CSS 字节相同；改动源码后文件名或预缓存修订值变化，新 worker 在浏览器中等待确认。无种子配置的失败对照需记录。
+5. 接入文档写清迁移步骤、`base` 与资源规则、开发/生产行为差异、Node.js 最低小版本和真实业务部署的未验证项；发布状态只在包实际发布后更新。
+
+### 业务侧实施交接（2026-09-26）
+
+本仓库交付可复制的 Vite 5 + Vue 3.4 接入手册与项目级 AI Skill；宿主源码修改、构建和部署验收由宿主仓库中的执行者完成。手册与 Skill 须按实际已发布版本描述能力，要求核对资源目录、CSS 清理、构建随机输入和发布版本输入，并明确不得把隔离夹具通过写成宿主项目通过。
+
+### 开放问题
+
+- 实际宿主的 Node 小版本、源码与部署响应头需在接入时核对；隔离夹具的结果不能替代宿主验收。
+- 隔离夹具已确认混淆插件无固定种子时会让同名 chunk 字节漂移；真实业务仓库仍须重复构建核验其完整插件链。

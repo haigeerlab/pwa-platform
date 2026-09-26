@@ -281,10 +281,10 @@ describe("validateOfflinePageOption", () => {
 });
 
 describe("pwa", () => {
-  it("builds a plugin that runs last, on builds only", () => {
+  it("builds a plugin available in development and builds that runs last", () => {
     const plugin = pwa(options());
     expect(plugin.name).toBe("pwa-platform");
-    expect(plugin.apply).toBe("build");
+    expect(plugin.apply).toBeUndefined();
     expect(plugin.enforce).toBe("post");
   });
 
