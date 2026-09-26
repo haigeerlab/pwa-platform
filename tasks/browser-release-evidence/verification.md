@@ -57,4 +57,5 @@
 - 用户恢复网络后，远程控制台复查 `navigator.onLine=true`。
 - 同一 iPhone 的公开 React 测试站 <https://pwa-platform-react-demo.pages.dev/app/> 在 Safari 标签页显示 `v2`、`registered`、`navigator.onLine=true`、`display-mode: standalone=false`。首次打开时尚未受 worker 控制；远程控制台读取注册 scope 为 `/app/`、活动 worker 为该站 `/app/sw.js` 且状态为 `activated`，缓存键为 `pwa:pwareactdemo:test:r1:precache`。在线重载后，页面仍显示 `v2`、`registered`，controller 为该站 `/app/sw.js`。
 - 用户同样从 Safari 将 React 站点添加到主屏幕并作为网页 App 打开；设备检查器出现独立 `Web` 进程。远程控制台读取 `display-mode: standalone=true`、页面 `v2`、`registered`。首次加载时 controller 为 `null`；在线重载后仍为独立模式，controller 为 React 站 `/app/sw.js`。
-- React 首次按用户描述执行断网冷启动时，用户观察到短暂白屏；检查器一度只显示该站 worker，上报 `/app/` 资源加载超时。随后用户观察到页面恢复，检查器读取页面 `v2`、`registered`、`standalone=true`、controller 为该站 `/app/sw.js`，但当时 `navigator.onLine=true`。尚未确认恢复时 Wi-Fi 与蜂窝数据是否都保持关闭，因此**不能将此次 React 冷启动计为离线通过**；需在明确网络状态后复测。
+- React 首次断网冷启动时用户观察到白屏；检查器一度只显示该站 worker，上报 `/app/` 资源加载超时。随后页面恢复，但当时 `navigator.onLine=true`，故该次结果暂不单独计为离线通过。
+- 用户确认 Wi-Fi 和蜂窝数据仍关闭后再次结束并从 React 图标启动：检查器先出现 `about:blank`，随后切换到 `/app/`；用户确认未恢复网络或手动刷新，最终页面显示 `v2`、`registered`。远程控制台读取 `display-mode: standalone=true`，controller 为 React 站 `/app/sw.js`。在断网期间，Safari 仍报告 `navigator.onLine=true`；一个带新查询参数、未预缓存的同源 manifest 请求持续等待，直到用户恢复网络后才返回 HTTP 200。这支持手机实际无法联网而已缓存页面最终可用的结论，也说明 `navigator.onLine` 在这次 React 网页 App 中不能单独作为断网判据。启动时的短暂白屏与超时仍是待调查的体验问题；本次未测量白屏持续时间。
