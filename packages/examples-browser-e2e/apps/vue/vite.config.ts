@@ -37,7 +37,7 @@ const config: UserConfig = defineConfig({
       offlinePage: { locale: "en" },
     }),
     // spec/pwa-entry-resilience.md's "构建集成": runs alongside `pwa()`, never in place of it.
-    pwaEntryResilience({ identity, maxValidityDays: 30 }),
+    pwaEntryResilience({ identity, maxValidityDays: 30, locale: "en" }),
     cloudflarePlanCapture(),
   ],
 });

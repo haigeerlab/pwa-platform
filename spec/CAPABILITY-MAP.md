@@ -29,7 +29,7 @@
 | shared-origin-topology | 为固定根路径与子路径 PWA 提供身份登记、scope 排除和发布顺序校验。 | policy-compiler, build-verifier |
 | push-module | 提供可选订阅、通知展示、点击导航与后端 SDK 契约。 | client-runtime, sw-runtime |
 | offline-write-extension | 提供显式、会话绑定的受限队列；业务仍负责幂等、授权和冲突解决。 | contracts-foundation, policy-compiler, sw-runtime, client-runtime |
-| pwa-entry-resilience | 在不突破 Origin 隔离的前提下，提供已签名恢复入口清单、由 Vite 发布的恢复引导、用户确认的跨 Origin 迁移、安全路径续接和恢复演练验证。 | contracts-foundation, policy-compiler, platform-governance, browser-test-harness, sw-runtime, client-runtime, build-verifier, vite-adapter |
+| pwa-entry-resilience | 在不突破 Origin 隔离的前提下，校验由业务应用交入的恢复入口清单，提供由 Vite 发布的恢复引导、用户确认的跨 Origin 迁移、安全路径续接和恢复演练验证。 | contracts-foundation, policy-compiler, platform-governance, browser-test-harness, sw-runtime, client-runtime, build-verifier, vite-adapter |
 | release-gate-contract | 为 `build-verifier` 定义纯函数的必需检查覆盖判定，防止调用方仅凭部分检查或空报告放行。 | build-verifier |
 | package-distribution | 将 Vite/Vue/React 首批依赖闭包配置为可审计的 npm 预发布包；不执行实际发布或替代业务生产部署门禁。 | platform-governance, vite-adapter, vue-react-adapters, examples-browser-e2e |
 | release-orchestration-protocol | 定义外部发布系统采集事实、串行保存发布记录、更新身份基线与记录人工例外的协议；不在本仓库实现带凭据的部署器。 | release-gate-contract, platform-governance |
@@ -37,6 +37,7 @@
 | cloudflare-test-deployment | 为 React/Vue 静态示例和 Nuxt SSR 候选定义按宿主隔离的 Cloudflare 测试部署、目标登记、身份与资产保留及桌面现场证据；不替代 V1 发布门禁。 | examples-browser-e2e, ssr-adapters, build-verifier, browser-release-evidence |
 | public-read-cache | 以 PwaPolicy v3 显式开启同源公共读取的运行时缓存：响应准入、配额与时效、激活/登出/恢复清理，以及页面可感知的缓存来源信号；私有与会话数据仍一律拒绝。 | contracts-foundation, policy-compiler, browser-test-harness, workbox-engine, sw-runtime, client-runtime, vite-adapter, ssr-adapters, offline-write-extension |
 | network-timeout | 以 `PwaPolicy` 可选的 `networkTimeoutSeconds` 显式开启网络超时：导航超时后使用既有离线回退，network-first 运行时缓存超时后使用缓存并以 `network-timeout` 通知页面；未写时行为与产物不变。 | contracts-foundation, policy-compiler, workbox-engine, sw-runtime, client-runtime, public-read-cache |
+| stable-release-qualification | 对九个现有公开包和入口恢复包做跨浏览器安装、更新、离线、入口恢复与 npm 分发验收；真实记录限制，修复后复测，再决定正式版本发布。 | package-distribution, browser-release-evidence, update-notice-ui, pwa-entry-resilience |
 
 Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout
 

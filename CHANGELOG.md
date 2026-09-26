@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.0 (2026-09-26)
+
+First stable npm package set for Vite applications using Vue 3.4+ or React 19.2+. The ten published packages include the new `@pwa-platform/entry-resilience`. Upgrade all `@pwa-platform/*` packages together.
+
+- **Vite 5 and 8:** Node 22+ consumers can build the platform worker, manifest and optional offline and entry recovery pages. `vite dev` resolves page configuration; install and offline behavior still require a production build and HTTPS deployment.
+- **User controlled updates:** Vue and React provide optional update notices with four positions, message and color overrides, and a host reload callback. Updating the worker leaves the current page in place until the user chooses to reload.
+- **Offline fallback:** The optional Chinese or English default page stays readable on narrow screens. Its retry button reloads on request, and a same origin network probe also reloads after connectivity returns, including on iPhone when `online` events are absent or premature.
+- **Entry recovery:** The public optional package accepts bounded, validated manifests for alternative entries. The recovery page never redirects until the user selects an entry.
+
+Package publication does not certify any adopting application's deployment. The `desktop` release channel requires Chrome desktop N and N-1 evidence for that application; Android is outside that channel until its separate release gate passes.
+
 ## 0.1.0-beta.2 (2026-09-26)
 
 Third npm prerelease of the same nine packages. This release supports existing Vite 5 + Vue 3.4 applications while retaining the Vite 8 path. Upgrade all `@pwa-platform/*` packages together. The published `next` tag points to this version; `latest` remains on beta.1.

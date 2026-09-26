@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/sw-runtime",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0",
   "description": "Service worker and recovery runtime for PWA Platform.",
   "license": "MIT",
   "type": "module",
@@ -60,6 +60,6 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public",
-    "tag": "next"
+    "tag": "latest"
   }
 }

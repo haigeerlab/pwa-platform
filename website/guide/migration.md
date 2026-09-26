@@ -23,7 +23,7 @@
 5. 用[安装与更新](/guide/updates)替代原来的自动接管或自建版本轮询提示。
 6. 用生产构建及预览验证，再在目标环境完成[上线前检查](/start/checklist)和 worker 切换演练。
 
-beta.2 的 <code>vite dev</code> 可加载 <code>virtual:pwa-config</code>，但不生成平台 worker；开发入口只应在生产构建注册。离线和更新请使用 <code>vite build</code> + <code>vite preview</code>，并在目标部署环境复核。
+0.1.0 的 <code>vite dev</code> 可加载 <code>virtual:pwa-config</code>，但不生成平台 worker；开发入口只应在生产构建注册。离线和更新请使用 <code>vite build</code> + <code>vite preview</code>，并在目标部署环境复核。
 
 ## 核对自定义构建产物
 

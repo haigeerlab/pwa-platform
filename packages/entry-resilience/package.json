@@ -1,7 +1,8 @@
 {
   "name": "@pwa-platform/entry-resilience",
-  "version": "0.0.0",
-  "private": true,
+  "version": "0.1.0",
+  "description": "Validated fallback entries for installed PWA applications.",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -32,7 +33,7 @@
     "@pwa-platform/vite": "workspace:*"
   },
   "peerDependencies": {
-    "vite": "^8.0.0"
+    "vite": "^5.0.0 || ^8.0.0"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
@@ -40,5 +41,13 @@
     "@pwa-platform/contracts": "workspace:*",
     "@types/node": "24.13.4",
     "vite": "8.3.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public",
+    "tag": "latest"
   }
 }

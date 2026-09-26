@@ -2,7 +2,7 @@
 
 > 适用对象：准备接入访问入口灾备（`@pwa-platform/entry-resilience`）的业务开发与后端。
 > 依据：本仓库 `main` 上截至 2026-09-23 的能力。信任模型见 [ADR-0033](../adr/0033-entry-manifest-supplied-by-the-application.md)，模块契约见 [spec/pwa-entry-resilience.md](../../spec/pwa-entry-resilience.md)。
-> **该包尚未发布到 npm**，目前只能在本仓库内使用。发布时机见[后续事项](../../tasks/pwa-entry-resilience/plan.md)。
+> 该包已作为 `@pwa-platform/entry-resilience@0.1.0` 发布到 npm。业务须同时使用同批 `@pwa-platform/vite@0.1.0`，并在真实部署环境验证清单、缓存与跳转。
 
 ## 1. 它解决什么问题
 

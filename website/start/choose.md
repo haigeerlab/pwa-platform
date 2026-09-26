@@ -4,12 +4,12 @@
 
 构建环境需要 Node.js 22.12 或更高版本；以下框架范围与已发布包的 peer 依赖一致。
 
-beta.2 的 Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code>，普通页面可继续开发；开发服务不生成平台 worker 或预缓存。离线、安装与更新仍须通过生产构建加 <code>vite preview</code> 或目标 HTTPS 站点验收。
+0.1.0 的 Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code>，普通页面可继续开发；开发服务不生成平台 worker 或预缓存。离线、安装与更新仍须通过生产构建加 <code>vite preview</code> 或目标 HTTPS 站点验收。
 
 | 项目 | 直接安装 | 公开状态 |
 | --- | --- | --- |
-| Vite 5／8 + Vue >=3.4、<4 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/vue</code> | npm beta.2 |
-| Vite 5／8 + React >=19.2、<20 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/react</code> | npm beta.2 |
+| Vite 5／8 + Vue >=3.4、<4 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/vue</code> | npm 0.1.0 |
+| Vite 5／8 + React >=19.2、<20 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/react</code> | npm 0.1.0 |
 | Nuxt 4.5.x | <code>@pwa-platform/nuxt</code> | 工作区私有，尚未公开 |
 | TanStack Start / Next.js | 暂无可用的公开适配包 | 不在当前接入范围 |
 
@@ -20,18 +20,18 @@ beta.2 的 Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-c
 Vue：
 
 ~~~bash
-pnpm add @pwa-platform/vue@0.1.0-beta.2
-pnpm add -D @pwa-platform/vite@0.1.0-beta.2 @pwa-platform/contracts@0.1.0-beta.2
+pnpm add @pwa-platform/vue@0.1.0
+pnpm add -D @pwa-platform/vite@0.1.0 @pwa-platform/contracts@0.1.0
 ~~~
 
 React：
 
 ~~~bash
-pnpm add @pwa-platform/react@0.1.0-beta.2
-pnpm add -D @pwa-platform/vite@0.1.0-beta.2 @pwa-platform/contracts@0.1.0-beta.2
+pnpm add @pwa-platform/react@0.1.0
+pnpm add -D @pwa-platform/vite@0.1.0 @pwa-platform/contracts@0.1.0
 ~~~
 
-安装命令写明版本号，因为当前 npm 的 <code>latest</code> 仍指向 beta.1，只有 <code>next</code> 指向 beta.2；两个标签都不表示稳定生产版。
+安装命令固定 0.1.0；npm `latest` 指向该正式包版本。业务应用仍需单独完成生产部署验收。
 
 ## 接入顺序
 

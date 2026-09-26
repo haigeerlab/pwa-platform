@@ -1,6 +1,26 @@
 # 更新提示接入指南
 
-平台负责发现新版本、让新 worker 等待、在用户确认后完成接管；**提示界面由应用自己实现**（[ADR-0005](../adr/0005-update-prompt-and-recovery-worker.md)、[ADR-0013](../adr/0013-client-facade-and-page-side-lifecycle-events.md)）。本指南给出推荐交互与可照抄的写法，完整参考实现见 React 示例 [`app.tsx`](../../packages/examples-browser-e2e/apps/react/src/app.tsx) 与 Vue 示例 [`app.ts`](../../packages/examples-browser-e2e/apps/vue/src/app.ts)，两者行为一致并由端到端测试覆盖。
+平台负责发现新版本、让新 worker 等待、在用户确认后完成接管。宿主可使用 Vue／React 包提供的可选提示组件，也可自行实现界面（[ADR-0005](../adr/0005-update-prompt-and-recovery-worker.md)、[ADR-0013](../adr/0013-client-facade-and-page-side-lifecycle-events.md)）。本指南给出推荐交互与两种接入方式；完整自定义参考实现见 React 示例 [`app.tsx`](../../packages/examples-browser-e2e/apps/react/src/app.tsx) 与 Vue 示例 [`app.ts`](../../packages/examples-browser-e2e/apps/vue/src/app.ts)。
+
+## 使用默认提示组件
+
+宿主先按各框架 README 注册 PWA，再在应用中挂载组件并导入其 CSS。只有挂载组件才会显示提示；默认是右下角非模态卡片，不会替换业务页面或自动刷新。
+
+```tsx
+import { PwaUpdateNotice } from "@pwa-platform/react/ui";
+import "@pwa-platform/react/update-notice.css";
+
+<PwaUpdateNotice colors={{ primaryButtonBackground: "#006e52", primaryButtonText: "#fff" }} />
+```
+
+```ts
+import { PwaUpdateNotice } from "@pwa-platform/vue/ui";
+import "@pwa-platform/vue/update-notice.css";
+
+// 模板中：<PwaUpdateNotice :colors="{ primaryButtonBackground: '#006e52', primaryButtonText: '#fff' }" />
+```
+
+`position` 可设为 `bottom-right`、`bottom-center`、`top-right`、`top-center`；`colors` 还可覆盖卡片底色、文字、次要文字与边框。`messages` 覆盖默认中文文案，可为业务提供英文或其他语言；`reloadPage` 允许宿主在用户点击“刷新页面”时先保护未保存的内容。定时检查仍由宿主配置 `updateCheck`，组件不会自行注册 worker。完整属性见 [Vue 包](../../packages/vue/README.md)和 [React 包](../../packages/react/README.md)。
 
 ## 什么会触发更新
 
@@ -230,4 +250,4 @@ function confirm(): void {
 - **已打开的旧页面仍运行旧代码。** 旧页面在刷新前若按需加载旧的懒加载 chunk，而部署已删除这些文件，会出现 404；发布时应保留上一版指纹资源（见[发布与事故手册](../operations/release-and-incident-runbook.md)）。
 - **接管超时路径没有浏览器证据。** `Update failed`／Retry 只经代码审阅，真实浏览器中难以稳定制造新 worker 不接管的情况；页面新旧判断的请求失败与无法解析分支同样只经代码审阅；请求挂起后的 5 秒超时已有 E2E。
 - **新旧判断依赖入口脚本地址。** 它适用于入口脚本带内容指纹的构建（Vite 默认如此）；入口地址不随内容变化的应用需要改用自己的版本标识。
-- 平台不提供默认提示组件；若多个接入方需要同一套界面，再另立规格评估可选的独立界面包。
+- 默认组件不会替业务判断表单是否已保存；需要拦截刷新时，由宿主提供 `reloadPage`。

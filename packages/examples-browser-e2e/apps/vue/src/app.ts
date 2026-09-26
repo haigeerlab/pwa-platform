@@ -8,6 +8,7 @@ import { checkEntryRecovery } from "@pwa-platform/entry-resilience/client";
 import type { EntryRecoveryResult } from "@pwa-platform/entry-resilience";
 import { defineComponent, h, ref, watch, type Component, type VNode } from "vue";
 import { SHELL_URL } from "../../shared/identity.js";
+import { UPDATE_NOTICE_MESSAGES_EN } from "../../shared/update-notice-messages.js";
 import { APP_VERSION } from "./version.js";
 
 declare const __PWA_DRILL_NOTICE__: boolean;
@@ -275,6 +276,7 @@ export const App: Component = defineComponent({
 
       if (__PWA_DRILL_NOTICE__) {
         children.push(h(PwaUpdateNotice, {
+          messages: UPDATE_NOTICE_MESSAGES_EN,
           colors: { primaryButtonBackground: "#006e52", primaryButtonText: "#ffffff" },
         }));
       }
