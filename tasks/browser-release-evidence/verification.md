@@ -40,6 +40,9 @@
 - 首次页面读取时尚未受 worker 控制；在线重载后页面仍显示 `v2`、`registered`，且 `navigator.serviceWorker.controller.scriptURL` 为该站 `/app/sw.js`。
 - 通过 Chrome DevTools Protocol 仅对该公开页面模拟断网并重载：页面完成加载、仍显示 `v2`、`registered`，继续由 `/app/sw.js` 控制。检查结束已恢复在线网络模拟设置，并再次确认页面与 worker 状态。此项是**浏览器模拟断网**，不是关闭手机网络后的实测。
 - 同一设备的公开 React 测试站 <https://pwa-platform-react-demo.pages.dev/app/> 在线重载后显示 `v2`、`registered`，由该站 `/app/sw.js` 控制；注册 scope 为 `/app/`，活动 worker 为 `activated`，缓存键为 `pwa:pwareactdemo:test:r1:precache`。仅对该页面模拟断网并重载后，页面仍显示 `v2`、`registered` 且保持受控；随后已恢复在线网络模拟设置并确认页面状态。
-- React 站点的 Chrome 菜单显示“安装并创建快捷方式”；进入后，对话框显示“创建快捷方式”和“添加”。未点击“添加”，没有取得已安装、独立窗口或 `display-mode` 证据，不能把该菜单观察算作原生安装通过。
-- 本次未执行原生安装、独立窗口、真实断网、未知路径离线兜底、新版本部署后的更新提示／用户确认、恢复 worker 演练或 iPhone Safari。两个公开站均为较早的 `v2` 示例，不能据此证明 npm `0.1.0-beta.2` 更新 UI 的真机效果。
+- 随后执行**手机真实断网**：测试前 Wi-Fi 为开、移动数据为关；临时关闭 Wi-Fi 后确认两者均为关，Chrome 中 `navigator.onLine` 为 `false`。React 和 Vue 已缓存的 `/app/` 均可重新加载，显示 `v2`、`registered`，由各自 `/app/sw.js` 控制。两站访问未预缓存的 `/app/never-precached` 均显示 `You are offline` 静态兜底页，且继续由各自 worker 控制。测试脚本退出时恢复 Wi-Fi，复查 Wi-Fi 为开、移动数据仍为关。
+- React 站点的 Chrome 菜单显示“安装并创建快捷方式”；进入后，对话框显示“创建快捷方式”和“添加”，未点击该快捷方式入口。两站页面自身的 `Install` 按钮分别触发 Chrome 原生“安装应用”对话框，名称为 `PWA Platform React Demo` 和 `PWA Platform Vue Demo`。首次确认 React 安装后未立即看到新包，不能据此判定已安装；再次按同一流程确认后，React 和 Vue 均出现新增 WebAPK，安装包 manifest 分别含对应公开主站域名。从启动器分别打开，前台为 Chrome `SameTaskWebApkActivity` 独立任务、无普通 Chrome 地址栏，均显示 `v2`、`registered`。未直接读取两个独立窗口内的 `matchMedia('(display-mode: standalone)')` 结果，因此该字段仍待补证。
+- 对两个**已安装 WebAPK**分别进行手机真实断网冷启动：关闭 Wi-Fi（移动数据本来关闭）、结束各自旧进程、从启动器重新打开；Vue 和 React 均显示各自标题、`v2`、`registered`。每次脚本退出后复查 Wi-Fi 已恢复为开、移动数据仍为关。此前用户打开的另一个同名 React 窗口经安装包核对属于旧公开冒烟站，未将其版本或更新提示计入这两个主站的结果。
+- 另经 USB 回环映射，在手机 Chrome 打开当前仓库的更新 UI 测试页面（模拟客户端，不注册真实 worker）：400×773 CSS 像素视口下，React 默认配色和 Vue 自定义浅色背景／绿色主按钮均保持业务内容可见、无横向溢出，两个操作按钮高度均为 44 CSS 像素。两框架实际点击“稍后”后提示消失且 `applyCalls=0`；重新触发后点击“更新”，`applyCalls=1`、`reloadCalls=0`，显示“更新已完成”；再点击“刷新页面”，`reloadCalls=1`。Vue 的 `top-center` 位置也能显示，但在此测试页面覆盖了标题，业务需按页面布局选位置。本项只验证手机上的 UI 排版与交互，**不证明真实 worker 更新链路**。
+- 本次未执行新版本部署后的真实更新提示／用户确认、恢复 worker 演练或 iPhone Safari。两个公开站均为较早的 `v2` 示例；本机 UI 测试页面使用模拟客户端，尚不能证明 npm `0.1.0-beta.2` UI 与真实 worker 更新链路的手机端联动。
 - 仅一台 Android，未形成经 Google Play 轮换保留的 Chrome Android N/N-1 两机证据；本记录不填作 `desktop+android` 通道通过，也不改变上文历史模块验收结论。
