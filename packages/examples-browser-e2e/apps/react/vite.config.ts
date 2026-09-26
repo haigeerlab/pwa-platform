@@ -45,6 +45,7 @@ const config: UserConfig = defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
   base: SHELL_URL,
   envDir: false,
+  define: { __PWA_DRILL_NOTICE__: process.env.PWA_PLATFORM_CF_SLOT === "drill" },
   build: {
     minify: false,
     sourcemap: false,

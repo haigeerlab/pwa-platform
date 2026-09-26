@@ -2,11 +2,15 @@
 // gives the adapter state and methods and leaves buttons, dialogs and wording to the app. This is what that
 // division looks like in practice.
 import { usePwa, type PwaBinding } from "@pwa-platform/vue";
+import { PwaUpdateNotice } from "@pwa-platform/vue/ui";
+import "@pwa-platform/vue/update-notice.css";
 import { checkEntryRecovery } from "@pwa-platform/entry-resilience/client";
 import type { EntryRecoveryResult } from "@pwa-platform/entry-resilience";
 import { defineComponent, h, ref, watch, type Component, type VNode } from "vue";
 import { SHELL_URL } from "../../shared/identity.js";
 import { APP_VERSION } from "./version.js";
+
+declare const __PWA_DRILL_NOTICE__: boolean;
 
 /**
  * The update banner's own state machine, entirely local to this page. The adapter only ever tells it
@@ -245,7 +249,7 @@ export const App: Component = defineComponent({
             ? "prompt"
             : null;
 
-      if (bannerMode !== null) {
+      if (!__PWA_DRILL_NOTICE__ && bannerMode !== null) {
         const bannerChildren: VNode[] =
           bannerMode === "prompt"
             ? [
@@ -267,6 +271,12 @@ export const App: Component = defineComponent({
                     h("button", { id: "update-retry", onClick: confirmUpdate }, "Retry"),
                   ];
         children.push(h("div", { id: "update-banner", role: "status", style: BANNER_STYLE }, bannerChildren));
+      }
+
+      if (__PWA_DRILL_NOTICE__) {
+        children.push(h(PwaUpdateNotice, {
+          colors: { primaryButtonBackground: "#006e52", primaryButtonText: "#ffffff" },
+        }));
       }
 
       // Shown only while the browser has offered installation and the app is not installed yet.

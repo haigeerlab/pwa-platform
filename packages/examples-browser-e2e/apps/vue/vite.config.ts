@@ -22,6 +22,7 @@ const config: UserConfig = defineConfig({
   // The identity's scope. The fixture server serves a version directory as the site root, so the app lives at /app/.
   base: SHELL_URL,
   envDir: false,
+  define: { __PWA_DRILL_NOTICE__: process.env.PWA_PLATFORM_CF_SLOT === "drill" },
   build: {
     // Unminified so a failing end-to-end test can be read, and so the injected precache manifest stays legible.
     minify: false,

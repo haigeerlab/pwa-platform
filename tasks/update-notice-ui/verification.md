@@ -33,3 +33,19 @@
 
 - 在真实业务源码中移除旧 PWA、接入新包，并核对宿主 CSS 清理插件。如果清理规则只扫描业务组件，需要保留 `/^pwa-update-notice/` 类名；隔离构建曾出现 CSS 产物无效的情况，须在宿主构建链中定位。
 - 在真实业务域名与响应头下确认更新、离线和多标签页；移动端与真实业务验收尚未取得。默认 UI 已随 `0.1.0-beta.2` 发布至 npm `next`，`latest` 仍为 beta.1；网站源文档已更新，文档站部署另按独立流程执行。PR 的 CI 结果须另行核对，不能以本地测试代替。
+
+## 隔离测试槽真实更新（2026-09-26）
+
+- `drill` 构建显式挂载已发布的可选更新组件；React 使用默认主题，Vue 示例配置绿色主按钮及白色按钮文字。`main` 和本地浏览器示例仍使用原有更新横幅。改动后 Chrome 153 浏览器回归 **51/51** 通过；最初沙箱内的 Chrome 启动失败是运行环境限制，改在允许浏览器启动的环境重跑后全绿。
+- 发布前在 Cloudflare 控制台核对当前账户 Pages Free、Billable Usage 为 $0.00、R2 Standard 存储 0 GB-months、Class A 88、Class B 1.14k；React 两个候选包分别约 1.36 MB 和 1.49 MB，静态文件分别 30、31 个，公开目录敏感字符串扫描无命中，且没有 `_worker.js` 或 Pages Functions。用量会滞后，此读数只用于本次小规模演练预检，不是费用上限。
+- React `drill` 原 v2 部署 `f822a276-9272-40f7-8bc0-aea9cd126002` 的制品从私有 R2 下载并验证，恢复本地 staging 后重建指纹资源归档。依次发布 v1 `c2f7862f-affe-4c46-bfe2-df1e64f78c2b` 和 v2 `f7523ab2-a599-48c4-a4dc-7d42d1107b42`；两次候选包均经 R2 上传读回，部署后的索引和旧资源归档均成功。
+- 桌面 Chrome 在 v1 页面加载并注册 worker 后，v2 发布。在线重载显示 v2，同时出现可选组件的“有可用更新”卡片；“稍后”使卡片消失，页面保持 v2；再重载后卡片重新出现，点击“更新”显示“更新已完成／刷新页面”，点击“刷新页面”后仍为 v2、`registered`，提示消失。此项验证了真实 Pages 与 worker 的等待、用户确认、接管和显式刷新链路，但因触发检查时先重载了页面，**未观察到仍停留在 v1 页面时弹窗**。不能将它写成手机真实更新或完整旧页状态验收。
+- Vue `drill` 线上现有部署的 R2 制品／索引未找到，无法按测试站手册重建当前部署的保留归档。本轮没有覆盖 Vue 线上槽位；须先恢复其回滚材料，再做 v1→v2 演练。React `drill` 已恢复正常 v2；两站 `main` 未改动。
+
+### Android 实体设备补验
+
+- 设备 `23127PN0CC`（Android 16，Chrome 152.0.7977.82；版本沿用同日设备记录）。`drill` 再发布 v1 `a9f013dd-5472-4f32-917c-f83566bfea8a` 后，在手机 Chrome 打开页面并在线重载；直接读取 `v1`、`registered`、controller 为该站 `/app/sw.js`，没有更新卡片。
+- 发布 v2 `878f36bb-ad20-4d52-8f3e-cbaecb5d662c` 后，**不刷新旧页面**，在该页调用标准 `registration.update()`。手机页面仍显示 `v1`，注册的 `waiting` worker 为 `installed`，可选 UI 显示“有可用更新”及“更新／稍后”。点击“更新”后显示“更新已完成／刷新页面”，此时旧页面仍为 `v1`、`waiting` 为空；待 active worker 为 `activated` 后点击“刷新页面”，页面成为 `v2`、`registered`，由该站 worker 控制，提示消失。
+- 当时手机 Wi-Fi 为开、移动数据为关。临时关闭 Wi-Fi 后确认 `navigator.onLine=false`，断网重载仍显示 `v2`、`registered` 且有自己的 worker controller；结束后 Wi-Fi 已恢复为开。此项是实体手机实际断网，不是 DevTools 网络模拟。
+- 本次未在 Android 旧页面点击“稍后”（桌面真实 worker 链路和手机模拟客户端 UI 已覆盖该按钮），也未执行 Android `drill` 安装窗口的更新。单台手机的结果不能充当 Chrome Android N/N-1 双机发布矩阵。
+- iPhone 已可用于测试，但下一轮云端写入前的 Cloudflare 用量复核被自动审批拒绝：账单页快照包含与用量无关的私人账单资料。依测试站手册暂停新的 R2／Pages 写入；iPhone 真实更新未执行，React `drill` 保持正常 v2。此限制不影响前述已完成并记录的 Android 结果。
