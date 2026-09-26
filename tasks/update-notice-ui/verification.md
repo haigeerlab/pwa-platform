@@ -12,7 +12,7 @@
 |---|---|
 | Vue/React 包 build、typecheck、单元测试 | 通过；Vue 47/47、React 76/76。根入口的导入闭包仍不含 UI，显式刷新只在 `./ui` 中。 |
 | 独立本地 tarball | 两包均包含 `dist/ui.js`、`dist/ui.d.ts`、`dist/update-notice.css`，不含源码。`pnpm check:publish` 验证九包全部构建导出存在。 |
-| 首个项目版本组合 | 本地 Vue tarball 在 Node 22.22.0、pnpm 8.6.5、Vue 3.4.0、Vite 5.0.0、TypeScript 5.2.2 的独立消费方中通过类型检查与生产构建；输出 JS/CSS。复现入口见 [`compatibility/vue34-vite5-update-notice`](../../packages/vue/compatibility/vue34-vite5-update-notice/README.md)。 |
+| 隔离版本组合 | 本地 Vue tarball 在 Node 22.22.0、pnpm 8.6.5、Vue 3.4.0、Vite 5.0.0、TypeScript 5.2.2 的独立消费方中通过类型检查与生产构建；输出 JS/CSS。复现入口见 [`compatibility/vue34-vite5-update-notice`](../../packages/vue/compatibility/vue34-vite5-update-notice/README.md)。 |
 | UI Chrome 测试 | Chrome 153.0.8010.53，Vue 与 React 各自只导入本包 CSS：等待、稍后、失败重试、更新中禁用重复按钮、接管后显式刷新、30 分钟重提醒、位置、文案、CSS 变量、320px 键盘操作和桌面暗色布局，10/10 通过。 |
 | 既有真实更新套件 | Vue/React 原示例的注册、离线、更新、多标签页、恢复与发布检查 51/51 通过，说明根入口更新语义未回归。 |
 | 全仓门禁 | `pnpm build`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm docs:build`、`pnpm check:publish`、`git diff --check` 均通过。 |
@@ -31,5 +31,5 @@
 
 ## 发布前尚需
 
-- 在真正的 `example-vite-app` 源码中移除旧 PWA、接入新包并核对 `rollup-plugin-purgecss`。宿主当前只扫描 `./src/**/*.vue`，必须 safelist `/^pwa-update-notice/`；模拟构建曾出现 PurgeCSS 无效 CSS，需要在真实项目中定位。业务仓库路径尚未提供。
+- 在真实业务源码中移除旧 PWA、接入新包，并核对宿主 CSS 清理插件。如果清理规则只扫描业务组件，需要保留 `/^pwa-update-notice/` 类名；隔离构建曾出现 CSS 产物无效的情况，须在宿主构建链中定位。
 - 在真实业务域名与响应头下确认更新、离线和多标签页；移动端与 CI 证据尚未取得。本源码未发布 npm 新版；网站仍将默认 UI 标注为“尚未发布”。

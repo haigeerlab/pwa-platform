@@ -4,7 +4,7 @@
 > 依据：本仓库 `0.1.0-beta.2` 公开包与当前源码，截至 2026-09-26；Vite 5 与开发服务行为已随 beta.2 发布。示例配置取自 `packages/examples-browser-e2e/apps/`；vue-vben-admin 的情况见[分析报告](../product/vben-admin-pwa-analysis.md)。
 > 标注“**需实测**”的内容只在源码层面核对过，还没有在真实接入中验证。第四节的 vben 专项已在 2026-09-18 做过真实接入试验，结果见[分析报告第七节](../product/vben-admin-pwa-analysis.md#七真实接入试验结果2026-09-18)。
 
-Vite 5 + Vue 3.4、构建后混淆及 PurgeCSS 的首个业务接入，请优先使用[业务项目接入作业单](vite5-vue34-host-integration.md)；插件链仍须在真实业务仓库检查。
+Vite 5 + Vue 3.4 应用可优先使用[业务项目接入作业单](vite5-vue34-host-integration.md)；若有混淆或 CSS 清理插件，仍须在宿主仓库检查插件链。
 
 ## 一、先确认能不能迁
 
@@ -115,7 +115,7 @@ export default defineConfig({
 
 插件在构建时生成 manifest、打包平台 worker 并注入预缓存清单，最后校验产物；缺少计划需要的产物时，构建失败。
 
-**有构建后混淆的项目：**把 `pwa()` 放在混淆插件之后。若混淆插件在 Vite 生成指纹文件名后改写代码，还必须设置固定随机种子，并在相同源码上连续构建两次，比对所有同名 JS/CSS 的 SHA-256。首个 Vite 5 项目的 `vite-plugin-bundle-obfuscator@1.8.0` 未设置 `options.seed` 时，实测同名 JS 内容不同而 worker 不变；夹具设置固定 `seed` 后才稳定。不能用关闭指纹或只刷新页面掩盖这一问题，因为旧页面仍可能请求同名但内容已改变的资源。
+**有构建后混淆的项目：**把 `pwa()` 放在混淆插件之后。若混淆插件在 Vite 生成指纹文件名后改写代码，还必须设置固定随机种子，并在相同源码上连续构建两次，比对所有同名 JS/CSS 的 SHA-256。隔离 Vite 5 夹具中的混淆步骤未设置固定随机种子时，实测同名 JS 内容不同而 worker 不变；设置固定种子后才稳定。不能用关闭指纹或只刷新页面掩盖这一问题，因为旧页面仍可能请求同名但内容已改变的资源。
 
 图标与离线页放进 `public/`，路径要与 `INSTALL.icons` 和 `offlineFallback.path` 对应。不要引用第三方 CDN 上的图标。
 

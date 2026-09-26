@@ -1,6 +1,6 @@
 # npm 预发布记录：0.1.0-beta.2（2026-09-26）
 
-> 状态：**九包已发布到 npm 并完成 registry 内容核验**。文档站尚未部署，内部业务项目尚未完成接入验收。
+> 状态：**九包已发布到 npm 并完成 registry 内容核验**。文档站尚未部署，真实宿主尚未完成接入验收。
 
 ## 范围与源码
 
@@ -50,11 +50,11 @@
 - React 19 消费项目：从 tarball 安装 `@pwa-platform/react/ui` 并在 Node ESM 中导入成功。
 - 九包整体在独立项目以 `file:` 安装，安全的运行时公开入口均可导入。worker 专用入口仍应由构建注入配置后在浏览器 worker 中运行，不能把普通 Node 导入当作其验收。
 
-这些是平台隔离消费证据，不等于私有业务项目的真实构建或部署验收。内部项目的迁移步骤和 AI Skill 分别见[接入作业单](../../docs/guides/vite5-vue34-host-integration.md)及[Skill](../../.agents/skills/pwa-vite5-vue-integration/SKILL.md)。
+这些是平台隔离消费证据，不等于真实宿主的构建或部署验收。通用迁移步骤和 AI Skill 分别见[接入作业单](../../docs/guides/vite5-vue34-host-integration.md)及[Skill](../../.agents/skills/pwa-vite5-vue-integration/SKILL.md)。
 
 ## Registry 状态与后续发布边界
 
-2026-09-26 04:54 UTC 和实际上传前，公共 npm registry 的九包均有 beta.1、没有 beta.2。用户确认 npm 账号已登录并指示继续发布后，核对 `npm whoami` 为 `jianian`，`latest`／`next` 均在 beta.1；从上述固定提交的干净检出执行 `pnpm publish --access public --tag next --no-git-checks`。npm 在首包与 `client-runtime` 各要求一次浏览器授权，由账号所有者完成。九包均返回发布成功，按依赖顺序逐包查询 registry；新版本文档曾短暂 404，等待传播后全部可查。
+2026-09-26 04:54 UTC 和实际上传前，公共 npm registry 的九包均有 beta.1、没有 beta.2。账号所有者确认 npm 已登录并指示继续发布后，`latest`／`next` 均在 beta.1；从上述固定提交的干净检出执行 `pnpm publish --access public --tag next --no-git-checks`。npm 在首包与 `client-runtime` 各要求一次浏览器授权，由账号所有者完成。九包均返回发布成功，按依赖顺序逐包查询 registry；新版本文档曾短暂 404，等待传播后全部可查。
 
 Registry `time` 记录的首末发布时间为 **2026-09-26T05:11:52.834Z–05:20:31.120Z**。九包 `next` 均指向 `0.1.0-beta.2`，`latest` 均仍指向 `0.1.0-beta.1`；没有修改 `latest`。需要 Vite 5 或可选 UI 的业务必须明确安装 beta.2。
 
@@ -64,4 +64,4 @@ Registry `time` 记录的首末发布时间为 **2026-09-26T05:11:52.834Z–05:2
 
 已发布 tarball 内的三个包 README 仍写着“beta.1 尚不含 Vite 5／UI”；这是候选打包时漏改的**文档错误**，不影响包内容和上述运行验证，同一 npm 版本不可覆盖。仓库 README 已更正，后续版本的 tarball 需带入更正。文档站本次只更新源码、尚未按[独立发布流程](../../docs/operations/documentation-site.md)部署。
 
-私有业务项目尚未提供仓库；它的 PurgeCSS、混淆、真实 scope／origin、旧 PWA 清理和浏览器安装／更新验收需在其仓库依接入 Skill 完成。未经真实域名响应头、离线与恢复演练及发布通道矩阵证据，不宣称该业务项目生产就绪。
+真实宿主的 CSS 清理、混淆、scope／origin、旧 PWA 清理和浏览器安装／更新验收需在其仓库依接入 Skill 完成。未经真实域名响应头、离线与恢复演练及发布通道矩阵证据，不宣称该宿主生产就绪。

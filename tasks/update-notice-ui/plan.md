@@ -9,7 +9,7 @@
 5. **业务色值配置**：为两侧同名组件增加可选 `colors` 属性，映射到现有 CSS 变量，优先覆盖继承色值而不影响其他组件。验收：Vue/React 类型、真实浏览器主按钮背景／文字色与正文色均生效，未配置时既有明暗主题不变。
 6. **短暂等待信号**：恢复 worker 的短暂 `updateWaiting` 可能先真后假；提示只在状态稳定 100 ms 后显示，未稳定的信号消失时不进入“更新已完成”。验收：Vue/React 的真实浏览器回归先红后绿，原交互套件继续通过。
 
-真实 `example-vite-app` 接入仍等待项目仓库；本模块完成不替代那个项目的构建、PurgeCSS 与部署验收。新 beta 发布另走 `package-distribution` 门禁。
+真实业务应用接入仍需在其仓库核对构建、样式处理和部署；本模块的隔离验证不能替代宿主验收。新 beta 发布另走 `package-distribution` 门禁。
 
 ## Documentation delivery
 
