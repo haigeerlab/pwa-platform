@@ -1,5 +1,7 @@
 # 身份、安装信息与策略
 
+本页是字段参考；如果还没有决定要不要缓存、离线页或恢复能力，先读[按功能接入 PWA](/guide/integration-by-capability)，不要默认复制全功能策略。
+
 接入时需要提交三组信息：<code>PwaIdentity</code> 确定应用及 URL 所有权，<code>PwaInstallMetadata</code> 确定安装展示，<code>PwaPolicy</code> 声明缓存与更新意图。下面是部署在域名根路径的起点，需替换域名、名称与图标文件。
 
 ~~~ts

@@ -1,5 +1,6 @@
 ---
 layout: home
+pageClass: production-home
 hero:
   name: PWA Platform
   text: 为业务应用接入 PWA
@@ -14,8 +15,8 @@ hero:
 features:
   - title: 按技术栈接入
     details: 为 Vite + Vue 或 React 选择公开包，按步骤配置、注册并验证。
-    link: /start/choose
-    linkText: 查看接入路径
+    link: /guide/integration-by-capability
+    linkText: 按功能选择路径
   - title: 明确缓存边界
     details: 用声明式策略管理离线资源；私有数据、写入和未分类请求默认不缓存。
     link: /architecture/security
@@ -35,6 +36,48 @@ PWA Platform 是供多个业务应用复用的 PWA 基础设施。业务团队�
 ::: warning 当前发布状态
 十个公开包的正式版本为 **0.1.0**（npm `latest`），包括 Vite、Vue、React 和可选的入口恢复包。Nuxt、Push 与离线写入包仍只在工作区。包发布不代替业务应用的生产部署验收。
 :::
+
+## PC／Android／iPhone 测试清单
+
+核查日期：**2026-09-27**。**● 发布门禁通过**＝已进入当前正式版发布判定；**◐ 真机观察／部分通过**＝有真实设备结果，但设备、版本或场景矩阵不完整；**○ 未验证**＝当前记录不能给出该平台结论。PC 指当前 `desktop` 发布通道的 Chrome 154／153；Android 指一台 Android 16 + Chrome 153 实体设备；iPhone 指 iPhone 16 Pro + iOS 27 Safari。手机端有大量可用性证据，但**没有**被包装成完整移动发布门禁。
+
+| 功能检查 | PC | Android 手机 | iPhone | 当前结论 |
+| --- | --- | --- | --- | --- |
+| Vue／React 正式包构建与注册 | ● | ◐ | ◐ | PC 已覆盖独立消费和完整回归；手机为公开示例真机观察 |
+| 原生安装／添加到主屏幕／独立窗口 | ● | ◐ | ◐ | 三端均有实证；Android 缺 N/N-1 两机，iPhone 未定义发布通道 |
+| v1→v2 等待、用户确认接管、显式刷新 | ● | ◐ | ◐ | PC 门禁通过；手机场景已观察，但矩阵未闭合 |
+| 应用壳离线冷启动 | ● | ◐ | ◐ | 三端均有 Vue／React 结果；移动端仍按 E3 证据记录 |
+| 未缓存导航的离线页与联网自动恢复 | ● | ◐ | ◐ | 最终探针脚本在 Android、iPhone 真机通过；手机未升级为发布门禁 |
+| 公共读取运行时缓存 | ● | ○ | ○ | 策略和真实浏览器自动化通过；尚无手机专项记录 |
+| 私有、写入、流媒体和未分类请求拒绝缓存 | ● | ○ | ○ | Chrome N/N-1 自动化通过；业务宿主仍须证明响应分类 |
+| 恢复 worker／本应用缓存清理 | ● | ○ | ○ | 桌面故障路径通过；手机单 Origin 故障未执行 |
+| 入口恢复页、用户确认后跨 Origin 跳转 | ● | ◐ | ◐ | 三端有展示或跳转结果；手机真实 DNS／证书故障未执行 |
+| 中英文文案与亮／暗主题 | ◐ | ◐ | ◐ | API 和英文真机展示已覆盖；中文真机与完整视觉／无障碍矩阵未闭合 |
+
+完整设备、场景、证据等级和剩余限制见[跨平台测试证据](/reference/platform-test-matrix)。发布方仍应按自己的支持范围执行[上线前检查](/start/checklist)，不能把平台示例的测试结果直接继承为业务站点结论。
+
+## 与成熟开源应用的 PWA 能力对比
+
+这是对**官方仓库固定提交**的源码快照，不是产品排名，也不把“仓库里没搜到”写成“不支持”。**● 已确认**；**◐ 部分／平台限定／非公开包**；**○ reviewed sources 未确认或当前未提供**；**— 当前没有活动 Service Worker，因此该 SW 能力不适用**。项目部署可能与仓库分支不同；逐项来源、提交和判定解释见[成熟应用能力对比](/introduction/application-comparison)。
+
+| 能力 | 本平台 | Elk | HA | Proton Pass | Mastodon | Excalidraw | Squoosh | Pinafore | Immich | tldraw |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 显式且稳定的 manifest `id` | ● | ○ | ○ | ○ | ○ | ● | ○ | ○ | ○ | ○ |
+| 可安装 + 自定义安装引导 | ◐ | ● | ◐ | ○ | ◐ | ● | ◐ | ◐ | ◐ | ◐ |
+| 预缓存 + 离线兜底 | ● | ● | ● | ◐ | ◐ | ● | ● | ● | ○ | — |
+| 运行时缓存（按路由选策略） | ● | ● | ● | ◐ | ● | ● | ● | ● | ○ | — |
+| 未分类请求默认不缓存 | ● | ◐ | ○ | ◐ | ◐ | ◐ | ○ | ○ | ● | — |
+| 用户确认后才更新 | ● | ● | ◐ | ○ | ○ | ○ | ◐ | ○ | ○ | — |
+| 关停／迁移／恢复 worker | ● | ○ | ◐ | ○ | ○ | ◐ | ◐ | ○ | ○ | ● |
+| Web Push 通知 | ◐ | ● | ● | ○ | ● | ○ | ○ | ● | ○ | — |
+| Background Sync 标准 API | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | — |
+| 周期／主动检查更新 | ◐ | ◐ | ○ | ◐ | ○ | ◐ | ○ | ○ | ○ | — |
+| Web Share Target | ○ | ● | ○ | ○ | ○ | ● | ● | ◐ | ○ | ○ |
+| 文件关联 File Handlers | ○ | ○ | ○ | ○ | ○ | ● | ○ | ○ | ○ | ○ |
+| 快捷方式／Launch Handler | ◐ | ○ | ○ | ○ | ○ | ○ | ○ | ○ | ● | ○ |
+| Service Worker 专项自动化 | ● | ○ | ◐ | ○ | ● | ○ | ○ | ○ | ○ | — |
+
+最值得关注的不是绿色圆点数量，而是能力是否有明确边界：本平台把缓存准入、更新确认、构建校验和恢复交付做成可复用契约；具体应用往往能更深入地实现 Push、分享或文件关联，但实现与自身业务强绑定。工具层职责对照仍单独保留在[PWA 工具能力对照](/introduction/tooling-comparison)。
 
 ## PWA 解决哪些问题
 
@@ -91,7 +134,10 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 | --- | --- |
 | 判断它是否适合你的项目 | [项目介绍](/introduction/)与[能力边界](/introduction/capabilities) |
 | 与其他 PWA 工具怎么选 | [PWA 工具能力对照](/introduction/tooling-comparison) |
+| 查看 PC、Android、iPhone 的测试证据 | [跨平台测试证据](/reference/platform-test-matrix) |
+| 对照成熟应用的 PWA 覆盖 | [成熟应用能力对比](/introduction/application-comparison) |
 | 知道该安装哪些包 | [选择接入包](/start/choose) |
+| 只接原生壳、更新、缓存、离线页或恢复 | [按功能接入 PWA](/guide/integration-by-capability) |
 | 在现有项目跑通 | [Vue 接入](/start/vue)或[React 接入](/start/react) |
 | 理解配置为什么这样写 | [身份与策略](/guide/configuration) |
 | 准备发布业务应用 | [上线前检查](/start/checklist)与[部署发布](/operations/release) |

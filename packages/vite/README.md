@@ -1,13 +1,131 @@
 # @pwa-platform/vite
 
-Vite build integration for PWA Platform.
+Production build integration for PWA Platform. The `pwa()` plugin validates the application identity and policy,
+compiles the cache plan, injects the manifest link, exposes `virtual:pwa-config`, and emits the web app manifest,
+platform worker, recovery worker and optional offline page. It supports Vite 5 and Vite 8 on Node.js 22 or later.
 
-Add the `pwa()` plugin to the Vite configuration. Pair it with the Vue or React binding in the application.
+## Install
 
-The `0.1.0` release accepts Vite 5 and 8 on Node 22 or later.
+```sh
+npm install @pwa-platform/vite @pwa-platform/contracts
+```
 
-Add `@pwa-platform/vite/virtual` to the application's `tsconfig.json` `compilerOptions.types` to type `virtual:pwa-config`. The plugin resolves this virtual module in `vite dev`, but only a production build emits a worker and precache. Call the client binding's `register()` only in production, and use `vite build` plus a served build to test offline behavior. Keep `pwa()` after any plugin that changes final JS or CSS bytes: the build fails if a later plugin changes files after the PWA plan is compiled. Obfuscators must also produce identical bytes for identical input; configure a fixed seed and compare two clean builds. A changing file behind an unchanged fingerprinted URL is unsafe to publish.
+## Configure Vite
 
-The `0.1.0` release provides online use, installation integration, static precaching, a safe offline fallback, and controlled updates. It does not enable runtime business API caching, private data caching, automatic write replay, or Push for applications. Production deployment requires the application and infrastructure checks described in the PWA Platform release runbook.
+```ts
+// vite.config.ts
+import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/contracts";
+import { pwa } from "@pwa-platform/vite";
+import { defineConfig } from "vite";
 
-License: MIT.
+const identity: PwaIdentity = {
+  appId: "exampleapp",
+  manifestId: "/app/",
+  origin: "https://app.example.com",
+  scope: "/app/",
+  serviceWorkerUrl: "/app/sw.js",
+  manifestUrl: "/app/manifest.webmanifest",
+  mountPath: "/app/",
+  environment: "production",
+  cacheNamespaceSeed: "r1",
+};
+
+const policy: PwaPolicy = {
+  schemaVersion: 1,
+  install: { enabled: true },
+  offlineFallback: { enabled: true, path: "/offline.html" },
+  updateMode: "prompt",
+  networkTimeoutSeconds: 5,
+  resources: [
+    { pathPrefix: "/", resourceClass: "navigation-public-static", cache: "network-first" },
+    { pathPrefix: "/index.html", resourceClass: "asset", cache: "cache-first" },
+    { pathPrefix: "/offline.html", resourceClass: "asset", cache: "cache-first" },
+    { pathPrefix: "/assets", resourceClass: "asset", cache: "cache-first" },
+  ],
+};
+
+const install: PwaInstallMetadata = {
+  startUrl: "/app/",
+  display: "standalone",
+  name: "Example App",
+  shortName: "Example",
+  themeColor: "#0b5fff",
+  backgroundColor: "#ffffff",
+  icons: [
+    { src: "/app/icons/192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: "/app/icons/512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+  ],
+};
+
+export default defineConfig({
+  base: "/app/",
+  plugins: [
+    pwa({
+      identity,
+      policy,
+      install,
+      topology: { kind: "standalone-origin" },
+      offlinePage: { locale: "zh-CN" },
+    }),
+  ],
+});
+```
+
+Paths inside `policy.resources` and `offlineFallback.path` are mount-relative: with `mountPath: "/app/"`,
+`"/offline.html"` is published as `/app/offline.html`. Identity and install URLs are origin paths and already
+include the mount path. `offlinePage` accepts `locale: "zh-CN" | "en"`, partial `messages` and appended `css`; it
+requires `policy.offlineFallback.enabled` and is omitted entirely when the option is absent.
+
+Add the virtual-module declaration to the application TypeScript configuration:
+
+```json
+{
+  "compilerOptions": {
+    "types": ["@pwa-platform/vite/virtual"]
+  }
+}
+```
+
+Then pass the generated config to a framework binding or the client facade:
+
+```ts
+import config from "virtual:pwa-config";
+import { createPwaClient } from "@pwa-platform/client-runtime";
+
+const client = createPwaClient({ config });
+if (import.meta.env.PROD) await client.register();
+```
+
+Install `@pwa-platform/client-runtime` explicitly when using that direct example. Vue and React applications should
+instead install their framework binding, which owns the client facade for the application lifetime.
+
+## Options and outputs
+
+| Option | Meaning |
+| --- | --- |
+| `identity` | Immutable app id, origin, mount, scope, manifest URL, worker URL, environment and cache namespace seed. |
+| `policy` | Install flag, update mode, offline fallback, timeout, precache rules and optional explicit runtime-cache/offline-write rules. |
+| `install` | Manifest metadata. Pass `null` for an application that must not be installable; no manifest is emitted. |
+| `topology` | `{ kind: "standalone-origin" }` or a validated shared-origin registry. |
+| `offlinePage` | Opt-in platform offline page with build-time locale, copy and CSS overrides. |
+
+Production builds emit only artifacts justified by these options. Development mode provides the virtual config
+for application startup but does not provide a production-equivalent worker or precache; validate offline behavior
+from a served production build.
+
+The root entry also exports `buildPwaArtifacts()` and `assertPwaArtifacts()` for nonstandard build orchestration,
+plus `PWA_PLUGIN_NAME` and option/artifact types. `@pwa-platform/vite/virtual` is type-only.
+
+## Build and deployment rules
+
+- Keep `pwa()` after plugins that change final JavaScript or CSS bytes. The plugin runs as `enforce: "post"` and
+  fails if a later mutation makes the compiled hashes stale.
+- Use deterministic minification/obfuscation. Identical inputs must produce identical bytes and hashed URLs.
+- Publish the application files, worker, manifest and plan from one build as a unit. Do not mix releases.
+- Changing identity, scope, worker URL or cache namespace is a migration, not a routine configuration edit.
+- `install: null` disables manifest emission; it does not by itself disable the worker or caching policy.
+
+See [configuration](https://github.com/haigeerlab/pwa-platform/blob/main/website/guide/configuration.md),
+[offline integration](https://github.com/haigeerlab/pwa-platform/blob/main/website/guide/offline.md),
+[manifest fields](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/manifest-fields.md) and the
+[security model](https://github.com/haigeerlab/pwa-platform/blob/main/docs/architecture/security-model.md).

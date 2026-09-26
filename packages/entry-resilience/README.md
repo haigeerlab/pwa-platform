@@ -1,87 +1,113 @@
 # @pwa-platform/entry-resilience
 
-Optional entry recovery for a PWA whose original address is moving or unavailable. Install it alongside
-`@pwa-platform/vite`; use the same `PwaIdentity` object for both Vite plugins. The package supports Vite 5 and 8
-on Node 22 or later.
+Optional entry recovery for an installed PWA whose original address is moving or unavailable. The package emits a
+precache-protected recovery page, validates application-supplied entry manifests, stores the newest accepted
+manifest locally and shows a validated alternative URL only when recovery conditions are met. It supports Vite 5
+and Vite 8 on Node.js 22 or later.
 
-The application obtains a manifest through its own request layer and hands the decoded object to the client API.
-The platform checks its shape, increasing sequence and expiry, then stores it locally. A recovery page shows a
-validated alternative address; navigation happens only after the user clicks it. Neither cookies nor login state
-move between origins.
+This is not an automatic redirect, cross-origin session transfer or trust service. Navigation happens only after
+the user clicks the recovery link, and cookies or login state never move between origins.
 
-## Install and configure
+## Install and build integration
 
 ```sh
 npm install @pwa-platform/entry-resilience @pwa-platform/vite
 ```
 
 ```ts
-// vite.config.ts — reuse the identity already passed to pwa()
+// vite.config.ts — reuse the exact identity object passed to pwa()
 import { pwa } from "@pwa-platform/vite";
 import { pwaEntryResilience } from "@pwa-platform/entry-resilience/vite";
 
 plugins: [
   pwa({ identity, policy, install, topology }),
-  pwaEntryResilience({ identity, maxValidityDays: 30, locale: "zh-CN" }),
+  pwaEntryResilience({
+    identity,
+    maxValidityDays: 30,
+    locale: "zh-CN",
+    messages: { heading: "应用入口已变更" },
+    css: ".pwa-entry { --pwa-entry-accent: #006e52; }",
+  }),
 ]
 ```
 
-The PWA policy must classify the mount-relative `/pwa-entry.html` as a `cache-first` asset, and its fingerprinted
-script under `/assets` as an asset too. The build rejects a recovery page that is not precached. `locale` accepts
-`"zh-CN"` or `"en"`; `messages` overrides individual strings. The `css` option appends host CSS after the
-default recovery-page style. To change the button, override `--pwa-entry-accent` and
-`--pwa-entry-accent-fg` in `.pwa-entry`; see the [integration guide](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/entry-recovery-integration.md)
-for light/dark theme selectors and strict CSP hashes.
+The PWA policy must classify mount-relative `/pwa-entry.html` as a `cache-first` asset and cover its fingerprinted
+script (normally through `/assets`). The build rejects a recovery page that is not precached. `maxValidityDays`
+accepts 1–90 and defaults to 30. `locale` accepts `"zh-CN"` or `"en"`; `messages` overrides individual strings;
+`css` is appended after the default page style and must not contain a closing `</style` sequence.
+
+## Browser integration
+
+The application owns fetching, authentication, authorization, decryption and polling. Hand the already-decoded
+object to the package:
 
 ```ts
-import { updateEntryManifest, checkEntryRecovery, setPwaTheme } from "@pwa-platform/entry-resilience/client";
+import {
+  checkEntryRecovery,
+  setPwaTheme,
+  updateEntryManifest,
+} from "@pwa-platform/entry-resilience/client";
 
-const result = await updateEntryManifest(await api.getEntryManifest());
+const response = await fetch("/api/pwa-entry", { credentials: "include" });
+const result = await updateEntryManifest(await response.json());
 if (!result.accepted) reportDiagnostics(result.diagnostics);
 
 const recovery = await checkEntryRecovery({ returnPath: location.pathname });
 if (recovery.kind === "available") showRecoveryLink(recovery.recoveryPageUrl);
 
-setPwaTheme("system"); // or "light" / "dark"
+setPwaTheme("system"); // "light", "dark" or "system"
 ```
 
-The application owns the request, authentication, decryption and polling. Keep the manifest endpoint protected:
-the platform validates structure and timing, but does not authenticate its source or restrict destination origins.
-An ordinary device-wide loss of connectivity with a `normal` manifest does not create a domain-outage suggestion.
+Call `updateEntryManifest()` after a successful application-controlled fetch and at the application's chosen refresh
+interval. `checkEntryRecovery()` probes the current entry and decides whether a recovery suggestion is warranted;
+it does not navigate. `setPwaTheme()` stores a same-origin preference read by the recovery page and silently no-ops
+when storage is unavailable.
 
-## Validate a manifest before you publish it
+## Manifest contract and validation
 
-Use the same validator in Node before publishing a manifest so an invalid manifest fails CI or the backend job
-instead of being silently rejected only by a browser page.
+Validate a manifest in CI or backend code with the side-effect-free root entry:
 
-```js
+```ts
 import { parseEntryManifest } from "@pwa-platform/entry-resilience";
 
+const now = Date.now();
 const manifest = {
   sequence: 7,
-  expiresAt: "2026-10-01T08:00:00Z",
+  expiresAt: new Date(now + 7 * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z"),
   status: "migrating",
-  reason: { code: "planned-migration", message: "Domain retires October 1." },
+  reason: { code: "planned-migration", message: "The old domain is retiring." },
   entries: [{ origin: "https://new.example.com", startPath: "/app/" }],
 };
 
 const result = parseEntryManifest(manifest, {
-  appId: "pwaexample",
+  appId: "exampleapp",
   environment: "production",
-  // Match the maxValidityDays in this app's Vite config.
   maxValidityDays: 30,
-  // Inject the moment at which validity should be judged.
-  now: Date.now(),
+  now,
 });
 
-if (!result.ok) {
-  for (const { code, path } of result.diagnostics) {
-    console.error(`${path || "(manifest)"}: ${code}`);
-  }
-  process.exit(1);
-}
+if (!result.ok) throw new Error(result.diagnostics.map((item) => item.code).join(", "));
 ```
 
-`parseEntryManifest` never throws or reads ambient state. It is the same shape validator used by
-`updateEntryManifest`; expiry and sequence are checked again when the browser accepts the manifest. Use an
-`expiresAt` value in `YYYY-MM-DDTHH:mm:ssZ` format without milliseconds.
+Use UTC `YYYY-MM-DDTHH:mm:ssZ` timestamps without milliseconds. Browsers additionally reject expired manifests and
+sequences that do not advance beyond the locally accepted value.
+
+## Export map
+
+| Entry | Intended use |
+| --- | --- |
+| `@pwa-platform/entry-resilience` | Manifest types/diagnostics, `parseEntryManifest`, pure recovery orchestration and advanced browser ports. |
+| `@pwa-platform/entry-resilience/vite` | `pwaEntryResilience()` and build option/page message types. |
+| `@pwa-platform/entry-resilience/client` | `updateEntryManifest()`, `checkEntryRecovery()` and `setPwaTheme()`. |
+
+## Security boundary
+
+- The package validates schema, sequence and expiry; it does not authenticate the manifest source or restrict the
+  destination origins. Your backend and request layer are the trust boundary.
+- Never expose a debugging hook that lets arbitrary page visitors call `updateEntryManifest()` with their own data.
+- The recovery page displays a destination before a user click. It does not auto-redirect or transfer credentials.
+- A normal manifest plus device-wide loss of connectivity does not create a domain-outage suggestion.
+- Keep `identity` identical across both Vite plugins and treat identity changes as a migration.
+
+See the complete [entry-recovery integration guide](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/entry-recovery-integration.md)
+and [entry-resilience specification](https://github.com/haigeerlab/pwa-platform/blob/main/spec/pwa-entry-resilience.md).

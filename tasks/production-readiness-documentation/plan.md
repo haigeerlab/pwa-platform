@@ -39,53 +39,53 @@
 
 ### 阶段二：首页与能力对比
 
-- [ ] T3 在首页加入 PC／Android／iPhone 多功能测试矩阵并链接证据页。
-- [ ] T4 依据带日期的官方来源重做成熟项目能力对比，并同步修订旧对比规格与页面。
-- [ ] T5 验证首页两张矩阵在桌面与窄屏下可读，不产生整页溢出。
+- [x] T3 在首页加入 PC／Android／iPhone 多功能测试矩阵并链接证据页。
+- [x] T4 依据带日期的官方来源重做成熟项目能力对比，并同步修订旧对比规格与页面。
+- [x] T5 验证首页两张矩阵在桌面与窄屏下可读，不产生整页溢出。
 
 ### 检查点：首页
 
-- [ ] 表格状态、图例、版本和核查日期完整。
-- [ ] 外部项目没有无来源的“没有”或“已实现”判断。
-- [ ] `pnpm docs:build` 通过。
+- [x] 表格状态、图例、版本和核查日期完整。
+- [x] 外部项目没有无来源的“没有”或“已实现”判断。
+- [x] `pnpm docs:build` 通过。
 
 ### 阶段三：十个正式包 README
 
-- [ ] T6 补齐契约与基础实现包 README：contracts、core、engine-workbox、build-verifier、sw-runtime。
-- [ ] T7 补齐页面运行时与构建入口 README：client-runtime、vite、entry-resilience。
-- [ ] T8 补齐 Vue 与 React README，包含安装、注册、状态、方法、可选更新 UI 与 CSS。
+- [x] T6 补齐契约与基础实现包 README：contracts、core、engine-workbox、build-verifier、sw-runtime。
+- [x] T7 补齐页面运行时与构建入口 README：client-runtime、vite、entry-resilience。
+- [x] T8 补齐 Vue 与 React README，包含安装、注册、状态、方法、可选更新 UI 与 CSS。
 
 ### 检查点：包文档
 
-- [ ] 十包职责、受众、安装建议与安全边界清楚。
-- [ ] README 中列出的入口和符号与 `package.json` exports、类型声明一致。
-- [ ] `pnpm check:publish` 与适用的最小消费验证通过。
+- [x] 十包职责、受众、安装建议与安全边界清楚。
+- [x] README 中列出的入口和符号与 `package.json` exports、类型声明一致。
+- [x] `pnpm check:publish` 与适用的最小消费验证通过。
 
 ### 阶段四：按功能重组接入文档
 
-- [ ] T9 建立原生壳与安装路径，明确无公共运行时缓存的最小配置。
-- [ ] T10 重写更新提示、主动检查、多语言与主题接入路径。
-- [ ] T11 重写离线页、公共读取缓存与弱网超时接入路径。
-- [ ] T12 重写恢复 worker 与入口恢复接入路径，区分清理和迁移用途。
-- [ ] T13 对齐配置参考、包选择、兼容范围、导航与跨页链接，删除由本次改写产生的重复说明。
+- [x] T9 建立原生壳与安装路径，明确无公共运行时缓存的最小配置。
+- [x] T10 重写更新提示、主动检查、多语言与主题接入路径。
+- [x] T11 重写离线页、公共读取缓存与弱网超时接入路径。
+- [x] T12 重写恢复 worker 与入口恢复接入路径，区分清理和迁移用途。
+- [x] T13 对齐配置参考、包选择、兼容范围、导航与跨页链接，删除由本次改写产生的重复说明。
 
 ### 检查点：开发者路径
 
-- [ ] 六类功能都有最小配置、依赖、默认行为、验证方法和限制。
-- [ ] 示例不突破身份、缓存准入与 scope 的既有 ADR。
-- [ ] 新读者无需阅读内部包拓扑即可完成公开接入。
+- [x] 六类功能都有最小配置、依赖、默认行为、验证方法和限制。
+- [x] 示例不突破身份、缓存准入与 scope 的既有 ADR。
+- [x] 新读者无需阅读内部包拓扑即可完成公开接入。
 
 ### 阶段五：总验证与交付
 
-- [ ] T14 运行文档构建、链接、发布包检查、README 示例和相关最小消费验证。
-- [ ] T15 在桌面与 375px 视口检查首页和关键指南，记录截图或 DOM 尺寸证据。
-- [ ] T16 复核 diff、文档基线与 Spec Guard 交付状态，生成最终验证记录和剩余限制。
+- [x] T14 运行文档构建、链接、发布包检查、README 示例和相关最小消费验证。
+- [x] T15 在桌面与 375px 视口检查首页和关键指南，记录截图或 DOM 尺寸证据。
+- [x] T16 复核 diff、文档基线与 Spec Guard 交付状态，生成最终验证记录和剩余限制。
 
 ### 完成检查点
 
-- [ ] 所有阻断级审核发现已修复或明确阻止“生产级通过”结论。
-- [ ] 所有文档与当前 npm `latest`、当前提交和记录证据一致。
-- [ ] 全部验收标准通过，变更可独立评审。
+- [x] 所有阻断级审核发现已修复或明确阻止“生产级通过”结论。
+- [x] 所有文档与当前 npm `latest`、当前提交和记录证据一致。
+- [x] 全部验收标准通过，变更可独立评审。
 
 ## 任务规格
 
@@ -110,7 +110,16 @@
 
 | Concern | Planned artifact | Rationale |
 |---|---|---|
-| production-readiness-documentation | `docs/product/production-readiness-audit.md`、详细证据页、`verification.md` | 记录审核结论和证据链。 |
+| production-readiness-documentation | `spec/production-readiness-documentation.md`、`docs/product/production-readiness-audit.md`、`tasks/production-readiness-documentation/plan.md`、`tasks/production-readiness-documentation/verification.md` | 记录审核结论和证据链；首页、详细证据页、十包 README 与功能接入指南作为实施交付。 |
 | capability-map | `spec/CAPABILITY-MAP.md` | 登记新模块与依赖。 |
-| capability-comparison | `spec/capability-comparison.md`、`website/introduction/tooling-comparison.md`、`tasks/capability-comparison/verification.md` | 更新既有对比事实源；首页与应用对比明细是该权威交付的一部分。 |
+| capability-comparison | `spec/capability-comparison.md`、`website/introduction/tooling-comparison.md`、`website/introduction/application-comparison.md`、`tasks/capability-comparison/verification.md` | 更新既有对比事实源；首页消费该权威交付。 |
 | developer-entry | `README.md` | 更新仓库入口；十个包 README、功能接入指南、包与兼容参考由入口链接。 |
+
+## Documentation outcome
+
+| Concern | Outcome | Evidence | Rationale |
+|---|---|---|---|
+| production-readiness-documentation | delivered | `tasks/production-readiness-documentation/verification.md` | 审核、首页矩阵、十包 README、功能接入指南及其验证记录已交付。 |
+| capability-map | delivered | `spec/CAPABILITY-MAP.md` | 已登记本模块边界与依赖。 |
+| capability-comparison | delivered | `tasks/capability-comparison/verification.md` | 工具对照与固定提交的成熟应用矩阵已交付并完成响应式核验。 |
+| developer-entry | delivered | `README.md`、`website/index.md`、`website/guide/integration-by-capability.md` | 仓库入口、文档站首页与按能力接入路径已更新。 |
