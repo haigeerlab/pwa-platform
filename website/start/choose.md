@@ -35,9 +35,10 @@ pnpm add -D @pwa-platform/vite@0.1.0 @pwa-platform/contracts@0.1.0
 
 ## 接入顺序
 
-1. 按实际部署地址写[身份、安装信息与策略](/guide/configuration)。
-2. 在 Vite 配置中挂载插件。
-3. 在页面入口放入框架绑定并主动调用 <code>register()</code>。
-4. 构建后部署到 HTTPS 站点，按[上线前检查](/start/checklist)验证。
+1. 先按[功能接入路径](/guide/integration-by-capability)决定只启用原生壳、更新、离线、公共缓存或恢复中的哪些能力。
+2. 按实际部署地址写[身份、安装信息与策略](/guide/configuration)。
+3. 在 Vite 配置中挂载插件。
+4. 在页面入口放入框架绑定并主动调用 <code>register()</code>。
+5. 构建后部署到 HTTPS 站点，按[上线前检查](/start/checklist)验证。
 
 继续阅读：[Vue 接入](/start/vue)或[React 接入](/start/react)。

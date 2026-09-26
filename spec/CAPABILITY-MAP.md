@@ -38,8 +38,9 @@
 | public-read-cache | 以 PwaPolicy v3 显式开启同源公共读取的运行时缓存：响应准入、配额与时效、激活/登出/恢复清理，以及页面可感知的缓存来源信号；私有与会话数据仍一律拒绝。 | contracts-foundation, policy-compiler, browser-test-harness, workbox-engine, sw-runtime, client-runtime, vite-adapter, ssr-adapters, offline-write-extension |
 | network-timeout | 以 `PwaPolicy` 可选的 `networkTimeoutSeconds` 显式开启网络超时：导航超时后使用既有离线回退，network-first 运行时缓存超时后使用缓存并以 `network-timeout` 通知页面；未写时行为与产物不变。 | contracts-foundation, policy-compiler, workbox-engine, sw-runtime, client-runtime, public-read-cache |
 | stable-release-qualification | 对九个现有公开包和入口恢复包做跨浏览器安装、更新、离线、入口恢复与 npm 分发验收；真实记录限制，修复后复测，再决定正式版本发布。 | package-distribution, browser-release-evidence, update-notice-ui, pwa-entry-resilience |
+| production-readiness-documentation | 基于正式包、源码、自动化与真机证据审计生产就绪度；在文档站公开多端测试矩阵、可追溯的能力对比，补齐十个公开包 README，并按功能目标重组接入说明。 | stable-release-qualification, capability-comparison |
 
-Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout
+Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout → stable-release-qualification → production-readiness-documentation
 
 ---
 
@@ -106,3 +107,13 @@ Build order: contracts-foundation → policy-compiler, platform-governance, brow
 
 评审人：项目所有者
 日期：2026-09-24
+
+### 2026-09-27 修订：新增 `production-readiness-documentation`（已评审通过）
+
+- [x] 模块边界确认：只核验并公开现有实现与证据，不修改 `PwaIdentity`、缓存准入、Service Worker scope 或公开运行时契约
+- [x] 证据口径确认：区分代码实现、自动化通过、真机观察与发布门禁；没有可追溯记录的测试不写成发布通过
+- [x] 文档范围确认：首页多端矩阵与项目对比、十个正式包 README、按功能目标组织的接入指南及生产就绪审核报告
+- [x] 依赖方向单向无环：消费正式发布验收与现有能力对比事实，不反向改变运行时模块
+
+评审人：项目所有者
+日期：2026-09-27

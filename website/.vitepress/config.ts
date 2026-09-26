@@ -16,7 +16,7 @@ export default defineConfig({
     nav: [
       { text: "认识平台", link: "/introduction/" },
       { text: "开始接入", link: "/start/choose" },
-      { text: "能力指南", link: "/guide/configuration" },
+      { text: "能力指南", link: "/guide/integration-by-capability" },
       { text: "架构", link: "/architecture/" },
       { text: "参考", link: "/reference/packages" },
     ],
@@ -26,6 +26,7 @@ export default defineConfig({
         items: [
           { text: "项目介绍", link: "/introduction/" },
           { text: "能力与边界", link: "/introduction/capabilities" },
+          { text: "成熟应用能力对比", link: "/introduction/application-comparison" },
           { text: "PWA 工具能力对照", link: "/introduction/tooling-comparison" },
         ],
       },
@@ -41,6 +42,7 @@ export default defineConfig({
       {
         text: "能力指南",
         items: [
+          { text: "按功能接入", link: "/guide/integration-by-capability" },
           { text: "身份与策略配置", link: "/guide/configuration" },
           { text: "离线体验", link: "/guide/offline" },
           { text: "公共读取缓存", link: "/guide/public-read-cache" },
@@ -63,6 +65,7 @@ export default defineConfig({
         items: [
           { text: "包与公开入口", link: "/reference/packages" },
           { text: "兼容范围", link: "/reference/compatibility" },
+          { text: "跨平台测试证据", link: "/reference/platform-test-matrix" },
           { text: "部署与发布", link: "/operations/release" },
         ],
       },

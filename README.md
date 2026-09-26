@@ -10,9 +10,9 @@
 
 首个版本支持基于 Vite 构建的 Vue 3.4+ 和 React 19.2+ 应用，提供安装能力、静态资源预缓存、安全的离线降级、受控更新提示和构建期策略校验。
 
-**支持范围**：v1 先按桌面端通道发布（[ADR-0030](docs/adr/0030-desktop-release-channel.md)），保证范围是 Chrome 桌面端的当前与上一个稳定版。在首次以 `desktop+android` 通道发布之前，Chrome Android 未经验证、不做任何保证，包括基础网页体验。
+**支持范围**：v1 先按桌面端通道发布（[ADR-0030](docs/adr/0030-desktop-release-channel.md)），保证范围是 Chrome 桌面端的当前与上一个稳定版。在首次以 `desktop+android` 通道发布之前，Chrome Android 尚未通过发布门禁、不做通道级保证；现有单机真机结果只作为渐进兼容证据。
 
-默认 v1 不提供公共 API 缓存、私有数据缓存、离线写入、媒体下载或 Next.js 适配器。协调的 v2 policy 可选择启用受限、会话绑定的离线写队列；它不是 fetch 拦截，也不提供 Background Sync 或自动重放，详见 [ADR-0027](docs/adr/0027-explicit-session-bound-offline-write-queue.md)。
+默认策略不缓存 API。`0.1.0` 可通过 `PwaPolicy v3` 显式开启受限的公共同源 GET 缓存，但仍不缓存私有数据、写请求或媒体流，详见[公共读取缓存接入说明](docs/guides/public-read-cache.md)。工作区私有的 v2 policy 可选择启用受限、会话绑定的离线写队列；它不是 fetch 拦截，也不提供 Background Sync 或自动重放，详见 [ADR-0027](docs/adr/0027-explicit-session-bound-offline-write-queue.md)。平台不提供媒体下载或 Next.js 适配器。
 
 ## 架构
 
@@ -61,7 +61,7 @@ PwaIdentity + PwaPolicy + 宿主构建产物
 - `push-module`：`@pwa-platform/push` 提供显式订阅与后端格式契约；订阅、发送与后端清理仍由业务负责（[接入说明](docs/guides/push-integration.md)）。
 - `offline-write-extension`：`PwaPolicy v2` 显式开启、会话绑定的离线写入队列（[ADR-0027](docs/adr/0027-explicit-session-bound-offline-write-queue.md)）。
 - `pwa-entry-resilience`：当前 Origin 迁移或不可达时，使用业务应用提供的备用入口清单，让已安装用户确认后跳转（[接入说明](docs/guides/entry-recovery-integration.md)）。
-- `public-read-cache`（路线图 v1.1）：`PwaPolicy v3` 显式开启公共读取的运行时缓存（[ADR-0035](docs/adr/0035-explicit-public-read-runtime-cache.md)、[接入说明](docs/guides/public-read-cache.md)）。Nuxt 暂不支持开启。
+- `public-read-cache`：正式包 `0.1.0` 可通过 `PwaPolicy v3` 显式开启公共读取的运行时缓存（[ADR-0035](docs/adr/0035-explicit-public-read-runtime-cache.md)、[接入说明](docs/guides/public-read-cache.md)）。Nuxt 暂不支持开启。
 
 **发布就绪**
 
@@ -72,7 +72,7 @@ PwaIdentity + PwaPolicy + 宿主构建产物
 **尚未取得或尚未放行**
 
 - **业务应用 V1 生产发布尚未放行**：桌面发布演练中，机器发布门禁的保留检查仍在等待历史发布补齐（[演练清单](tasks/platform-governance/desktop-release-rehearsal.md)）。这与本仓库 npm 库包的发布判定不同。
-- **Chrome Android N 与 N-1 的证据一直未取得**，各模块按"未执行"登记；桌面 N-1 只在部分模块中取得。
+- **Chrome Android N/N-1 两机发布证据仍未取得**；Android 16／Chrome 153 的单机真机场景只能作为 E3 证据，不能替代 `desktop+android` 通道门禁。桌面 Chrome 154/153 的正式版最终矩阵已取得。
 - 真实 CI 运行、生产或类生产环境的验证，以各模块验证记录中"未取得的证据"一节为准。
 
 ## 本地开发
