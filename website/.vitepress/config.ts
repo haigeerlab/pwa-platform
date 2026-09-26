@@ -26,6 +26,7 @@ export default defineConfig({
         items: [
           { text: "项目介绍", link: "/introduction/" },
           { text: "能力与边界", link: "/introduction/capabilities" },
+          { text: "PWA 工具能力对照", link: "/introduction/tooling-comparison" },
         ],
       },
       {

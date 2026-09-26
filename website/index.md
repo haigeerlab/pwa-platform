@@ -24,6 +24,10 @@ features:
     details: 核对构建产物、线上响应头、更新行为、旧资源保留和恢复流程。
     link: /start/checklist
     linkText: 查看上线检查
+  - title: 看清工具定位
+    details: 对照本平台、vite-plugin-pwa、Workbox 与产品化工具的职责和交付范围。
+    link: /introduction/tooling-comparison
+    linkText: 阅读能力对照
 ---
 
 PWA Platform 是供多个业务应用复用的 PWA 基础设施。业务团队声明应用身份和缓存意图，平台生成 manifest、Service Worker 与离线页，并在构建时核对产物。安装按钮、更新提示和业务数据仍由应用负责。
@@ -85,6 +89,7 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 | 你想完成的事 | 阅读 |
 | --- | --- |
 | 判断它是否适合你的项目 | [项目介绍](/introduction/)与[能力边界](/introduction/capabilities) |
+| 与其他 PWA 工具怎么选 | [PWA 工具能力对照](/introduction/tooling-comparison) |
 | 知道该安装哪些包 | [选择接入包](/start/choose) |
 | 在现有项目跑通 | [Vue 接入](/start/vue)或[React 接入](/start/react) |
 | 理解配置为什么这样写 | [身份与策略](/guide/configuration) |

@@ -1,0 +1,14 @@
+{
+  "name": "pwa-vite5-consumer",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@8.6.5",
+  "dependencies": {
+    "@pwa-platform/vite": "file:./adapter.tgz",
+    "vite": "5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "18.17.17",
+    "typescript": "5.2.2"
+  }
+}

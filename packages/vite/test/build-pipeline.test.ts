@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/contracts";
-import { build } from "vite";
+import { build, createServer, type Plugin } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { pwa } from "../src/index.js";
 
@@ -80,7 +80,7 @@ function app(publicFiles: Record<string, string> = {}): string {
  * own bundle object, and with `write: false` the `writeBundle` hook never runs at all — an in-memory build can
  * observe neither.
  */
-async function runBuild(root: string, installEnabled: boolean): Promise<string[]> {
+async function runBuild(root: string, installEnabled: boolean, afterPwa?: Plugin): Promise<string[]> {
   const names: string[] = [];
   await build({
     configFile: false,
@@ -95,6 +95,7 @@ async function runBuild(root: string, installEnabled: boolean): Promise<string[]
         install: installEnabled ? install : null,
         topology: { kind: "standalone-origin" },
       }),
+      ...(afterPwa === undefined ? [] : [afterPwa]),
       {
         name: "fixture-observer",
         apply: "build",
@@ -142,5 +143,43 @@ describe("the plugin inside a real build", () => {
     const root = app({ "icons/192.png": "x", "robots.txt": "User-agent: *\n" });
     const names = await runBuild(root, true);
     expect(names).toContain("manifest.webmanifest");
+  });
+
+  it("fails when a later plugin changes a chunk after the precache plan is compiled", async () => {
+    const root = app();
+    await expect(runBuild(root, true, {
+      name: "fixture-late-obfuscator",
+      enforce: "post",
+      generateBundle(_options, bundle) {
+        const chunk = Object.values(bundle).find((output) => output.type === "chunk");
+        if (chunk?.type === "chunk") chunk.code += "\n/* changed later */\n";
+      },
+    })).rejects.toThrow(/changed .* after the PWA plan was compiled/);
+  });
+});
+
+describe("the plugin in Vite's development server", () => {
+  it("resolves the client config without generating or registering a worker", async () => {
+    const root = app({ "manifest.webmanifest": '{"id":"/app/","name":"Hand written"}\n' });
+    writeFileSync(
+      join(root, "src/main.js"),
+      'import config from "virtual:pwa-config"; document.body.textContent = config.appId;\n',
+    );
+    const plugin = pwa({
+      identity,
+      policy: policy(false),
+      install: null,
+      topology: { kind: "standalone-origin" },
+    });
+    const server = await createServer({ configFile: false, root, base: "/app/", logLevel: "silent", plugins: [plugin] });
+    try {
+      await expect(server.transformRequest("/src/main.js")).resolves.toBeDefined();
+      await expect(server.ssrLoadModule("virtual:pwa-config")).resolves.toMatchObject({
+        default: { appId: "storefront" },
+      });
+      expect(plugin.api?.getPlan()).toBeNull();
+    } finally {
+      await server.close();
+    }
   });
 });

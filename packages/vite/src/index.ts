@@ -8,7 +8,7 @@ import {
   createClientConfigFromOptions,
   serializeClientConfigModule,
 } from "./client-config.js";
-import { bundleSourceFiles, type PwaBundle } from "./host-output.js";
+import { assertUnchangedBundleFiles, bundleSourceFiles, hashBundleFiles, type PwaBundle } from "./host-output.js";
 import { assertFinalManifestLink, resolveManifestLinkAction } from "./manifest-link.js";
 import { renderOfflinePage } from "./offline-page.js";
 import {
@@ -58,8 +58,8 @@ export type PwaPluginApi = {
  * Options are validated here, not in a build hook: a bad origin or an out-of-scope start URL should fail while the
  * developer is still looking at `vite.config`.
  *
- * The plugin runs on builds only (`apply: "build"`) and last among plugins (`enforce: "post"`), because it reads
- * the finished bundle: anything emitted by another plugin has to be in it before the precache list is collected.
+ * The virtual client config is available in both development and builds. Bundle hooks only run during builds;
+ * the plugin runs last (`enforce: "post"`) so it reads the finished bundle before collecting the precache list.
  */
 export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
   const validated = validateOptions(options);
@@ -73,6 +73,7 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
   // Carried from generateBundle to writeBundle: the plan is compiled where the bundle is complete, but the files
   // this plugin emits only become observable later (see the writeBundle hook).
   let planForCheck: PwaPlan | undefined;
+  let bundleHashesForCheck: ReadonlyMap<string, string> | undefined;
   // The plan other plugins can read through `api.getPlan()`. Kept separate from `planForCheck` so nothing an
   // outside caller does to the exposed copy can reach the object this plugin's own artifact check relies on.
   let exposedPlan: PwaPlan | null = null;
@@ -81,7 +82,6 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
 
   return {
     name: PWA_PLUGIN_NAME,
-    apply: "build",
     enforce: "post",
 
     api: {
@@ -93,6 +93,7 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
       // compilation fails before generateBundle sets a new value, getPlan() has to report "not ready", not "ready
       // with stale data".
       planForCheck = undefined;
+      bundleHashesForCheck = undefined;
       exposedPlan = null;
       htmlEntryFiles = new Set<string>();
     },
@@ -133,6 +134,7 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
 
     async generateBundle(_outputOptions, bundle) {
       // Collected before anything is emitted, so the plan is compiled against what the app itself produced.
+      bundleHashesForCheck = hashBundleFiles(bundle as unknown as PwaBundle);
       const publicFiles = readPublicFiles(publicDir, copyPublicDir);
       publicPaths = publicFiles.map((file) => `${base}${file.path}`);
 
@@ -205,6 +207,10 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
       // inventory this plugin wrote down from memory would be checking its own bookkeeping; this reads what the
       // build actually produced. Throwing here still fails the build — also measured.
       if (planForCheck === undefined) return;
+
+      if (bundleHashesForCheck !== undefined) {
+        assertUnchangedBundleFiles(bundle as unknown as PwaBundle, bundleHashesForCheck);
+      }
 
       for (const output of Object.values(bundle)) {
         if (output.type !== "asset" || !htmlEntryFiles.has(output.fileName)) continue;

@@ -28,6 +28,21 @@
   width: 100%;
 }
 
+.tooling-comparison .vp-doc table {
+  display: block;
+  overflow-x: auto;
+}
+
+.tooling-comparison .vp-doc table th:first-child,
+.tooling-comparison .vp-doc table td:first-child {
+  min-width: 7rem;
+}
+
+.tooling-comparison .vp-doc table th:not(:first-child),
+.tooling-comparison .vp-doc table td:not(:first-child) {
+  min-width: 10.5rem;
+}
+
 @media (max-width: 760px) {
   .vp-doc table {
     display: block;

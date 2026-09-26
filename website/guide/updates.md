@@ -1,6 +1,6 @@
 # 安装与更新
 
-平台提供状态和方法，不提供按钮、弹窗或自动刷新。业务应用决定何时展示安装操作、何时提示更新，以及如何保护用户尚未保存的内容。
+已发布的 `0.1.0-beta.1` 提供状态和方法，由业务应用实现按钮与提示。本仓库当前源码另有**可选的默认更新提示**，待下一版包发布；业务应用仍决定是否挂载它，以及如何保护未保存的内容。安装按钮仍由业务实现。
 
 ## 页面侧可用能力
 
@@ -39,6 +39,46 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 4. 多标签页都应感知 worker 接管，不能只处理点击按钮的标签页。
 
 长期不刷新的页面可显式开启 <code>updateCheck: { intervalMs: 1_800_000 }</code>；默认不开定时检查，最小间隔为 60 秒。框架中的最小写法见[Vue 接入](/start/vue)和[React 接入](/start/react)；上线前应按本页的交互流程处理失败、稍后提醒、未保存内容及多标签页。
+
+## 可选的默认更新提示（当前源码，尚未发布）
+
+在使用 `createPwa()` 的 Vue 应用根组件中挂载：
+
+```vue
+<script setup lang="ts">
+import { PwaUpdateNotice } from "@pwa-platform/vue/ui";
+import "@pwa-platform/vue/update-notice.css";
+</script>
+
+<template>
+  <RouterView />
+  <PwaUpdateNotice
+    position="bottom-right"
+    :colors="{ primaryButtonBackground: '#006e52', primaryButtonText: '#ffffff' }"
+  />
+</template>
+```
+
+React 应用把组件放在 `PwaProvider` 内：
+
+```tsx
+import { PwaUpdateNotice } from "@pwa-platform/react/ui";
+import "@pwa-platform/react/update-notice.css";
+
+<PwaProvider config={config}>
+  <App />
+  <PwaUpdateNotice
+    position="bottom-right"
+    colors={{ primaryButtonBackground: "#006e52", primaryButtonText: "#ffffff" }}
+  />
+</PwaProvider>
+```
+
+挂载组件就是显示开关；不挂载时，原有 `usePwa()` 和自定义界面照常可用。默认是右下角非模态卡片，另可选 `bottom-center`、`top-right`、`top-center`。移动端会留出边距并适配安全区。等待状态持续约 100 ms 后才显示卡片，恢复 worker 的短暂波动不会误报“更新已完成”。点击“稍后”只隐藏本页提示，30 分钟后若仍有等待版本则再次提醒；点击“更新”先完成 worker 接管，随后由用户**再次点击**“刷新页面”。更新失败可重试，多个标签页各自显示接管后的状态。
+
+`colors` 可直接设置 `primaryButtonBackground`、`primaryButtonText`、`surface`、`text`、`mutedText`、`border`；仅影响当前提示，并优先于祖先元素继承的色值。`messages` 可覆盖中文默认文案。宿主也可通过 `--pwa-update-surface`、`--pwa-update-text`、`--pwa-update-muted`、`--pwa-update-border`、`--pwa-update-accent`、`--pwa-update-accent-text`、`--pwa-update-font`、`--pwa-update-radius`、`--pwa-update-shadow` 或 `--pwa-update-z-index` CSS 变量换肤。自定义按钮背景与文字色时，应保持文字清晰可读。业务有未保存的表单时，传入 `reloadPage` 回调，在回调里先确认是否可以离开页面；缺省才直接调用浏览器刷新。提示只消费既有更新状态，不替业务调用 `register()`；长期停留页面仍需自行启用 `updateCheck`。
+
+若业务构建使用 PurgeCSS 且只扫描业务源码，须把 `/^pwa-update-notice/` 加入 safelist，避免从依赖包导入的组件类名被删。首个 Vite 5 项目的真实构建仍需对此做产物和浏览器检查。
 
 ## 安装提示的限制
 

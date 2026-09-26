@@ -11,8 +11,10 @@
     "apps/*/vite.config.ts",
     "browser-tests/**/*.ts",
     "browser-tests-network/**/*.ts",
+    "ui-browser-tests/**/*.ts",
     "ssr-tests/**/*.ts",
     "playwright.config.ts",
-    "playwright.network.config.ts"
+    "playwright.network.config.ts",
+    "playwright.ui.config.ts"
   ]
 }

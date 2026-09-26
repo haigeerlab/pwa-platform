@@ -1,18 +1,20 @@
 # 从 vite-plugin-pwa 迁移到 PWA 平台
 
 > 适用对象：使用 Vite 构建、当前用 `vite-plugin-pwa` 提供 PWA 能力的 Vue 3 或 React 19 单页应用。
-> 依据：本仓库 `main` 上已有的能力，截至 2026-09-18。示例配置取自 `packages/examples-browser-e2e/apps/`；vue-vben-admin 的情况见[分析报告](../product/vben-admin-pwa-analysis.md)。
+> 依据：本仓库当前源码，截至 2026-09-26。已发布的 `0.1.0-beta.1` 仍只支持 Vite 8；本页新增的 Vite 5 与开发服务行为待下一版发布。示例配置取自 `packages/examples-browser-e2e/apps/`；vue-vben-admin 的情况见[分析报告](../product/vben-admin-pwa-analysis.md)。
 > 标注“**需实测**”的内容只在源码层面核对过，还没有在真实接入中验证。第四节的 vben 专项已在 2026-09-18 做过真实接入试验，结果见[分析报告第七节](../product/vben-admin-pwa-analysis.md#七真实接入试验结果2026-09-18)。
+
+Vite 5 + Vue 3.4、构建后混淆及 PurgeCSS 的首个业务接入，请优先使用[业务项目接入作业单](vite5-vue34-host-integration.md)；其版本状态和插件链检查以当前源码为准。
 
 ## 一、先确认能不能迁
 
 | 条件 | 要求 | 不满足时 |
 |---|---|---|
-| Vite | `^8.0.0`（`@pwa-platform/vite` 的 peer 依赖） | 先升级 Vite |
+| Vite | 已发布 beta.1：`^8.0.0`；当前源码：`^5.0.0 || ^8.0.0` | Vite 5 项目应等新版包发布，或使用本仓库的本地构建验证 |
 | 框架 | Vue `^3.4.0` 或 React `^19.2.0` | 其他框架没有绑定，只能直接用 client-runtime，本指南不覆盖 |
 | `base` | 同源的绝对路径，以 `/` 开头、以 `/` 结尾，例如 `/` 或 `/admin/` | 相对路径 `./` 与完整 URL 会在构建时报错 |
 | 部署形态 | 一个源上只有这一个 PWA，或按 [ADR-0019](../adr/0019-shared-origin-registry-and-exclude.md) 登记的根应用与子路径应用 | 其他形态暂不支持 |
-| 包的获取 | 平台各包目前都是 `private: true`，没有发布 | **当前的阻断项**。只能以工作区方式引入；发布方式确定之前，外部仓库无法直接安装 |
+| 包的获取 | 首批 npm 包已发布 `0.1.0-beta.1` | Vite 5 支持仍未进入已发布包 |
 
 ## 二、能力对照
 
@@ -28,7 +30,7 @@
 | 定时 `registration.update()` | `checkForUpdate()` 与 `updateCheck: { intervalMs }` | 见[第三节第 6 步](#6-更新提示与主动检查更新)，[ADR-0020](../adr/0020-client-update-check.md) |
 | 私有接口：需要自己不配缓存规则 | 默认拒绝：未分类、会话数据、写操作、流媒体一律不接管 | 更安全，但要把接口前缀声明清楚 |
 | 登出时自己清缓存 | `logout()` 注销注册 | v1 不缓存私有数据；启用 v2 离线写时，worker 先清专属队列，失败则不注销 |
-| 开发环境 `devOptions` | 不提供 | `vite dev` 下没有 worker，要用 `vite build` + `vite preview` 验证 |
+| 开发环境 `devOptions` | 当前源码的 `vite dev` 可加载页面配置，但不生成 worker | 开发入口不要调用 `register()`；用 `vite build` + `vite preview` 验证离线与更新。beta.1 的虚拟模块在 `vite dev` 尚不可解析 |
 
 ## 三、迁移步骤
 
@@ -113,6 +115,8 @@ export default defineConfig({
 
 插件在构建时生成 manifest、打包平台 worker 并注入预缓存清单，最后校验产物；缺少计划需要的产物时，构建失败。
 
+**有构建后混淆的项目：**把 `pwa()` 放在混淆插件之后。若混淆插件在 Vite 生成指纹文件名后改写代码，还必须设置固定随机种子，并在相同源码上连续构建两次，比对所有同名 JS/CSS 的 SHA-256。首个 Vite 5 项目的 `vite-plugin-bundle-obfuscator@1.8.0` 未设置 `options.seed` 时，实测同名 JS 内容不同而 worker 不变；夹具设置固定 `seed` 后才稳定。不能用关闭指纹或只刷新页面掩盖这一问题，因为旧页面仍可能请求同名但内容已改变的资源。
+
 图标与离线页放进 `public/`，路径要与 `INSTALL.icons` 和 `offlineFallback.path` 对应。不要引用第三方 CDN 上的图标。
 
 **manifest 链接由插件注入。** 构建时，插件会在每个 HTML 入口的 `<head>` 里注入 `<link rel="manifest" href="<identity.manifestUrl>">`，`index.html` 里不用再写（[ADR-0022](../adr/0022-vite-injects-manifest-link.md)）。如果原来已经手写了：
@@ -122,7 +126,7 @@ export default defineConfig({
 
 ### 4. 声明虚拟模块的类型
 
-插件通过虚拟模块 `virtual:pwa-config` 把页面配置交给应用。在 `src/virtual.d.ts` 中声明：
+插件通过虚拟模块 `virtual:pwa-config` 把页面配置交给应用。下一版可在 `tsconfig.json` 的 `compilerOptions.types` 中加入 `"@pwa-platform/vite/virtual"`；当前 beta.1 尚未把该类型文件装入 npm 包，使用 beta.1 时仍须在 `src/virtual.d.ts` 中声明：
 
 ```ts
 declare module "virtual:pwa-config" {
@@ -149,7 +153,7 @@ app.use(createPwa({ config }));
 import { usePwa } from "@pwa-platform/vue";
 
 const pwa = usePwa();
-void pwa.register(); // 必须由应用调用，绑定不会自动注册
+if (import.meta.env.PROD) void pwa.register(); // 只在生产包注册；绑定不会自动注册
 ```
 
 React：
@@ -159,10 +163,10 @@ import config from "virtual:pwa-config";
 import { PwaProvider, usePwa } from "@pwa-platform/react";
 
 <PwaProvider config={config}>{children}</PwaProvider>;
-// 组件内：const pwa = usePwa(); useEffect(() => { void pwa.register(); }, [pwa]);
+// 组件内：const pwa = usePwa(); useEffect(() => { if (import.meta.env.PROD) void pwa.register(); }, [pwa]);
 ```
 
-绑定返回的 `state` 包含 `registered`、`installEligible`、`installed`、`updateWaiting` 四个布尔值；方法有 `register`、`promptInstall`、`applyUpdate`、`logout`、`checkForUpdate`。界面（按钮、弹窗、文案）由应用自己写。
+绑定返回的 `state` 包含 `registered`、`installEligible`、`installed`、`updateWaiting` 四个布尔值；方法有 `register`、`promptInstall`、`applyUpdate`、`logout`、`checkForUpdate`。已发布 beta.1 的界面由应用自己写；当前源码新增显式挂载的可选更新提示，使用方式见[安装与更新](../../website/guide/updates.md)。安装按钮仍由应用决定。
 
 ### 6. 更新提示与主动检查更新
 

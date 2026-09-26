@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/engine-workbox",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Internal Workbox precache and runtime-cache engine for PWA Platform.",
   "license": "MIT",
   "type": "module",

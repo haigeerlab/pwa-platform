@@ -288,3 +288,31 @@ T7 的变异卡了两次：第一次把错误的缓存名展开进配置对象�
 - **未写时逐字节不变**：MX2 开工前在干净 worktree 中从 `f72ceb8` 构建 vite 浏览器夹具，记录 134 个产物文件的 SHA-256 并确认构建确定性；MX4 后同法构建，diff 为空。
 - **真实浏览器**（`07031c8`，Chrome 153.0.8010.53）：`Page.getAppManifest` 对带全部扩展字段的构建报告 0 个解析错误，Chrome 解析后的 manifest 含说明、方向（`PORTRAIT`）、显示覆盖（`kWindowControlsOverlay`、`kStandalone`）、宽截图（`kWide`，带标签）与快捷方式。`--repeat-each 5` 5/5；vite 浏览器场景共 29 项通过。`categories` 不在 Chrome 的解析结果中（浏览器只透传），未作断言。
 - **变异**：`form_factor` 键写成 `formFactor`（3 项转红）；不输出截图（4 项转红）；截图 `sizes` 写坏（Chrome 报 "found icon with no valid size."，浏览器场景转红）。
+
+## 修订：Vite 5 业务接入兼容（2026-09-26）
+
+规格与计划见本模块同名修订。本次检查使用 Node 22.22.0；所有消费方均安装本工作树 `pnpm pack` 生成的本地 tarball，**不是** npm 上仍只声明 Vite 8 peer 的 `0.1.0-beta.1`。可复现的最小消费方保存在 [`compatibility/vite5-consumer`](../../packages/vite/compatibility/vite5-consumer/README.md)；其实际安装在隔离临时目录完成，不会让平台自身的 Vite 8 开发依赖掩盖宿主版本。
+
+| 消费方 | 安装与类型 | 构建、开发服务 |
+|---|---|---|
+| Vite 5.0.0、TypeScript 5.2.2、`@types/node` 18.17.17、pnpm 8.6.5 | 安装、冻结离线重装、`tsc --noEmit` 均通过 | 本地包生成 manifest、平台与恢复 worker；`vite dev` 解析 `virtual:pwa-config`，不编译计划 |
+| Vite 5.4.21、其余同上 | 安装、`tsc --noEmit` 通过 | 构建与开发模式检查通过 |
+| Vite 8.3.0、TypeScript 6.0.3、`@types/node` 24.13.4 | 独立消费方安装、`tsc --noEmit` 通过 | 构建与开发模式检查通过；现有工作区 Vite 8 测试与 Chrome 场景另行回归 |
+
+已发布 beta.1 在 Vite 5.0.0 下的生产构建本来就能完成，但 `apply: "build"` 使 `vite dev` 的虚拟模块解析失败；去掉该限制后两个模式均通过。另发现 beta.1 的 tarball 没有 `virtual:pwa-config` 的声明：新包把它作为 `@pwa-platform/vite/virtual` 类型子路径交付，在 TypeScript 5.2 的 `Bundler` 与 `Node` 模块解析方式下分别实测通过。`writeBundle` 新增对生成计划时和最终 bundle 中同名文件的 SHA-256 比对；后置插件改写 chunk 的测试按预期使构建失败，既有 226 项单元/构建测试与类型检查通过。
+
+**首个项目版本组合的隔离复刻：** Vite 5.0.0、Vue 3.4.0、Vue Router 4.2.4、Vuex 4.0.2、`@vitejs/plugin-vue` 5.0.0、JSX 插件 3.1.0、Terser 5.24.0、`vite-plugin-bundle-obfuscator` 1.8.0 与平台 Vue 绑定能构建。`vue-tsc` 1.8.11 在 TypeScript 5.2.2 的 `moduleResolution: "Node"` 下通过；使用 `Bundler` 时，Vuex 4.0.2 的旧 `exports`/声明组合会报找不到类型，这是该版 Vuex 自身的解析问题，实际项目的 `tsconfig` 尚未提供。Chrome 中，业务样式在没有 PurgeCSS 的构建中保留，生产页面注册并离线加载；开发页面显示 Vue 内容且无 worker。
+
+**混淆插件的发布条件：** 未设置 `options.seed` 时，同一源码连续两次构建出现同名 `index-LE1P-Awj.js`，但 SHA-256 分别为 `8f4384dd…` 与 `55694dad…`，`sw.js` 的 SHA-256 两次均为 `59632c79…`。这是漏更新风险；把所有文件改成非指纹虽能改变 worker，却会破坏旧资产保留和缓存响应头判定，故没有采用。固定 `options.seed: 12345` 的夹具中，相同源码连续构建的 JS 与 worker 哈希一致；改动业务源码后，JS 文件名由 `index-LE1P-Awj.js` 变为 `index-_KXOGX2p.js`，worker 哈希也变化。首个项目须在真实配置中设置稳定种子并重复构建比对；当前只验证了隔离夹具。
+
+**真实浏览器：** Vite 5.0.0 的最小构建在 Chrome 中注册 `/app/sw.js` 并离线加载应用壳；业务复刻在两标签页中观察到新 worker 等待，发送 `pwa:skip-waiting` 确认后两页均换控制器，页面均未自动刷新。Vite 5 与 Vite 8 的开发页面在 Chrome 中均未注册 worker。工作区 Vite 8 浏览器套件在 Chrome 153.0.8010.53 下 29/29 通过，包含注册、离线、更新和同源多 scope 场景。Chrome 在默认沙箱中启动时 `SIGABRT`，浏览器命令经本机浏览器权限运行。
+
+**尚未完成的业务验收：** 提供的附件是配置与锁文件，不含业务源码、`src/sw.ts`、注册调用、`tsconfig`、真实域名和部署响应头；不能宣称已经在 `example-vite-app` 仓库接入或上线。简化夹具里的 `rollup-plugin-purgecss@6.0.0` 把 `.css` 产物写成了 `export default ...`，即使完全移除平台插件也会出现；这属于需要在实际项目中核实的宿主构建链问题。默认更新 UI、竞品对照与 npm 新版发布不属于本修订的已交付项。
+
+**最终工作树门禁：** `pnpm install --frozen-lockfile --offline`、`pnpm build`、`pnpm lint`、`pnpm typecheck`、`pnpm test`、`pnpm docs:build`、`pnpm check:publish` 与 `pnpm --filter @pwa-platform/vite test:browser` 均退出 0；Vite 包 226 项、Chrome 29 项通过。`pnpm test` 第一次在沙箱内因 browser-test-harness 的本地端口监听返回 `EPERM`，在允许 loopback 的环境重跑全仓通过。Spec Guard 的产物检查为 2 通过、0 警告，文档影响为 `valid`、交付为 `ready`。最终 tarball 再次安装到 Vite 5.0.0 夹具：固定种子同源重复构建的 worker SHA-256 一致，改动源码后 worker SHA-256 变化，两标签页 Chrome 更新场景通过。尚未在真实业务仓库、CI 或生产环境运行。
+
+## 业务侧实施交接（2026-09-26）
+
+项目所有者明确内部业务仓库不供平台侧操作，只要求准备接入文档与 AI Skill。已新增[业务项目接入作业单](../../docs/guides/vite5-vue34-host-integration.md)和可复制的[项目 Skill](../../.agents/skills/pwa-vite5-vue-integration/SKILL.md)，并从通用迁移指南链接。内容使用通用占位值，没有复制内部包清单和配置原文；明确已发布 beta.1 不能作为 Vite 5 + 默认 UI 的正式依赖、真实业务构建未验证。手册额外标出附件中按构建时钟生成版本码、`static/assets`、混淆随机种子及 PurgeCSS 类名保留等业务检查点。
+
+`skill-creator` 的 `quick_validate.py` 对仓库内及本机 Codex 用户技能目录中的副本均返回 `Skill is valid!`；两份 `SKILL.md` 的 SHA-256 一致，`git diff --check` 通过。业务仓库的实际修改、浏览器验收及生产响应头证据由其执行者按 Skill 完成；本记录不将这些步骤标为通过。
