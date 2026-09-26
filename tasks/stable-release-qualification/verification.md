@@ -1,4 +1,4 @@
-# 正式 npm 版本验收记录（进行中）
+# 正式 npm 版本验收记录（0.1.0 已发布）
 
 > 本页只记录本次候选的实际证据。历史 beta 与演练记录仅作基线，不能自动算作本次正式版通过。任何空白或“未执行”都不是通过。
 
@@ -8,8 +8,8 @@
 |---|---|
 | 工作分支 | `codex/stable-release-qualification`，从 `faea0084bcac34f22bb82c9edff3606e9ca2da5a` 开始 |
 | 依赖 PR | [#15](https://github.com/haigeerlab/pwa-platform/pull/15)，2026-09-26 查询为 OPEN/MERGEABLE；含 React/Vue 真机更新演练记录 |
-| 拟发布包 | 九个已公开包＋首次公开的 `@pwa-platform/entry-resilience`，候选版本均已设为 `0.1.0`；尚未发布 |
-| 发布通道 | 尚未创建发布尝试；若仍只有一台 Android，不得选择 `desktop+android` 后声称通过 |
+| 已发布包 | 九个既有包＋首次公开的 `@pwa-platform/entry-resilience`，共十个 `0.1.0`；npm `latest`、完整性与归档文件逐包读回通过，详见[发布记录](release-0.1.0.md) |
+| 发布通道 | `desktop`；Android 仅一台，不宣称 `desktop+android` N/N-1 门禁通过 |
 | 私有宿主 | 不在本仓库访问；只核对公开 Vite 5 / Vue 3.4 夹具并等待脱敏宿主反馈 |
 
 ## 环境盘点（2026-09-26 UTC）
@@ -82,8 +82,9 @@
 | 当前 Origin 单独失效、备用 Origin 仍可达 | Chrome 154 和 153 各 1/1 通过 | `entry-resilience/browser-tests/scenarios.spec.ts` 新增双 Origin 场景：先安装当前 Origin 的 worker 并交入 `normal` 合法清单，当前 Origin 可达时 `checkEntryRecovery()` 为 `none`；只关闭当前 fixture server，备用 fixture server 保持可达，检查返回 `available / unconfirmed-outage`。当前 Origin 的恢复页仍由预缓存打开，不在用户点击前导航；点击后进入备用 Origin 的 `/app/`，合法 `pwa-return` 保留。官方 Chrome 154.0.8037.57 与 Chrome 153.0.8010.53 均通过。此为真实浏览器和真实双本地 Origin，尚未在手机上模拟云端单域故障。 |
 | 最终归档的独立宿主消费 | Node 22 + Vite 5 通过 | 十个 0.1.0 最终候选 tarball 从同一编译源码打包，并扫描 497 个归档文件；未见私有项或额外工作区文件。独立目录 `/private/tmp/pwa-stable-consumer-final-gated` 安装 tarball 与 Node 22.22.0、Vite 5.0.0、Vue 3.4.0、React 19.3.0；`tsc --noEmit` 与 `node build.mjs` 均退出 0。此为公开夹具，不涉及私有宿主项目。 |
 | 发布前最后一轮浏览器与文档回归 | Chrome N/N-1 各 228/228 | 新增单 Origin 故障用例后，全仓九套件在 Chrome 154 与 153 各 228 项通过，0 失败、0 跳过；日志 `/private/tmp/pwa-stable-release-browser154.log` SHA-256 `d9c9cfa0975fd42d2aad0070baf22d3ccef1c09320d43e32317be43987e6d296`，`/private/tmp/pwa-stable-release-browser153.log` SHA-256 `20dcce3e2cd66a077f0d20227d24d93c4d92e97006e7c53897ccbaf440d21b8e`。文档口径更新后 `pnpm docs:build`、`pnpm lint`、入口恢复包 `typecheck`、`pnpm check:publish` 和 `git diff --check` 退出 0。 |
+| npm 正式版与独立消费 | 十包发布及读回通过 | 2026-09-26 UTC 从提交 `870bf93a3ac78e4593f0916192a34448fd09e270` 逐包发布十个 `0.1.0`；每包 npm `latest`、下载内容及 `dist.integrity` 核对通过。全新目录 `/private/tmp/pwa-stable-registry-consumer` 直接从 npm 安装十包，在 Node 22.22.0、Vite 5.0.0、Vue 3.4.0、React 19.3.0 环境中，`npm install`、`tsc --noEmit`、Vite 生产构建均退出 0。完整散列与限制见[发布记录](release-0.1.0.md)。 |
 
 ## 待处理的已知边界
 
-- `@pwa-platform/entry-resilience` 已纳入十包 `0.1.0` 候选，完成最终 tarball 扫描、Vite 5 独立消费、双 Origin 真实浏览器故障演练和公开文档；npm 发布后读回仍待执行。真实 DNS/证书故障与手机单 Origin 故障未执行，不计入 `desktop` 通道通过证据。
+- `@pwa-platform/entry-resilience@0.1.0` 已发布并完成 registry 读回、Vite 5 独立消费和双 Origin 真实浏览器故障演练。真实 DNS/证书故障与手机单 Origin 故障未执行，不计入 `desktop` 通道通过证据。
 - 一台 Android 无法满足现有 `desktop+android` 通道对 Chrome N/N-1 的两机要求。任何手机测试都会照实记录，但不得升级为该通道通过证据。
