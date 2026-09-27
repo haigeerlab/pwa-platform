@@ -21,7 +21,10 @@ if (target) {
   // once, and under that load the Push click scenario timed out 4 times in 20 (spec/browser-test-harness.md,
   // "增补：全仓浏览器测试逐包串行"); a gate result must not depend on how busy the machine is.
   const concurrency = operation === "test:browser" ? ["--workspace-concurrency=1"] : [];
-  run(["--recursive", ...concurrency, "run", operation]);
+  // Every non-build operation runs to the end and fails once at the end: one flaky package must not hide the other
+  // packages' results (spec/browser-test-harness.md, "增补：全仓非构建操作不在首个失败处中止"). The exit code still
+  // reports any failure. `build` above keeps stopping at the first failure, since later packages need earlier dists.
+  run(["--recursive", "--no-bail", ...concurrency, "run", operation]);
 }
 
 function readFilter(args) {
