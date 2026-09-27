@@ -18,7 +18,8 @@
   - [x] Android、iPhone 的 Vue／React 英文离线页、断网冷启动与最终自动联网探针
   - [x] Chrome 154 Vue／React 安装窗口离线与自动恢复
   - [x] Chrome 153 本地真实浏览器验证中文默认离线页、亮／暗主题、键盘焦点、窄屏与 WCAG AA 文本对比度
-  - [ ] 中文构建在 Android、iPhone 与桌面安装窗口的离线页实测
+  - [x] 中文构建在 Chrome 154 桌面安装窗口完成原生安装、离线页与手动恢复实测
+  - [ ] 中文构建在 Android、iPhone 安装窗口的离线页实测
   - [x] 补齐桌面亮／暗主题、键盘、文本对比度和窄屏记录；完整 WCAG 门禁另立 proposal
   - [x] 接受并记录 iPhone 恢复联网后短暂 `not registered` 的渐进兼容限制；不计作 Apple 通道通过
 - [ ] T5 完成入口恢复的双 Origin、清单状态、离线区别、跳转安全和中英文/UI 验证
