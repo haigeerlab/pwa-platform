@@ -48,7 +48,7 @@
 | 11. Identity 不可变/缓存命名空间 (ADR-0004/0008/0009) | 生产注册后 8 字段不可变，命名空间随身份派生 | npm 0.1.0 | 是（治理规则） | `PwaIdentity` 全字段 | [identity.ts:4-15](../../packages/contracts/src/identity.ts#L4)、[cache-namespace.ts:12-35](../../packages/contracts/src/cache-namespace.ts#L12) | [baseline.test.ts:93-131](../../packages/build-verifier/test/baseline.test.ts#L93)（字段漂移逐项报告，含尾斜杠/大小写/百分号编码差异） | [release.spec.ts:64](../../packages/examples-browser-e2e/browser-tests/release.spec.ts#L64) 在真实浏览器发布检查中执行 `identity-baseline` | 无 | L3 | 漂移检测已有断言，但门禁是 opt-in，非运行时强制；风险 R4：空报告默认 `ok`，门禁默认可跳过（P2） |
 | 12. 客户端门面与生命周期事件 (ADR-0013) | `createPwaClient()` 门面，5 个页面可见事件 | npm 0.1.0 | 是（调用即生效） | `PwaClientConfig` | [facade.ts:88](../../packages/client-runtime/src/client/facade.ts#L88) | [facade.test.ts:378-909](../../packages/client-runtime/test/client/facade.test.ts#L378) | [handover.spec.ts:14-41](../../packages/examples-browser-e2e/browser-tests/handover.spec.ts#L14) | Android WebAPK / Mac Safari 记录 | L2+L3+L4 | 3 个 worker 侧事件（activated/offline-fallback/cache-cleaned）无传输，仅 L1 |
 | 13. 手动/自动更新检查 (ADR-0020) | `checkForUpdate()` 手动 + 可选轮询 | npm 0.1.0 | 手动开；自动轮询默认关 | `updateCheck.intervalMs`(≥60000) | [update-check.ts:10-15](../../packages/client-runtime/src/client/update-check.ts#L10) | [facade.test.ts:687-781](../../packages/client-runtime/test/client/facade.test.ts#L687) | [update-check.spec.ts](../../packages/client-runtime/browser-tests/update-check.spec.ts) | 未确认 | L2+L3 | React 绑定"无真实渲染测试"（ADR 自述）；无 24h+ 真机长时驱动记录 |
-| 14. 更新提示流程+多标签协调 (ADR-0005/0026) | `update-waiting`→`applyUpdate()`→每个曾提示的标签独立收到 `update-applied` | npm 0.1.0 | 是（`updateMode` 仅 `"prompt"`） | 无开关 | [facade.ts:70,197-230](../../packages/client-runtime/src/client/facade.ts#L70) | [facade.test.ts:524-609](../../packages/client-runtime/test/client/facade.test.ts#L524) | [update.spec.ts:56](../../packages/examples-browser-e2e/browser-tests/update.spec.ts#L56)（多标签一次确认清空所有提示） | `tasks/stable-release-qualification/verification.md:45` 桌面 React 30 分钟重提醒+双标签；Android Vue 完整更新；iPhone 更新未复测（明确标记未完成） | L2+L3+L4 | iPhone 安装窗口内更新未复测；iPhone 离线恢复后短暂 `not registered`，根因未定位 |
+| 14. 更新提示流程+多标签协调 (ADR-0005/0026) | `update-waiting`→`applyUpdate()`→每个曾提示的标签独立收到 `update-applied` | npm 0.1.0 | 是（`updateMode` 仅 `"prompt"`） | 无开关 | [facade.ts:70,197-230](../../packages/client-runtime/src/client/facade.ts#L70) | [facade.test.ts:524-609](../../packages/client-runtime/test/client/facade.test.ts#L524) | [update.spec.ts:56](../../packages/examples-browser-e2e/browser-tests/update.spec.ts#L56)（多标签一次确认清空所有提示） | `tasks/stable-release-qualification/verification.md:46` 桌面 React 30 分钟重提醒+双标签；Android Vue 完整更新；**iPhone 16 Pro / iOS 27 安装窗口 Vue/React 真实 v1→v2（含“v2 已下载后断网接管并离线显式刷新”）通过**（[verification.md:138-159](../../tasks/stable-release-qualification/verification.md#L138)）；iPhone Safari 同 scope 双标签协调通过（[:161-168](../../tasks/stable-release-qualification/verification.md#L161)） | L2+L3+L4 | iPhone 离线恢复后短暂 `not registered`，根因未定位（ADR-0041：阻止 iPhone 晋级生产通道） |
 | 15. 可选默认更新提示 UI (ADR-0039) | `PwaUpdateNotice`（Vue/React），显式挂载 | npm 0.1.0（beta.2 起） | 否（需显式 import/挂载） | `position/messages/colors/reloadPage` | [ui.ts:37-59](../../packages/react/src/ui.ts#L37) | 未发现（`react/test`、`vue/test` 均无 UI 组件单测，主会话核实） | [update-notice.spec.ts:27-127](../../packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts#L27)（vue+react ×7 场景） | Android+iPhone 仅英文文案实测；中文真机"另列待测" | L3 | 无单测；`messages` 仅内置 zh-CN，无 locale 表；无 `setPwaTheme`（该 API 只在 entry-resilience） |
 | 16. 恢复 worker (ADR-0012) | 无 fetch 的应急 worker：删本应用缓存/过期记录/离线写队列/取消推送后 `clients.claim` | npm 0.1.0 | 需运维部署（非自动） | `PwaRecoveryWorkerConfig` | [recovery-worker/index.ts:22-32](../../packages/sw-runtime/src/recovery-worker/index.ts#L22) | [recovery-worker.test.ts:132-362](../../packages/sw-runtime/test/worker/recovery-worker.test.ts#L132) | [recovery.spec.ts:79-136](../../packages/examples-browser-e2e/browser-tests/recovery.spec.ts#L79) | 未确认是否为 0.1.0 执行过真机恢复演练 | L2+L3 | `docs/operations/recovery-drill.md` 真机记录未在本次核查中确认存在；E2E 观察到清理完成前已 `controllerchange`（待故障注入验证） |
 | 17. 入口韧性恢复页+清单 (ADR-0017→ADR-0033)+HTML 头检查 (ADR-0032) | Origin 不可达时显示备用入口页；构建期检查公开 HTML 的 `Cache-Control` | npm 0.1.0（新增） | 否（需调用 `checkEntryRecovery()`/挂载） | 清单 `sequence/expiry/origin/startPath/entries≤5` | [check.ts](../../packages/entry-resilience/src/check.ts) | 12+ 个单测文件；[html-headers.test.ts:39](../../packages/build-verifier/test/html-headers.test.ts#L39) | [scenarios.spec.ts:147-396](../../packages/entry-resilience/browser-tests/scenarios.spec.ts#L147) | 未确认（`tasks/pwa-entry-resilience/verification.md` 未读） | L2+L3 | `release.spec.ts:64` 真实浏览器发布检查不含 `html-headers`/`release-retention`，二者停留在 L2（vitest 合成头） |
@@ -77,7 +77,7 @@
 - 未验证/风险：Nuxt 不获得此注入（ADR 明确列为未决问题）。
 
 ### 3. 清单图标校验
-- 手机：`tasks/stable-release-qualification/verification.md:107` — Android 原生安装入口因 1×1 占位 PNG 而失效，修复后安装 WebAPK `org.chromium.webapk.a26b75328c3f9eda4_v2`，设备本地时间 2026-09-27 14:17:37。这是本功能存在的直接动因。
+- 手机：`tasks/stable-release-qualification/verification.md:110` — Android 原生安装入口因 1×1 占位 PNG 而失效，修复后安装 WebAPK `org.chromium.webapk.a26b75328c3f9eda4_v2`，设备本地时间 2026-09-27 14:17:37。这是本功能存在的直接动因。
 - 未验证/风险：`maskable` 安全区、截图/快捷方式图标尺寸校验均明确排除在外（"另行评估"）；未发布到 npm，`0.1.0` 消费者不受保护。
 
 ### 6. 导航回退链
@@ -93,7 +93,7 @@
 - 风险（审查风险 R4，P2）：`build-verifier` 的报告在缺少必需检查输入时仍返回 `ok: true`（`release.ts:48-79`、`baseline.ts:20-67`、`release-gate.ts:13-37`），意味着常规构建或遗漏 baseline 时，9 个身份字段可能漂移而无自动拦截；不可变性事实上依赖发布期人工基线比对，不是运行时强制。
 
 ### 14. 更新提示流程+多标签协调
-- 手机：`tasks/stable-release-qualification/verification.md:45` 桌面 Chrome React 30 分钟重提醒+双标签隔离；Android Vue 完整版本升级+离线刷新；**iPhone Vue 安装窗口内更新流程本次仅验证在线/离线冷启动，更新流程未重跑，报告中明确标记为未完成**。`release-0.1.0.md:9` 记录 iPhone Safari 离线恢复后瞬时报告 `not registered`（App relaunch 后自愈），根因未定位，列为已知开放风险而非阻断项。
+- 手机：`tasks/stable-release-qualification/verification.md:46` 桌面 Chrome React 30 分钟重提醒+双标签隔离；Android Vue 完整版本升级+离线刷新；**更正（2026-09-28）**：审查时 iPhone 安装窗口内更新尚未复测；PR #25 随后补齐了 iPhone Vue/React 安装窗口真实 v1→v2（含断网已下载后接管）与 Safari 双标签协调，见 `verification.md:138-168`。`release-0.1.0.md:9` 记录 iPhone Safari 离线恢复后瞬时报告 `not registered`（App relaunch 后自愈），根因未定位，列为已知开放风险而非阻断项。
 
 ### 15. 可选默认更新提示 UI
 - 纠正说明：主会话核实 `react/test`、`vue/test` 目录**均无** `PwaUpdateNotice` 组件单测（首轮取证标记为"待确认"），但 L3 E2E 确凿存在：`update-notice.spec.ts:27-127`，7 个场景 ×{vue, react}（等待/稍后/重试/接管/刷新、失败重试不重复 apply、位置+CSS 变量覆盖+320px 窄视口、`colors` prop 覆盖、30 分钟再提醒、明暗对比度）。
@@ -129,7 +129,7 @@
 
 1. **非 Chromium 自动化为零**：9 个 `playwright.config.ts` 均单一 `channel: "chrome"` 项目，无 Firefox/WebKit/Safari/移动模拟矩阵。
 2. **Android N / N-1 轮换证据未收**：`spec/public-read-cache.md` 测试策略段自述"未取得的 Android、N-1 证据按惯例登记为未执行，不折算为通过"。
-3. **iPhone 安装窗口内更新流程未复测**：`verification.md:45` 明确标记该项本轮未重跑（见"每项详情"#14）。
+3. ~~iPhone 安装窗口内更新流程未复测~~ **已补齐（2026-09-28 更正）**：PR #25 在审查期间合入 iPhone 安装窗口真实 v1→v2 与 Safari 双标签证据（[verification.md:138-168](../../tasks/stable-release-qualification/verification.md#L138)）。
 4. **iPhone 断网恢复后短暂 `not registered`**：`release-0.1.0.md:9` 记录的真机异常，自愈但根因未定位，未解决。
 5. **push 无真实推送服务投递证据**：见"每项详情"#24——端到端投递从未被自动化或人工验证过。
 6. **html-headers 与 release-retention 无真实服务器浏览器检查**：`release.spec.ts:64` 的真实 Chrome 发布检查列表不含这两项，二者停留在 L2（vitest 合成输入）。
