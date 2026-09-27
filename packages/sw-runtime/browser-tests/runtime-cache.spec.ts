@@ -220,6 +220,19 @@ test.describe("dynamic navigation (navigation-public-dynamic, runtime-pages)", (
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_UNVISITED_URL));
     await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
   });
+
+  test("a navigation carrying Authorization is served from the network and never written to the pages cache", async ({
+    page,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("v3");
+    await installAndControl(page, fixtureServer);
+
+    await page.setExtraHTTPHeaders({ authorization: "Bearer navigation-probe" });
+    await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
+    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    expect(hasCachedEntry(await cacheContents(page), "runtime-pages", RUNTIME_DASHBOARD_URL)).toBe(false);
+  });
 });
 
 test.describe("activation cleanup", () => {
