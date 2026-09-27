@@ -428,10 +428,10 @@ describe("shared-origin: identity and registry matching", () => {
     },
   );
 
-  it("rejects an identity whose scope differs from every registry entry", () => {
-    // A root app's scope is pinned to "/" by its own mount path, so this is exercised on the
-    // child instead: its scope can legitimately be "/" or "/m/" without failing identity
-    // invariants, so setting it to "/" creates a genuine scope-only mismatch against the registry.
+  it("rejects a child identity whose scope is widened past its worker, before registry matching", () => {
+    // Identity invariants now pin the scope to the worker script's directory (/m/sw.js → /m/), so a
+    // scope-only mismatch against the registry can no longer be built: widening the child's scope to "/"
+    // is reported as the identity error it is, instead of surfacing later as a registry mismatch.
     const badIdentity = { ...childIdentity, scope: "/" };
     expect(
       findings(
@@ -443,7 +443,7 @@ describe("shared-origin: identity and registry matching", () => {
           hostBuildOutput: { publicPath: "/m/", serviceWorkerFile: "sw.js", manifestFile: "manifest.webmanifest", files: [] },
         }),
       ),
-    ).toEqual([["plan.registry-identity-mismatch", "/topology/registry"]]);
+    ).toEqual([["identity.scope-outside-worker-directory", "/identity/scope"]]);
   });
 
   it("rejects a registry with no matching entry at all", () => {
