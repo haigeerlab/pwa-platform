@@ -1,7 +1,7 @@
 // The default offline page in a real browser (spec/vite-adapter.md "修订：平台默认离线页", task OP4): a navigation
 // the worker never precached, made with the network gone, lands on the page the plugin generated — in the built
 // locale, themed, and reloading itself once the connection returns.
-import { expect, test } from "@pwa-platform/browser-test-harness";
+import { contrastRatio, expect, test } from "@pwa-platform/browser-test-harness";
 import { renderOfflinePage } from "../src/offline-page.js";
 import {
   DEFAULT_OFFLINE_URL,
@@ -131,6 +131,42 @@ test.describe("default offline page, built-in zh-CN copy", () => {
     expect(layout.overflows).toBe(true);
     // At scroll position 0 the first line sits inside the viewport, not above it.
     expect(layout.appTop).toBeGreaterThanOrEqual(0);
+  });
+
+  test("light and dark themes keep readable contrast, keyboard focus and a narrow layout", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    await installAndControl(page, fixtureServer, SHELL_URL, WORKER_URL);
+    await context.setOffline(true);
+    await page.setViewportSize({ width: 320, height: 650 });
+
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme });
+      await page.goto(fixtureServer.url(`${NEVER_VISITED}-${colorScheme}`));
+      const colors = await page.evaluate(() => {
+        const root = document.querySelector(".pwa-offline") as HTMLElement;
+        const body = document.querySelector(".pwa-offline__body") as HTMLElement;
+        const button = document.querySelector(".pwa-offline__retry") as HTMLElement;
+        return {
+          rootBackground: getComputedStyle(root).backgroundColor,
+          rootText: getComputedStyle(root).color,
+          bodyText: getComputedStyle(body).color,
+          buttonBackground: getComputedStyle(button).backgroundColor,
+          buttonText: getComputedStyle(button).color,
+          documentWidth: document.documentElement.scrollWidth,
+          viewportWidth: window.innerWidth,
+        };
+      });
+
+      expect(contrastRatio(colors.rootText, colors.rootBackground)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.bodyText, colors.rootBackground)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.buttonText, colors.buttonBackground)).toBeGreaterThanOrEqual(4.5);
+      expect(colors.documentWidth).toBeLessThanOrEqual(colors.viewportWidth);
+      await page.keyboard.press("Tab");
+      await expect(page.locator(".pwa-offline__retry")).toBeFocused();
+    }
   });
 
   test("the page reloads by itself when the connection returns", async ({ page, context, fixtureServer }) => {

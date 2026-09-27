@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { contrastRatio } from "@pwa-platform/browser-test-harness";
 import { fileURLToPath } from "node:url";
 import { createServer, type ViteDevServer } from "vite";
 
@@ -123,18 +124,39 @@ for (const framework of ["vue", "react"] as const) {
 }
 
 for (const framework of ["vue", "react"] as const) {
-  test(`${framework}: desktop dark mode uses a calm surface and stays inside the viewport`, async ({ page }) => {
+  test(`${framework}: desktop light and dark modes keep readable contrast inside the viewport`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.emulateMedia({ colorScheme: "dark" });
-    await page.goto(`${origin}/?framework=${framework}`);
-    await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
-    await page.evaluate("window.__fixture.wait()");
-    const notice = page.getByRole("status");
-    await expect(notice).toHaveCSS("background-color", "rgb(22, 27, 34)");
-    const box = await notice.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.x + box!.width).toBeLessThanOrEqual(1280);
-    expect(box!.y + box!.height).toBeLessThanOrEqual(800);
-    if (framework === "vue") await page.screenshot({ path: "/private/tmp/pwa-update-notice-dark.png" });
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme });
+      await page.goto(`${origin}/?framework=${framework}`);
+      await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
+      await page.evaluate("window.__fixture.wait()");
+      const notice = page.getByRole("status");
+      await expect(notice).toHaveCSS(
+        "background-color",
+        colorScheme === "dark" ? "rgb(22, 27, 34)" : "rgb(255, 255, 255)",
+      );
+      const colors = await notice.evaluate((element) => {
+        const body = element.querySelector(".pwa-update-notice__body") as HTMLElement;
+        const primary = element.querySelector(".pwa-update-notice__button--primary") as HTMLElement;
+        return {
+          surface: getComputedStyle(element).backgroundColor,
+          text: getComputedStyle(element).color,
+          mutedText: getComputedStyle(body).color,
+          primaryBackground: getComputedStyle(primary).backgroundColor,
+          primaryText: getComputedStyle(primary).color,
+        };
+      });
+      expect(contrastRatio(colors.text, colors.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.mutedText, colors.surface)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.primaryText, colors.primaryBackground)).toBeGreaterThanOrEqual(4.5);
+      const box = await notice.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x + box!.width).toBeLessThanOrEqual(1280);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(800);
+      if (framework === "vue" && colorScheme === "dark") {
+        await page.screenshot({ path: "/private/tmp/pwa-update-notice-dark.png" });
+      }
+    }
   });
 }
