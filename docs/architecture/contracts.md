@@ -4,7 +4,7 @@
 
 平台控制的身份包括 `appId`、`manifestId`、origin、scope、Service Worker URL、manifest URL、挂载路径、环境和缓存命名空间种子。生产身份字段不可变；变更它们属于迁移，而不是普通配置修改。
 
-安装元数据是独立校验的契约：`startUrl`、`display`、名称、短名称、主题/背景色和必需图标变体，以及可选的 `description`、`categories`、`orientation`、`displayOverride`、`screenshots`、`shortcuts`（[ADR-0037](../adr/0037-install-metadata-manifest-members.md)、[接入说明](../guides/manifest-fields.md)）。身份控制 URL 所有权；产品配置只能在平台校验规则内提供展示元数据。
+安装元数据是独立校验的契约：`startUrl`、`display`、名称、短名称、主题/背景色和必需图标变体，以及可选的 `description`、`categories`、`orientation`、`displayOverride`、`screenshots`、`shortcuts`（[ADR-0037](../adr/0037-install-metadata-manifest-members.md)、[接入说明](../guides/manifest-fields.md)）。身份控制 URL 所有权；产品配置只能在平台校验规则内提供展示元数据。契约层只校验数据形状；Vite 构建适配器另按 [ADR-0040](../adr/0040-validate-manifest-icons-during-vite-build.md) 用最终产物字节检查主图标存在性、常用位图 MIME 与固有尺寸。
 
 ## PwaPolicy
 

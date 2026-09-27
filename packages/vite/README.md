@@ -53,7 +53,9 @@ const install: PwaInstallMetadata = {
   backgroundColor: "#ffffff",
   icons: [
     { src: "/app/icons/192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: "/app/icons/192-maskable.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
     { src: "/app/icons/512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+    { src: "/app/icons/512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
   ],
 };
 
@@ -120,6 +122,10 @@ plus `PWA_PLUGIN_NAME` and option/artifact types. `@pwa-platform/vite/virtual` i
 
 - Keep `pwa()` after plugins that change final JavaScript or CSS bytes. The plugin runs as `enforce: "post"` and
   fails if a later mutation makes the compiled hashes stale.
+- Put every `install.icons` file under the configured Vite `base`. Production builds fail with an actionable
+  `vite.manifest-icon-*` error when a primary icon is missing, its PNG/JPEG/WebP signature disagrees with `type`,
+  or its intrinsic dimensions disagree with `sizes`. Other image types emit `vite.manifest-icon-unverified` and
+  still require manual verification; maskable safe-area design always requires visual review.
 - Use deterministic minification/obfuscation. Identical inputs must produce identical bytes and hashed URLs.
 - Publish the application files, worker, manifest and plan from one build as a unit. Do not mix releases.
 - Changing identity, scope, worker URL or cache namespace is a migration, not a routine configuration edit.

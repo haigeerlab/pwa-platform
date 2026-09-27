@@ -11,6 +11,7 @@ import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/c
 import { build, createLogger } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { pwa } from "../src/index.js";
+import { writeInstallIconFixture } from "./install-icon-fixture.js";
 
 let roots: string[] = [];
 
@@ -68,6 +69,7 @@ function app(publicFiles: Record<string, string> = {}): string {
     mkdirSync(join(full, ".."), { recursive: true });
     writeFileSync(full, content);
   }
+  writeInstallIconFixture(root);
   return root;
 }
 

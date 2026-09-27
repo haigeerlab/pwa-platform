@@ -2,7 +2,7 @@
 
 ## 状态
 
-已接受（2026-09-24，项目所有者）。服务 [contracts-foundation 的"安装元数据的扩展字段"](../../spec/contracts-foundation.md)，配套 [build-verifier](../../spec/build-verifier.md) 与 [vite-adapter](../../spec/vite-adapter.md) 的同日修订。不修订既有 ADR 的结论。
+已接受（2026-09-24，项目所有者）。服务 [contracts-foundation 的"安装元数据的扩展字段"](../../spec/contracts-foundation.md)，配套 [build-verifier](../../spec/build-verifier.md) 与 [vite-adapter](../../spec/vite-adapter.md) 的同日修订。不修订既有 ADR 的结论。主 `icons` 不检查文件与实际尺寸的决定已于 2026-09-27 被 [ADR-0040](0040-validate-manifest-icons-during-vite-build.md) **部分取代**；本 ADR 对 manifest 成员范围、截图和快捷方式的其余决定仍有效。
 
 ## 背景
 
@@ -41,9 +41,9 @@ manifest 成员很多，成熟度差别也大：有的在 W3C 主规范中，有
 - **平台规则是错误**，构建失败：格式不合法、快捷方式的 `url` 不在 scope 内或（同源共享拓扑下）落进子应用的 scope（规范本身不要求，平台与 `startUrl` 的两层规则保持一致）、截图或快捷方式图标的文件不在构建产物中。
 - **Chrome 的产品偏好是警告**，不阻断：截图宽高在 320–3840 像素之外、长边超过短边 2.3 倍、同一 `form_factor` 比例不一致、`wide` 超过 8 张或 `narrow` 超过 5 张、没有 `wide` 截图、`description` 超过 324 个字符。这些数值来自 Chrome 官方文档与 DevTools，是产品行为而非规范，可能随版本调整；作为警告，调整时不会让既有构建失败。
 
-平台只核对声明的 `sizes`，不读取图片实际尺寸。
+本 ADR 接受时，平台只核对声明的 `sizes`，不读取图片实际尺寸。Vite 主 `icons` 的这一限制已被 ADR-0040 取代；截图与快捷方式图标仍维持原行为。
 
-### 既有 `icons` 不做存在性检查
+### 既有 `icons` 不做存在性检查（历史决定，已被 ADR-0040 部分取代）
 
 截图与快捷方式图标缺失时构建失败，但既有的 `icons` 保持不查。已有应用可能由后端提供图标、不在构建产物中；突然开始检查会让这些应用的构建失败。两者的规则因此暂不一致，是否统一另行决定。
 

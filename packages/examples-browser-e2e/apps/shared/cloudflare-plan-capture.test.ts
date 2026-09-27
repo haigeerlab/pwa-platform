@@ -1,12 +1,15 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { PwaPlan } from "@pwa-platform/contracts";
 import { PWA_PLUGIN_NAME, pwa } from "@pwa-platform/vite";
 import { build, type Plugin } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { cloudflarePlanCapture } from "./cloudflare-plan-capture.js";
 import { IDENTITY, INSTALL, POLICY, SHELL_URL } from "./identity.js";
+
+const EXAMPLE_PUBLIC_DIR = fileURLToPath(new URL("../react/public/", import.meta.url));
 
 let roots: string[] = [];
 
@@ -17,8 +20,8 @@ afterEach(() => {
 });
 
 /** A minimal app; matches `packages/vite/test/plan-api.test.ts`'s fixture. `offline.html` is required because the
- *  shared `POLICY` enables the offline fallback. The screenshot and shortcut-icon files are required because the
- *  shared `INSTALL` declares them and the build verifies those (unlike the top-level `icons`) actually exist. */
+ *  shared `POLICY` enables the offline fallback. Manifest assets are copied from the real React example: primary
+ *  icons are checked for file signatures and dimensions, while screenshots and shortcut icons must exist. */
 function app(): string {
   const root = mkdtempSync(join(tmpdir(), "cloudflare-plan-capture-"));
   roots.push(root);
@@ -29,7 +32,10 @@ function app(): string {
   mkdirSync(join(root, "public/screenshots"), { recursive: true });
   writeFileSync(join(root, "public/sw.js"), "self.addEventListener('install', () => {});\n");
   writeFileSync(join(root, "public/offline.html"), "<!doctype html><p>offline</p>\n");
-  writeFileSync(join(root, "public/icons/192.png"), "icon\n");
+  for (const icon of INSTALL.icons) {
+    const relative = icon.src.slice(SHELL_URL.length);
+    copyFileSync(join(EXAMPLE_PUBLIC_DIR, relative), join(root, "public", relative));
+  }
   writeFileSync(join(root, "public/screenshots/wide.png"), "wide\n");
   writeFileSync(join(root, "public/screenshots/narrow.png"), "narrow\n");
   return root;

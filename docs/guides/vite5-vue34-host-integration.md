@@ -48,7 +48,9 @@ export const INSTALL: PwaInstallMetadata = {
   backgroundColor: "#ffffff",
   icons: [
     { src: "/icons/192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: "/icons/192-maskable.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
     { src: "/icons/512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+    { src: "/icons/512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
   ],
 };
 
@@ -88,6 +90,8 @@ plugins: [
 ```
 
 这个片段不是可以独立运行的完整 `vite.config.ts`。接入方须检查实际插件顺序与构建输出。CSS 清理插件只扫描业务 `.vue` 文件时可能删掉依赖包的类名，所以需保留 `pwa-update-notice` 样式；隔离夹具曾出现 CSS 清理输出无效 CSS，且移除平台插件后仍可出现。宿主若复现，应分别对照启用／停用 CSS 清理的产物，先定位构建链，不能跳过 CSS 验收。
+
+四个主图标必须真实放在 `public/icons/`，文件固有尺寸与 `sizes` 一致，不能用 1×1 占位图冒充。生产构建会检查主图标是否存在，并读取 PNG／JPEG／WebP 文件头核对 MIME 与尺寸：`vite.manifest-icon-missing`、`vite.manifest-icon-type-mismatch`、`vite.manifest-icon-invalid` 或 `vite.manifest-icon-size-mismatch` 都会阻止构建，错误会指出配置索引、图标 URL、声明值与实测值。其他图片格式只给 `vite.manifest-icon-unverified`，接入方仍须人工检查；maskable 安全区也必须做视觉检查。
 
 若宿主每次构建都用当前时间生成版本码，重复构建比对时应固定这个输入，或把版本码改为明确的发布 ID；仅固定混淆种子不足以让整包可重现。同一源码、同一版本输入连续构建两次，比较同名 JS/CSS 的 SHA-256；修改一处会进入预缓存的代码后再构建，确认相应资源 URL 或 revision 变化且 worker 脚本变化。不得通过关闭文件指纹来回避同名异内容。
 
@@ -132,7 +136,7 @@ function reloadAfterBusinessCheck(): void {
 
 ## 6. 业务仓库必须留下的验收证据
 
-- **安装与构建：**使用实际 Node/pnpm 和固定平台包版本安装、类型检查、生产构建；`vite dev` 可打开页面且没有平台 worker。确认只有一份 manifest、一个预期 scope 的 worker、恢复 worker 与平台生成的离线页；最终 CSS 中保留 `.pwa-update-notice`。
+- **安装与构建：**使用实际 Node/pnpm 和固定平台包版本安装、类型检查、生产构建；`vite dev` 可打开页面且没有平台 worker。确认只有一份 manifest、一个预期 scope 的 worker、恢复 worker 与平台生成的离线页；四个主图标均通过文件存在性、MIME 与实际尺寸校验，最终 CSS 中保留 `.pwa-update-notice`。
 - **重复构建：**固定源码与发布输入的两次构建中，同名 JS/CSS 字节一致；改源码后 worker 内容变化。若混淆、PurgeCSS 或时间戳导致不一致，先修复再继续。
 - **真实浏览器：**首次在线注册，清除浏览器 HTTP 缓存后断网重开；预缓存范围不含私有响应。保持页面不刷新发布新版，确认出现提示；“稍后”保持旧 worker 等待，“更新”先接管，“刷新页面”再由用户明确触发。至少验证两个同源标签页。
 - **部署：**在真实 HTTPS origin 核对 manifest、worker、静态资源的路径和响应头；worker 与 manifest 应可重新验证，带指纹资源按保留规则配置缓存。首次生产发布须建立身份基线，并按发布流程保存回滚与旧资源保留证据。

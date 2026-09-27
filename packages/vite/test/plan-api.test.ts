@@ -5,6 +5,7 @@ import type { PwaIdentity, PwaInstallMetadata, PwaPlan, PwaPolicy } from "@pwa-p
 import { build, type Plugin } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { PWA_PLUGIN_NAME, pwa, type PwaPluginApi } from "../src/index.js";
+import { writeInstallIconFixture } from "./install-icon-fixture.js";
 
 // The api exists so a sibling plugin (pwaEntryResilience, built on top of this one) can confirm its own artifacts
 // landed in the same plan this plugin compiled, without recompiling or re-reading the bundle itself. What matters
@@ -67,6 +68,7 @@ function app(publicFiles: Record<string, string> = {}): string {
     mkdirSync(join(full, ".."), { recursive: true });
     writeFileSync(full, content);
   }
+  writeInstallIconFixture(root);
   return root;
 }
 

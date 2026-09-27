@@ -76,7 +76,7 @@ pnpm add -D @pwa-platform/contracts@0.1.0
 
 - **它是什么**：一个 Vite 插件，把平台的所有环节串成一条构建流水线：编译计划 → 生成 manifest → 打包并注入 worker → 交付页面配置 → 检查产物。
 - **什么时候碰到**：每个项目都要用，在 `vite.config` 里挂载一次。
-- **替你解决**：你不必手写 manifest、worker 或预缓存清单。构建结束时如果发现计划与实际产物不一致（比如声明的离线页没有生成），构建会直接失败，不会把问题带到线上。插件还会自动向 HTML 注入 `<link rel="manifest">`。
+- **替你解决**：你不必手写 manifest、worker 或预缓存清单。构建结束时如果发现计划与实际产物不一致（比如声明的离线页没有生成），构建会直接失败，不会把问题带到线上。manifest 主图标缺失、常用位图 MIME 错配或实际尺寸与 `sizes` 不符也会给出可操作的构建错误。插件还会自动向 HTML 注入 `<link rel="manifest">`。
 - **不做什么**：不接受自定义 worker 代码或 Workbox 配置；不负责部署；不自动注册 worker（注册由页面调用）。
 - **可选**：`offlinePage` 选项生成默认离线页（中英文、亮暗主题），见[默认离线页接入说明](offline-page.md)；安装元数据可以写截图、快捷方式等 manifest 扩展字段，见[manifest 扩展字段接入说明](manifest-fields.md)。
 - **入口**：

@@ -6,6 +6,7 @@ import type { PwaIdentity, PwaInstallMetadata, PwaPlan, PwaPolicy } from "@pwa-p
 import { build, type Logger, type Plugin } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { PWA_PLUGIN_NAME, pwa, type PwaPluginApi, type PwaViteOfflinePageOptions } from "../src/index.js";
+import { writeInstallIconFixture } from "./install-icon-fixture.js";
 
 // spec/vite-adapter.md's "修订：平台默认离线页（2026-09-24，已评审通过）" -> "测试策略增量"'s "构建" bullet: OP3's
 // build-level tests. Rendering itself (built-in copy, escaping, CSP hashes) is offline-page.test.ts's job; option
@@ -80,6 +81,7 @@ function app(publicFiles: Record<string, string> = {}, htmlEntries: Record<strin
     mkdirSync(join(full, ".."), { recursive: true });
     writeFileSync(full, content);
   }
+  writeInstallIconFixture(root);
   return root;
 }
 

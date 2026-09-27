@@ -5,6 +5,7 @@ import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/c
 import { build, type Plugin } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { pwa } from "../src/index.js";
+import { writeInstallIconFixture } from "./install-icon-fixture.js";
 
 // The artifact check is the last thing the plugin does, and it only means anything against a real build: it reads
 // what the build actually produced rather than an inventory the plugin wrote down for itself.
@@ -57,6 +58,7 @@ function app(): string {
   mkdirSync(join(root, "src"), { recursive: true });
   writeFileSync(join(root, "index.html"), '<!doctype html><script type="module" src="/src/main.js"></script>\n');
   writeFileSync(join(root, "src/main.js"), "export const boot = () => 1;\n");
+  writeInstallIconFixture(root);
   return root;
 }
 

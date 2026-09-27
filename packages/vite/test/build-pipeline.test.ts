@@ -5,6 +5,7 @@ import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/c
 import { build, createServer, type Plugin } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { pwa } from "../src/index.js";
+import { writeInstallIconFixture } from "./install-icon-fixture.js";
 
 // These run the plugin inside a real Vite build. The pure units are covered elsewhere; what only a build can show
 // is whether the hooks fire in the right order, whether a failure actually stops the build, and whether files Vite
@@ -70,6 +71,7 @@ function app(publicFiles: Record<string, string> = {}): string {
     mkdirSync(join(full, ".."), { recursive: true });
     writeFileSync(full, content);
   }
+  writeInstallIconFixture(root);
   return root;
 }
 
@@ -140,7 +142,7 @@ describe("the plugin inside a real build", () => {
   it("counts public files in the plan, not only bundled ones", async () => {
     // An app's icons and offline page usually live in the public directory. If they were missing from the file
     // manifest, the release check would later report every one of them as a missing artifact.
-    const root = app({ "icons/192.png": "x", "robots.txt": "User-agent: *\n" });
+    const root = app({ "robots.txt": "User-agent: *\n" });
     const names = await runBuild(root, true);
     expect(names).toContain("manifest.webmanifest");
   });

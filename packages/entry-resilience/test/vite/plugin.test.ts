@@ -19,6 +19,9 @@ import { pwaEntryResilience } from "../../src/vite/index.js";
 import type { PwaEntryResilienceOptions } from "../../src/vite/index.js";
 
 const APP_ROOT = fileURLToPath(new URL("../fixtures/app/", import.meta.url));
+// Reuse the package's browser fixture assets so every real-build test exercises the same install metadata and
+// actual icon bytes. The Vite adapter now rejects missing or mis-sized primary manifest icons during the build.
+const APP_PUBLIC_DIR = fileURLToPath(new URL("../../browser-tests/fixture-app/public/", import.meta.url));
 const APP_ID = "entryfixture";
 const ENVIRONMENT = "production";
 
@@ -102,6 +105,7 @@ async function runBuild({
   await build({
     configFile: false,
     root: APP_ROOT,
+    publicDir: APP_PUBLIC_DIR,
     base,
     logLevel: "silent",
     build: { write: true, outDir: dir, emptyOutDir: true },
@@ -199,6 +203,7 @@ describe("pwaEntryResilience: default style and CSP hashes", () => {
     await build({
       configFile: false,
       root: APP_ROOT,
+      publicDir: APP_PUBLIC_DIR,
       base: IDENTITY.mountPath,
       customLogger: logger,
       build: { write: true, outDir: dir, emptyOutDir: true },
@@ -336,6 +341,7 @@ describe("pwaEntryResilience: build-time failures", () => {
       build({
         configFile: false,
         root: APP_ROOT,
+        publicDir: APP_PUBLIC_DIR,
         base: IDENTITY.mountPath,
         logLevel: "silent",
         build: {

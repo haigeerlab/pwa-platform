@@ -436,3 +436,25 @@ type PwaOfflinePageMessages = {
 
 - 实际宿主的 Node 小版本、源码与部署响应头需在接入时核对；隔离夹具的结果不能替代宿主验收。
 - 隔离夹具已确认混淆插件无固定种子时会让同名 chunk 字节漂移；真实业务仓库仍须重复构建核验其完整插件链。
+
+## 修订：构建期 manifest 主图标校验（2026-09-27，已确认）
+
+### 目标
+
+业务开发者把图标 URL、`type` 或 `sizes` 配错时，`vite build` 必须在发布前给出可操作的错误，不能等 Android 只显示“无法安装此应用”。本修订不改变 `PwaInstallMetadata` 或生成的 manifest；决定见 [ADR-0040](../docs/adr/0040-validate-manifest-icons-during-vite-build.md)。
+
+### 行为
+
+- 在 `generateBundle` 已合并 bundle 与 `publicDir` 文件、调用 `buildPwaArtifacts` 之前检查 `install.icons`。每个 `src` 必须位于 Vite `base` 下并对应本次构建的一个文件。
+- PNG、JPEG、WebP 读取文件头，核对声明 MIME、文件固有宽高与 `sizes` 的每个尺寸。缺文件、类型不一致、无法解析或尺寸不一致均失败。
+- 其他 MIME 不阻断，但输出 `vite.manifest-icon-unverified`；这只表示平台未检查，不表示图片有效。
+- 错误必须包含稳定代码、配置索引、图标 URL、声明与实测结果及修复建议。不得输出图片字节。
+- 不检查图案内容、透明度或 maskable 安全区；这些仍由设计审查和真实设备验证。
+
+### 验收
+
+1. 1×1 PNG 声明为 192×192 时，真实 Vite 构建以 `vite.manifest-icon-size-mismatch` 失败，信息指出对应图标、声明尺寸与 1×1 实测尺寸。
+2. 主图标缺失、已知 MIME 与签名不一致、已知格式文件头损坏分别失败；合法的 192／512 PNG 构建通过。
+3. 未支持的图片 MIME 构建通过但有 `vite.manifest-icon-unverified` 警告。
+4. 中文浏览器夹具使用真实 192／512 图标，回归测试固定文件固有尺寸；Android Chrome 能显示原生安装确认并完成 WebAPK 安装。
+5. `pnpm --filter @pwa-platform/vite test`、`typecheck`、`test:browser` 与文档构建通过；不新增依赖。

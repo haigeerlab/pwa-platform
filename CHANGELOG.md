@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Install icon validation:** `@pwa-platform/vite` now fails production builds when a primary manifest icon is missing, has a PNG/JPEG/WebP signature that disagrees with `type`, has an unreadable header, or has intrinsic dimensions that disagree with `sizes`. Unsupported image types emit an explicit warning instead of being reported as validated.
+- **Android install fixture:** the Vite browser fixture now ships real 192×192 and 512×512 `any`/`maskable` icons and a mobile viewport, fixing Android Chrome's “unable to install” result.
+
 ## 0.1.0 (2026-09-26)
 
 First stable npm package set for Vite applications using Vue 3.4+ or React 19.2+. The ten published packages include the new `@pwa-platform/entry-resilience`. Upgrade all `@pwa-platform/*` packages together.

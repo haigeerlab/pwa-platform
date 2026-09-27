@@ -316,3 +316,13 @@ T7 的变异卡了两次：第一次把错误的缓存名展开进配置对象�
 已新增[业务项目接入作业单](../../docs/guides/vite5-vue34-host-integration.md)和可复制的[项目 Skill](../../.agents/skills/pwa-vite5-vue-integration/SKILL.md)，并从通用迁移指南链接。手册使用通用占位值，提示核对发布版本、构建资源目录、随机输入和 CSS 类名保留；隔离夹具结果不能代替宿主验收。
 
 `skill-creator` 的 `quick_validate.py` 对仓库内及本机 Codex 用户技能目录中的副本均返回 `Skill is valid!`；两份 `SKILL.md` 的 SHA-256 一致，`git diff --check` 通过。业务仓库的实际修改、浏览器验收及生产响应头证据由其执行者按 Skill 完成；本记录不将这些步骤标为通过。
+
+## 修订：Vite 构建期主图标校验（2026-09-27）
+
+Android 16 + Chrome 153 打开中文 Vite 夹具时，运行环境已是 `isSecureContext=true`、worker activated/controller，但原生入口显示“无法安装此应用”。manifest 声明四个 192×192／512×512 PNG，文件实际均为 1×1；替换为真实尺寸后，同一 HTTP localhost、同一 worker 配置立即出现可用的安装确认并成功生成 WebAPK。这证明阻塞项是图片元数据与文件不一致，不是 localhost 的 HTTP。
+
+按 ADR-0040 加入构建期主图标检查。TDD 红测先证明旧实现会放过 1×1 图标、缺文件、MIME 错配、损坏文件和未检查格式；实现只读取已收集的产物字节，PNG／JPEG／WebP 校验文件签名与固有尺寸，不引入依赖。对应聚焦测试 10/10、Vite 完整单测 241/241 通过。合法以外的已知格式错误使构建失败；未解析格式输出 `vite.manifest-icon-unverified`，maskable 安全区继续人工检查。
+
+夹具四个图标改为真实 192／512 文件并增加尺寸回归测试；HTML 增加移动 viewport。Android 安装窗口 `standalone=true`、本源 worker 控制；离线页中文文案与 400px 布局通过。恢复 Origin 后不点重试，页面以 `HEAD /app/sw.js 200` 探测并自动加载线上存在的 manifest 资源，排除了不存在路由的 404 歧义。
+
+最终门禁：`pnpm --filter @pwa-platform/vite test` 24 个文件、241 个测试通过；同包 `typecheck` 与 `build` 通过；真实 Chrome 153 浏览器套件 33/33 通过。新规则同时暴露并修正了两个旧测试夹具：入口恢复浏览器夹具原有四张 1×1 图标，Cloudflare 计划捕获测试则把文本写成 PNG；修正后 `entry-resilience` 单测 274/274、浏览器 20/20，`examples-browser-e2e` 单测 247/247 通过。全仓 `typecheck`、`build`、`lint` 与 `docs:build` 通过；`release-tools` 117/117 单独复跑通过。

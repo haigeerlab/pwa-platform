@@ -5,6 +5,7 @@ import type { AbsolutePath, PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@
 import { build, type Plugin } from "vite";
 import { afterEach, describe, expect, it } from "vitest";
 import { pwa } from "../src/index.js";
+import { writeInstallIconFixture } from "./install-icon-fixture.js";
 
 // These exercise the "构建时注入 manifest 链接" revision end to end: a real Vite build, real HTML output. The pure
 // parsing and comparison logic has its own unit tests in manifest-link.test.ts; what only a build can show is that
@@ -70,6 +71,7 @@ function app(htmlFiles: Record<string, string>): string {
   }
   mkdirSync(join(root, "public"), { recursive: true });
   writeFileSync(join(root, "public/sw.js"), "self.addEventListener('install', () => {});\n");
+  writeInstallIconFixture(root);
   return root;
 }
 

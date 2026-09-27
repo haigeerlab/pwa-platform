@@ -70,7 +70,9 @@ export const INSTALL: PwaInstallMetadata = {
   backgroundColor: "#ffffff",
   icons: [
     { src: `${BASE}icons/192.png`, sizes: "192x192", type: "image/png", purpose: "any" },
+    { src: `${BASE}icons/192-maskable.png`, sizes: "192x192", type: "image/png", purpose: "maskable" },
     { src: `${BASE}icons/512.png`, sizes: "512x512", type: "image/png", purpose: "any" },
+    { src: `${BASE}icons/512-maskable.png`, sizes: "512x512", type: "image/png", purpose: "maskable" },
   ],
 };
 
@@ -117,7 +119,7 @@ export default defineConfig({
 
 **有构建后混淆的项目：**把 `pwa()` 放在混淆插件之后。若混淆插件在 Vite 生成指纹文件名后改写代码，还必须设置固定随机种子，并在相同源码上连续构建两次，比对所有同名 JS/CSS 的 SHA-256。隔离 Vite 5 夹具中的混淆步骤未设置固定随机种子时，实测同名 JS 内容不同而 worker 不变；设置固定种子后才稳定。不能用关闭指纹或只刷新页面掩盖这一问题，因为旧页面仍可能请求同名但内容已改变的资源。
 
-图标与离线页放进 `public/`，路径要与 `INSTALL.icons` 和 `offlineFallback.path` 对应。不要引用第三方 CDN 上的图标。
+图标与离线页放进 `public/`，路径要与 `INSTALL.icons` 和 `offlineFallback.path` 对应。不要引用第三方 CDN 上的图标。Vite 生产构建会拒绝缺失主图标、PNG／JPEG／WebP 的声明 MIME 与文件签名不一致、损坏文件头和声明尺寸与固有尺寸不一致；按 `vite.manifest-icon-*` 错误中的配置索引、URL、声明值与实测值修正后再继续。其他图片类型会给出 `vite.manifest-icon-unverified`，不代表已通过图片校验。
 
 **manifest 链接由插件注入。** 构建时，插件会在每个 HTML 入口的 `<head>` 里注入 `<link rel="manifest" href="<identity.manifestUrl>">`，`index.html` 里不用再写（[ADR-0022](../adr/0022-vite-injects-manifest-link.md)）。如果原来已经手写了：
 
