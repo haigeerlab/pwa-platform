@@ -55,6 +55,12 @@ export const POLICY: PwaPolicy = {
 
 不符合条件的响应仍会正常交给页面，但不会进入平台缓存。建议公共接口明确返回适当的公共缓存头，并在上线前用真实响应核对，而不是只检查前端策略。
 
+没有进入缓存时，到浏览器开发者工具中打开 Service Worker 的控制台，查找以 `[pwa-platform] runtime cache did not store` 开头的警告：它写明被拒绝的路径（不含查询串）和原因（`response-type`、`status`、`redirected`、`content-type`、`cache-control`、`vary`、`size`）。同一个缓存、同一种原因，在 worker 的一次生命周期内只提示一次。
+
+::: warning 本地用 `vite preview` 验收时
+`vite preview` 和 `vite dev` 默认给每个响应加上 `Vary: Origin`，它不在允许的 `Vary` 字段内，因此本地预览时公共读取缓存不会写入，控制台会出现 `vary (Vary: Origin)` 警告。这是本地服务器的行为，不代表生产环境有问题：可以在本地的接口中间件里移除 `Vary` 头后再验证，并以最终部署地址的真实响应头为准。
+:::
+
 ::: danger 业务必须证明内容确实公开
 同源请求通常会携带 Cookie，而平台不据此判断内容是否公开。Service Worker 也读不到响应中的 `Set-Cookie`。被规则覆盖的接口不能按用户、会话或权限返回不同内容，也不应设置 Cookie；若可能产生私有响应，服务端必须返回 `Cache-Control: private`，并从公共规则中移除该路径。不要让含一次性 `token`、`code` 等查询参数的 URL 落入可执行规则，缓存键会包含查询串。
 :::

@@ -112,6 +112,31 @@ test.describe("stale-while-revalidate (public-data)", () => {
   });
 });
 
+test.describe("admission diagnostics (review risk R8)", () => {
+  test("a Vary: Origin rejection is reported once on the worker console, naming the reason and the path", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("v3");
+    fixtureServer.setHeaderRules([{ pathPrefix: RUNTIME_CATALOG_VARY_COOKIE_URL, headers: { Vary: "Origin" } }]);
+    await installAndControl(page, fixtureServer);
+
+    const warnings: string[] = [];
+    context.on("console", (message) => {
+      if (message.type() === "warning" && message.text().includes("[pwa-platform]")) warnings.push(message.text());
+    });
+    for (let read = 0; read < 2; read += 1) {
+      expect((await fetchJson(page, fixtureServer.url(`${RUNTIME_CATALOG_VARY_COOKIE_URL}?read=${read}`))).ok).toBe(true);
+    }
+
+    await expect.poll(() => warnings.length, { timeout: 5_000 }).toBe(1);
+    expect(warnings[0]).toContain(`${RUNTIME_CATALOG_VARY_COOKIE_URL}: vary (Vary: Origin)`);
+    expect(warnings[0]).not.toContain("read=");
+    expect(hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_CATALOG_VARY_COOKIE_URL)).toBe(false);
+  });
+});
+
 test.describe("rejected responses (public-data): admitted online, network error offline, nothing cached", () => {
   const cases: readonly {
     readonly name: string;

@@ -107,6 +107,7 @@ type PwaPolicyV3 = Omit<PwaPolicyV2, "schemaVersion"> & {
 - **`Set-Cookie` 无法由 worker 检查**：Fetch 规范把 `Set-Cookie` / `Set-Cookie2` 列为 forbidden response-header name，basic 过滤响应的头列表不含它们，worker 读到的永远是空值（<https://fetch.spec.whatwg.org/#forbidden-response-header-name>）。因此平台**不承诺**拦截带 Cookie 的响应。业务责任是：可执行规则覆盖的路径不得设置 Cookie；如果确实会设置，响应必须同时带 `Cache-Control: private`，由上一条拦下。这一点写入 ADR-0035、安全模型与接入指南。
 - `Vary` 不存在，或只包含 `Accept-Encoding`、`Accept`；`Vary: *` 或其他任何字段一律不写入。
 - 正文字节数不超过 `maxEntryBytes`。没有可信 `Content-Length` 时按实际读取的字节数判定，超出即放弃写入。
+- **拒绝时的诊断（2026-09-28 增补，审查风险 R8）**：响应因上述任一条件未写入时，平台 worker 以 `console.warn` 报告拒绝原因（`response-type`、`status`、`redirected`、`content-type`、`cache-control`、`vary`、`size` 之一）与该响应的 URL 路径（不含查询串）；`vary` 时附带响应的 `Vary` 值。同一 worker 生命周期内，每个（运行时引擎，原因）组合只报告一次。它只是开发与排查辅助：不改变准入结果、不向页面发送消息、不属于公开 API；恢复 worker 与 push 路径仍不调用 `console`。
 - 写入失败（含 `QuotaExceededError`）只丢弃这一次写入；配额错误时清空**全部**运行时缓存以回收空间（Workbox 的配额回调是全局的，见 ADR-0035 探路 2），预缓存不受影响；页面收到的响应不受影响。
 
 ### 读取与时效

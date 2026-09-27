@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Runtime cache diagnostics:** when a response is not admitted to the public-read runtime cache, the platform worker now reports the reason and path once per cache and reason with `console.warn`, so silent rejections (for example `Vary: Origin` added by `vite preview`) can be diagnosed.
 - **Identity scope check:** `@pwa-platform/contracts` rejects an identity whose `scope` is wider than the directory of its `serviceWorkerUrl` (`identity.scope-outside-worker-directory`). Browsers refuse such a registration; the build now fails instead.
 - **Runtime cache:** a navigation carrying an `Authorization` header is no longer written to the pages runtime cache, matching the public-read cache contract.
 - **Install icon validation:** `@pwa-platform/vite` now fails production builds when a primary manifest icon is missing, has a PNG/JPEG/WebP signature that disagrees with `type`, has an unreadable header, or has intrinsic dimensions that disagree with `sizes`. Unsupported image types emit an explicit warning instead of being reported as validated.
