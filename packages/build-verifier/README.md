@@ -54,6 +54,7 @@ if (!report.ok) {
 | 共享 Origin | `isSharedOriginChild`, `verifyReleaseOrder` | 确认根应用已排除子应用 scope，再发布子应用 |
 | 保留 | `verifyReleaseRetention` | 检查当前和历史发布记录要求的指纹资源仍可取用 |
 | 覆盖 | `verifyReleaseGateCoverage` | 检查门禁声明是否覆盖要求场景 |
+| 必需集 | `requiredReleaseChecks` | 按计划拓扑返回发布协议规定的机器必需检查，直接传给 `verifyReleaseGateCoverage` |
 | 工具 | `parseCacheControl`, `hasDirective` | 解析并判断 `Cache-Control` 指令 |
 | 报告 | `VERIFICATION_CHECKS`, `PwaVerificationReport` | 标准检查名、逐项结果和诊断 |
 

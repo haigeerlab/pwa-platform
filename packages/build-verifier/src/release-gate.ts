@@ -1,5 +1,7 @@
 // Does a release report cover every check the caller declared mandatory? This is deliberately separate from whether
 // those checks passed: a complete report can still fail and an empty report can still be structurally complete.
+import type { PwaPlan } from "@pwa-platform/contracts";
+import { isSharedOriginChild } from "./release-order.js";
 import { VERIFICATION_CHECKS, type PwaVerificationCheckName, type PwaVerificationReport } from "./report.js";
 
 export type PwaReleaseGateCoverage = {
@@ -36,3 +38,16 @@ export function verifyReleaseGateCoverage(
   const missing = required.filter((name) => !performed.has(name));
   return { ok: missing.length === 0, missing };
 }
+
+/**
+ * The machine-required checks for releasing `plan`, as the release orchestration protocol defines them (ADR-0025
+ * addendum): every topology needs artifacts, response headers, the identity baseline, release retention and HTML
+ * headers; a shared-origin child also needs release order. Returned in `VERIFICATION_CHECKS` order, ready for
+ * `verifyReleaseGateCoverage`. It only reads the plan: whether a first release may pass without a baseline stays a
+ * release-system decision, so `identity-baseline` is always required.
+ */
+export function requiredReleaseChecks(plan: PwaPlan): readonly PwaVerificationCheckName[] {
+  const child = isSharedOriginChild(plan);
+  return VERIFICATION_CHECKS.filter((name) => name !== "release-order" || child);
+}
+

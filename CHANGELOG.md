@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Release gate:** `@pwa-platform/build-verifier` exports `requiredReleaseChecks(plan)`, returning the release orchestration protocol's machine-required checks for the plan's topology, so callers pass it to `verifyReleaseGateCoverage` instead of hand-writing the list.
 - **Runtime cache diagnostics:** when a response is not admitted to the public-read runtime cache, the platform worker now reports the reason and path once per cache and reason with `console.warn`, so silent rejections (for example `Vary: Origin` added by `vite preview`) can be diagnosed.
 - **Identity scope check:** `@pwa-platform/contracts` rejects an identity whose `scope` is wider than the directory of its `serviceWorkerUrl` (`identity.scope-outside-worker-directory`). Browsers refuse such a registration; the build now fails instead.
 - **Runtime cache:** a navigation carrying an `Authorization` header is no longer written to the pages runtime cache, matching the public-read cache contract.

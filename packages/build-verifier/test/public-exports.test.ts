@@ -14,6 +14,7 @@ describe("public exports", () => {
       "isSharedOriginChild",
       "parseCacheControl",
       "readIdentityBaseline",
+      "requiredReleaseChecks",
       "verifyArtifacts",
       "verifyHtmlHeaders",
       "verifyRelease",
