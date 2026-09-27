@@ -10,7 +10,7 @@
 |---|---|---|
 | CI | 在最终 `main` 提交上手动运行完整 CI，运行 SHA 与发布提交相同且三个 job 全部通过；若 `main` 移动或运行被取消，重新验证新的发布提交。Ready PR 的通过结果用于合入门禁，不代替最终发布提交的 CI 记录。依赖审计报告按[依赖变更流程](dependency-changes.md#依赖审计)处理。GitHub 仓库或 Actions 不可用期间，可按 [ADR-0031](../adr/0031-local-gate-substitute-for-ci.md) 以[本地门禁记录](local-ci-record-template.md)代替，证据中必须写明"本地替代"，并在 GitHub 恢复后补跑 | CI 运行链接，或本地门禁记录 |
 | 验证记录 | 本次发布有[生产发布浏览器证据](browser-release-evidence.md)记录；[V1 验收矩阵](../architecture/v1-acceptance-matrix.md)中需要真实浏览器证据的场景，已在[浏览器矩阵](../architecture/browser-matrix.md)中本次发布通道的必测范围内通过。本通道内任一必测环境、版本、场景或原生安装为未执行即不通过 | 证据记录链接 |
-| 机器发布门禁 | `verifyRelease` 已执行本拓扑的全部必需检查，且 `verifyReleaseGateCoverage(report, requiredChecks).ok` 与 `report.ok` 均为 `true`；首次发布和身份迁移仅能按下文保留诊断并附批准 | 报告、覆盖结果、必需集和外部发布记录引用 |
+| 机器发布门禁 | `verifyRelease` 已执行本拓扑的全部必需检查，且 `verifyReleaseGateCoverage(report, requiredReleaseChecks(plan)).ok` 与 `report.ok` 均为 `true`；首次发布和身份迁移仅能按下文保留诊断并附批准 | 报告、覆盖结果、必需集和外部发布记录引用 |
 | 身份基线比较 | 按[身份发布基线规则](identity-release-baseline.md)比较通过，或附有已批准的首次发布/迁移记录；不得通过省略检查隐藏基线缺失 | 比较结果；如有例外，附批准记录链接 |
 | 类生产环境核对 | 在类生产环境中逐项核对下文列出的内容 | 核对结果写入验证记录 |
 | 恢复演练 | 在类生产环境中按[恢复演练](recovery-drill.md)完成并通过；其子记录已被同次[生产发布浏览器证据](browser-release-evidence.md)引用 | 证据记录中的子记录引用 |

@@ -13,7 +13,7 @@
 **交付物：**
 
 - 私有工作区包 `packages/build-verifier`，包名 `@pwa-platform/build-verifier`：
-  - 入口 `.`：`verifyArtifacts`、`verifyResponseHeaders`、`compareIdentityBaseline`、`verifyReleaseRetention`、`verifyRelease`、`verifyReleaseGateCoverage`、`readIdentityBaseline` 与报告类型。
+  - 入口 `.`：`verifyArtifacts`、`verifyResponseHeaders`、`compareIdentityBaseline`、`verifyReleaseRetention`、`verifyRelease`、`verifyReleaseGateCoverage`、`requiredReleaseChecks`（2026-09-28 增补，ADR-0025 增补）、`readIdentityBaseline` 与报告类型。
 - contracts 追加本模块所需的 `verify.*` 诊断码（见"诊断"及后续修订）。这是对已交付包公开契约的修改，随本模块交付，并同步更新声明快照。
 - 单元测试（Vitest）。本模块不含浏览器行为，不需要浏览器自测。
 - `docs/adr/0014-build-verification-boundary-and-report.md`：记录职责边界、纯函数取向、基线存放约定与报告形态。
