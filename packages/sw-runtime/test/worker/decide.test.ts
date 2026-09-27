@@ -343,12 +343,21 @@ describe("runtime cache decisions (T7)", () => {
     });
   });
 
-  it("ignores Range and Authorization for a runtime-cache navigation, exactly as an ordinary navigation does", () => {
-    expect(runtimeDecide(`${ORIGIN}/app/articles/42`, { navigation: true, range: true, authorization: true })).toEqual({
+  it("ignores Range for a runtime-cache navigation, exactly as an ordinary navigation does", () => {
+    expect(runtimeDecide(`${ORIGIN}/app/articles/42`, { navigation: true, range: true })).toEqual({
       kind: "runtime",
       cache: "pages",
       strategy: "network-first",
       resourceClass: "navigation-public-dynamic",
+      fallbacks: ["/app/offline.html"],
+    });
+  });
+
+  it("keeps an Authorization navigation out of the runtime cache: it navigates exactly as without runtime caching", () => {
+    // spec.public-read-cache "请求判断": the runtime cache never reads or writes a request carrying Authorization,
+    // navigations included. navigate() never writes a cache, so the offline fallback stays available.
+    expect(runtimeDecide(`${ORIGIN}/app/articles/42`, { navigation: true, authorization: true })).toEqual({
+      kind: "navigate",
       fallbacks: ["/app/offline.html"],
     });
   });
