@@ -47,7 +47,7 @@
 | Android Chrome 153 React Drill 安装与离线 | 英文通过；中文未执行 | 公开 React `drill` 页显示原生安装提示，确认后安装 WebAPK `org.chromium.webapk.a79c749fa7b1c369e_v2`（手机本地时间 2026-09-26 19:24:58）。从图标启动 `/app/`，CDP 读到 `display-mode:standalone=true`、v2/registered 与本源 `/app/sw.js` 控制。移动数据原为关闭且 Wi-Fi 关闭时，结束 WebAPK 再从图标启动，`navigator.onLine=false` 仍显示 v2/registered；未缓存路径出现英文离线页与重试按钮，截图 `/private/tmp/pwa-android-react-offline-fallback.png`。测后 Wi-Fi 恢复为 1。 |
 | Android Chrome 153 React 入口恢复 | 计划迁移与点击跳转通过；断网/无效清单等未执行 | 本机公开 `drill` React Origin 在 Chrome 标签页用常驻公开测试钩子交入序号 2、`migrating`、目标为公开 Vue Drill Origin 的合法清单，结果 `accepted=true`；`checkEntryRecovery({returnPath})` 给出 `available` 与本源恢复页链接，结果对象未给出目标 Origin。恢复页显示中文 `lang=zh-CN`、目标主机、有效期与按钮；截图 `/private/tmp/pwa-android-react-recovery.png`，显示深色窄屏布局。页面未自动跳转；点击后 Android 提示是否打开已安装 Vue App，选择“本次允许”后进入 Vue 独立窗口，`pwa-return` 与传入的路径一致。最后交入更高序号 3 的 `normal` 空入口清单，`checkEntryRecovery()` 回到 `none`。此次仅是公开站点旧候选实测。 |
 | Android Chrome 153 Vue 入口恢复与离线区别 | 通过（本次旧候选场景）；域名独立阻断未执行 | Vue Drill 已存序号 1 `normal` 空入口清单；整机断网后 `navigator.onLine=false`，`checkEntryRecovery()` 返回 `none`，不把设备断网误报为域名故障。恢复联网后交入序号 2 的 `migrating` 合法清单，目标为公开 React Drill Origin，`checkEntryRecovery({returnPath})` 返回 `available`。再次断网后打开带 `?return=` 的 `/app/pwa-entry.html`，由 Vue 自己的 `/app/sw.js` 接管，显示 `lang=zh-CN` 的中文备用入口页及目标按钮，而不是通用离线页；截图 `/private/tmp/pwa-android-vue-recovery-offline.png`。该步只证明已存迁移清单与恢复页的离线展示，断网时未点击目标按钮（目标也离线）。测后恢复 Wi-Fi 并交入更高序号 3 `normal` 空入口清单；`checkEntryRecovery()` 回到 `none`。 |
-| 离线页中英文与移动端 UI | 英文移动端通过；中文与桌面待补 | Android Vue/React 和 iPhone Vue 英文离线页已在安装窗口观察；中文构建真机、桌面视觉及 iPhone 自动联网恢复待补。 |
+| 离线页中英文与移动端 UI | 英文移动端、中文桌面安装窗口通过；中文移动端待补 | Android Vue/React 和 iPhone Vue 英文离线页已在安装窗口观察；Chrome 154 中文构建已完成原生安装窗口、离线页和手动恢复实测。Android／iPhone 中文构建仍无真机证据。 |
 | 入口恢复移动端与安装窗口 | 英文移动端展示与跳转通过；故障分支待补 | Android Vue/React 与 iPhone Vue 的英文安装窗口恢复页及跨公开 Origin 跳转有实证；单独 Origin 阻断、中文 UI 及 Mac 桌面待补。用户最后提供的 iPhone 截图是 Vue 入口恢复页，前一张才是离线页。 |
 | 十包 tarball 与独立消费 | 本地候选通过；registry 分发未执行 | `entry-resilience` 已补公开元数据、MIT LICENSE、接入 README，Vite peer `^5.0.0 || ^8.0.0`。`CI=true pnpm check:publish` 显示 10 包元数据与导出通过。十个 `0.1.0` 最终本地 tarball 在 `/private/tmp/pwa-stable-tarballs-final`；解包核对 497 个文件，均限 `dist/`、README、LICENSE、package.json，十包 metadata、MIT 文本、内部运行时依赖统一 `0.1.0`、导出存在且常见敏感内容模式扫描通过。隔离项目从最终十包本地 tarball 安装（未从 npm 安装尚未发布的 `0.1.0`），Node 22.22.0 + Vite 5.0.0 + Vue 3.4.0 + TypeScript 5.2.2 的类型检查和真实 Vite 构建退出 0，生成 Vue 更新提示 CSS、manifest、worker、预缓存的 `pwa-entry.html` 与脚本。首轮项目误用 React 19.0.0，与公开 peer `^19.2.0` 冲突；改用 React 19.3.0 后不跳过 peer 校验地安装成功。 |
 | npm 账号与目标版本 | 预检通过，尚未发布 | `npm whoami` 已读到已登录账号；对十包逐一查询 npm registry，`@0.1.0` 均返回不存在。此检查仅防止版本冲突，不能代替发布后读回。 |
@@ -86,13 +86,14 @@
 
 ## R2 桌面 UI 证据与当前真机可用性（2026-09-27）
 
-本轮没有运行时代码变化，也没有为取证制造新的 Cloudflare 部署。先检查当前设备条件：`adb devices -l` 返回空设备列表；Xcode 仍识别物理 iPhone 16 Pro（iOS 27.0，USB 接口），但设备状态为 unavailable，并明确要求解锁后连接线缆或处于同一局域网。因此本轮没有新增 Android／iPhone 通过结果，R2、T3 的移动更新矩阵和 T4 的中文安装窗口矩阵继续保持未完成。
+本轮没有运行时代码变化，也没有为取证制造新的 Cloudflare 部署。先检查当前设备条件：`adb devices -l` 返回空设备列表；Xcode 仍识别物理 iPhone 16 Pro（iOS 27.0，USB 接口），但设备状态为 unavailable，并明确要求解锁后连接线缆或处于同一局域网。因此本轮没有新增 Android／iPhone 通过结果，R2、T3 的移动更新矩阵和 T4 的中文移动安装窗口矩阵继续保持未完成；桌面中文安装窗口已在本地候选构建上补齐。
 
-在不依赖真机和云端写入的范围内，补齐了三个真实浏览器 UI 场景。所有对比度断言都读取浏览器最终计算色，不只比对源代码常量，并以 WCAG AA 普通文本阈值 `4.5:1` 为最低要求；算法收敛到私有 `@pwa-platform/browser-test-harness`，其单元测试 68/68 通过。完整 WCAG 审核仍不在本次范围内。
+在不依赖真机和云端写入的范围内，补齐了三个自动化 UI 场景及桌面中文安装窗口实测。所有对比度断言都读取浏览器最终计算色，不只比对源代码常量，并以 WCAG AA 普通文本阈值 `4.5:1` 为最低要求；算法收敛到私有 `@pwa-platform/browser-test-harness`，其单元测试 68/68 通过。完整 WCAG 审核仍不在本次范围内。
 
 | 场景 | 可追溯证据 | 结果与边界 |
 |---|---|---|
-| 中文默认离线页 | `packages/vite/browser-tests/offline-page.spec.ts` | Chrome 153.0.8010.53 中验证 `lang=zh-CN`、内置中文文案、320px 窄屏无横向溢出、键盘 `Tab` 可聚焦重试按钮；亮／暗主题的正文、弱化正文和按钮文字对比度均不低于 `4.5:1`。完整 Vite 浏览器套件 33/33 通过。此为本地真实浏览器与真实 Service Worker 离线路径，不等于 Android、iPhone 或桌面安装窗口的中文构建实测。 |
+| 中文默认离线页 | `packages/vite/browser-tests/offline-page.spec.ts` | Chrome 153.0.8010.53 中验证 `lang=zh-CN`、内置中文文案、320px 窄屏无横向溢出、键盘 `Tab` 可聚焦重试按钮；亮／暗主题的正文、弱化正文和按钮文字对比度均不低于 `4.5:1`。完整 Vite 浏览器套件 33/33 通过。此项是自动化证据；桌面安装窗口另见下一项，Android／iPhone 中文构建仍待真机实测。 |
+| Chrome 154 中文构建原生安装、离线与恢复 | 本地 `site-offline-zh` 候选构建；Chrome for Testing 154.0.8037.57 独立配置 | Chrome 原生菜单显示“将网页作为应用安装”，安装向导显示 `Vite Fixture`，完成“下一步 → 安装”后创建独立应用窗口；窗口没有地址栏并打开 `/app/` 的 v1 shell。按宿主公开契约调用 `client.register()`、刷新至 `/app/sw.js` 接管后，关闭本地 Origin 并进入未缓存路由，独立窗口显示 `lang=zh-CN` 的“当前处于离线状态／网络恢复后页面会自动重新加载。／重试”。恢复只读 SPA 服务后点击“重试”，同一路由回到 v1 shell。首次未调用 `register()` 就断站时无 controller、只得到浏览器网络错误，直接证明接入文档必须把注册步骤列为必需条件。该轮验证了手动恢复；自动探针已有 Chrome 安装窗口与 Android／iPhone 英文候选证据，不在此重复。测试夹具图标文件为 1×1 占位图，Chrome 报 manifest 尺寸警告，因此本项不作为生产图标质量证据。 |
 | 入口恢复页 | `packages/entry-resilience/browser-tests/styling.spec.ts` | Chrome 153.0.8010.53 中对 320px 恢复页验证亮／暗主题、无横向溢出、键盘 `Tab` 可聚焦备用入口按钮，以及正文、到期说明、按钮文字的 `4.5:1` 对比度下限。完整入口恢复浏览器套件 20/20 通过。 |
 | Vue／React 更新提示 | `packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts` | 两框架都在亮／暗主题读取计算色并验证正文、次要文字和主按钮文字的 `4.5:1` 对比度下限；既有 320px 布局和键盘焦点场景继续通过。完整 UI 套件 14/14 通过。 |
 | 已安装桌面 React PWA 当前状态 | macOS 可访问性树只读观察 | Chrome for Testing 安装窗口仍打开公开 React Drill `/app/`，显示 `v2 / registered`、无地址栏并保留基础交互按钮。本项只确认在线安装窗口未损坏，不补算离线、更新或中文证据。 |
