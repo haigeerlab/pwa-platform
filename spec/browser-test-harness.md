@@ -182,6 +182,14 @@ pnpm --filter @pwa-platform/browser-test-harness test
 
 **代价**：全仓浏览器测试的耗时变为各包之和。
 
+## 增补：全仓非构建操作不在首个失败处中止（2026-09-28，审查风险 R7）
+
+不带 `--filter` 的 `test`、`typecheck`、`test:browser` 改为传 `--no-bail`：每个包都执行完，再以非零退出码汇总失败。`build` 仍在首个失败处中止，因为后续包依赖前面包的 `dist`。
+
+**起因**：2026-09-27 架构审查实跑 `pnpm test` 时，release-tools 的 `run-gate.integration.test.ts` 在与其他包并发时超过 vitest 默认 5 秒超时，pnpm 随即中止，其余 14 个包的测试一个都没有执行。本地门禁（ADR-0031）把 `pnpm test` 当作阻断命令，一次偶发超时就会掩盖其他包的真实结果。该文件的超时本身在 release-tools 的 vitest 配置中放宽（真实 `git worktree` 与 `pnpm` 子进程在负载下需要 4–5 秒以上）。
+
+**不变**：任何包失败，整条命令仍以非零退出码结束，门禁结论不变。
+
 ## 文档影响表未回填（2026-09-23）
 
 本模块**没有** `Documentation impact` 表，因此 spec-guard 的文档核验对它报 `invalid`。**这是预期结果，不表示文档缺失或有错。**
