@@ -5,6 +5,7 @@ export { diffCacheSnapshots, expectDeletedExactlyUnderPrefix } from "./cache-dif
 export type { CacheCountChange, CacheDiff, CacheSnapshot } from "./cache-diff.js";
 export { createCaches, snapshotCaches } from "./caches.js";
 export type { CacheSpec } from "./caches.js";
+export { contrastRatio } from "./contrast.js";
 export { fixturePath, MINIMAL_PAGE_MARKER } from "./fixtures.js";
 export { CHROME_PATH_ENV } from "./launch.js";
 export { expectLifecycleSequence } from "./lifecycle.js";

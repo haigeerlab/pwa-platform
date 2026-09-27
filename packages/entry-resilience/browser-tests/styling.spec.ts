@@ -5,7 +5,7 @@
 // Helpers below (`waitForActivatedWorker`, `installAndControl`, `entryCheck`, `entryUpdate`, `manifestPayload`) are
 // deliberately duplicated from scenarios.spec.ts rather than imported from it, so each spec file stays runnable and
 // readable on its own — the same choice that file made relative to the now-removed standalone feasibility spec.
-import { expect, test, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
+import { contrastRatio, expect, test, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
 import type { Page } from "@playwright/test";
 import type { EntryUpdateResult } from "../src/client/index.js";
 import type { EntryRecoveryResult } from "../src/index.js";
@@ -157,6 +157,39 @@ test.describe("default style", () => {
       });
     });
     for (const sample of samples) expect(sample).toEqual({ id: "pwa-entry", background: "rgb(15, 20, 25)" });
+  });
+
+  test("light and dark themes keep readable contrast, keyboard focus and a narrow layout", async ({ page }) => {
+    const url = await recoveryPageUrl(page, sites);
+    await page.setViewportSize({ width: 320, height: 650 });
+
+    for (const colorScheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme });
+      await page.goto(url);
+      await expect(page.locator(".pwa-entry__expiry")).toBeVisible();
+      await expect(page.locator(".pwa-entry__button")).toBeVisible();
+      const colors = await page.evaluate(() => {
+        const root = document.querySelector(".pwa-entry") as HTMLElement;
+        const muted = document.querySelector(".pwa-entry__expiry") as HTMLElement;
+        const button = document.querySelector(".pwa-entry__button") as HTMLElement;
+        return {
+          rootBackground: getComputedStyle(root).backgroundColor,
+          rootText: getComputedStyle(root).color,
+          mutedText: getComputedStyle(muted).color,
+          buttonBackground: getComputedStyle(button).backgroundColor,
+          buttonText: getComputedStyle(button).color,
+          documentWidth: document.documentElement.scrollWidth,
+          viewportWidth: window.innerWidth,
+        };
+      });
+
+      expect(contrastRatio(colors.rootText, colors.rootBackground)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.mutedText, colors.rootBackground)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(colors.buttonText, colors.buttonBackground)).toBeGreaterThanOrEqual(4.5);
+      expect(colors.documentWidth).toBeLessThanOrEqual(colors.viewportWidth);
+      await page.keyboard.press("Tab");
+      await expect(page.locator(".pwa-entry__button")).toBeFocused();
+    }
   });
 
   // The recipe docs/guides/entry-recovery-integration.md tells hosts to copy, verbatim, on both dark paths. It has

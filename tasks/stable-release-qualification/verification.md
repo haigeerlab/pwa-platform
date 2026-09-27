@@ -84,6 +84,21 @@
 | 发布前最后一轮浏览器与文档回归 | Chrome N/N-1 各 228/228 | 新增单 Origin 故障用例后，全仓九套件在 Chrome 154 与 153 各 228 项通过，0 失败、0 跳过；日志 `/private/tmp/pwa-stable-release-browser154.log` SHA-256 `d9c9cfa0975fd42d2aad0070baf22d3ccef1c09320d43e32317be43987e6d296`，`/private/tmp/pwa-stable-release-browser153.log` SHA-256 `20dcce3e2cd66a077f0d20227d24d93c4d92e97006e7c53897ccbaf440d21b8e`。文档口径更新后 `pnpm docs:build`、`pnpm lint`、入口恢复包 `typecheck`、`pnpm check:publish` 和 `git diff --check` 退出 0。 |
 | npm 正式版与独立消费 | 十包发布及读回通过 | 2026-09-26 UTC 从提交 `870bf93a3ac78e4593f0916192a34448fd09e270` 逐包发布十个 `0.1.0`；每包 npm `latest`、下载内容及 `dist.integrity` 核对通过。全新目录 `/private/tmp/pwa-stable-registry-consumer` 直接从 npm 安装十包，在 Node 22.22.0、Vite 5.0.0、Vue 3.4.0、React 19.3.0 环境中，`npm install`、`tsc --noEmit`、Vite 生产构建均退出 0。完整散列与限制见[发布记录](release-0.1.0.md)。 |
 
+## R2 桌面 UI 证据与当前真机可用性（2026-09-27）
+
+本轮没有运行时代码变化，也没有为取证制造新的 Cloudflare 部署。先检查当前设备条件：`adb devices -l` 返回空设备列表；Xcode 仍识别物理 iPhone 16 Pro（iOS 27.0，USB 接口），但设备状态为 unavailable，并明确要求解锁后连接线缆或处于同一局域网。因此本轮没有新增 Android／iPhone 通过结果，R2、T3 的移动更新矩阵和 T4 的中文安装窗口矩阵继续保持未完成。
+
+在不依赖真机和云端写入的范围内，补齐了三个真实浏览器 UI 场景。所有对比度断言都读取浏览器最终计算色，不只比对源代码常量，并以 WCAG AA 普通文本阈值 `4.5:1` 为最低要求；算法收敛到私有 `@pwa-platform/browser-test-harness`，其单元测试 68/68 通过。完整 WCAG 审核仍不在本次范围内。
+
+| 场景 | 可追溯证据 | 结果与边界 |
+|---|---|---|
+| 中文默认离线页 | `packages/vite/browser-tests/offline-page.spec.ts` | Chrome 153.0.8010.53 中验证 `lang=zh-CN`、内置中文文案、320px 窄屏无横向溢出、键盘 `Tab` 可聚焦重试按钮；亮／暗主题的正文、弱化正文和按钮文字对比度均不低于 `4.5:1`。完整 Vite 浏览器套件 33/33 通过。此为本地真实浏览器与真实 Service Worker 离线路径，不等于 Android、iPhone 或桌面安装窗口的中文构建实测。 |
+| 入口恢复页 | `packages/entry-resilience/browser-tests/styling.spec.ts` | Chrome 153.0.8010.53 中对 320px 恢复页验证亮／暗主题、无横向溢出、键盘 `Tab` 可聚焦备用入口按钮，以及正文、到期说明、按钮文字的 `4.5:1` 对比度下限。完整入口恢复浏览器套件 20/20 通过。 |
+| Vue／React 更新提示 | `packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts` | 两框架都在亮／暗主题读取计算色并验证正文、次要文字和主按钮文字的 `4.5:1` 对比度下限；既有 320px 布局和键盘焦点场景继续通过。完整 UI 套件 14/14 通过。 |
+| 已安装桌面 React PWA 当前状态 | macOS 可访问性树只读观察 | Chrome for Testing 安装窗口仍打开公开 React Drill `/app/`，显示 `v2 / registered`、无地址栏并保留基础交互按钮。本项只确认在线安装窗口未损坏，不补算离线、更新或中文证据。 |
+
+默认受限环境首次运行浏览器套件时，Chrome 终止和 localhost 监听分别被 `kill EPERM`、`listen EPERM` 拒绝；在获授权的隔离浏览器环境重跑后得到上述通过结果。入口恢复新增用例第一次完整套件运行暴露渲染等待不足，聚焦运行虽通过但全套出现空元素；增加对到期说明与按钮可见性的显式等待后，完整 20/20 稳定通过。该测试修正没有改动运行时代码或公开契约。
+
 ## R4 交叉边界复核（2026-09-27）
 
 候选基线为 `929ea925c67b9c63adbf6d587a8c51f22a9a0712`；新增的严格 CSP 浏览器回归与本记录位于同一后续提交。审计没有发现运行时代码或公开契约缺陷；发现并关闭的唯一缺口是“文档给出 CSP 哈希、单测证明哈希计算正确，但没有真实浏览器以响应头执行”的证据缺口。
@@ -94,7 +109,7 @@
 | 默认缓存拒绝 | `packages/sw-runtime/browser-tests/offline.spec.ts`、`runtime-cache.spec.ts`、`range-request.spec.ts` | sw-runtime 单元 321/321、浏览器 49/49；`no-store`、`private`、`Vary: Cookie`、错误 MIME、超限响应、带 `Authorization` 请求、未分类与拒绝路径均未写入缓存；Range 请求继续走真实网络 206。 |
 | 恢复 worker | `packages/sw-runtime/browser-tests/lifecycle.spec.ts`、`runtime-cache.spec.ts`、`offline-write.spec.ts`，以及上述 shared-origin 恢复测试 | 只清理目标应用的 precache、runtime cache、expiration 记录和离线写入库；其他应用／环境缓存保留，恢复 worker 不提供内容。相关 sw-runtime 49/49、Vite 32/32。 |
 | 严格 CSP | 新增 `packages/vite/browser-tests/offline-page.spec.ts` 与 `packages/entry-resilience/browser-tests/scenarios.spec.ts` 的 strict CSP 场景 | 真实 `Content-Security-Policy` 响应头下，离线页发布的 `style-src`／`script-src` 哈希可执行，入口恢复页的样式哈希及 `script-src 'self'` 外链模块可执行；两页均为 0 条 `securitypolicyviolation`，且在断网预缓存路径中完成交互。Vite 32/32、entry-resilience 19/19。 |
-| 更新 UI 个性化 | `packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts` | Vue／React 的位置、主题覆盖、窄屏、组件级颜色覆盖、稍后提醒、失败重试、显式刷新与桌面暗色共 14/14 通过。 |
+| 更新 UI 个性化 | `packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts` | Vue／React 的位置、主题覆盖、窄屏、组件级颜色覆盖、稍后提醒、失败重试、显式刷新，以及桌面亮／暗主题的计算色对比度共 14/14 通过。 |
 | 公开包门禁 | `pnpm check:publish`；本页“npm 正式版与独立消费”及[发布记录](release-0.1.0.md) | 当前源码再次核对 10 个包的 metadata 与构建导出通过；已发布 `0.1.0` 的 registry 读回和独立 Vite 5 消费证据保持有效。 |
 
 本次直接执行命令：
