@@ -84,6 +84,36 @@
 | 发布前最后一轮浏览器与文档回归 | Chrome N/N-1 各 228/228 | 新增单 Origin 故障用例后，全仓九套件在 Chrome 154 与 153 各 228 项通过，0 失败、0 跳过；日志 `/private/tmp/pwa-stable-release-browser154.log` SHA-256 `d9c9cfa0975fd42d2aad0070baf22d3ccef1c09320d43e32317be43987e6d296`，`/private/tmp/pwa-stable-release-browser153.log` SHA-256 `20dcce3e2cd66a077f0d20227d24d93c4d92e97006e7c53897ccbaf440d21b8e`。文档口径更新后 `pnpm docs:build`、`pnpm lint`、入口恢复包 `typecheck`、`pnpm check:publish` 和 `git diff --check` 退出 0。 |
 | npm 正式版与独立消费 | 十包发布及读回通过 | 2026-09-26 UTC 从提交 `870bf93a3ac78e4593f0916192a34448fd09e270` 逐包发布十个 `0.1.0`；每包 npm `latest`、下载内容及 `dist.integrity` 核对通过。全新目录 `/private/tmp/pwa-stable-registry-consumer` 直接从 npm 安装十包，在 Node 22.22.0、Vite 5.0.0、Vue 3.4.0、React 19.3.0 环境中，`npm install`、`tsc --noEmit`、Vite 生产构建均退出 0。完整散列与限制见[发布记录](release-0.1.0.md)。 |
 
+## R4 交叉边界复核（2026-09-27）
+
+候选基线为 `929ea925c67b9c63adbf6d587a8c51f22a9a0712`；新增的严格 CSP 浏览器回归与本记录位于同一后续提交。审计没有发现运行时代码或公开契约缺陷；发现并关闭的唯一缺口是“文档给出 CSP 哈希、单测证明哈希计算正确，但没有真实浏览器以响应头执行”的证据缺口。
+
+| 边界 | 可追溯证据 | 本次结果 |
+|---|---|---|
+| `/` 与 `/m/` scope 隔离 | `packages/vite/browser-tests/shared-origin-registration.spec.ts`、`shared-origin-isolation.spec.ts`、`shared-origin-recovery.spec.ts` | Vite 单元 226/226、Chrome 153.0.8010.53 浏览器 32/32；根／子应用控制器、跨 scope fetch、离线导航及两侧恢复 worker 均保持隔离。 |
+| 默认缓存拒绝 | `packages/sw-runtime/browser-tests/offline.spec.ts`、`runtime-cache.spec.ts`、`range-request.spec.ts` | sw-runtime 单元 321/321、浏览器 49/49；`no-store`、`private`、`Vary: Cookie`、错误 MIME、超限响应、带 `Authorization` 请求、未分类与拒绝路径均未写入缓存；Range 请求继续走真实网络 206。 |
+| 恢复 worker | `packages/sw-runtime/browser-tests/lifecycle.spec.ts`、`runtime-cache.spec.ts`、`offline-write.spec.ts`，以及上述 shared-origin 恢复测试 | 只清理目标应用的 precache、runtime cache、expiration 记录和离线写入库；其他应用／环境缓存保留，恢复 worker 不提供内容。相关 sw-runtime 49/49、Vite 32/32。 |
+| 严格 CSP | 新增 `packages/vite/browser-tests/offline-page.spec.ts` 与 `packages/entry-resilience/browser-tests/scenarios.spec.ts` 的 strict CSP 场景 | 真实 `Content-Security-Policy` 响应头下，离线页发布的 `style-src`／`script-src` 哈希可执行，入口恢复页的样式哈希及 `script-src 'self'` 外链模块可执行；两页均为 0 条 `securitypolicyviolation`，且在断网预缓存路径中完成交互。Vite 32/32、entry-resilience 19/19。 |
+| 更新 UI 个性化 | `packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts` | Vue／React 的位置、主题覆盖、窄屏、组件级颜色覆盖、稍后提醒、失败重试、显式刷新与桌面暗色共 14/14 通过。 |
+| 公开包门禁 | `pnpm check:publish`；本页“npm 正式版与独立消费”及[发布记录](release-0.1.0.md) | 当前源码再次核对 10 个包的 metadata 与构建导出通过；已发布 `0.1.0` 的 registry 读回和独立 Vite 5 消费证据保持有效。 |
+
+本次直接执行命令：
+
+```text
+pnpm --filter @pwa-platform/vite test
+pnpm --filter @pwa-platform/entry-resilience test
+pnpm --filter @pwa-platform/vite test:browser
+pnpm --filter @pwa-platform/entry-resilience test:browser
+pnpm --filter @pwa-platform/sw-runtime test
+pnpm --filter @pwa-platform/sw-runtime test:browser
+pnpm --filter @pwa-platform/examples-browser-e2e exec playwright test --config playwright.ui.config.ts
+pnpm check:publish
+```
+
+默认受限环境首次启动 Chrome 时全部在浏览器启动阶段以 `kill EPERM` 失败；在获授权的本机浏览器环境重跑后得到上表结果。该环境失败没有被记为产品测试通过或失败。
+
+收口门禁：`pnpm lint`、`pnpm build`、`pnpm typecheck`、`pnpm test`、`pnpm docs:build`、`pnpm check:publish` 与 `git diff --check` 全部退出 0；`pnpm test:browser` 的 9 个套件共 230/230 通过、0 失败、0 跳过（Chrome 153.0.8010.53）。本次只新增测试与验收记录，运行时源码、公开 API 和已发布 `0.1.0` 包内容均未改变；既有 Chrome 154/153 各 228/228 的发布前证据仍对应已发布运行时代码，新 CSP 用例的本次新增执行证据为 Chrome 153。
+
 ## 待处理的已知边界
 
 - `@pwa-platform/entry-resilience@0.1.0` 已发布并完成 registry 读回、Vite 5 独立消费和双 Origin 真实浏览器故障演练。真实 DNS/证书故障与手机单 Origin 故障未执行，不计入 `desktop` 通道通过证据。

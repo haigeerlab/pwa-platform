@@ -9,6 +9,7 @@
 // operation finished" (examples-browser-e2e T9's B1 lesson, see plan.md task 7's own wording of it). The recovery
 // page's button is the sole exception: it does not exist until the page's own script renders it, so waiting for it
 // to appear is waiting for that render, not guessing that some unrelated async step has settled.
+import { createHash } from "node:crypto";
 import {
   expect,
   test,
@@ -20,6 +21,7 @@ import { appCachePrefix } from "@pwa-platform/contracts";
 import type { Page } from "@playwright/test";
 import type { EntryUpdateResult } from "../src/client/index.js";
 import type { EntryRecoveryResult } from "../src/index.js";
+import { DEFAULT_RECOVERY_PAGE_STYLE } from "../src/vite/default-style.js";
 import { IDENTITY, SHELL_URL, WORKER_URL, startSites, type Sites } from "./sites.js";
 
 let sites: Sites;
@@ -97,6 +99,18 @@ function manifestPayload(alternateOrigin: string, overrides: ManifestOverrides =
 }
 
 const DATABASE_NAME = `pwa-entry:${encodeURIComponent(IDENTITY.appId)}:${encodeURIComponent(IDENTITY.environment)}`;
+
+function collectCspViolations(): void {
+  const violations: string[] = [];
+  Reflect.set(window, "__cspViolations", violations);
+  document.addEventListener("securitypolicyviolation", (event) => {
+    violations.push(`${event.effectiveDirective}:${event.blockedURI}`);
+  });
+}
+
+function readCspViolations(): string[] {
+  return Reflect.get(window, "__cspViolations") as string[];
+}
 
 /** The stored record is the plain manifest object itself (src/browser/indexeddb.ts, since ADR-0033) — not an
  *  envelope with its own `sequence` field alongside it. */
@@ -196,6 +210,49 @@ test("the recovery page opens from the precache while the origin is unreachable,
     await expect(button).toContainText(new URL(sites.alternate.origin).host);
     // Not the offline fallback: that page is what this navigation used to reach.
     await expect(page.locator("#offline")).toHaveCount(0);
+  } finally {
+    await context.setOffline(false);
+  }
+});
+
+test("a strict CSP accepts the recovery page's published style hash and same-origin script", async ({ page, context }) => {
+  const styleHash = createHash("sha256").update(`\n${DEFAULT_RECOVERY_PAGE_STYLE}`).digest("base64");
+  const policy = [
+    "default-src 'none'",
+    `style-src 'sha256-${styleHash}'`,
+    "script-src 'self'",
+    "connect-src 'self'",
+  ].join("; ");
+  sites.primary.setHeaderRules([
+    {
+      pathPrefix: "/app/pwa-entry.html",
+      headers: {
+        "cache-control": "no-cache",
+        "content-security-policy": policy,
+      },
+    },
+  ]);
+  await page.addInitScript(collectCspViolations);
+  await installAndControl(page, sites.primary);
+
+  const update = await entryUpdate(page, manifestPayload(sites.alternate.origin, { status: "migrating", sequence: 2 }));
+  expect(update).toEqual({ accepted: true, sequence: 2 });
+  const result = await entryCheck(page, "/app/orders/42");
+  if (result.kind !== "available") throw new Error("expected an available entry before going offline");
+
+  await context.setOffline(true);
+  try {
+    const response = await page.goto(sites.primary.url(result.recoveryPageUrl));
+    expect((await response?.allHeaders())?.["content-security-policy"]).toBe(policy);
+    const button = page.locator(".pwa-entry__button");
+    await expect(button).toBeVisible();
+    expect(await page.locator(".pwa-entry").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+      "rgb(255, 255, 255)",
+    );
+    expect(await page.evaluate(readCspViolations)).toEqual([]);
+
+    await context.setOffline(false);
+    await Promise.all([page.waitForURL((url) => url.origin === sites.alternate.origin), button.click()]);
   } finally {
     await context.setOffline(false);
   }

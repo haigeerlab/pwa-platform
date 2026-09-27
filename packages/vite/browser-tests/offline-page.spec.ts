@@ -2,6 +2,7 @@
 // the worker never precached, made with the network gone, lands on the page the plugin generated — in the built
 // locale, themed, and reloading itself once the connection returns.
 import { expect, test } from "@pwa-platform/browser-test-harness";
+import { renderOfflinePage } from "../src/offline-page.js";
 import {
   DEFAULT_OFFLINE_URL,
   EN_HEADING_OVERRIDE,
@@ -13,6 +14,18 @@ import {
 import { fetchFromPage, installAndControl } from "./page-probe.js";
 
 const NEVER_VISITED = "/app/never-visited";
+
+function collectCspViolations(): void {
+  const violations: string[] = [];
+  Reflect.set(window, "__cspViolations", violations);
+  document.addEventListener("securitypolicyviolation", (event) => {
+    violations.push(`${event.effectiveDirective}:${event.blockedURI}`);
+  });
+}
+
+function readCspViolations(): string[] {
+  return Reflect.get(window, "__cspViolations") as string[];
+}
 
 test.describe("default offline page, built-in zh-CN copy", () => {
   test.use({ fixtureSite: OFFLINE_PAGE_SITE_ZH });
@@ -35,6 +48,49 @@ test.describe("default offline page, built-in zh-CN copy", () => {
     await context.setOffline(true);
     const result = await fetchFromPage(page, fixtureServer.url(DEFAULT_OFFLINE_URL), "pwa-offline__heading");
     expect(result).toEqual({ status: 200, hasMarker: true });
+  });
+
+  test("a strict CSP accepts the generated page's published style and script hashes", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    const rendered = await renderOfflinePage({ locale: "zh-CN", appName: "Vite Fixture" });
+    const policy = [
+      "default-src 'none'",
+      `style-src '${rendered.hashes.defaultStyle}'`,
+      `script-src '${rendered.hashes.script}'`,
+      "connect-src 'self'",
+    ].join("; ");
+    fixtureServer.setHeaderRules([
+      {
+        pathPrefix: DEFAULT_OFFLINE_URL,
+        headers: {
+          "content-security-policy": policy,
+        },
+      },
+    ]);
+    await page.addInitScript(collectCspViolations);
+
+    await installAndControl(page, fixtureServer, SHELL_URL, WORKER_URL);
+    await context.setOffline(true);
+    try {
+      const response = await page.goto(fixtureServer.url(NEVER_VISITED));
+      expect((await response?.allHeaders())?.["content-security-policy"]).toBe(policy);
+      await expect(page.locator(".pwa-offline__heading")).toBeVisible();
+      expect(await page.locator(".pwa-offline").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
+        "rgb(255, 255, 255)",
+      );
+      expect(await page.evaluate(readCspViolations)).toEqual([]);
+
+      const reloaded = page.waitForEvent("load");
+      await page.locator(".pwa-offline__retry").click();
+      await reloaded;
+      await expect(page.locator(".pwa-offline__heading")).toBeVisible();
+      expect(await page.evaluate(readCspViolations)).toEqual([]);
+    } finally {
+      await context.setOffline(false);
+    }
   });
 
   test("in dark mode the background covers the whole viewport", async ({ page, context, fixtureServer }) => {
