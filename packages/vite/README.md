@@ -78,6 +78,11 @@ Paths inside `policy.resources` and `offlineFallback.path` are mount-relative: w
 include the mount path. `offlinePage` accepts `locale: "zh-CN" | "en"`, partial `messages` and appended `css`; it
 requires `policy.offlineFallback.enabled` and is omitted entirely when the option is absent.
 
+`networkTimeoutSeconds` is optional for backward compatibility, but production applications using
+`network-first` navigation should choose it explicitly. Without it, the worker waits for the browser's own network
+failure signal before using a cached shell or offline page; one iPhone offline cold-launch test took about 60 seconds,
+while `5` reduced the same path to about 5 seconds. Start at 5 seconds, then tune and retest on the devices you support.
+
 Add the virtual-module declaration to the application TypeScript configuration:
 
 ```json
