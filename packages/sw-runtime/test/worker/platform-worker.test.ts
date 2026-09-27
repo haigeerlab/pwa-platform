@@ -5,6 +5,7 @@ import { attachPlatformWorker } from "../../src/worker/handlers.js";
 import { SKIP_WAITING_MESSAGE } from "../../src/messages/index.js";
 import type { PwaPlatformWorkerConfig } from "../../src/shared/config.js";
 import { deleteExpirationRecords } from "../../src/shared/expiration-records.js";
+import type { PwaOfflineWriteStore, PwaStoredOfflineWrite } from "../../src/worker/offline-write-store.js";
 
 // deleteRuntimeCaches (T8) always calls this, even when the runtime cache is disabled, so every test that dispatches
 // "activate" or a logout "clear" needs it stubbed rather than touching a real (here: nonexistent) global indexedDB.
@@ -1068,5 +1069,136 @@ describe("runtime cache cleanup (T8)", () => {
 
     const [waited] = activateEvent(h);
     await expect(waited).resolves.toBeUndefined();
+  });
+});
+
+describe("offline-write flush single-flight (R5)", () => {
+  const windowClient = { type: "window", url: `${ORIGIN}/app/` };
+
+  const offlineWriteConfig: PwaPlatformWorkerConfig = {
+    ...config,
+    offlineWrites: {
+      enabled: true,
+      databaseName: "pwa-offline-write:storefront:production:r3",
+      maxEntries: 10,
+      maxTotalBodyBytes: 4096,
+      targets: [{ id: "submit-order", pathPrefix: "/app/api/orders", maxBodyBytes: 1024 }],
+    },
+  };
+
+  function storedWrite(idempotencyKey: string, sessionBinding: string, createdAt: number): PwaStoredOfflineWrite {
+    return {
+      targetId: "submit-order",
+      path: "/app/api/orders",
+      bodyJson: '{"quantity":1}',
+      idempotencyKey,
+      sessionBinding,
+      createdAt,
+      bodyBytes: 14,
+      deliveryState: "pending",
+    };
+  }
+
+  /** A fake store: `prepareFlush` returns the fixed backlog configured per binding and records every call. */
+  function createFakeStore(writesByBinding: Readonly<Record<string, readonly PwaStoredOfflineWrite[]>>): {
+    readonly store: PwaOfflineWriteStore;
+    readonly prepareFlushCalls: string[];
+  } {
+    const prepareFlushCalls: string[] = [];
+    const store: PwaOfflineWriteStore = {
+      enqueue: async () => "queued",
+      prepareFlush: async (binding) => {
+        prepareFlushCalls.push(binding);
+        return { writes: writesByBinding[binding] ?? [], purged: 0 };
+      },
+      remove: async () => undefined,
+      markFailed: async () => undefined,
+      clear: async () => undefined,
+    };
+    return { store, prepareFlushCalls };
+  }
+
+  function dispatchFlush(h: Harness, requestId: string, sessionBinding: string): { readonly postMessage: ReturnType<typeof vi.fn>; waited: Promise<unknown> | undefined } {
+    const listener = (h.listeners.get("message") ?? [])[0];
+    if (listener === undefined) throw new Error("No message listener");
+    const postMessage = vi.fn();
+    let waited: Promise<unknown> | undefined;
+    listener({
+      data: { type: "pwa:offline-write:flush", version: 1, requestId, sessionBinding },
+      source: windowClient,
+      ports: [{ postMessage }],
+      waitUntil: (value: Promise<unknown>) => (waited = value),
+    } as never);
+    return { postMessage, waited };
+  }
+
+  function deferredResponse(): { readonly promise: Promise<Response>; readonly resolve: (response: Response) => void } {
+    let resolve!: (response: Response) => void;
+    const promise = new Promise<Response>((r) => (resolve = r));
+    return { promise, resolve };
+  }
+
+  it("coalesces concurrent flush messages for the same session binding into a single pass", async () => {
+    const h = createHarness();
+    const { store, prepareFlushCalls } = createFakeStore({ "opaque-session-123": [storedWrite("order-1", "opaque-session-123", 1)] });
+    attachPlatformWorker({ scope: h.scope, config: offlineWriteConfig, engine: h.engine, offlineWriteStore: store });
+
+    const gate = deferredResponse();
+    h.fetch.mockImplementation(async () => gate.promise);
+
+    const first = dispatchFlush(h, "request-1", "opaque-session-123");
+    const second = dispatchFlush(h, "request-2", "opaque-session-123");
+    // Let prepareFlush's already-resolved promise settle and the loop reach `send`, without letting `gate` resolve.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Both messages arrived before the (single) in-flight send settled: only one pass was ever started.
+    expect(prepareFlushCalls).toEqual(["opaque-session-123"]);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+
+    gate.resolve(new Response(null, { status: 201 }));
+    await first.waited;
+    await second.waited;
+
+    const flushed = { type: "pwa:offline-write:result", version: 1, status: "flushed", sent: 1, retained: 0, failed: 0, purged: 0 };
+    expect(first.postMessage).toHaveBeenCalledWith({ ...flushed, requestId: "request-1" });
+    expect(second.postMessage).toHaveBeenCalledWith({ ...flushed, requestId: "request-2" });
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("flushes different session bindings independently, never waiting on each other", async () => {
+    const h = createHarness();
+    const { store, prepareFlushCalls } = createFakeStore({
+      "opaque-session-123": [storedWrite("order-1", "opaque-session-123", 1)],
+      "opaque-session-456": [storedWrite("order-2", "opaque-session-456", 1)],
+    });
+    attachPlatformWorker({ scope: h.scope, config: offlineWriteConfig, engine: h.engine, offlineWriteStore: store });
+    h.fetch.mockResolvedValue(new Response(null, { status: 201 }));
+
+    const a = dispatchFlush(h, "request-a", "opaque-session-123");
+    const b = dispatchFlush(h, "request-b", "opaque-session-456");
+    await a.waited;
+    await b.waited;
+
+    expect([...prepareFlushCalls].sort()).toEqual(["opaque-session-123", "opaque-session-456"]);
+    expect(h.fetch).toHaveBeenCalledTimes(2);
+    expect(a.postMessage).toHaveBeenCalledWith(expect.objectContaining({ requestId: "request-a", status: "flushed", sent: 1 }));
+    expect(b.postMessage).toHaveBeenCalledWith(expect.objectContaining({ requestId: "request-b", status: "flushed", sent: 1 }));
+  });
+
+  it("starts a fresh pass for the next flush once the in-flight one has settled", async () => {
+    const h = createHarness();
+    const { store, prepareFlushCalls } = createFakeStore({ "opaque-session-123": [storedWrite("order-1", "opaque-session-123", 1)] });
+    attachPlatformWorker({ scope: h.scope, config: offlineWriteConfig, engine: h.engine, offlineWriteStore: store });
+    h.fetch.mockResolvedValue(new Response(null, { status: 201 }));
+
+    const first = dispatchFlush(h, "request-1", "opaque-session-123");
+    await first.waited;
+
+    const second = dispatchFlush(h, "request-2", "opaque-session-123");
+    await second.waited;
+
+    expect(prepareFlushCalls).toEqual(["opaque-session-123", "opaque-session-123"]);
+    expect(h.fetch).toHaveBeenCalledTimes(2);
   });
 });

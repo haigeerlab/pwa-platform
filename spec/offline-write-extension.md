@@ -96,6 +96,14 @@ type OfflineWriteQueue = {
 
 服务端必须把 `(idempotencyKey, request digest)` 以原子唯一约束认领；同键不同摘要返回明确客户端错误；未完成重复返回 409/202 或经过有界等待的原结果；保留时间覆盖最长可能离线期。网络超时是未知结果，平台可能用相同键再送一次，因此服务端不得把“同一键再次到达”当作新业务意图。
 
+## 增补：同一会话绑定的 flush 单飞（2026-09-28，审查风险 R5）
+
+worker 对同一 `sessionBinding` 的并发 `pwa:offline-write:flush` 消息单飞：已有一次该 binding 的 flush 在途时，新到的 flush 消息不会再触发 `prepareFlush`/发送一轮新的，而是等待在途那一次结束，并把同一个结果对象回给自己的端口。不同 binding 的 flush 彼此独立，互不等待。加入在途 flush 的请求拿到的是那一轮的结果：在途那一轮读取 `pending` 记录之后才入队的写入不在其中，仍保持 `pending`，由下一次 flush 发送；调用方若需要确保刚入队的写入已发出，应在收到结果后再请求一次。在途 flush 结束（无论成功还是失败）后，下一次该 binding 的 flush 请求会重新走一遍完整流程。
+
+**起因**：`prepareFlush`（`src/worker/offline-write-store.ts`）只读出所有 `pending` 记录，不会把它们标记为"发送中"；`flushOfflineWrites`（`src/worker/offline-write-flush.ts`）逐条发送；消息处理器（`src/worker/handlers.ts` 的 `flush()`）收到一条 `pwa:offline-write:flush` 就起一轮新的 flush。两个标签页同时可见、或用户双击触发同一个 flush 按钮，都会让同一 binding 并发进入 `flush()`，各自读到同一批 `pending` 记录并各自发送——同一个 `idempotency-key` 被 POST 两次。服务端的幂等约束（见"服务端责任"）能拦住这类重复写入本身造成的数据损坏，但两次网络请求仍然是可观察、可避免的浪费，且让"发送计数"等诊断失真。
+
+**方案**：单飞发生在 worker 内存里，而不是 IndexedDB 里——`prepareFlush` 本身不变，仍然只读不标记。`flush()` 用一个以 `sessionBinding` 为键、值为进行中 `flushOfflineWrites` promise 的映射；一次 flush 的整个生命周期（发送、`finally` 里的清理）由持有该映射的那次调用负责，等待者只订阅同一个 promise，不重新入队等待、也不重试。这不改变消息格式、不改变离线写包的公开 API，也不改变 `prepareFlush` 单个事务内的行为——单飞只发生在事务之外的 worker 闭包里。
+
 ## 命令
 
 ```bash
