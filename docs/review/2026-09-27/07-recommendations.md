@@ -22,7 +22,7 @@
 | 7 | **增加 WebKit 和 Firefox 的最小冒烟矩阵**：注册、离线打开应用壳、离线页、更新接管、恢复 worker，这 5 个用例在 Playwright 中增加 `webkit`、`firefox` 两个 project | R6 | 证据台账中所有 L3 目前都只代表 Chrome；这是对外宣称兼容性的前提 | M | 两个浏览器 project 的 CI 或本地门禁通过；非 Chromium 的安装用例继续显式 `skip` |
 | 8 | **离线写入 `flush` 做单飞控制**：在 worker 内按会话绑定加锁，或在 `prepareFlush` 时把记录标为“发送中” | R5 | 在该包发布之前关掉重复发送的路径 | M | 并发 `flush` 测试断言：每个幂等键只发送一次 |
 | 9 | **更新提示 UI 增加 `locale: "zh-CN" \| "en"` 和内置英文文案**，与离线页、恢复页对齐；补充组件单元测试 | 02 矩阵 | 多语言配置方式一致；组件目前完全没有单元测试 | S–M | 7 个 E2E 场景加上英文 locale 断言；新增组件单元测试 |
-| 10 | **收集并补齐证据台账的缺口**：iPhone 安装窗口内的更新流程；iPhone 断网恢复后显示 `not registered`（R9）的根因定位；离线页在 iPhone 上自动重试（R10）的复测；Android N-1 | R9、R10 | 把证据台账中“待补”的 L4 变成结论 | M（需要人工操作真机） | `verification.md` 中对应行有明确的结论 |
+| 10 | **收集并补齐证据台账的缺口**：iPhone 断网恢复后显示 `not registered`（R9）的根因定位；Android N-1；单 Origin 真实故障下的入口恢复。（iPhone 安装窗口内更新与 R10 已在审查期间由 PR #25 补齐，见 ADR-0041） | R9、R10 | 把证据台账中“待补”的 L4 变成结论 | M（需要人工操作真机） | `verification.md` 中对应行有明确的结论 |
 | 11 | **补齐非导航请求的拒绝类 E2E**：mutation（POST）、stream、session-data 各一个用例，断言在线时不写缓存、断网时得到网络错误 | V1 验收矩阵 | 让默认拒绝缓存从“导航有 L3”升级为“V1 矩阵要求的全部类别有 L3” | S–M | 3 个新用例 |
 | 12 | **真实浏览器的发布检查加入 `html-headers` 和 `release-retention`** | 台账 #17、#27 | 这两项目前只有合成输入的 L2 | S | `release.spec.ts:64` 的检查列表包含这两项 |
 | 13 | **发布门禁默认严格**：提供一个“生产”预设，默认要求 `identity-baseline` 等检查项全部执行，缺少输入即失败 | R4 | 让“身份不可变”不再取决于调用方是否用对了 API | M | 使用生产预设、不传 `baseline` 时门禁失败 |
