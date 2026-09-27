@@ -9,6 +9,7 @@ import {
   serializeClientConfigModule,
 } from "./client-config.js";
 import { assertUnchangedBundleFiles, bundleSourceFiles, hashBundleFiles, type PwaBundle } from "./host-output.js";
+import { validateManifestIcons } from "./manifest-icons.js";
 import { assertFinalManifestLink, resolveManifestLinkAction } from "./manifest-link.js";
 import { renderOfflinePage } from "./offline-page.js";
 import {
@@ -140,6 +141,16 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
 
       // Public files are merged in here: Vite copies them at write time, so they never enter the bundle.
       const files = bundleSourceFiles(bundle as unknown as PwaBundle, publicFiles);
+
+      // The manifest's main icons decide whether Chrome offers installation at all. Validate their published
+      // bytes here, while both bundle assets and publicDir files are available; contracts can only validate the
+      // metadata text and build-verifier receives paths rather than file contents.
+      const iconWarnings = validateManifestIcons(
+        validated.policy.install.enabled ? validated.install : null,
+        base,
+        files,
+      );
+      for (const warning of iconWarnings) this.warn(warning);
 
       // The default offline page, when enabled — spec/vite-adapter.md's "修订：平台默认离线页". Added to `files`
       // before `buildPwaArtifacts` compiles the plan, so the page is a host build output file like any other and

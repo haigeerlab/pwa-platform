@@ -53,7 +53,7 @@ export const POLICY: PwaPolicy = {
 };
 ~~~
 
-把四个图标文件放在 Vite 的 <code>public/icons/</code>。安装元数据也支持描述、截图和快捷方式；截图与快捷方式图标必须真实存在于发布产物中。
+把四个图标文件放在 Vite 的 <code>public/icons/</code>。文件不能只是改了名称的占位图：生产构建会检查主图标是否存在，并读取 PNG／JPEG／WebP 文件头核对声明 MIME 与实际尺寸；失败时按 <code>vite.manifest-icon-*</code> 提示中的配置索引、URL、声明值和实测值修正。其他图片格式会给出未验证警告，maskable 安全区仍需视觉检查。安装元数据也支持描述、截图和快捷方式；截图与快捷方式图标必须真实存在于发布产物中。
 
 插件会在构建时为每个 HTML 入口注入 manifest 链接，应用无需再写 <code>&lt;link rel="manifest"&gt;</code>。已有链接时，只保留一个，并将其 <code>href</code> 写为与 <code>IDENTITY.manifestUrl</code> 完全相同的根路径，或同一 <code>IDENTITY.origin</code> 下该路径的完整 URL；相对路径、不同地址和重复链接都会让构建失败。页面含 <code>&lt;base&gt;</code> 也会被拒绝，接入现有项目时先检查 <code>index.html</code> 及其他 HTML 入口。
 

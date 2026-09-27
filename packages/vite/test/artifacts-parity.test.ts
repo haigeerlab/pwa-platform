@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { buildPwaArtifacts, type PwaArtifactSourceFile } from "../src/artifacts.js";
 import { PWA_PLUGIN_NAME, pwa, type PwaPluginApi } from "../src/index.js";
 import { RECOVERY_WORKER_FILE } from "../src/workers.js";
+import { INSTALL_ICON_PATHS, writeInstallIconFixture } from "./install-icon-fixture.js";
 
 // pwa() and buildPwaArtifacts are meant to be one pipeline wearing two entrances. This suite is the proof: run a
 // real Vite build with pwa(), then run buildPwaArtifacts again on nothing but the files that build actually wrote
@@ -63,13 +64,14 @@ function app(): { root: string; publicPaths: readonly string[] } {
   writeFileSync(join(root, "index.html"), '<!doctype html><script type="module" src="/src/main.js"></script>\n');
   writeFileSync(join(root, "src/main.js"), "export const boot = () => 1;\n");
 
-  const publicFiles = { "robots.txt": "User-agent: *\n", "icons/192.png": "png-bytes" };
+  const publicFiles = { "robots.txt": "User-agent: *\n" };
   for (const [path, content] of Object.entries(publicFiles)) {
     const full = join(root, "public", path);
     mkdirSync(join(full, ".."), { recursive: true });
     writeFileSync(full, content);
   }
-  return { root, publicPaths: Object.keys(publicFiles) };
+  writeInstallIconFixture(root);
+  return { root, publicPaths: [...Object.keys(publicFiles), ...INSTALL_ICON_PATHS] };
 }
 
 /** Finds the platform plugin by name off the resolved config, the way a sibling plugin would. */

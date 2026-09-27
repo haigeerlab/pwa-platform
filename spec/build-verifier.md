@@ -336,7 +336,7 @@ type PwaVerifyReleaseInput = {
 - `plan.install` 为 `null` 或未写这些字段时，检查结果与修订前相同。
 - Vite 与 Nuxt 都经 `assertPwaArtifacts` 调用本检查，因此缺文件时两者的构建都失败。
 
-**已知限制**：既有的 `icons` 不做同样的检查。有的应用的图标由后端提供、不在构建产物中，突然开始检查会让这些应用的构建失败。是否对 `icons` 也做检查，另行评估。
+**边界说明**：`verifyArtifacts` 只接收发布路径，不接收文件字节，因此自身不检查主 `icons` 的内容。Vite 生产构建已按 [ADR-0040](../docs/adr/0040-validate-manifest-icons-during-vite-build.md) 在更早阶段检查主图标存在性、常用位图 MIME 与实际尺寸；其他宿主若要取得同等保证，须在自己的最终产物阶段提供字节级检查。通用 verifier 不得仅凭路径声称图片内容已验证。
 
 **测试**：每个来源缺失各一例（截图、快捷方式图标）；全部存在时通过；未写字段时与修订前相同；诊断不含路径值；变异证明检查会变红。
 
