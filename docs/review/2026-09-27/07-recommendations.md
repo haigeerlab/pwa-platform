@@ -12,7 +12,7 @@
 | 2 | **身份契约增加“scope 不能超出 SW 脚本所在目录”的校验**，新增诊断码；或者把 `Service-Worker-Allowed` 作为显式支持的选项写进契约 | R3 | 把一种浏览器才会拒绝的注册失败提前到构建期 | S | `validate.test.ts` 覆盖 `scope=/app/`、`sw=/app/assets/sw.js` 被拒绝；Vite 与 Nuxt 行为一致 |
 | 3 | **接入文档补 5 处**：`vite preview` 默认带 `Vary: Origin` 的陷阱；等 worker 变为 `activated` 后再刷新（平台不 `clients.claim`）；单页应用深层路由断网时的表现及“建议同时开启离线页”；离线页不处理 4xx/5xx；新增“多标签页”和“断网与恢复”两节 | C-1 至 C-6 | 直接消除接入中唯一的高严重度卡点和 4 个默认行为盲区 | S | 按[场景配置示例](05-scenario-recipes.md)末尾的清单逐项并入 `website/guide/` |
 | 4 | **准入拒绝时输出诊断**：在 `vite preview` 或开发构建中，worker 通过 `console.debug` 或页面事件报告被拒绝的原因（例如 `vary`、`authorization`、`set-cookie`） | R8 | 把静默失败变成可排查的问题；生产环境里 CDN 往响应里加 `Vary` 时同样受益 | S–M | E2E 断言：`Vary: Origin` 的响应产生一条带原因的诊断 |
-| 5 | **public-read 默认拒绝带 `Set-Cookie` 的响应**（除非规则显式允许），或至少在文档和诊断中醒目提示 | R2 | 业务误把会下发会话 Cookie 的接口标为公共数据时，不再把响应体共享给其他会话 | S | 修改 `runtime-cache.spec.ts:163` 的预期，或补一段显式的文档警告 |
+| 5 | ~~public-read 默认拒绝带 `Set-Cookie` 的响应~~ **撤回（2026-09-28）**：worker 读不到 `Set-Cookie`，无法实现，文档警告已存在。后续候选：在 build-verifier 中对服务端采集的公共读取路径响应头检查 `Set-Cookie`（新增校验项，需要 ADR，投入 M） | R2 | — | — | — |
 | 6 | **本地门禁不再被偶发超时拖垮**：给 `run-gate.integration.test.ts` 显式设置更长的超时（或串行执行）；`pnpm test` 改为不中止地跑完全部包再汇总 | R7 | 一个包偶发超时，不会再挡住其余 15 个包的结果 | S | 连续 3 次 `pnpm test` 都通过 |
 
 ## 第二批：补齐证据（决定“能不能对外宣称兼容”）
