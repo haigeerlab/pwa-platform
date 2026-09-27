@@ -27,12 +27,21 @@
 - 发现缺陷必须修复并复测；允许保留非阻断的已知差异，但要说明影响和适用平台。真实私有业务宿主不在本仓库操作，只使用公开示例与独立 Vite 5/Vue 3.4 消费夹具；业务方可按接入 skill 在私有仓库执行并提供脱敏结果。
 - 完成上述证据、版本与 tarball 审阅后，才将正式版本发布到 npm 并核对 `latest`；发布是不可覆盖的外部写入，记录每包结果与实际哈希。任何中途失败停止后续包，并如实记录部分发布状态。
 
+## Apple 平台发布通道裁决
+
+基于本模块取得的 Safari 18.6 与 iPhone 16 Pro / iOS 27.0 实证，[ADR-0041](../docs/adr/0041-keep-apple-as-progressive-compatibility.md)已经接受：`0.1.x` 暂不新增 Apple 生产发布通道。本裁决不改变当前公开支持范围：
+
+- macOS Safari 与 iPhone Safari 是两个独立证据面，不以一端结果替代另一端；两端仍按当前稳定版的渐进兼容观察记录。
+- 安装与启动、更新生命周期、离线降级与联网恢复、入口恢复四类能力分别判定，任何一类通过都不掩盖其他类的失败或未执行。
+- iPhone 从离线页恢复到线上内容可记为该场景通过；恢复后 active worker/controller 仍在、但 SDK 显示 `not registered` 且注册／更新调用挂起，则“注册与更新就绪”只能记为部分通过。退出主屏幕网页 App 后重开是临时恢复方式，不是发布门禁通过证据。
+- 在缺口闭合并为一次新发布尝试取得完整证据之前，首页、README、浏览器矩阵和发布模板继续使用“渐进兼容／部分通过”，不得宣称 Apple、Safari 或 iPhone 全功能生产通过。
+
 ## Documentation impact
 
 | Concern | Decision | Rationale |
 |---|---|---|
 | capability-map | update | 登记跨模块正式版验收与依赖。 |
-| browser-matrix | follow | 不降低 N/N-1 与发布通道要求。 |
+| browser-matrix | follow | 不降低 N/N-1 与发布通道要求；按 ADR-0041 保持 Safari 渐进兼容。 |
 | browser-release-evidence | follow | 复用逐平台真实设备记录模板。 |
 | package-distribution | update | 扩展入口恢复包和正式版本的分发说明。 |
 | entry-resilience | update | 公开分发前核对接入与包边界。 |
