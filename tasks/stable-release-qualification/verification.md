@@ -38,25 +38,27 @@
 | 最新源码的构建与静态门禁 | 通过 | 在语言修正、十包元数据及 Cloudflare 在线校验重试之后，`CI=true pnpm build`、`CI=true pnpm typecheck`、`CI=true pnpm lint`、`CI=true pnpm docs:build`、`CI=true pnpm check:publish` 均退出 0；十包 metadata 与构建导出再次通过。新增在线校验单测 3/3。`CI=true pnpm test` 首次在默认沙箱因 localhost `EPERM` 失败，授权回环端口后完整全仓单测退出 0；失败归因环境监听限制，不计为代码通过证据。官方 Chrome 154.0.8037.57 的最新源码全仓浏览器回归 9 个套件、225 项通过、0 失败、0 跳过；日志 `/private/tmp/pwa-stable-final-browser154.log` SHA-256 `46c64e21599a193ba1af821914ea7641504f4d1c27763bfeb668456d7f2c3bf1`。 |
 | Android Chrome 153 Vue Drill 安装 | 通过（本次旧候选冒烟） | 在公开 `drill` Vue 站观察到安装按钮，点击后出现 Chrome 原生安装确认卡片；确认后网页显示 `installed`。新 WebAPK `org.chromium.webapk.a5be8b3d54eb30ac0_v2` 首次安装时间 2026-09-26 19:09:33（手机当地时间）；从该包启动后无 Chrome 地址栏，CDP 对对应页面读到 `display-mode: standalone = true`、`/app/` 页面 v2/registered。只证明这部设备上安装与启动；版本更新仍待本次补测。 |
 | Mac Safari 18.6 Vue/React 添加到程序坞 | 通过（本次旧候选冒烟） | Safari “文件 → 添加到程序坞”分别为公开 Vue Drill 和 React Drill 出现系统确认表单，名称和 `/app/` URL 正确；点“添加”后以新建的“Vue Drill”“React Drill”网页 App 启动。两窗口均无 Safari 地址栏，页面显示 v2/registered。React 的 `kind` 初始短暂 `no-registration`，随后变成 `prompt`；未将瞬态误记为安装失败。此次尚未测这两个 Mac 网页 App 的断网冷启动或更新。 |
-| Mac Safari 18.6 已安装窗口再次核对 | 通过在线启动及 React 基础交互；更新与断网待补 | React/Vue v2 候选部署后，Mac 的独立“React Drill”和“Vue Drill”窗口均能打开公开 `/app/`，窗口无 Safari 地址栏，界面显示 v2/registered、基础按钮可见。2026-09-26 在 React Drill 独立窗口点击 `Bump` 后计数由 0 变为 1，交互正常。此项仍未覆盖 Mac 安装窗口的真实 v1→v2 或断网冷启动。 |
+| Mac Safari 18.6 已安装窗口再次核对 | 在线启动、基础交互、真实更新、Vue／React 离线导航与恢复、用户手工物理断网冷启动均通过 | React/Vue v2 候选部署后，Mac 的独立“React Drill”和“Vue Drill”窗口均能打开公开 `/app/`，窗口无 Safari 地址栏，界面显示 v2/registered、基础按钮可见。2026-09-26 在 React Drill 独立窗口点击 `Bump` 后计数由 0 变为 1，交互正常；2026-09-27 又完成两框架真实 v1→v2 双窗口提示、单点接管与逐窗口显式刷新。React 安装窗口完成物理 Wi-Fi 断网下的未缓存导航、默认离线页和联网自动恢复；Vue 安装窗口随后通过仅针对本 Origin 的 hosts 阻断，取得同等的默认离线页与撤销阻断后自动恢复证据。两站联网预热、完成最新 worker 接管并完全退出后，用户手工关闭 Mac Wi-Fi，分别从网页 App 图标冷启动；两者离线与联网表现一致，均正常显示 v2，无白屏。该冷启动结果为用户手工实机观察，不冒充自动化截图证据。 |
 | Mac Chrome 153 React 原生安装 | 通过（本次旧候选冒烟） | 公开 React Drill 页面提供应用内 `Install` 和 Chrome 工具栏原生“安装”入口；后者弹出系统“安装应用”对话框，列出名称、Origin、说明和截图。确认安装后系统新增并启动 `PWA Platform React Drill` 独立应用窗口，没有浏览器地址栏；显示 v2/registered，页面状态含 `installed`。本项证明真实桌面 Chrome 153 的 React 安装，不代表 Chrome 154 或 Vue 都取得本次原生安装实证。 |
-| Mac Chrome 154 Vue 原生安装 | 通过；离线与更新待补 | 官方 Chrome for Testing 154.0.8037.57 使用新的本地未登录配置打开 Vue Drill v2/registered，工具栏出现原生“安装 PWA Platform Vue Drill”按钮，页面自身也显示 `Install`。原生安装对话框显示应用名、公开 Origin、说明及桌面截图，点“下一步 → 安装”后显示“已成功安装”。从新建 `com.google.chrome.for.testing.app.ggagoahmihncfeecmgbpfnamjelclfaj` 应用窗口打开 `/app/`，无浏览器地址栏，显示 v2/registered、页面状态 `installed`。尚未在此 Chrome 154 安装窗口做断网冷启动及真实更新。 |
-| Mac Chrome 154 React 原生安装 | 通过；离线与更新待补 | 同一官方 Chrome for Testing 154.0.8037.57 打开 React Drill v2/registered，工具栏出现原生“安装 PWA Platform React Drill”按钮，页面自身也显示 `Install`。系统对话框显示公开 Origin、说明和桌面截图，点“下一步 → 安装”后显示成功；新建 `com.google.chrome.for.testing.app.mnnogjmmdlkcjijdpmmihilinmbdfjbi` 独立应用窗口打开 `/app/`，没有地址栏，显示 v2/registered，页面状态含 `installed`。尚未在此 Chrome 154 安装窗口做断网冷启动及真实更新。 |
-| 独立安装窗口更新、30 分钟重提醒、双标签稳定性 | 部分通过 | Android Vue 安装窗口已完成 v1→v2 分步和离线刷新；桌面 Chrome React 已完成真实 30 分钟重提醒与双标签隔离；iPhone Vue 安装窗口本次只验证在线与断网冷启动，尚未在安装窗口重演更新。 |
+| Mac Chrome 153 Vue 已安装应用复核 | 独立窗口运行通过；安装流程未重新取证 | 本机既有 `com.google.Chrome.app.ggagoahmihncfeecmgbpfnamjelclfaj` 应用包由稳定版 Chrome 153 创建；2026-09-27 从该应用包启动后窗口无地址栏，公开 `/app/` 显示 v2/registered、`kind: none`，`Bump` 与 `Log out` 按钮可见。此项证明既有安装结果当前可启动，不把应用包存在反推为本轮已重做原生安装确认流程。 |
+| Mac Chrome 154 Vue 原生安装 | 安装、DevTools 离线恢复和用户手工物理断网冷启动通过；真实更新待补 | 官方 Chrome for Testing 154.0.8037.57 使用新的本地未登录配置打开 Vue Drill v2/registered，工具栏出现原生“安装 PWA Platform Vue Drill”按钮，页面自身也显示 `Install`。原生安装对话框显示应用名、公开 Origin、说明及桌面截图，点“下一步 → 安装”后显示“已成功安装”。从新建 `com.google.chrome.for.testing.app.ggagoahmihncfeecmgbpfnamjelclfaj` 应用窗口打开 `/app/`，无浏览器地址栏，显示 v2/registered、页面状态 `installed`。安装窗口的 DevTools 离线导航与自动恢复另有通过记录；在线预热并完全退出后，用户关闭 Mac Wi-Fi、从应用图标冷启动，观察到与联网时一致的 v2 页面正常显示。本项物理断网结果是用户手工观察，不冒充自动化截图；真实更新仍待补。 |
+| Mac Chrome 154 React 原生安装 | 安装、DevTools 离线恢复和用户手工物理断网冷启动通过；真实更新待补 | 同一官方 Chrome for Testing 154.0.8037.57 打开 React Drill v2/registered，工具栏出现原生“安装 PWA Platform React Drill”按钮，页面自身也显示 `Install`。系统对话框显示公开 Origin、说明和桌面截图，点“下一步 → 安装”后显示成功；新建 `com.google.chrome.for.testing.app.mnnogjmmdlkcjijdpmmihilinmbdfjbi` 独立应用窗口打开 `/app/`，没有地址栏，显示 v2/registered，页面状态含 `installed`。安装窗口的 DevTools 离线导航与自动恢复另有通过记录；在线预热并完全退出后，用户关闭 Mac Wi-Fi、从应用图标冷启动，观察到与联网时一致的 v2 页面正常显示。本项物理断网结果是用户手工观察，不冒充自动化截图；真实更新仍待补。 |
+| 独立安装窗口更新、30 分钟重提醒、双标签稳定性 | 已执行设备范围通过 | Android Vue／React 安装窗口已完成真实更新接管和显式刷新，React 已重新取得旧 v1 DOM 保持证据；桌面 Chrome React 已完成真实 30 分钟重提醒与双标签隔离；iPhone Vue／React 主屏幕安装窗口已完成在线及已下载后断网更新，Safari 普通浏览器已完成同 scope 双标签协调；Mac Safari 18.6 的 Vue／React 安装窗口已完成真实 v1→v2 与双窗口协调。 |
 | Android Chrome 153 Vue Drill 离线 | 英文通过；中文未执行 | 手机 Wi-Fi 关闭且移动数据原为关闭，安装窗口 `navigator.onLine=false`；结束 WebAPK 并由图标断网冷启动显示 v2/registered。独立窗口断网访问未缓存 `/app/never-precached`：受 `/app/sw.js` 控制，页面 `lang=en`、标题 `Offline`、正文 `You're offline`、说明及 `Try again` 按钮；截图 `/private/tmp/pwa-android-vue-offline-fallback.png` 显示深色、窄屏布局正常。测后已将 Wi-Fi 从 0 恢复为 1。此项只验证公开示例英文构建，不代表中文及正式候选。 |
 | Android Chrome 153 React Drill 安装与离线 | 英文通过；中文未执行 | 公开 React `drill` 页显示原生安装提示，确认后安装 WebAPK `org.chromium.webapk.a79c749fa7b1c369e_v2`（手机本地时间 2026-09-26 19:24:58）。从图标启动 `/app/`，CDP 读到 `display-mode:standalone=true`、v2/registered 与本源 `/app/sw.js` 控制。移动数据原为关闭且 Wi-Fi 关闭时，结束 WebAPK 再从图标启动，`navigator.onLine=false` 仍显示 v2/registered；未缓存路径出现英文离线页与重试按钮，截图 `/private/tmp/pwa-android-react-offline-fallback.png`。测后 Wi-Fi 恢复为 1。 |
+| Android 非 Chrome 浏览器冒烟 | 小米浏览器完整通过；Firefox 与夸克浏览器模式通过，安装能力有限 | 同一实体 23127PN0CC、Android 16 上，Firefox `156.0.1` 在线显示 Vue v2/registered，菜单同时出现“添加快捷方式”和“添加应用到主屏幕”；精确点击安装项后没有确认框，启动器及系统快捷方式记录都没有新增 PWA，因此不能记作安装通过。真实关闭 Wi-Fi 后，Firefox 对未缓存且线上存在的 JSON 导航显示平台英文离线页，联网后自动恢复为 `sequence: 1 / status: normal`。小米系统浏览器 `20.16.1020421` 在线显示 v2/registered，原生确认框正确读取 Vue Drill 名称、图标、start URL 与 scope，固定快捷方式成功；从新图标进入 `PWAActivity` 独立窗口，断网冷启动仍显示 v2/registered，浏览器未缓存 JSON 导航显示平台离线页，恢复 Wi-Fi 后自动回到线上 JSON。夸克 `10.16.0.1135` 同样完成浏览器页、离线回退和自动恢复，但完整菜单未发现安装入口。Chrome 继续是 Android 主发布门禁；这些补充结果不替代第二台 Android 的 N/N-1 要求。 |
 | Android Chrome 153 React 入口恢复 | 计划迁移与点击跳转通过；断网/无效清单等未执行 | 本机公开 `drill` React Origin 在 Chrome 标签页用常驻公开测试钩子交入序号 2、`migrating`、目标为公开 Vue Drill Origin 的合法清单，结果 `accepted=true`；`checkEntryRecovery({returnPath})` 给出 `available` 与本源恢复页链接，结果对象未给出目标 Origin。恢复页显示中文 `lang=zh-CN`、目标主机、有效期与按钮；截图 `/private/tmp/pwa-android-react-recovery.png`，显示深色窄屏布局。页面未自动跳转；点击后 Android 提示是否打开已安装 Vue App，选择“本次允许”后进入 Vue 独立窗口，`pwa-return` 与传入的路径一致。最后交入更高序号 3 的 `normal` 空入口清单，`checkEntryRecovery()` 回到 `none`。此次仅是公开站点旧候选实测。 |
 | Android Chrome 153 Vue 入口恢复与离线区别 | 通过（本次旧候选场景）；域名独立阻断未执行 | Vue Drill 已存序号 1 `normal` 空入口清单；整机断网后 `navigator.onLine=false`，`checkEntryRecovery()` 返回 `none`，不把设备断网误报为域名故障。恢复联网后交入序号 2 的 `migrating` 合法清单，目标为公开 React Drill Origin，`checkEntryRecovery({returnPath})` 返回 `available`。再次断网后打开带 `?return=` 的 `/app/pwa-entry.html`，由 Vue 自己的 `/app/sw.js` 接管，显示 `lang=zh-CN` 的中文备用入口页及目标按钮，而不是通用离线页；截图 `/private/tmp/pwa-android-vue-recovery-offline.png`。该步只证明已存迁移清单与恢复页的离线展示，断网时未点击目标按钮（目标也离线）。测后恢复 Wi-Fi 并交入更高序号 3 `normal` 空入口清单；`checkEntryRecovery()` 回到 `none`。 |
 | 离线页中英文与移动端 UI | 英文移动端及中文桌面、Android、iPhone 安装窗口通过 | Android Vue/React 和 iPhone Vue 英文离线页已在安装窗口观察；Chrome 154 中文构建已完成原生安装窗口、离线页和手动恢复实测。Android 16 + Chrome 153 与 iPhone 16 Pro + iOS 27 中文构建均完成安装、离线页和自动恢复；手机证据仍是单设备 E3，不代表移动发布通道通过。 |
-| 入口恢复移动端与安装窗口 | 英文移动端展示与跳转通过；故障分支待补 | Android Vue/React 与 iPhone Vue 的英文安装窗口恢复页及跨公开 Origin 跳转有实证；单独 Origin 阻断、中文 UI 及 Mac 桌面待补。用户最后提供的 iPhone 截图是 Vue 入口恢复页，前一张才是离线页。 |
+| 入口恢复移动端与安装窗口 | Android 单 Origin 故障分支通过；iPhone 待补 | Android Vue/React 与 iPhone Vue 的英文安装窗口恢复页及跨公开 Origin 跳转有实证；Android React WebAPK 已补当前 Origin 超时、备用 Origin 可达、预缓存恢复页和实体点击跳转。iPhone 单 Origin 故障、中文 UI 及 Mac 桌面仍待补。用户最后提供的 iPhone 截图是 Vue 入口恢复页，前一张才是离线页。 |
 | 十包 tarball 与独立消费 | 本地候选通过；registry 分发未执行 | `entry-resilience` 已补公开元数据、MIT LICENSE、接入 README，Vite peer `^5.0.0 || ^8.0.0`。`CI=true pnpm check:publish` 显示 10 包元数据与导出通过。十个 `0.1.0` 最终本地 tarball 在 `/private/tmp/pwa-stable-tarballs-final`；解包核对 497 个文件，均限 `dist/`、README、LICENSE、package.json，十包 metadata、MIT 文本、内部运行时依赖统一 `0.1.0`、导出存在且常见敏感内容模式扫描通过。隔离项目从最终十包本地 tarball 安装（未从 npm 安装尚未发布的 `0.1.0`），Node 22.22.0 + Vite 5.0.0 + Vue 3.4.0 + TypeScript 5.2.2 的类型检查和真实 Vite 构建退出 0，生成 Vue 更新提示 CSS、manifest、worker、预缓存的 `pwa-entry.html` 与脚本。首轮项目误用 React 19.0.0，与公开 peer `^19.2.0` 冲突；改用 React 19.3.0 后不跳过 peer 校验地安装成功。 |
 | npm 账号与目标版本 | 预检通过，尚未发布 | `npm whoami` 已读到已登录账号；对十包逐一查询 npm registry，`@0.1.0` 均返回不存在。此检查仅防止版本冲突，不能代替发布后读回。 |
 | Cloudflare 隔离槽费用预检 | 通过（部署前只读核对） | 2026-09-26 20:24 MYT，控制台当前账期总费用、预测费用、日均费用均 $0.00；Billable usage 显示 R2 Data Storage 0 GB-months（界面取整）、Class A 88、Class B 1.14k，三项可计费使用量为 0。Workers plans 显示 Free 为 Current plan；私有 Standard 桶页面显示 20.92 MB、Class A 116、Class B 1.34k、Public Access Disabled。两页面统计口径／刷新时间不同，均远低于免费用量；本项只放行计划中的小规模候选归档，不构成费用硬上限。 |
 | React drill 正式候选 v1 部署 | 通过，v2 更新演练进行中 | 本地构建 `v1` 公开文件 34 个，`offline.html` 与 `pwa-entry.html` 均为英文；候选归档 SHA-256 `89c683d147ca0ef4c791b256a30b4b566ee0d30de2baad7205e4d25e65651877`，1,621,150 字节；私有 R2 读回通过，部署预检通过。Node 初次预检因系统 CA 未纳入内建信任库而报 TLS 证书链错误；改用 Node 官方 `--use-system-ca` 后保持 TLS 校验并通过。Pages `drill` v1 部署 `80bbb1a0-92ec-4dd2-ab24-8f0868155e8d`，33 个在线文件索引读回通过，20 个保留资产已归档；公开 HTTPS HTML 与恢复页已读回。桌面 Chrome 153 普通刷新得到 v1/registered、英文更新卡片，确认接管后仍为 v1 且出现英文 Reload 卡片，显式刷新后 v1/registered 且无卡片；此段是旧 v2→新 v1 基线切换，不能算 v1→v2 验收。Chrome 154.0.8037.57 独立上下文已打开并保持 v1/registered、无等待 worker、未刷新标记在页面内。 |
 | React drill v2 恢复候选 | 已部署并归档 | 本地 `v2` 候选 35 个文件、1,748,883 字节，归档 SHA-256 `6b03c9e17581b9c9fdcb34af3e316fb74094abadbc59d18fc4c81433ba74be07`，私有 R2 读回通过；Pages 部署 ID `33c1bc28-35da-47d6-b312-4b838a21cb6c`。部署后自动在线索引首次报告一个 JS 文件与候选不符；随后同一别名和部署 URL 的 HTTPS 读回均与本地 SHA-256 相同，手动重跑索引成功（34 个在线文件），21 个保留资产归档成功。疑似 Pages 别名短暂传播；为索引 `record` 增加最多 30 秒的逐文件重试，每次仍需严格匹配哈希，针对性单测 3/3 通过；全仓检查待完成。公开槽当前是正常 v2。 |
 | Chrome 153 React 真实 v1→v2，双标签与稍后 | 通过 | 旧标签在 v1/registered 且不刷新；公开槽切换 v2 后，新标签显示 v2，旧标签出现英文 `A new version is available` 卡片且仍显示 v1。2026-09-26 12:44:07 UTC 在旧标签点 `Later`，卡片隐藏且页面仍 v1。13:14:07 UTC 旧标签自然重新显示同一提示，旧页仍 v1；点击 `Update` 后出现 `Update complete / Reload page`，旧页仍 v1；显式点 `Reload page` 后显示 v2/registered，提示消失。证明真实 30 分钟重提醒、双标签旧页保持及“先接管、再刷新”分步行为。 |
-| Android Chrome 153 React 更新提示分步 | 通过；旧 DOM 版本隔离待补 | 在已安装过 v1 的 Android Chrome 公开 React 标签新开 v2 页面，实测页面 v2/registered、英文 `A new version is available` 卡片，同时 `registration.waiting.state=installed`、旧 worker 仍 active。点击 `Update` 后卡片变 `Update complete / Reload page`，waiting 消失、active 已接管，页面未自动重载；截图 `/private/tmp/pwa-android-react-update-complete.png`。显式点 `Reload page` 后 v2/registered 且无更新卡片，worker 正常控制。本次 Android 页面在点击更新前已是 v2（新导航读取新 HTML），故不能声称已验证“旧 v1 DOM 一直保持到刷新”，需在后续 v1→v2 重测中补齐。 |
-| Android Chrome 153 React 候选英文入口恢复 | 计划迁移与点击跳转通过；网络故障分支待补 | 正式候选 v2 的恢复页在无清单时 `lang=en`、标题 `Alternative entry`、英文无入口说明，页面受本源 `/app/sw.js` 控制。受控公开页面交入事先用 `parseEntryManifest` 校验通过的序号 100 `migrating` 清单，备用 Origin 为公开 Vue Drill；结果 `accepted=true`，`checkEntryRecovery` 为 `available`，返回的页面链接只含校验过的返回路径而无目标 Origin。Android 打开该链接后仍在 React Origin，页面英文说明、目标主机和 UTC 有效期、可点击按钮完整可读，截图 `/private/tmp/pwa-android-react-recovery-en.png`；未点击前不跳转。点按钮后系统询问是否本次打开已安装 Vue Drill，允许后进入 Vue 独立窗口；目标 URL 的 `pwa-return` 与传入的合法路径一致。最后交入序号 101 `normal` 空入口清单，`checkEntryRecovery` 回到 `none`。未模拟仅 React Origin 不可达、非法路径或过期清单。 |
+| Android Chrome 153 React 更新提示分步 | 通过 | 早期轮次已验证提示、接管与显式刷新，但新导航先读到 v2，因此没有把它当作旧 DOM 证据。2026-09-27 在同一实体设备和 React WebAPK 上重新建立无 waiting 的 v1 基线，再部署真实 v2；标准 `ServiceWorkerRegistration.update()` 下载新 worker 后，页面仍为 v1、waiting 为 installed 并显示更新卡片。点击 `Update` 后 active 已接管、waiting/installing 为空，页面仍为 v1 且只显示 `Reload page`；显式点击后才进入 v2。完整版本与部署记录见后文。 |
+| Android Chrome 153 React 候选英文入口恢复 | 计划迁移与单 Origin 超时分支通过 | 正式候选 v2 的恢复页在无清单时 `lang=en`、标题 `Alternative entry`、英文无入口说明，页面受本源 `/app/sw.js` 控制。先以 `migrating` 清单验证页面不自动跳转、系统确认、跨 Origin 返回路径与撤回；随后在同一 React WebAPK 用 `normal` 清单和 Chrome 按 URL 网络条件只延迟 React Origin，Vue 备用 Origin 保持可达。主入口探测约 5.155 秒超时后返回 `available / unconfirmed-outage`，预缓存恢复页完整显示英文说明、有效期和 Vue 按钮。实体点击后 MIUI 仅获“本次允许”，落到 Vue standalone PWA，`pwa-return=/app/orders/42?tab=1` 原样保留。最后交入序号 301 的 `normal` 空入口清单撤回。非法路径、过期清单与真实 DNS／证书故障仍未执行。 |
 | Android Chrome 153 React 候选英文离线页 | 通过；恢复行为符合本次探测路径 | 交入 `normal` 空入口清单后，确认蜂窝数据关闭，短暂关闭 Wi-Fi，在 Chrome 访问本源未缓存的 `/app/never-precached`。页面 `navigator.onLine=false`、`lang=en`、标题 `Offline`，由本源 `/app/sw.js` 控制；显示 `You're offline`、自动恢复说明和 `Try again`，窄屏深色 UI 可读，截图 `/private/tmp/pwa-android-react-candidate-offline.png`。测试后恢复 Wi-Fi 并确认设备连接；页面自动重载后到达服务器的 HTTP 404，因为探测路径本来不存在。只证明自动重载发生，不证明存在的业务路由恢复成功。 |
 | Vue drill 正式候选 v1→v2 部署 | 通过，测试槽已恢复 v2 | 公开 Vue v1 候选 R2 SHA-256 `3a45442625bc96e7c5c8d7bdc08a351b0ea839fcc1e608d785cd9c4db01849db`，519,918 字节，上传读回和部署预检通过；Pages 部署 ID `e2b018ec-0119-47fd-8315-9b69c03323ae`，26 个在线文件索引通过，13 个保留资产归档。恢复候选 v2 R2 SHA-256 `f8ec24ddb36f7014c9bfc90021e614ba4cfe070aa18d232c0775d90917f35910`，573,065 字节，上传读回和部署预检通过；Pages 部署 ID `d22e522e-46fe-4239-8f4d-1c7bcb8e0188`，27 个在线文件索引通过，14 个保留资产归档。两个上传都只作用于 `drill`，`main` 未变。 |
 | Android Chrome 153 Vue 安装窗口 v1→v2、离线刷新 | 通过 | Vue Drill WebAPK `org.chromium.webapk.a5be8b3d54eb30ac0_v2` 从系统启动器进入独立窗口，`standalone=true`；切到 v1 后显式刷新，确认窗口 v1/registered、无 waiting worker。部署 v2 后主动调用标准 `registration.update()`，随后旧窗口仍显示 v1，waiting worker 为 installed，出现英文 `A new version is available` 卡片；截图 `/private/tmp/pwa-android-vue-standalone-v1-update.png`，业务定制绿色主按钮在窄屏可读。点 `Update` 后 worker 接管，旧 DOM 仍 v1，卡片改为 `Update complete / Reload page`。关闭 Wi-Fi（蜂窝数据已关闭）确认 `navigator.onLine=false`，再点 `Reload page`，同一独立窗口离线显示 v2/registered、worker 控制且卡片消失。随后 Wi-Fi 已恢复开启。此项同时验证“先更新资源，再由用户刷新”的真实两步语义。 |
@@ -79,6 +81,7 @@
 | 最终修复版自动化门禁 | 桌面 Chrome N/N-1 全通过 | 修正离线页过早 `online` 后，`CI=true pnpm build`、`typecheck`、`lint`、`docs:build`、`check:publish` 退出 0；`pnpm audit --ignore-registry-errors` 为 `No known vulnerabilities found`。完整 `CI=true pnpm test` 首轮有 release-tools 的一个 5 秒 worktree 集成用例因并行负载超时（116/117），单包重跑 117/117 通过；随后全仓无外部构建竞争重跑全部包通过，日志 `/private/tmp/pwa-stable-final-gated-test-serial.log` SHA-256 `e23e1f01ccfb4a49313da02e9a1ff1fc4196495bdb3d8b4e071bee5dff5805d3`。官方 Chrome 154.0.8037.57 全仓九套件 227/227 通过，日志 `/private/tmp/pwa-stable-final-gated-browser154.log` SHA-256 `6bbf8db63474ff5d8f698bae73bd4e59f114c878c75d849908e96ff699ef12f1`；Chrome 153.0.8010.53 九套件 227/227 通过，日志 `/private/tmp/pwa-stable-final-gated-browser153.log` SHA-256 `5a66d6524f84c1259f75b56495563de1236aae8f4f8a2d0d068b132bfaf0d3d2`。两次逐套件检查无失败和跳过，未仅凭总命令退出码判断。 |
 
 | Chrome 154 Vue／React 原生安装窗口离线恢复 | 两站通过（DevTools 离线模拟） | 官方 Chrome for Testing 154.0.8037.57 中，两个已安装独立窗口均先显示 v2/registered。各自在 DevTools Network 设为 Offline 后导航到线上有 HTTP 200、未预缓存的 `/app/entry-manifest.json`，页面显示英文 `Offline / You're offline / Try again`，Network 中应用导航由本源 Service Worker 提供 HTTP 200、实际网络请求 `ERR_INTERNET_DISCONNECTED`。Network 恢复为 No throttling 后，离线页未手工重试即重载到线上 JSON（`sequence:1`、`status:normal`），再返回 `/app/` 显示 v2/registered。此项为桌面安装窗口真实浏览器、模拟断网，不等于设备物理断网。 |
+| Mac Chrome 154 物理断网冷启动 | Vue／React 均通过（用户手工观察） | Codex 控制通道与被测 Mac 共用 Wi-Fi，自动化无法在物理断网期间继续操作或回传证据；网络已恢复后取得的早期 Vue 截图已作废。随后先在线确认两个 Chrome 154 独立应用均为 v2/registered，再完全退出；用户手工关闭 Mac Wi-Fi，分别从应用图标冷启动 Vue、React，反馈离线与联网表现一致，两个应用都能正常显示 v2 页面，随后恢复网络。此项明确标为用户手工实机观察；DevTools 未缓存导航离线页与自动恢复仍由上一项提供自动化证据。 |
 | 当前 Origin 单独失效、备用 Origin 仍可达 | Chrome 154 和 153 各 1/1 通过 | `entry-resilience/browser-tests/scenarios.spec.ts` 新增双 Origin 场景：先安装当前 Origin 的 worker 并交入 `normal` 合法清单，当前 Origin 可达时 `checkEntryRecovery()` 为 `none`；只关闭当前 fixture server，备用 fixture server 保持可达，检查返回 `available / unconfirmed-outage`。当前 Origin 的恢复页仍由预缓存打开，不在用户点击前导航；点击后进入备用 Origin 的 `/app/`，合法 `pwa-return` 保留。官方 Chrome 154.0.8037.57 与 Chrome 153.0.8010.53 均通过。此为真实浏览器和真实双本地 Origin，尚未在手机上模拟云端单域故障。 |
 | 最终归档的独立宿主消费 | Node 22 + Vite 5 通过 | 十个 0.1.0 最终候选 tarball 从同一编译源码打包，并扫描 497 个归档文件；未见私有项或额外工作区文件。独立目录 `/private/tmp/pwa-stable-consumer-final-gated` 安装 tarball 与 Node 22.22.0、Vite 5.0.0、Vue 3.4.0、React 19.3.0；`tsc --noEmit` 与 `node build.mjs` 均退出 0。此为公开夹具，不涉及私有宿主项目。 |
 | 发布前最后一轮浏览器与文档回归 | Chrome N/N-1 各 228/228 | 新增单 Origin 故障用例后，全仓九套件在 Chrome 154 与 153 各 228 项通过，0 失败、0 跳过；日志 `/private/tmp/pwa-stable-release-browser154.log` SHA-256 `d9c9cfa0975fd42d2aad0070baf22d3ccef1c09320d43e32317be43987e6d296`，`/private/tmp/pwa-stable-release-browser153.log` SHA-256 `20dcce3e2cd66a077f0d20227d24d93c4d92e97006e7c53897ccbaf440d21b8e`。文档口径更新后 `pnpm docs:build`、`pnpm lint`、入口恢复包 `typecheck`、`pnpm check:publish` 和 `git diff --check` 退出 0。 |
@@ -110,6 +113,16 @@
 
 缺陷属于测试夹具和构建期反馈，不是 Service Worker 运行时或公开配置形状错误。按项目所有者要求，Vite 插件新增主图标存在性、常用位图 MIME 与实际尺寸校验：旧实现放过的 1×1、缺文件、类型错配和损坏文件先由红测复现；实现后相关聚焦用例 10/10、Vite 单测 241/241 通过。校验规则、错误码与排障方法已写入 ADR-0040、Vite README、manifest 字段指南及 Vite 5 业务接入作业单。iPhone 中文安装窗口随后按下一节完成实测。
 
+## R2 Android React 旧 v1 DOM 保持重新取证（2026-09-27）
+
+设备为实体 23127PN0CC、Android 16、Chrome 153.0.8010.53；已安装 React WebAPK 为 `org.chromium.webapk.a79c749fa7b1c369e_v2`，绑定专用 React drill HTTPS Origin。最终验收轮次使用 v1 bundle SHA-256 `be65b3d03b195ca85c74e3dcd8b6f7ee9e4437aa1bcb36b1eff4bc6debc5b79c`、Pages `748cf229-f2d5-4cd6-944f-eb2247a80ddd`，以及基于该部署重新构建的 v2 bundle SHA-256 `661c3f356be3d89ea6fdec1b3fffc8200cd2524ff987ffbaa395cc139ac1030e`、Pages `d80a9d93-373c-4edf-be9c-d1cee036c57b`。两版均完成私有 R2 回读、34 个线上文件哈希核对和 21 个保留资产归档。
+
+WebAPK 先建立无残留提示的干净 v1 基线：`standalone=true`、本源 worker 控制、active 为 activated，waiting/installing 为空。v2 部署后只在这个既有窗口调用浏览器标准的 `ServiceWorkerRegistration.update()`，不导航、不刷新 DOM；调用前为 v1／无 waiting，调用后仍为 v1，新 worker 为 `waiting: installed`，英文 `A new version is available` 卡片随后出现。实体界面控件树同时读到版本 `v1` 与可点击 `Update`，排除了仅由检查器返回的假象。
+
+通过 ADB 对实体界面点击 `Update` 后，页面仍为 v1，卡片变为 `Update complete / Reload page`；检查器读到 active 为 activated、waiting/installing 为空、standalone 与 controller 均保持。只有继续点击实体界面的 `Reload page` 后页面才显示 v2，且更新卡片消失，最终 active 为 activated、waiting/installing 为空。该结果补齐了早期“新导航先读到 v2、无法证明旧 DOM 保持”的唯一缺口。
+
+准备阶段曾尝试在 Chrome 新开同源页面触发检查，但 Android 将该 HTTPS Intent 直接路由回已安装 WebAPK，使 DOM 先读取 v2；该轮观察明确作废，没有计入验收。最终轮次重新从当前线上归档生成 v1/v2，并采用不导航的标准 registration update 取得上述证据。公开 React drill 测试槽最终保持正常 v2。
+
 ## R2 iPhone 中文安装窗口、网络超时与自动恢复（2026-09-27）
 
 设备为实体 iPhone 16 Pro、iOS 27.0，使用 Safari 主屏幕网页 App 和网页检查器。测试使用当前合并代码生成的临时生产构建，通过临时 HTTPS 入口访问；没有新增正式部署。manifest 的 `name` 为“PWA 中文测试”、`short_name` 为“中文测试”，四个主图标的实际尺寸与声明一致。用户经“共享 → 添加到主屏幕”安装，系统名称显示“中文测试”；从图标启动后 `display-mode: standalone` 为真，视口为 402×812、无水平溢出，页面由本源 `/app/sw.js` 控制。
@@ -120,7 +133,92 @@
 
 保持断网时，用户实际点击临时同源探测链接，未缓存导航由 worker 返回中文默认离线页：`title=离线`、`lang=zh-CN`，正文为“PWA 中文测试／当前处于离线状态／网络恢复后页面会自动重新加载。／重试”；页面保持 standalone、本源 controller 和 402px 无横向溢出，按钮位于 x=24、宽 354、高 48，白字蓝底可读。该导航约 5.014 秒得到回退。用户随后只恢复网络，没有点击“重试”；离线页自动重载原目标，导航类型为 `reload`，`responseStart=972ms`、`DOMContentLoaded=1009ms`、`transferSize=587`，并显示线上 manifest JSON。最终出现 JSON 是因为探测目标本来就是 `manifest.webmanifest`，是自动恢复成功的预期结果，不是业务首页被替换。临时静态服务器未给 webmanifest 响应声明字符集，Safari 原始 JSON 查看器曾按 GBK 解码中文；这是测试服务器的展示限制，不计为平台离线页缺陷。
 
-本轮仍保留既有 Safari 兼容性边界：断网恢复后，`registration.update()`／重新 `register()` 曾长时间不返回，结束网页 App、保持联网并从图标重开后恢复。结论仅为“iPhone 中文安装、5 秒离线回退、中文离线页与自动恢复在该设备通过”；Apple 发布通道、完整更新矩阵和单 Origin 故障场景仍未通过。
+本轮仍保留既有 Safari 兼容性边界：断网恢复后，`registration.update()`／重新 `register()` 曾长时间不返回，结束网页 App、保持联网并从图标重开后恢复。截至本小节的结论仅为“iPhone 中文安装、5 秒离线回退、中文离线页与自动恢复在该设备通过”；更新矩阵在后续小节补齐，Apple 发布通道和单 Origin 故障场景仍未通过。
+
+## R2 iPhone Vue／React 真实 v1→v2 更新（2026-09-27）
+
+部署前再次只读核对 Cloudflare：当前账期总费用、预测费用和日均费用均为 `$0.00`，Workers 仍为 Free，R2 的 billable storage 为 0 GB-month、Class A 173、Class B 1.56k，私有归档桶保持 Standard 且 Public Access Disabled。该结果只说明本轮小规模测试部署仍处于免费用量内，不构成费用上限承诺；记录不包含账号标识或凭据。
+
+本轮使用实体 iPhone 16 Pro、iOS 27.0 的主屏幕网页 App 与 Safari 网页检查器。检查器窗口标题明确包含该 iPhone，页面视口为 402×812；此前误选到同名 Mac 安装窗口的观察已作废，没有计入以下真机证据。两站都先部署真实 v1，再部署真实 v2；测试期间只调用浏览器标准的 `ServiceWorkerRegistration.update()` 立即检查服务器上的新 worker。该调用与公开客户端的主动检查语义一致，不修改 DOM、不伪造提示；只有真实 v2 worker 下载并进入 `waiting` 后，SDK 才显示更新卡片。
+
+| 站点 | v1 候选 | v2 候选 | iPhone 安装窗口结果 |
+|---|---|---|---|
+| React | bundle SHA-256 `cdc7dcb4a087cb6d15db59077206acdaf0df199ed1a5b31fe5283abb082d3fa8`；Pages `00e5db22-a669-4139-955b-8f6ac4c6438a` | bundle SHA-256 `ca1054e1e0421fd23a0ebccc029ecea33a8d2f80463325348eed1560929b1e70`；Pages `c794c4e7-7c8d-4448-a5b4-8bdee6492bff` | v2 部署后，仍打开的窗口保持 `v1`，新 worker 为 `waiting: installed` 并显示 `A new version is available`。用户点击 `Update` 后，worker 变为 `active: activated`、`waiting/installing: null`，页面仍为 `v1`，卡片变为 `Update complete / Reload page`；只有用户点击 `Reload page` 后页面才显示 `v2`，且无残留更新卡片。全过程 `standalone=true`、本源 worker 控制。 |
+| Vue | bundle SHA-256 `1893fbcdec8c33f8f868f67d3c9624a06771fb515788d342a7d4e75c42be1dab`；Pages `ec8a3157-c37d-4b6d-b783-a27763c812e1` | bundle SHA-256 `92e3fee67523b5fd92556b3a7303e2bdd915d821dd8f143b23d562b93636cd45`；Pages `5bd4640f-6ad8-4bc8-a3b7-cc1816fbcd92` | 与 React 相同：真实 v2 下载完成时旧窗口为 `v1`、`waiting: installed` 并出现更新提示；点击 `Update` 后 active 已切换且旧 DOM 仍为 `v1`，显示 `Reload page`；显式点击后页面变为 `v2`。最终检查器读到 `standalone=true`、`controlled=true`、`active: activated`、`waiting/installing: null`，正文无更新卡片。 |
+
+四个候选均完成私有 R2 读回、公开在线文件哈希核对和旧资产归档：React 每版 34 个在线文件、21 个保留资产，Vue 每版 27 个在线文件、14 个保留资产。该闭环证明 iPhone 单个已安装窗口中的“真实更新提示 → 用户确认接管 → 旧 DOM 不被强制刷新 → 用户显式刷新进入 v2”在 Vue／React 均通过。
+
+随后单独补测 React 安装窗口的“v2 已下载后断网”分支。为保持保留资源门禁，未复用基于旧部署打包的候选，而是从当前线上归档重新构建：v1 bundle SHA-256 `0154d0ca8429c370f1154040c9dbe104bde260a394041d756c9401fa49ab5efc`、Pages `43dcfbc8-836e-47ea-a666-d6ff0be2d012`；v2 bundle SHA-256 `cfaf22c912c734f7600c0a7e364e62e33b23e36e632b9375440c20cc59cc3a30`、Pages `f912c2b3-c53d-49f5-a059-717f05fbbb02`。两版均完成 R2 读回、34 个线上文件哈希和 21 个保留资产核对。iPhone 主屏幕 App 先建立 `v1`、无 waiting 的干净基线；v2 部署后调用标准 `registration.update()`，旧 DOM 仍为 `v1`，worker 为 `waiting: installed` 并显示真实更新卡片。
+
+用户关闭 Wi-Fi 和蜂窝数据后，同源 `/app/sw.js` 的 `HEAD`、`cache: no-store` 请求在 3 秒内以 `AbortError` 结束，作为真实断网证据；没有采用 iOS 上不可靠的 `navigator.onLine`。保持断网点击 `Update` 后，检查器读到新 worker `active: activated`、`waiting/installing: null`，旧 DOM 仍为 `v1`，卡片变为 `Update complete / Reload page`。继续断网点击 `Reload page`，页面从预缓存显示 `v2/registered`，保持 `standalone=true`、本源 controller 和 402×812 视口；刷新后的第二次同源无缓存探测仍为 `AbortError`，排除了恰好恢复联网的假阳性。
+
+Vue 安装窗口随后执行同一分支。为避免旧部署候选与当前保留资源不一致，重新构建并归档：v1 bundle SHA-256 `db8e985112e8487cfc849d2da7fd66b9ca3224039de12c27412525c320ab23af`、Pages `b9736147-adce-4f39-8a63-6271f56f34ac`；v2 bundle SHA-256 `4467f898d0e72741f8765403db86f42ea972a808e73575f3ba6f440222f2990a`、Pages `70cf4626-1ccd-40f7-a6af-425393d325c5`。两版均完成 R2 读回、27 个线上文件哈希和 14 个保留资产核对。iPhone 主屏幕 App 从无 waiting 的 `v1` 基线发现真实 v2，旧 DOM 仍为 `v1`，worker 为 `waiting: installed` 并显示更新卡片。
+
+用户关闭 Wi-Fi 和蜂窝数据后，同源无缓存 `HEAD` 请求在 3 秒内以 `AbortError` 结束。保持断网点击 `Update`，页面仍为 `v1` 并显示 `Update complete / Reload page`；检查器读到新 worker `active: activated`、`waiting/installing: null`。继续断网点击 `Reload page` 后，预缓存页面显示 `v2/registered`，保持 `standalone=true`、`controlled=true`、402×812 视口且无更新卡片；最终 worker 仍为 `active: activated`、无 waiting/installing，第二次同源无缓存探测仍为 `AbortError`。
+
+因此 Vue／React 安装窗口的“v2 已下载后断网接管并离线显式刷新”均通过。
+
+随后在 iPhone Safari 普通浏览器中补齐同 scope 双标签协调。iPhone 不提供同一个主屏幕网页 App 的双窗口 UI，因此该形态按平台不适用记录；测试没有用 Safari 标签页替代安装窗口的 standalone 结论，只验证同一 Safari 存储分区内两个受控页面对共享 Service Worker 注册的协调。每个框架均先部署真实 v1，并在标签 A 完成既有 worker 的确认与刷新，建立无残留提示的 v1 基线；再打开标签 B，确认同为 v1 且无更新提示。
+
+| 站点 | 双标签 v1 候选 | 双标签 v2 候选 | iPhone Safari 结果 |
+|---|---|---|---|
+| Vue | bundle SHA-256 `a73f51cbaf5bfded037963db404758a159d60cf8a064aecaa625b2e1470a118a`；Pages `127f8678-a19a-42af-b397-38c87e315c84` | bundle SHA-256 `18a49dd916a38c4719d2958bcb514a07f61825aa3f47da3871229f78a979180e`；Pages `dc5bc257-052f-404b-b669-c1d6b7a9b1ce` | 保持 A、B 两个 v1 标签不刷新，临时打开 C 取得 v2 页面并触发 worker 检查；关闭 C 后，A、B 均仍为 v1 且出现更新提示。在 B 单独点击 `Update` 后，A、B 均保持 v1 并同步显示 `Reload page`。只刷新 B 时，B 进入 v2 且提示消失，A 仍为 v1 并保留 `Reload page`；最后显式刷新 A 后两标签均为 v2。 |
+| React | bundle SHA-256 `b87755ce71ed87e3c2dc5091c86652a8fedffc497ece40fe5ea2feefa19d2422`；Pages `fee590a5-13f7-44f3-8bfd-561afb235a5a` | bundle SHA-256 `9d8cde0c56d5871ebaf07c1d964a549f348704c8dcc627299ffee0a795bd46e5`；Pages `87b664f2-abf7-4409-978f-3fda04b570a9` | 与 Vue 相同：A、B 两个 v1 标签共同收到等待更新提示；只在 B 确认后，两个旧 DOM 都保持 v1 并同步进入 `Reload page`；只刷新 B 不会强制刷新 A；最后分别显式刷新后均为 v2。 |
+
+Vue 两版均完成私有 R2 读回、27 个线上文件哈希和 14 个保留资产核对；React 两版均完成私有 R2 读回、34 个线上文件哈希和 21 个保留资产核对。该闭环证明一个标签确认接管后，所有同 scope 标签通过浏览器原生 `controllerchange` 收敛，但平台不会强制刷新任何标签，刷新仍由各标签中的用户操作决定。iPhone 可执行的 Vue／React 多标签矩阵通过；Apple 发布通道结论继续为渐进兼容。
+
+## R2 Mac Safari 18.6 Vue／React 真实 v1→v2 更新（2026-09-27）
+
+本轮使用 macOS 15.7.3、Safari 18.6 已添加到程序坞的“Vue Drill”和“React Drill”网页 App。测试前只读复核专用 R2 桶：Standard、Public Access Disabled，桶大小约 34.68 MB，Class A 158、Class B 1.56k；仅执行小规模 drill 候选部署。两站都从当前线上归档重新构建真实 v1，再基于该 v1 的 Pages 部署构建真实 v2；每版均先上传私有 R2 并回读校验，再通过 Pages 预检、公开文件哈希索引和旧资产归档。
+
+| 站点 | v1 候选 | v2 候选 | Mac Safari 安装窗口结果 |
+|---|---|---|---|
+| Vue | bundle SHA-256 `74fee2df589f7488f8c2591bd8dcd0beccc0cf3dca663432aefb8542c98ee7eb`；Pages `32f690e5-1025-4404-8da9-84d96b689944` | bundle SHA-256 `2bd51308245f13d8c2030c28747762e0f68f63ed8652661f63ce6abfcd578134`；Pages `33c6b84f-ef61-42af-b677-dc2095df462e` | 安装窗先建立无残留提示的 v1 基线。v2 部署后从“文件 → 新建窗口”打开同一网页 App 的第二个受控窗口，两个窗口仍显示 v1，随后出现真实 `A new version is available`。只在前台窗口点击 `Update` 后，两个窗口都保持 v1 并显示 `Update complete / Reload page`；只刷新一个窗口时该窗口进入 v2，另一窗口仍保持 v1 和 Reload 卡片；最后显式刷新另一窗口后两者均为 v2。 |
+| React | bundle SHA-256 `6cbc249292c7e53eb981a5374d7c63f2ac7ea7c56bad0571d6bbe49ba7532962`；Pages `828aa2e6-66ad-4180-b4b3-fb2d6ba7775f` | bundle SHA-256 `08bbea2cbce1912294aade783145954db63b2f0f18b96ad5289d42c814a5465f`；Pages `6683bb91-f352-483d-be43-4801c88cc90e` | 与 Vue 相同：新建第二个安装窗触发 Safari 的标准导航更新检查，两个旧 DOM 均为 v1；提示出现后单点确认使两窗口同步进入 Reload 状态，但不会强制刷新。逐一点击 `Reload page` 后两个窗口分别进入 v2，React 的推送订阅区域与基础按钮仍正常呈现。 |
+
+Vue 两版均完成私有 R2 读回、27 个线上文件哈希和 14 个保留资产核对；React 两版均完成私有 R2 读回、34 个线上文件哈希和 21 个保留资产核对。此次没有调用检查器脚本、没有改写 DOM，也没有注入更新提示：第二窗口的真实导航触发浏览器检查，只有新 worker 下载并进入 waiting 后 SDK 才显示卡片。结果证明 Mac Safari 安装网页 App 的同 scope 双窗口共享 Service Worker 注册，接管状态会同步，但每个窗口仍由用户独立决定何时刷新。本轮更新测试未执行断网冷启动；后续已按下节手工实机步骤补齐，不从更新结果本身外推。
+
+### Mac Safari 18.6 安装窗口离线导航与恢复
+
+在 React Drill 已安装网页 App 保持前台时，通过其 Safari 网页检查器安排导航到线上 HTTP 200、带唯一查询参数且此前未缓存的 `/app/entry-manifest.json`；随后物理关闭 Mac Wi-Fi 30 秒并由命令陷阱保证重新开启。断网导航由本源 Service Worker 返回英文默认离线页，独立窗口标题为 `Offline`，显示 `You're offline`、自动恢复说明与 `Try again`，地址仍保留原 JSON 目标。Wi-Fi 恢复后没有点击按钮或手工刷新，约 8 秒内页面自动重载为线上 JSON，内容为 `sequence: 1`、`status: normal`，证明最终脚本在 Safari 18.6 安装窗口完成真实离线回退与联网探针恢复。
+
+Vue Drill 初次使用同一 HTTP 200 JSON 目标对照时，只在联网恢复后取得最终页面，没有可靠捕获断网窗口，因此当时未把 React 证据外推到 Vue。后续使用可回滚的单 Origin 故障模拟补齐：仅在 `/etc/hosts` 临时将 `drill.pwa-platform-vue-demo.pages.dev` 指向 `127.0.0.1`，`curl` 连接失败确认阻断生效；再通过容器路径精确识别并重启只属于 `com.apple.Safari.WebApp.7D7346AA-6634-4D7F-B48C-3B43C287D4DA` 的 WebKit Networking 子进程，避免复用阻断前的 Cloudflare 连接。对保持原未缓存 JSON 目标的安装窗口执行重载后，Safari 标题为 `Offline`，可访问性树与可见页面同时显示 `PWA Platform Vue Drill`、`You're offline`、`This page will reload when your connection is back.` 和 `Try again`，地址仍保留原 JSON 目标。
+
+随后精确删除该 hosts 记录并刷新 DNS；系统网络环境重新解析到 Cloudflare IPv4／IPv6，对同一 JSON 的 `curl` 返回 HTTP 200。没有点击 `Try again`、没有人工刷新，Vue 离线页随后自动回到 `sequence: 1 / status: normal`的线上 JSON。该场景证明“本 Origin 失效 → 默认离线页 → 联网探针恢复”，并不伪称为整机物理断网；两框架的物理断网冷启动另见下段。
+
+随后单独执行断网冷启动：Vue／React 网页 App 先在联网状态打开，两者都显示 v2/registered 并出现真实更新提示；分别点击 `Update` 后提示消失，确认最新 worker 已接管，然后完全退出两个网页 App。由于关闭 Mac Wi-Fi 会同时中断 Codex 控制通道，之后由用户手工关闭 Wi-Fi，从 Finder 中的 `/Users/vilin/Applications/Vue Drill.app` 和 `/Users/vilin/Applications/React Drill.app` 分别冷启动。用户报告两者离线与联网表现一致，均正常显示 v2，无白屏。这是用户手工实机观察，不冒充自动化截图；它补齐两框架的安装窗口冷启动证据，但不补算 Vue 未缓存导航的断网页面可见证据。
+
+### Android 非 Chrome 浏览器冒烟（2026-09-27）
+
+设备为实体 23127PN0CC、Android 16；移动数据保持关闭，断网步骤真实关闭设备 Wi-Fi，并在每次测试结束后确认重新连接 `tralala5G`。目标使用公开 Vue Drill `/app/` 与线上存在、带唯一查询参数的 `/app/entry-manifest.json`，避免把服务器 404 或历史缓存误当成恢复成功。
+
+| 浏览器 | 在线与 Service Worker | 安装入口 | 真实断网与恢复 | 判定 |
+|---|---|---|---|---|
+| Firefox `156.0.1` | 页面显示 v2、registered、`kind: none` | 菜单同时显示“添加快捷方式”和“添加应用到主屏幕”；点击后没有出现可确认安装对话框，当前启动器页及 Firefox 快捷方式列表均未取得新图标证据 | 未缓存 JSON 导航显示 `PWA Platform Vue Drill / You're offline / Try again`；恢复 Wi-Fi 后无手工刷新自动显示 `sequence: 1 / status: normal`。截图：`/private/tmp/pwa-android-firefox-vue-offline.png`、`/private/tmp/pwa-android-firefox-vue-recovered.png` | 浏览器运行、离线回退、自动恢复通过；安装最终固定待确认 |
+| 夸克 `10.16.0.1135` | 页面显示 v2、registered、`kind: none` | 展开完整菜单后仅见书签、下载、刷新、分享等入口，未发现“安装应用”或“添加到桌面” | 同一类未缓存 JSON 导航显示平台英文离线页；恢复 Wi-Fi 后无手工刷新自动显示 `sequence: 1 / status: normal`。截图：`/private/tmp/pwa-android-quark-vue-offline.png`、`/private/tmp/pwa-android-quark-vue-recovered.png` | 浏览器模式补充兼容通过；不具备本次可见的 PWA 安装入口 |
+| 小米系统浏览器 `20.16.1020421` | 页面显示 v2、registered、`kind: none` | 浏览器自动显示“是否将该网站添加到桌面以便离线查看”，名称为 Vue Drill、图标正确；确认后系统登记 pinned shortcut，清单包含正确 `startUrl`、`scope`、`displayMode` 和 192 图标。从新图标启动进入 `com.android.browser.webapps.pwa.PWAActivity`，没有浏览器地址栏 | 蜂窝数据关闭且 Wi-Fi 关闭后，结束浏览器并从新图标冷启动，独立窗口仍显示 v2/registered。另在普通浏览器窗口导航未缓存 JSON，显示平台英文离线页；恢复 Wi-Fi 后无手工刷新自动显示 `sequence: 1 / status: normal`。截图：`/private/tmp/pwa-android-mi-standalone-offline-cold.png`、`/private/tmp/pwa-android-mi-browser-offline.png`、`/private/tmp/pwa-android-mi-browser-recovered.png` | 添加桌面、独立窗口、断网冷启动、离线回退和自动恢复通过 |
+
+三个浏览器的离线页面都来自平台 Service Worker，而不是浏览器自己的网络错误页；恢复后都到达线上实际 JSON 内容，因此“离线回退 → 联网探针 → 自动重载”链路有实体证据。安装支持必须按浏览器分别描述：小米浏览器已完成固定快捷方式和独立窗口；Firefox 仅确认安装入口可见，点击后没有系统或启动器结果；夸克未发现入口。它们不属于既定 Android Chrome 发布门禁，不能用来升级 `desktop+android` 通道结论。
+
+## R3 Android 单 Origin 故障恢复（2026-09-27）
+
+设备为实体 23127PN0CC、Android 16、Chrome 153.0.8010.53；测试入口为已安装的 React WebAPK `org.chromium.webapk.a79c749fa7b1c369e_v2`，备用入口为已安装的 Vue Drill。两站均保持公开 v2。React 侧先交入序号 300 的 `normal` 清单，唯一入口指向 Vue `/app/`；两个 Origin 正常时，`checkEntryRecovery({ returnPath: "/app/orders/42?tab=1" })` 返回 `kind:none`，确认不会因存在备用入口而误提示。
+
+故障阶段使用 Android Chrome 153 的 `Network.emulateNetworkConditionsByRule`，只对 `https://drill.pwa-platform-react-demo.pages.dev/*` 注入 60 秒延迟；Vue Origin 不匹配规则并保持可达，`navigator.onLine` 继续为 `true`。React 的主入口探测按公开 5 秒超时结束，实测约 5.155 秒，随后备用探测成功并返回 `available / unconfirmed-outage`；结果只包含本源 `/app/pwa-entry.html?return=...`，没有把目标 Origin 暴露给业务页面。该模型验证的是“当前 Origin 请求超时、设备和备用 Origin 仍在线”，不是整机断网。
+
+保持故障条件导航恢复页后，页面由本源 Service Worker 控制并从预缓存完整启动；地址保留 `return=/app/orders/42?tab=1`，先显示 `Checking for alternative entries…`，随后显示英文 `The usual address may be unreachable (unconfirmed)`、UTC 有效期和唯一的 `Go to drill.pwa-platform-vue-demo.pages.dev` 按钮。页面没有自动跳转。通过 DOM 只读测得按钮为 352×72 CSS px，再由 ADB 对实体界面点击；MIUI 弹出“Chrome 想要打开 Vue Drill”，只选择“本次允许”，未授予永久权限。最终落到 `https://drill.pwa-platform-vue-demo.pages.dev/app/?pwa-return=%2Fapp%2Forders%2F42%3Ftab%3D1`，Vue 页面为 v2、`standalone=true`、由 Vue 本源 worker 控制。
+
+测试结束后清除网络条件，并在 React 侧交入序号 301、`normal`、空入口清单；更新返回 `accepted:true`，再次检查为 `kind:none`。准备阶段两种不完整方法均明确作废：只对页面会话使用 `Network.setBlockedURLs` 会在 Service Worker 介入前阻断恢复页子资源，得到空白页；只对 worker 会话使用该命令又不能让页面侧主入口探测失败。两者都没有计入通过证据。当前结论只覆盖 Android 上的受控单 Origin 超时；真实 DNS／证书错误以及 iPhone 的同等分支仍待执行，R3 总项保持未完成。
+
+## R3 iPhone 单 Origin 故障恢复未完成记录（2026-09-27）
+
+设备为实体 iPhone 16 Pro、iOS 27.0；目标是已安装并以独立窗口运行的 React Drill，备用 Origin 为公开 Vue Drill。先在标题明确包含 `vilin的iPhone` 的页面检查器目标上核对 402×874 屏幕、402×812 视口、`display-mode: standalone`、本源 `/app/sw.js` HTTP 200、active registration 与 controller；普通 Safari 另行打开 Vue `/app/` 显示 v2，证明手机联网与备用 Origin 基线可用。此前误选同名 Mac 目标得到的 1800×1169、`standalone=false` 结果已经作废，不计入本节证据。
+
+React 侧成功交入序号 3100、`normal`、唯一 Vue 备用入口的清单，在线基线 `checkEntryRecovery({ returnPath })` 返回 `kind:none`。随后在 Safari Web Inspector 为一次精确的本源 `__pwa-entry-probe` URL 创建“阻止请求”本地覆盖，并固定该次测试的缓存破坏随机值；覆盖已启用且重载后，请求仍由 Service Worker 返回普通 HTTP 404，约 0.3 秒内检查继续正确返回 `kind:none`。HTTP 404 代表 Origin 已经给出响应，不能作为网络不可达；因此这两次尝试均未计为故障分支通过。测试后两个本地覆盖均已停用。
+
+准备改用仅让当前 React Origin 的探测 `fetch` 抛出 `TypeError`、其他请求继续走真实网络的可还原测试桩时，iPhone Web Inspector 远程求值通道失去响应：`1+1`、`console.log` 和临时 Console Snippet 都只进入检查器历史，不返回求值结果或日志；关闭并重建检查器、重新选择物理 iPhone 的 React 页面目标后现象不变。来源面板仍能读取页面资源且调试器没有暂停，说明阻塞点是本轮远程求值会话，不能把它解释为恢复逻辑失败。由于测试桩没有成功执行，恢复页、用户确认跳转与收尾空清单均没有获得新的 iPhone 证据。
+
+本轮结论为“演练未完成”，不是产品失败，也不是通过。iPhone 既有安装、真实 v1→v2 更新、断网接管、离线页与联网恢复证据继续有效；R3 和 T5 的 iPhone 单 Origin 子项保持未勾选。后续应在远程求值稳定的 Safari 会话、可控制单域名网络层的代理／防火墙环境，或真实 DNS／证书故障窗口中重做，并在完成后交入更高序号的 `normal` 空入口清单收尾。
 
 ## R4 交叉边界复核（2026-09-27）
 
@@ -154,5 +252,11 @@ pnpm check:publish
 
 ## 待处理的已知边界
 
-- `@pwa-platform/entry-resilience@0.1.0` 已发布并完成 registry 读回、Vite 5 独立消费和双 Origin 真实浏览器故障演练。真实 DNS/证书故障与手机单 Origin 故障未执行，不计入 `desktop` 通道通过证据。
+- `@pwa-platform/entry-resilience@0.1.0` 已发布并完成 registry 读回、Vite 5 独立消费和双 Origin 真实浏览器故障演练。Android 已完成受控的当前 Origin 超时、备用 Origin 可达分支；iPhone 本轮只完成在线基线，Safari 本地覆盖未能穿透 Service Worker，随后 Web Inspector 远程求值无响应，因此单 Origin 分支仍未执行完成。真实 DNS／证书故障与该 iPhone 分支都不计入 `desktop` 通道通过证据。
 - 一台 Android 无法满足现有 `desktop+android` 通道对 Chrome N/N-1 的两机要求。任何手机测试都会照实记录，但不得升级为该通道通过证据。
+
+## R5 Apple 发布通道裁决（2026-09-27）
+
+依据本记录已经取得的 Mac Safari 与 iPhone Safari 实证，项目所有者于 2026-09-27 接受 [ADR-0041](../../docs/adr/0041-keep-apple-as-progressive-compatibility.md)：`0.1.x` 暂不新增 Apple 生产发布通道，macOS Safari 与 iPhone Safari 作为两个独立的渐进兼容证据面继续逐场景记录。Mac 端已经覆盖 Vue／React 的安装、真实更新、离线启动、默认离线页和自动恢复；iPhone 也覆盖了大量安装、更新和离线分支，但仍缺当前 Origin 单独失效的入口恢复实证，并存在恢复联网后 active worker/controller 仍在、SDK 却显示 `not registered`、注册／更新调用挂起直至退出重开的差异。
+
+裁决把“离线页已经自动恢复”和“恢复后的注册／更新就绪”拆开判定：前者保留通过，后者记为部分通过并阻止 iPhone 晋级。它不修改现有 `desktop`／`desktop+android` 门禁，也不扩大首页、README、浏览器矩阵或公开生产声明。R5 至此关闭；iPhone 单 Origin 故障仍作为渐进兼容缺口保留，不阻塞 `desktop` 通道。
