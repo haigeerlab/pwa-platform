@@ -124,6 +124,34 @@ for (const framework of ["vue", "react"] as const) {
 }
 
 for (const framework of ["vue", "react"] as const) {
+  test(`${framework}: locale "en" renders the built-in English copy`, async ({ page }) => {
+    await page.goto(`${origin}/?framework=${framework}&locale=en`);
+    await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
+    await page.evaluate("window.__fixture.wait()");
+    const notice = page.getByRole("status");
+    await expect(notice).toContainText("A new version is available");
+    await page.getByRole("button", { name: "Update", exact: true }).click();
+    await expect(notice).toContainText("Update complete");
+    await page.getByRole("button", { name: "Reload page" }).click();
+    expect(await page.evaluate("window.__fixture.reloadCalls()")).toBe(1);
+  });
+}
+
+for (const framework of ["vue", "react"] as const) {
+  test(`${framework}: messages override single keys on top of the English built-in copy`, async ({ page }) => {
+    await page.goto(`${origin}/?framework=${framework}&locale=en&custom`);
+    await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
+    await page.evaluate("window.__fixture.wait()");
+    const notice = page.getByRole("status");
+    // The overridden key wins; every other key still comes from the selected locale, not from the Chinese default.
+    await expect(notice).toContainText("业务自定义更新");
+    await expect(notice).toContainText("The new offline resources are ready.");
+    await expect(page.getByRole("button", { name: "Update", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Later", exact: true })).toBeVisible();
+  });
+}
+
+for (const framework of ["vue", "react"] as const) {
   test(`${framework}: desktop light and dark modes keep readable contrast inside the viewport`, async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     for (const colorScheme of ["light", "dark"] as const) {

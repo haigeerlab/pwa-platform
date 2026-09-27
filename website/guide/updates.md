@@ -76,7 +76,7 @@ import "@pwa-platform/react/update-notice.css";
 
 挂载组件就是显示开关；不挂载时，原有 `usePwa()` 和自定义界面照常可用。默认是右下角非模态卡片，另可选 `bottom-center`、`top-right`、`top-center`。移动端会留出边距并适配安全区。等待状态持续约 100 ms 后才显示卡片，恢复 worker 的短暂波动不会误报“更新已完成”。点击“稍后”只隐藏本页提示，30 分钟后若仍有等待版本则再次提醒；点击“更新”先完成 worker 接管，随后由用户**再次点击**“刷新页面”。更新失败可重试，多个标签页各自显示接管后的状态。
 
-`colors` 可直接设置 `primaryButtonBackground`、`primaryButtonText`、`surface`、`text`、`mutedText`、`border`；仅影响当前提示，并优先于祖先元素继承的色值。`messages` 可覆盖中文默认文案。宿主也可通过 `--pwa-update-surface`、`--pwa-update-text`、`--pwa-update-muted`、`--pwa-update-border`、`--pwa-update-accent`、`--pwa-update-accent-text`、`--pwa-update-font`、`--pwa-update-radius`、`--pwa-update-shadow` 或 `--pwa-update-z-index` CSS 变量换肤。自定义按钮背景与文字色时，应保持文字清晰可读。业务有未保存的表单时，传入 `reloadPage` 回调，在回调里先确认是否可以离开页面；缺省才直接调用浏览器刷新。提示只消费既有更新状态，不替业务调用 `register()`；长期停留页面仍需自行启用 `updateCheck`。
+`colors` 可直接设置 `primaryButtonBackground`、`primaryButtonText`、`surface`、`text`、`mutedText`、`border`；仅影响当前提示，并优先于祖先元素继承的色值。内置文案覆盖中文（`zh-CN`，默认）与英文（`en`）两种语言，通过 `locale` 选择；不传 `locale` 时行为与此前完全相同。`messages` 仍是逐项覆盖，叠加在所选 `locale` 的内置文案之上；不做浏览器语言自动探测，需要其他语言时用 `messages` 传入完整翻译。宿主也可通过 `--pwa-update-surface`、`--pwa-update-text`、`--pwa-update-muted`、`--pwa-update-border`、`--pwa-update-accent`、`--pwa-update-accent-text`、`--pwa-update-font`、`--pwa-update-radius`、`--pwa-update-shadow` 或 `--pwa-update-z-index` CSS 变量换肤。自定义按钮背景与文字色时，应保持文字清晰可读。业务有未保存的表单时，传入 `reloadPage` 回调，在回调里先确认是否可以离开页面；缺省才直接调用浏览器刷新。提示只消费既有更新状态，不替业务调用 `register()`；长期停留页面仍需自行启用 `updateCheck`。
 
 若业务构建使用 PurgeCSS 且只扫描业务源码，须把 `/^pwa-update-notice/` 加入 safelist，避免从依赖包导入的组件类名被删。首个 Vite 5 项目的真实构建仍需对此做产物和浏览器检查。
 

@@ -78,7 +78,7 @@ export function App() {
 ```
 
 The notice is opt-in and non-modal. Positions are `bottom-right`, `bottom-center`, `top-right` and `top-center`.
-`messages` overrides any built-in Chinese string; `colors` controls surface, text, muted text, border and primary
+`locale` selects the built-in copy (`"zh-CN"`, the default, or `"en"`); `messages` overrides individual keys on top of it; `colors` controls surface, text, muted text, border and primary
 button colors. CSS variables prefixed with `--pwa-update-` provide deeper theming. `reloadPage` runs only after
 worker takeover and an explicit click, allowing the host to protect unsaved work.
 

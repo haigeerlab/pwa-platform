@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Built-in update notice locale:** Vue and React's `PwaUpdateNotice` accept an optional `locale?: "zh-CN" | "en"` (default `"zh-CN"`), matching the built-in Chinese and English tables the offline and entry recovery pages already offer. `messages` still overrides individual keys on top of the selected locale's built-in copy. Not passing `locale` keeps prior behavior unchanged.
 - **Install icon validation:** `@pwa-platform/vite` now fails production builds when a primary manifest icon is missing, has a PNG/JPEG/WebP signature that disagrees with `type`, has an unreadable header, or has intrinsic dimensions that disagree with `sizes`. Unsupported image types emit an explicit warning instead of being reported as validated.
 - **Android install fixture:** the Vite browser fixture now ships real 192×192 and 512×512 `any`/`maskable` icons and a mobile viewport, fixing Android Chrome's “unable to install” result.
 
