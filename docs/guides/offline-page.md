@@ -35,6 +35,10 @@ pwa({ identity: IDENTITY, policy: POLICY, install: INSTALL, topology: { kind: "s
 
 错误信息只给诊断码和字段路径，不回显你写的值（`messages` 里写错的键名也不会出现在错误信息里）。`css` 中的 `</style` 不区分大小写都会被拒绝；换行会统一为 LF 后再写入并计算哈希。
 
+::: warning 离线页已生成，不等于会立刻显示
+`network-first` 导航必须等网络失败后才使用离线页。`networkTimeoutSeconds` 默认关闭，浏览器在物理断网或弱网时可能长时间不判失败；iPhone 真机对照曾出现约 60 秒白屏。生产应用建议从 `networkTimeoutSeconds: 5` 开始，并按真实网络测试调整，详见[网络超时接入说明](network-timeout.md)。
+:::
+
 ## 2. 语言与文案
 
 语言在**构建时固定**，默认 `zh-CN`，页面不会按浏览器语言切换。`messages` 可以只覆盖其中几项：
@@ -82,4 +86,4 @@ offline.html script: sha256-…
 
 - 单元与构建测试：文案、转义、class 与样式对齐、五个诊断码、预缓存、日志中的哈希与页面中的内联内容一致；不开启时插件产物与以前逐字节相同（110 个文件）。
 - 真实浏览器（本机 Chrome 桌面端）：断网时显示生成的页面、中英文与覆盖文案、页面本身被预缓存、暗色背景铺满视口、恢复联网后自动刷新；即使浏览器没有派发 `online`，同源 `HEAD` 探测也能触发刷新。
-- Android 与 iPhone 上的英文离线页已实测。iPhone 27.0 的安装窗口断网时仍报告 `navigator.onLine=true`，原实现恢复联网后没有自动重载；同源定时探测的最终脚本已在 iPhone Vue 与 React 安装窗口通过真机复测。Android 真机另发现 `online` 事件可能早于实际联网，改为先探测再刷新的最终脚本也已通过复测。这些是单设备 E3 证据，不代表移动发布通道通过；Nuxt 暂不支持该选项，Nuxt 应用仍需自带离线页。
+- Android 与 iPhone 上的英文离线页已实测；中文构建也已在两端安装窗口完成离线页与自动恢复实测。iPhone 27.0 的安装窗口断网时仍报告 `navigator.onLine=true`，原实现恢复联网后没有自动重载；同源定时探测的最终脚本已在 iPhone Vue 与 React 安装窗口通过真机复测。中文 iPhone 构建还验证了 `networkTimeoutSeconds: 5` 时约 5 秒回退，而未配置时约 60 秒白屏。Android 真机另发现 `online` 事件可能早于实际联网，改为先探测再刷新的最终脚本也已通过复测。这些是单设备 E3 证据，不代表移动发布通道通过；Nuxt 暂不支持该选项，Nuxt 应用仍需自带离线页。

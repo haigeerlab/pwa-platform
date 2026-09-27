@@ -47,7 +47,7 @@
 | Android Chrome 153 React Drill 安装与离线 | 英文通过；中文未执行 | 公开 React `drill` 页显示原生安装提示，确认后安装 WebAPK `org.chromium.webapk.a79c749fa7b1c369e_v2`（手机本地时间 2026-09-26 19:24:58）。从图标启动 `/app/`，CDP 读到 `display-mode:standalone=true`、v2/registered 与本源 `/app/sw.js` 控制。移动数据原为关闭且 Wi-Fi 关闭时，结束 WebAPK 再从图标启动，`navigator.onLine=false` 仍显示 v2/registered；未缓存路径出现英文离线页与重试按钮，截图 `/private/tmp/pwa-android-react-offline-fallback.png`。测后 Wi-Fi 恢复为 1。 |
 | Android Chrome 153 React 入口恢复 | 计划迁移与点击跳转通过；断网/无效清单等未执行 | 本机公开 `drill` React Origin 在 Chrome 标签页用常驻公开测试钩子交入序号 2、`migrating`、目标为公开 Vue Drill Origin 的合法清单，结果 `accepted=true`；`checkEntryRecovery({returnPath})` 给出 `available` 与本源恢复页链接，结果对象未给出目标 Origin。恢复页显示中文 `lang=zh-CN`、目标主机、有效期与按钮；截图 `/private/tmp/pwa-android-react-recovery.png`，显示深色窄屏布局。页面未自动跳转；点击后 Android 提示是否打开已安装 Vue App，选择“本次允许”后进入 Vue 独立窗口，`pwa-return` 与传入的路径一致。最后交入更高序号 3 的 `normal` 空入口清单，`checkEntryRecovery()` 回到 `none`。此次仅是公开站点旧候选实测。 |
 | Android Chrome 153 Vue 入口恢复与离线区别 | 通过（本次旧候选场景）；域名独立阻断未执行 | Vue Drill 已存序号 1 `normal` 空入口清单；整机断网后 `navigator.onLine=false`，`checkEntryRecovery()` 返回 `none`，不把设备断网误报为域名故障。恢复联网后交入序号 2 的 `migrating` 合法清单，目标为公开 React Drill Origin，`checkEntryRecovery({returnPath})` 返回 `available`。再次断网后打开带 `?return=` 的 `/app/pwa-entry.html`，由 Vue 自己的 `/app/sw.js` 接管，显示 `lang=zh-CN` 的中文备用入口页及目标按钮，而不是通用离线页；截图 `/private/tmp/pwa-android-vue-recovery-offline.png`。该步只证明已存迁移清单与恢复页的离线展示，断网时未点击目标按钮（目标也离线）。测后恢复 Wi-Fi 并交入更高序号 3 `normal` 空入口清单；`checkEntryRecovery()` 回到 `none`。 |
-| 离线页中英文与移动端 UI | 英文移动端、中文桌面与 Android 安装窗口通过；iPhone 中文待补 | Android Vue/React 和 iPhone Vue 英文离线页已在安装窗口观察；Chrome 154 中文构建已完成原生安装窗口、离线页和手动恢复实测。Android 16 + Chrome 153 中文构建已完成 WebAPK 安装、离线页和自动恢复；iPhone 中文构建仍无真机证据。 |
+| 离线页中英文与移动端 UI | 英文移动端及中文桌面、Android、iPhone 安装窗口通过 | Android Vue/React 和 iPhone Vue 英文离线页已在安装窗口观察；Chrome 154 中文构建已完成原生安装窗口、离线页和手动恢复实测。Android 16 + Chrome 153 与 iPhone 16 Pro + iOS 27 中文构建均完成安装、离线页和自动恢复；手机证据仍是单设备 E3，不代表移动发布通道通过。 |
 | 入口恢复移动端与安装窗口 | 英文移动端展示与跳转通过；故障分支待补 | Android Vue/React 与 iPhone Vue 的英文安装窗口恢复页及跨公开 Origin 跳转有实证；单独 Origin 阻断、中文 UI 及 Mac 桌面待补。用户最后提供的 iPhone 截图是 Vue 入口恢复页，前一张才是离线页。 |
 | 十包 tarball 与独立消费 | 本地候选通过；registry 分发未执行 | `entry-resilience` 已补公开元数据、MIT LICENSE、接入 README，Vite peer `^5.0.0 || ^8.0.0`。`CI=true pnpm check:publish` 显示 10 包元数据与导出通过。十个 `0.1.0` 最终本地 tarball 在 `/private/tmp/pwa-stable-tarballs-final`；解包核对 497 个文件，均限 `dist/`、README、LICENSE、package.json，十包 metadata、MIT 文本、内部运行时依赖统一 `0.1.0`、导出存在且常见敏感内容模式扫描通过。隔离项目从最终十包本地 tarball 安装（未从 npm 安装尚未发布的 `0.1.0`），Node 22.22.0 + Vite 5.0.0 + Vue 3.4.0 + TypeScript 5.2.2 的类型检查和真实 Vite 构建退出 0，生成 Vue 更新提示 CSS、manifest、worker、预缓存的 `pwa-entry.html` 与脚本。首轮项目误用 React 19.0.0，与公开 peer `^19.2.0` 冲突；改用 React 19.3.0 后不跳过 peer 校验地安装成功。 |
 | npm 账号与目标版本 | 预检通过，尚未发布 | `npm whoami` 已读到已登录账号；对十包逐一查询 npm registry，`@0.1.0` 均返回不存在。此检查仅防止版本冲突，不能代替发布后读回。 |
@@ -92,7 +92,7 @@
 
 | 场景 | 可追溯证据 | 结果与边界 |
 |---|---|---|
-| 中文默认离线页 | `packages/vite/browser-tests/offline-page.spec.ts` | Chrome 153.0.8010.53 中验证 `lang=zh-CN`、内置中文文案、320px 窄屏无横向溢出、键盘 `Tab` 可聚焦重试按钮；亮／暗主题的正文、弱化正文和按钮文字对比度均不低于 `4.5:1`。完整 Vite 浏览器套件 33/33 通过。桌面安装窗口见下一项，Android 实机见本表后的新增记录；iPhone 中文构建仍待真机实测。 |
+| 中文默认离线页 | `packages/vite/browser-tests/offline-page.spec.ts` | Chrome 153.0.8010.53 中验证 `lang=zh-CN`、内置中文文案、320px 窄屏无横向溢出、键盘 `Tab` 可聚焦重试按钮；亮／暗主题的正文、弱化正文和按钮文字对比度均不低于 `4.5:1`。完整 Vite 浏览器套件 33/33 通过。桌面、Android 与 iPhone 安装窗口的实测分别见后续记录。 |
 | Chrome 154 中文构建原生安装、离线与恢复 | 本地 `site-offline-zh` 候选构建；Chrome for Testing 154.0.8037.57 独立配置 | Chrome 原生菜单显示“将网页作为应用安装”，安装向导显示 `Vite Fixture`，完成“下一步 → 安装”后创建独立应用窗口；窗口没有地址栏并打开 `/app/` 的 v1 shell。按宿主公开契约调用 `client.register()`、刷新至 `/app/sw.js` 接管后，关闭本地 Origin 并进入未缓存路由，独立窗口显示 `lang=zh-CN` 的“当前处于离线状态／网络恢复后页面会自动重新加载。／重试”。恢复只读 SPA 服务后点击“重试”，同一路由回到 v1 shell。首次未调用 `register()` 就断站时无 controller、只得到浏览器网络错误，直接证明接入文档必须把注册步骤列为必需条件。该轮验证了手动恢复。原测试夹具的 1×1 占位图缺陷随后已修正并增加构建期回归校验；本项保留为修正前桌面行为记录，图标质量证据以后续 Android 记录为准。 |
 | 入口恢复页 | `packages/entry-resilience/browser-tests/styling.spec.ts` | Chrome 153.0.8010.53 中对 320px 恢复页验证亮／暗主题、无横向溢出、键盘 `Tab` 可聚焦备用入口按钮，以及正文、到期说明、按钮文字的 `4.5:1` 对比度下限。完整入口恢复浏览器套件 20/20 通过。 |
 | Vue／React 更新提示 | `packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts` | 两框架都在亮／暗主题读取计算色并验证正文、次要文字和主按钮文字的 `4.5:1` 对比度下限；既有 320px 布局和键盘焦点场景继续通过。完整 UI 套件 14/14 通过。 |
@@ -108,7 +108,19 @@
 
 停止 Origin 后在安装窗口打开未缓存地址，页面 `title=离线`、`lang=zh-CN`，显示“当前处于离线状态／网络恢复后页面会自动重新加载。／重试”，`standalone=true`、controller 保持、400px 视口与文档宽度一致；截图 `/private/tmp/pwa-android-zh-installed-offline.png` 无地址栏、无裁切。随后改用线上存在但离线未缓存的 `/app/manifest.webmanifest?android-zh-installed=1` 排除 404 歧义，恢复 Origin 后不点“重试”：服务器记录 `HEAD /app/sw.js 200`，页面自动 `GET` 同一 manifest 并显示在线 JSON；返回 `/app/` 仍为 standalone、worker 控制和 shell。该闭环证明中文离线页的自动探针恢复，而不是手工刷新。
 
-缺陷属于测试夹具和构建期反馈，不是 Service Worker 运行时或公开配置形状错误。按项目所有者要求，Vite 插件新增主图标存在性、常用位图 MIME 与实际尺寸校验：旧实现放过的 1×1、缺文件、类型错配和损坏文件先由红测复现；实现后相关聚焦用例 10/10、Vite 单测 241/241 通过。校验规则、错误码与排障方法已写入 ADR-0040、Vite README、manifest 字段指南及 Vite 5 业务接入作业单。iPhone 中文安装窗口仍未执行。
+缺陷属于测试夹具和构建期反馈，不是 Service Worker 运行时或公开配置形状错误。按项目所有者要求，Vite 插件新增主图标存在性、常用位图 MIME 与实际尺寸校验：旧实现放过的 1×1、缺文件、类型错配和损坏文件先由红测复现；实现后相关聚焦用例 10/10、Vite 单测 241/241 通过。校验规则、错误码与排障方法已写入 ADR-0040、Vite README、manifest 字段指南及 Vite 5 业务接入作业单。iPhone 中文安装窗口随后按下一节完成实测。
+
+## R2 iPhone 中文安装窗口、网络超时与自动恢复（2026-09-27）
+
+设备为实体 iPhone 16 Pro、iOS 27.0，使用 Safari 主屏幕网页 App 和网页检查器。测试使用当前合并代码生成的临时生产构建，通过临时 HTTPS 入口访问；没有新增正式部署。manifest 的 `name` 为“PWA 中文测试”、`short_name` 为“中文测试”，四个主图标的实际尺寸与声明一致。用户经“共享 → 添加到主屏幕”安装，系统名称显示“中文测试”；从图标启动后 `display-mode: standalone` 为真，视口为 402×812、无水平溢出，页面由本源 `/app/sw.js` 控制。
+
+先保留导航 `network-first`、但不设置 `networkTimeoutSeconds` 作为对照。实体断网后结束网页 App 并从图标冷启动，窗口约 60 秒保持白屏，随后才显示已缓存应用壳；网页检查器记录 `responseStart=60022ms`、`DOMContentLoaded=60040ms`、`transferSize=0`。这不是 HTTPS、图标或预缓存失败，而是 Safari 的网络请求在浏览器自行超时前一直挂起，不能作为可接受的生产体验。
+
+随后只为临时测试构建增加 `networkTimeoutSeconds: 5` 并更换缓存命名空间种子。新 worker 进入 waiting 后，公开 `applyUpdate()` 路径产生 `update-applied`，最终 active worker 为 activated、waiting 为空，新预缓存生效。再次实体断网冷启动，用户观察不到 5 秒即显示页面；检查器记录 `responseStart=5031ms`、`DOMContentLoaded=5047ms`、`transferSize=0`，证明显式超时把同一设备的离线等待从约 60 秒收敛到约 5 秒。
+
+保持断网时，用户实际点击临时同源探测链接，未缓存导航由 worker 返回中文默认离线页：`title=离线`、`lang=zh-CN`，正文为“PWA 中文测试／当前处于离线状态／网络恢复后页面会自动重新加载。／重试”；页面保持 standalone、本源 controller 和 402px 无横向溢出，按钮位于 x=24、宽 354、高 48，白字蓝底可读。该导航约 5.014 秒得到回退。用户随后只恢复网络，没有点击“重试”；离线页自动重载原目标，导航类型为 `reload`，`responseStart=972ms`、`DOMContentLoaded=1009ms`、`transferSize=587`，并显示线上 manifest JSON。最终出现 JSON 是因为探测目标本来就是 `manifest.webmanifest`，是自动恢复成功的预期结果，不是业务首页被替换。临时静态服务器未给 webmanifest 响应声明字符集，Safari 原始 JSON 查看器曾按 GBK 解码中文；这是测试服务器的展示限制，不计为平台离线页缺陷。
+
+本轮仍保留既有 Safari 兼容性边界：断网恢复后，`registration.update()`／重新 `register()` 曾长时间不返回，结束网页 App、保持联网并从图标重开后恢复。结论仅为“iPhone 中文安装、5 秒离线回退、中文离线页与自动恢复在该设备通过”；Apple 发布通道、完整更新矩阵和单 Origin 故障场景仍未通过。
 
 ## R4 交叉边界复核（2026-09-27）
 

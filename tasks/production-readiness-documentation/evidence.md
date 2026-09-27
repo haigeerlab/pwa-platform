@@ -46,8 +46,8 @@
 |---|---|---|---|
 | PC / Chrome 桌面 | E4 | Chrome 154/153 全仓各 228/228；Vue/React 原生安装；更新、离线恢复、单 Origin 故障；正式包独立消费 | 发布方仍须在真实业务 Origin 验证响应头、旧资源保留和回滚 |
 | PC / Safari 18.6 | E3 | Vue/React 添加到程序坞、在线启动和基础交互 | 安装窗口更新、断网冷启动矩阵未完成；属于渐进兼容观察 |
-| Android / Chrome 153 | E3 | Vue/React WebAPK 安装与断网冷启动；Vue 安装窗口 v1→v2；英文离线页自动恢复；入口迁移展示/跳转 | 只有一台设备；无 Chrome N；部分中文、独立 Origin 故障和 React 旧 DOM 隔离未覆盖；不满足 N/N-1 门禁 |
-| iPhone / Safari，iOS 27 | E3 | Vue/React 主屏幕安装与断网冷启动；标签页两步更新；英文离线页最终自动恢复；入口迁移展示/跳转 | 安装窗口完整更新矩阵、单 Origin 故障未覆盖；断网恢复后曾短暂 `not registered`，结束应用重开才恢复 |
+| Android / Chrome 153 | E3 | Vue/React WebAPK 安装与断网冷启动；Vue 安装窗口 v1→v2；中英文离线页自动恢复；入口迁移展示/跳转 | 只有一台设备；无 Chrome N；独立 Origin 故障和 React 旧 DOM 隔离未覆盖；不满足 N/N-1 门禁 |
+| iPhone / Safari，iOS 27 | E3 | Vue/React 主屏幕安装与断网冷启动；标签页两步更新；中英文离线页最终自动恢复；中文构建以 5 秒网络超时完成离线回退；入口迁移展示/跳转 | 安装窗口完整更新矩阵、单 Origin 故障未覆盖；不设网络超时时曾出现约 60 秒白屏；断网恢复后曾短暂 `not registered`，结束应用重开才恢复 |
 
 详细逐场景证据见 [正式版验收记录](../stable-release-qualification/verification.md)。首页只能压缩展示，不得改变上述限制。
 
