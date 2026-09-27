@@ -7,7 +7,7 @@
 ## 公开接口
 
 - Vue：`import { PwaUpdateNotice } from "@pwa-platform/vue/ui"`；React：`import { PwaUpdateNotice } from "@pwa-platform/react/ui"`。
-- 两侧都接受可选 `position`（`bottom-right`，默认；`bottom-center`、`top-right`、`top-center`）、`messages`（部分覆盖中文默认文案）、`colors`（部分覆盖 `surface`、`text`、`mutedText`、`border`、`primaryButtonBackground`、`primaryButtonText`）和 `reloadPage`（业务自定义刷新动作，便于保护未保存内容）。`colors` 只作用于本组件，优先于宿主继承的同名视觉 CSS 变量；未传的色值继续使用 CSS 变量或默认主题。不传 `reloadPage` 时，只有用户点击“刷新页面”才调用浏览器 reload。
+- 两侧都接受可选 `position`（`bottom-right`，默认；`bottom-center`、`top-right`、`top-center`）、`locale`（`zh-CN`，默认；`en`，选择内置文案，2026-09-28 增补，见 ADR-0039 增补）、`messages`（在所选语言的内置文案上逐项覆盖）、`colors`（部分覆盖 `surface`、`text`、`mutedText`、`border`、`primaryButtonBackground`、`primaryButtonText`）和 `reloadPage`（业务自定义刷新动作，便于保护未保存内容）。`colors` 只作用于本组件，优先于宿主继承的同名视觉 CSS 变量；未传的色值继续使用 CSS 变量或默认主题。不传 `reloadPage` 时，只有用户点击“刷新页面”才调用浏览器 reload。
 - 组件的挂载就是开关；不挂载不产生 DOM、样式或任何自动刷新。业务可以条件渲染。样式由独立 CSS 入口提供，以 `--pwa-update-*` 变量换肤；不要求任何 UI 框架或图标库。
 - CSS 导入属于接入步骤，文档必须给出完整的两行导入和挂载示例。两个包的根入口不导入 CSS，服务端渲染根入口不变。
 
@@ -33,6 +33,12 @@
 2. 两侧在稳定等待、短暂等待、稍后、更新中、失败、接管后、多标签页、显式刷新等状态下行为一致；刷新只由用户点击触发。
 3. 真实浏览器在 320px 与桌面宽度、明暗模式下核对布局与键盘行为；业务 `colors`、CSS 变量和 `position` 生效；主按钮背景与文字色可独立配置。
 4. 不改变 `PwaIdentity`、scope、worker、缓存准入与 facade 方法语义；既有浏览器更新验收持续通过。
+
+## 补充验收：内置语言（2026-09-28）
+
+1. 组件单元测试（Vue、React 各一套）：不传 `locale` 时文案与此前中文默认值逐字相同；`locale: "en"` 时 12 个文案键全部为英文内置值；`messages` 在两种语言上都只替换出现的键。
+2. 跨包一致性测试断言两侧导出的 `PwaUpdateNoticeLocale` 取值与两种语言的内置文案完全一致。
+3. 公开示例改为引用包内英文文案；既有 `update-notice.spec.ts` 真实浏览器场景持续通过，并新增至少一个断言英文内置文案的场景。
 
 ## 补充验收：隔离槽真实更新（2026-09-26）
 
