@@ -112,6 +112,31 @@ test.describe("stale-while-revalidate (public-data)", () => {
   });
 });
 
+test.describe("admission diagnostics (review risk R8)", () => {
+  test("a Vary: Origin rejection is reported once on the worker console, naming the reason and the path", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("v3");
+    fixtureServer.setHeaderRules([{ pathPrefix: RUNTIME_CATALOG_VARY_COOKIE_URL, headers: { Vary: "Origin" } }]);
+    await installAndControl(page, fixtureServer);
+
+    const warnings: string[] = [];
+    context.on("console", (message) => {
+      if (message.type() === "warning" && message.text().includes("[pwa-platform]")) warnings.push(message.text());
+    });
+    for (let read = 0; read < 2; read += 1) {
+      expect((await fetchJson(page, fixtureServer.url(`${RUNTIME_CATALOG_VARY_COOKIE_URL}?read=${read}`))).ok).toBe(true);
+    }
+
+    await expect.poll(() => warnings.length, { timeout: 5_000 }).toBe(1);
+    expect(warnings[0]).toContain(`${RUNTIME_CATALOG_VARY_COOKIE_URL}: vary (Vary: Origin)`);
+    expect(warnings[0]).not.toContain("read=");
+    expect(hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_CATALOG_VARY_COOKIE_URL)).toBe(false);
+  });
+});
+
 test.describe("rejected responses (public-data): admitted online, network error offline, nothing cached", () => {
   const cases: readonly {
     readonly name: string;
@@ -219,6 +244,19 @@ test.describe("dynamic navigation (navigation-public-dynamic, runtime-pages)", (
 
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_UNVISITED_URL));
     await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
+  });
+
+  test("a navigation carrying Authorization is served from the network and never written to the pages cache", async ({
+    page,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("v3");
+    await installAndControl(page, fixtureServer);
+
+    await page.setExtraHTTPHeaders({ authorization: "Bearer navigation-probe" });
+    await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
+    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    expect(hasCachedEntry(await cacheContents(page), "runtime-pages", RUNTIME_DASHBOARD_URL)).toBe(false);
   });
 });
 

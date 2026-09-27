@@ -8,7 +8,7 @@ import { isOfflineWriteMessage, isRuntimeCachePendingMessage, isSkipWaitingMessa
 import type { PwaOfflineWriteMessage, PwaRuntimeCachePendingResult, PwaRuntimeCacheReason } from "../messages/index.js";
 import { validatePushPayload } from "../push-payload/index.js";
 import type { PwaPlatformWorkerConfig } from "../shared/config.js";
-import { admitRuntimeResponse } from "./admit.js";
+import { runtimeAdmissionRejection, type PwaRuntimeAdmitOptions, type PwaRuntimeRejectionReason } from "./admit.js";
 import { createRouter } from "./decide.js";
 import type { PwaRequestDecision } from "./decide.js";
 import { validateOfflineWriteEnqueue, validateOfflineWriteFlush } from "./offline-write-intent.js";
@@ -380,6 +380,7 @@ function buildRuntimeEngines(
   factory: typeof createRuntimeCacheEngine,
 ): (key: PwaRuntimeEngineKey) => PwaRuntimeCacheEngine {
   const built = new Map<PwaRuntimeEngineKey, PwaRuntimeCacheEngine>();
+  const reported = new Set<string>();
   return (key) => {
     const existing = built.get(key);
     if (existing !== undefined) return existing;
@@ -391,7 +392,7 @@ function buildRuntimeEngines(
             maxEntries: runtimeCache.maxEntries,
             maxAgeSeconds: runtimeCache.maxAgeSeconds,
             admit: (response) =>
-              admitRuntimeResponse(response, {
+              admitAndReport(response, key, reported, {
                 resourceClass: "navigation-public-dynamic",
                 strategy: "network-first",
                 maxEntryBytes: runtimeCache.maxEntryBytes,
@@ -404,7 +405,7 @@ function buildRuntimeEngines(
             maxEntries: runtimeCache.maxEntries,
             maxAgeSeconds: runtimeCache.maxAgeSeconds,
             admit: (response) =>
-              admitRuntimeResponse(response, {
+              admitAndReport(response, key, reported, {
                 resourceClass: "public-data",
                 strategy: key === "data-network-first" ? "network-first" : "stale-while-revalidate",
                 maxEntryBytes: runtimeCache.maxEntryBytes,
@@ -414,6 +415,34 @@ function buildRuntimeEngines(
     built.set(key, engine);
     return engine;
   };
+}
+
+/**
+ * Runs the admission check and, the first time an (engine, reason) pair rejects a response in this worker's lifetime,
+ * reports it with `console.warn` (spec.public-read-cache "响应准入", review risk R8). The report is a debugging aid only:
+ * it names the reason and the response's path — never its query string — plus the `Vary` value when that was the
+ * cause, and never changes the admission result.
+ */
+async function admitAndReport(
+  response: Response,
+  key: PwaRuntimeEngineKey,
+  reported: Set<string>,
+  options: PwaRuntimeAdmitOptions,
+): Promise<boolean> {
+  const reason = await runtimeAdmissionRejection(response, options);
+  if (reason === undefined) return true;
+  const reportKey = `${key}:${reason}`;
+  if (!reported.has(reportKey)) {
+    reported.add(reportKey);
+    console.warn(rejectionMessage(response, reason));
+  }
+  return false;
+}
+
+function rejectionMessage(response: Response, reason: PwaRuntimeRejectionReason): string {
+  const path = URL.canParse(response.url) ? new URL(response.url).pathname : "(unknown path)";
+  const vary = reason === "vary" ? ` (Vary: ${response.headers.get("vary") ?? ""})` : "";
+  return `[pwa-platform] runtime cache did not store ${path}: ${reason}${vary}. Further ${reason} rejections from this cache are not reported.`;
 }
 
 /** `decide()` only ever returns a `"runtime"` decision once `config.runtimeCache.enabled` made `runtimeEngines` non-undefined. */
