@@ -2,6 +2,15 @@
 
 适用于已使用 <code>vite-plugin-pwa</code> 的 Vite + Vue 3 或 Vite + React 19 应用。迁移前先确认 Vite 5／8、框架版本和部署路径符合[兼容范围](/reference/compatibility)，并盘点线上已有的 worker URL、scope、manifest ID 和注册用户；已投产的 worker 切换需要单独的迁移与回滚方案。
 
+## 先确认能不能迁
+
+| 条件 | 要求 |
+| --- | --- |
+| Vite | <code>^5.0.0</code> 或 <code>^8.0.0</code> |
+| 框架 | Vue <code>^3.4.0</code> 或 React <code>^19.2.0</code>；其他框架没有绑定，只能直接用 <code>@pwa-platform/client-runtime</code> |
+| Vite <code>base</code> | 同源绝对路径，以 <code>/</code> 开头、以 <code>/</code> 结尾（例如 <code>/</code> 或 <code>/admin/</code>）；相对路径 <code>./</code> 或完整 URL 会在构建时报错 |
+| 部署形态 | 一个源上只有这一个 PWA，或按共享 origin 登记表声明的根应用与子路径应用 |
+
 ## 配置对应关系
 
 | 原有做法 | PWA Platform 做法 |
@@ -9,7 +18,7 @@
 | <code>VitePWA({ manifest })</code> | <code>pwa({ identity, install, policy, topology })</code> |
 | <code>workbox.globPatterns</code> | <code>PwaPolicy.resources</code> 中的 <code>asset</code> 规则 |
 | <code>workbox.runtimeCaching</code> | 只对明确的公共读取使用 v3 运行时缓存；私有接口不能直接照搬 |
-| <code>navigateFallback</code> | <code>offlineFallback</code> 与导航资源规则 |
+| <code>navigateFallback</code> | <code>offlineFallback</code> 与导航资源规则；**没有**通配符式的应用壳兜底——未被精确预缓存的 history 路由深链接断网时得到的是网络错误页，不是应用壳，见[按功能接入](/guide/integration-by-capability)路径三的提示 |
 | <code>registerType: "prompt"</code> | <code>updateWaiting</code> + <code>applyUpdate()</code> |
 | <code>registerType: "autoUpdate"</code> | 无直接对应；平台要求用户确认接管 |
 | <code>virtual:pwa-register</code> | 框架绑定提供 <code>register()</code>，由应用主动调用 |
@@ -25,6 +34,10 @@
 
 0.1.0 的 <code>vite dev</code> 可加载 <code>virtual:pwa-config</code>，但不生成平台 worker；开发入口只应在生产构建注册。离线和更新请使用 <code>vite build</code> + <code>vite preview</code>，并在目标部署环境复核。
 
+::: warning 有构建后混淆的项目
+把 <code>pwa()</code> 放在混淆插件**之后**。如果混淆插件在 Vite 生成指纹文件名后改写代码，还必须给混淆插件设置固定的随机种子，并在相同源码上连续构建两次，比对所有同名 JS/CSS 文件的 SHA-256 是否一致。隔离环境中的实测：混淆步骤未设置固定随机种子时，同名 JS 文件内容在两次构建之间不同，而 worker 内容不变；设置固定种子后两次构建才稳定一致。不能用关闭文件指纹或只刷新页面来掩盖这个问题，因为旧页面仍可能请求同名但内容已改变的资源。
+:::
+
 ## 核对自定义构建产物
 
 迁移前查看生产产物：除了 <code>index.html</code> 和 <code>assets/</code>，应用启动是否还依赖其他脚本、样式或配置文件？策略按路径段匹配，不支持通配符；例如每次文件名都变化的根目录文件 <code>/_app-config-版本-哈希.js</code> 不会被 <code>/assets</code> 覆盖。真实接入试验中，遗漏该文件会使离线页面停在启动动画。
@@ -38,3 +51,16 @@
 子路径部署时，策略里仍写相对挂载点的 <code>/config</code>，而浏览器请求地址应带实际部署前缀。构建后在浏览器的 Cache Storage 检查启动必需文件是否入库，禁用 HTTP 缓存并断网重新打开页面。<code>compile.asset-rule-unmatched</code> 表示某条资产规则没有匹配到任何产物；没有这个警告也不代表所有启动文件已被覆盖。
 
 迁移时以本站的[当前包状态](/reference/packages)与[公共读取规则](/guide/public-read-cache)为准。已有 worker 的 URL、scope 和 manifest ID 涉及浏览器身份，必须在目标业务项目制定迁移与回滚方案，不能直接照搬新项目的配置示例。
+
+## 迁移后暂时得不到的能力
+
+- 任意运行时缓存：只支持显式允许的同源公共 GET；私有、写入、流媒体和未分类请求不缓存。
+- 推送通知与显式离线写队列：相关包目前仍是工作区私有包，尚未公开发布；后台自动同步也未提供。
+- manifest 的 <code>share_target</code>、自动更新模式（<code>autoUpdate</code>）、周期性后台同步、角标：不提供。
+
+## 其他注意事项
+
+- **旧缓存不会被平台自动清理。** 平台 worker 只管理自己命名空间下的缓存；<code>vite-plugin-pwa</code> 留下的 Workbox 缓存会一直留在已访问过的用户浏览器里，需要自行评估存储占用或提供清理方案。
+- **同一 scope 只有一个注册。** 用新的 worker 脚本地址重新注册会替换原注册；原 worker 在所有受控标签页关闭前，仍会继续控制已打开的页面。
+- 构建报错只给诊断码和契约路径，不会回显配置的值。
+- 若你使用的框架脚手架会在产物根目录生成文件名随构建变化的运行时配置脚本（例如某些后台管理框架模板），记得按上面"核对自定义构建产物"一节把它移入固定子目录并补一条 <code>asset</code> 规则，否则断网时应用会停在启动画面。

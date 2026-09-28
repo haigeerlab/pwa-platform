@@ -33,6 +33,10 @@ pnpm add -D @pwa-platform/vite@0.1.0 @pwa-platform/contracts@0.1.0
 
 安装命令固定 0.1.0；npm `latest` 指向该正式包版本。业务应用仍需单独完成生产部署验收。
 
+::: warning 同一次构建中的平台包必须是同一版本
+带新字段的构建计划不能被旧版本的平台包校验；升级 <code>@pwa-platform/vite</code>、框架绑定或 <code>@pwa-platform/contracts</code> 时要一起升级，不要只升级其中一个。
+:::
+
 ## 接入顺序
 
 1. 先按[功能接入路径](/guide/integration-by-capability)决定只启用原生壳、更新、离线、公共缓存或恢复中的哪些能力。

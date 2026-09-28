@@ -2,6 +2,26 @@
 
 业务应用先按[包选择](/start/choose)确定直接依赖。以下状态对应已发布的 <code>0.1.0</code> 正式包，npm `latest` 指向该版本。
 
+依赖只从上往下走，上层可以调用下层，下层不知道上层存在：
+
+```text
+宿主层   @pwa-platform/vue · @pwa-platform/react · (nuxt)      ← 你直接使用
+构建层   @pwa-platform/vite                                    ← 你在构建配置里使用
+运行时层 client-runtime（页面侧）· sw-runtime（worker 侧）
+         engine-workbox（缓存引擎）                            ← 你碰不到，随上层自动安装
+编译层   core（编译计划）· build-verifier（产物质检）
+契约层   contracts（类型与校验）
+可选模块 push · offline-write · entry-resilience               ← 需要时再装
+```
+
+## 几条不能碰的红线
+
+1. **身份上线后不可变更。** <code>scope</code>、Service Worker URL、manifest ID 和缓存命名空间一旦在生产环境注册就不能再改；确实需要变更，必须先有架构决策记录和迁移计划。
+2. **不能注入自己的 Service Worker 代码或 Workbox 配置**，只能通过 <code>PwaPolicy</code> 声明意图。
+3. **敏感请求默认不缓存。** 私有数据、写操作、流媒体和未分类请求都不会进入缓存，想缓存某类请求必须在策略里明确声明，且不能突破安全基线。
+4. **界面归业务。** 平台只提供状态和方法，不弹任何提示，也不替业务刷新页面。
+5. **正式包不代替业务应用的生产浏览器验收**，尤其是 Chrome Android，见[兼容范围](/reference/compatibility)。
+
 ## 业务直接使用
 
 | 包 | 作用 | 状态 |

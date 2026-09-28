@@ -16,7 +16,7 @@
 先运行生产构建，用 `vite preview` 本地排查，再到与配置一致的最终 HTTPS 地址重复以下步骤。不要用 `vite dev` 验收平台 worker。
 
 1. 在线打开应用入口。在 Chrome DevTools 的 **Application → Manifest** 检查 `id`、`start_url`、图标和 scope；在 **Application → Service workers** 等待 worker 变为 `activated`，核对脚本 URL 和注册 scope 与配置一致。
-2. **保持在线刷新一次页面**，在 DevTools Console 执行 `navigator.serviceWorker.controller?.scriptURL`，应得到配置的 worker URL。首次打开时即使注册成功、worker 已激活，当前页面仍可能显示 `undefined`：平台 worker 不会主动接管已打开的页面。
+2. **等 Service Workers 面板里的状态变为 `activated` 之后再刷新页面**——过早刷新是最常见的误报来源。平台 worker 从不调用 `clients.claim()`，所以完成本次注册的这个页面本身永远不会被接管；只有等到 worker 确实 `activated` 后发起的全新导航（刷新或重新打开）才可能被接管，紧贴着激活那一刻刷新仍可能因为竞态短暂落空，可以再刷新一次确认。刷新后在 DevTools Console 执行 `navigator.serviceWorker.controller?.scriptURL`，应得到配置的 worker URL；这是有意设计，不是缺陷。
 3. 在 DevTools 的 **Network → Offline** 模拟断网，重新打开已访问的应用入口，确认应用壳可用；再访问未缓存路由，确认显示预期离线回退。测试时禁用浏览器 HTTP 缓存，避免它掩盖预缓存缺口。完成后恢复在线。
 
 - [ ] 按以上步骤确认注册、在线刷新后受控，以及离线重新打开已访问的应用壳。
