@@ -110,6 +110,45 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  edge:
+    # Non-blocking (ADR-0044): the Chrome suite again in the runner's preinstalled Microsoft Edge. Not on pull requests;
+    # after merges, nightly and on demand, like the engine smoke.
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    name: Browser (Microsoft Edge stable, non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm and Node.js, install with frozen lockfile
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+
+      - name: Show preinstalled Microsoft Edge version
+        # The runner image ships Edge; the workflow never downloads browsers for this job.
+        run: microsoft-edge --version
+
+      - name: Browser tests in Edge
+        env:
+          PWA_BROWSER_CHANNEL: msedge
+        run: pnpm test:browser
+
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-traces-edge
+          path: packages/*/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   engines:
     # Non-blocking and costly (browser downloads, real FCM): not on pull requests; after merges, nightly and on demand.
     if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
