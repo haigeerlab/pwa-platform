@@ -109,7 +109,7 @@ type PwaPolicyV3 = Omit<PwaPolicyV2, "schemaVersion"> & {
 - 正文字节数不超过 `maxEntryBytes`。没有可信 `Content-Length` 时按实际读取的字节数判定，超出即放弃写入。
 - **拒绝时的诊断（2026-09-28 增补，审查风险 R8）**：响应因上述任一条件未写入时，平台 worker 以 `console.warn` 报告拒绝原因（`response-type`、`status`、`redirected`、`content-type`、`cache-control`、`vary`、`size` 之一）与该响应的 URL 路径（不含查询串）；`vary` 时附带响应的 `Vary` 值。同一 worker 生命周期内，每个（运行时引擎，原因）组合只报告一次。它只是开发与排查辅助：不改变准入结果、不向页面发送消息、不属于公开 API；恢复 worker 与 push 路径仍不调用 `console`。
 - 写入失败（含 `QuotaExceededError`）只丢弃这一次写入；配额错误时清空**全部**运行时缓存以回收空间（Workbox 的配额回调是全局的，见 ADR-0035 探路 2），预缓存不受影响；页面收到的响应不受影响。
-- **配额清理独立于引擎是否已构建（2026-09-28 增补，审查风险 R12）**：sw-runtime 按（缓存，策略）惰性构建运行时引擎（`buildRuntimeEngines`），只在某个规则第一次匹配请求时才创建对应引擎；`ExpirationPlugin` 的 `purgeOnQuotaError` 回调只在引擎被构建的那一刻才注册进 Workbox 的全局回调集合。若本次 worker 生命周期内只命中了其中一类规则（例如只有 `data` 规则被访问过），另一类（`pages`）从未构建引擎，则单靠 `purgeOnQuotaError` 不会清空它——这就是 ADR-0035"已知限制"一节原先记录的"尚未被访问的运行时缓存不会被清"。为了让"配额错误清空全部运行时缓存"这条承诺不依赖引擎是否已构建，平台在 worker 启动时另外注册一个不依赖任何具体引擎实例的清理回调（`@pwa-platform/engine-workbox/worker` 的 `registerRuntimeCacheQuotaCleanup`，包装 Workbox 同一个全局配额回调注册表），直接按 `runtimeCache.pagesCacheName` 与当前 digest 的 `dataCacheName` 删除两个缓存，与 `deleteRuntimeCaches` 用于登出的删除范围一致。
+- **配额清理独立于引擎是否已构建（2026-09-28 增补，审查风险 R12）**：sw-runtime 按（缓存，策略）惰性构建运行时引擎（`buildRuntimeEngines`），只在某个规则第一次匹配请求时才创建对应引擎；`ExpirationPlugin` 的 `purgeOnQuotaError` 回调只在引擎被构建的那一刻才注册进 Workbox 的全局回调集合。若本次 worker 生命周期内只命中了其中一类规则（例如只有 `data` 规则被访问过），另一类（`pages`）从未构建引擎，则单靠 `purgeOnQuotaError` 不会清空它——这就是 ADR-0035"已知限制"一节原先记录的"尚未被访问的运行时缓存不会被清"。为了让"配额错误清空全部运行时缓存"这条承诺不依赖引擎是否已构建，平台在 worker 启动时另外注册一个不依赖任何具体引擎实例的清理回调（`@pwa-platform/engine-workbox/worker` 的 `registerRuntimeCacheQuotaCleanup`，包装 Workbox 同一个全局配额回调注册表），直接按 `runtimeCache.pagesCacheName` 与当前 digest 的 `dataCacheName` 删除两个缓存，与 `deleteRuntimeCaches` 用于登出的删除范围一致。真实 Chrome 中还观察到更宽的缺口（2026-09-28 增补）：即使引擎已构建，`purgeOnQuotaError` 也只删除该 `ExpirationPlugin` 在本次生命周期里已经读写过的缓存（workbox-expiration 7.4.1 的 `_cacheExpirations` 按首次触碰惰性登记）；worker 重启后第一次写入就遇到配额错误时，它一个缓存也不删。平台的全局清理回调不依赖这份登记，因此同样覆盖这种情况。
 
 ### 读取与时效
 
@@ -189,6 +189,7 @@ pnpm gate:local
   - 被拒绝的响应断网后得到网络错误。
   - 探针：服务端返回带 `Set-Cookie` 的同源响应时，worker 读到的该头为空。这证明平台确实无法检查它，从而支撑上文的责任划分。
   - 新 worker 激活后 `runtime-pages` 被清空，`runtime-data` 仅在 digest 变化时被清空。
+  - 配额耗尽（R12）：用 DevTools 协议把源配额压到当前用量并重启 worker，一次未命中的数据写入抛出 `QuotaExceededError` 后，`runtime-pages` 与 `runtime-data` 都被清空，预缓存保留；该用例依赖 Chromium 专有协议，WebKit/Firefox 跳过。
   - logout 与恢复 worker 后，Cache Storage 中没有运行时缓存。
   - v2 策略的示例站行为不变。
 - 未取得的 Android、N-1 证据按惯例登记为未执行，不折算为通过。

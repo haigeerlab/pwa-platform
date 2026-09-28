@@ -260,6 +260,50 @@ test.describe("dynamic navigation (navigation-public-dynamic, runtime-pages)", (
   });
 });
 
+test.describe("quota error clears every runtime cache (review risk R12)", () => {
+  // The quota is lowered through the Chrome DevTools Protocol, which only Chromium exposes (ADR-0042).
+  test.skip(({ browserName }) => browserName !== "chromium", "Storage.overrideQuotaForOrigin is a Chromium DevTools Protocol command");
+  test("a data write that hits QuotaExceededError in a fresh worker clears runtime-pages and runtime-data; the precache survives", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("v3");
+    await installAndControl(page, fixtureServer);
+    await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
+    expect((await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL))).ok).toBe(true);
+    // Workbox may finish cache.put after the response reaches the page.
+    await expect.poll(async () => dataCacheNames(await snapshotCaches(page)).length).toBe(1);
+    const before = await snapshotCaches(page);
+    expect([...before.keys()].some((name) => name.includes("runtime-pages"))).toBe(true);
+
+    const session = await context.newCDPSession(page);
+    const origin = new URL(fixtureServer.url("/")).origin;
+    // A fresh worker lifetime builds only the engines it is asked for, so the reviews read below builds the data
+    // engine alone and the pages engine never exists. Workbox's own `purgeOnQuotaError` would clear nothing here:
+    // an ExpirationPlugin only purges caches it has already touched in this lifetime (workbox-expiration@7.4.1
+    // `_cacheExpirations`), and the failed write is the first touch. Only the worker-wide cleanup (R12) clears both.
+    await session.send("ServiceWorker.enable");
+    await session.send("ServiceWorker.stopAllWorkers");
+    const { usage } = await session.send("Storage.getUsageAndQuota", { origin });
+    await session.send("Storage.overrideQuotaForOrigin", { origin, quotaSize: usage });
+
+    try {
+      // Stale-while-revalidate miss: the network answer still reaches the page even though its cache write fails.
+      expect(await fetchJson(page, fixtureServer.url(RUNTIME_REVIEWS_LIST_URL))).toMatchObject({ ok: true, status: 200 });
+      await expect
+        .poll(async () => [...(await snapshotCaches(page)).keys()].filter((name) => name.includes("runtime-")), {
+          message: "every runtime cache must be cleared after the quota error",
+          timeout: 5_000,
+        })
+        .toEqual([]);
+      expect((await snapshotCaches(page)).get(PRECACHE_CACHE_NAME)).toBe(before.get(PRECACHE_CACHE_NAME));
+    } finally {
+      await session.send("Storage.overrideQuotaForOrigin", { origin });
+    }
+  });
+});
+
 test.describe("activation cleanup", () => {
   test("a new version with the same runtimeCache config clears runtime-pages but keeps the current-digest runtime-data; other caches untouched", async ({
     page,

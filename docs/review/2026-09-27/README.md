@@ -51,7 +51,7 @@
 
 每条风险和建议的当前状态见 [06 风险清单](06-architecture-risks.md) 与 [07 改进建议](07-recommendations.md) 开头的“2026-09-28 状态”一节；证据等级的变化见[功能证据台账](../../operations/feature-evidence-ledger.md)。
 
-仍然开放的事项：R9 根因（需要 iPhone 真机）、Android N-1 与单源真实故障证据、真实浏览器中耗尽配额的用例、恢复 worker 删除失败场景（需要专门的测试构建），以及 #18。
+仍然开放的事项：R9 根因（需要 iPhone 真机）、Android N-1 与单源真实故障证据、恢复 worker 删除失败场景（需要专门的测试构建），以及 #18。
 
 ## 方法与可信度
 
