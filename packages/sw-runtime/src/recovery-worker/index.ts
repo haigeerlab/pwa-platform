@@ -39,13 +39,22 @@ export function registerRecoveryWorker({ scope, config }: PwaRecoveryWorkerOptio
  * identity-derived queue database, cancels this registration's push subscription (if any), then claims the open
  * clients so they stop being controlled by the broken worker. Cancelling the subscription never blocks deletion or
  * takeover: it runs after deletion and before claim, and its own failure is swallowed.
+ *
+ * One failed deletion never stops the others (review #15): the activate event runs once, so whatever is skipped here
+ * would stay behind until the next deployment. After every deletion was attempted, any failure rejects before the
+ * push step and the claim, so recovery still fails closed.
  */
 async function recover(scope: ServiceWorkerGlobalScope, appCachePrefix: string, offlineWriteDatabaseName: string): Promise<void> {
+  const failures: unknown[] = [];
+  const record = (error: unknown): void => {
+    failures.push(error);
+  };
   for (const name of await scope.caches.keys()) {
-    if (name.startsWith(appCachePrefix)) await scope.caches.delete(name);
+    if (name.startsWith(appCachePrefix)) await scope.caches.delete(name).catch(record);
   }
   await deleteExpirationRecordsBestEffort(appCachePrefix);
-  await deleteOfflineWriteDatabase(offlineWriteDatabaseName);
+  await deleteOfflineWriteDatabase(offlineWriteDatabaseName).catch(record);
+  if (failures.length > 0) throw failures[0];
   await cancelPushSubscription(scope);
   await scope.clients.claim();
 }

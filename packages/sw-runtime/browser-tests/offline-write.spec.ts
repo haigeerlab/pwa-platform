@@ -1,5 +1,15 @@
-import { expect, test, waitForController, waitForControllerChange } from "@pwa-platform/browser-test-harness";
-import { CONFIG_OFFLINE_WRITE, FIXTURE_SITE, SHELL_URL, WORKER_URL } from "./fixture-site.js";
+import type { BrowserContext, Page } from "@playwright/test";
+import {
+  createCaches,
+  expect,
+  requestFromPage,
+  snapshotCaches,
+  test,
+  waitForController,
+  waitForControllerChange,
+  type FixtureServer,
+} from "@pwa-platform/browser-test-harness";
+import { APP_CACHE_PREFIX, CONFIG_OFFLINE_WRITE, FIXTURE_SITE, PRECACHE_CACHE_NAME, SHELL_URL, WORKER_URL } from "./fixture-site.js";
 import { installAndControl, waitForActiveWorkerActivated } from "./page-probe.js";
 
 test.use({ fixtureSite: FIXTURE_SITE });
@@ -135,5 +145,74 @@ test.describe("offline write queue", () => {
     });
     await waitForActiveWorkerActivated(page);
     expect(await databaseExists(page)).toBe(false);
+  });
+});
+
+/**
+ * Review #15 (risk R14): the recovery worker with one injected deletion failure (recovery-fault-entry.ts, built into
+ * the `recovery-fault-*` versions). Standard browser APIs cannot make these deletions fail, so only this test build
+ * reaches the path. Every other deletion is still attempted; recovery then fails closed: no push cancellation and no
+ * `clients.claim()`, so an uncontrolled page stays uncontrolled. A page the broken worker already controlled is taken
+ * over at activation anyway (ADR-0012 R14 addendum) and, with no fetch listener, is served nothing from the residue.
+ */
+test.describe("recovery with a deletion failure (#15)", () => {
+  /** Queues one write, adds an older revision of this app's precache and an unrelated cache, then deploys `version`. */
+  async function recoverWithFault(page: Page, context: BrowserContext, fixtureServer: FixtureServer, version: string): Promise<Page> {
+    fixtureServer.deploy("offline-write");
+    const uncontrolled = await context.newPage();
+    await uncontrolled.goto(fixtureServer.url(SHELL_URL));
+    await installAndControl(page, fixtureServer);
+    await message(page, {
+      type: "pwa:offline-write:enqueue", version: 1, requestId: "enqueue-fault",
+      intent: { targetId: "submit-order", path: "/app/api/orders", body: { quantity: 5 }, idempotencyKey: "order-fault", sessionBinding: "opaque-session-fault" },
+    });
+    expect(await queuedEntries(page)).toBe(1);
+    await createCaches(page, [{ name: `${APP_CACHE_PREFIX}r0:precache`, entries: 2 }, { name: "images-v1", entries: 1 }]);
+    expect([...(await snapshotCaches(page)).keys()][0], "the current precache is the first cache deleted").toBe(PRECACHE_CACHE_NAME);
+
+    await waitForControllerChange(page, async () => {
+      fixtureServer.deploy(version);
+      await page.evaluate(async () => {
+        await (await navigator.serviceWorker.getRegistration())?.update();
+      });
+    });
+    await waitForActiveWorkerActivated(page);
+    return uncontrolled;
+  }
+
+  /** Recovery serves nothing: a precached path goes to the network even while caches remain. */
+  async function expectServedFromNetwork(page: Page): Promise<void> {
+    expect(await requestFromPage(page, "/app/assets/logo.svg")).toEqual({ outcome: "response", status: 200, fromServiceWorker: false });
+  }
+
+  test("a failed cache deletion leaves only that cache: the older revision and the queue database are still deleted, nothing is claimed", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    const uncontrolled = await recoverWithFault(page, context, fixtureServer, "recovery-fault-cache");
+
+    await expect.poll(() => databaseExists(page), { message: "the queue database is deleted despite the cache failure" }).toBe(false);
+    const after = await snapshotCaches(page);
+    expect([...after.keys()].sort()).toEqual([PRECACHE_CACHE_NAME, "images-v1"].sort());
+    await expectServedFromNetwork(page);
+    // Deletion finished (the database was its last step), so a claim would already have happened.
+    await page.waitForTimeout(1_000);
+    expect(await uncontrolled.evaluate(() => navigator.serviceWorker.controller === null), "recovery failed, so nothing is claimed").toBe(true);
+  });
+
+  test("a failed queue-database deletion still deletes every cache of this app, keeps the queued write, and claims nothing", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    const uncontrolled = await recoverWithFault(page, context, fixtureServer, "recovery-fault-database");
+
+    await expect.poll(async () => [...(await snapshotCaches(page)).keys()]).toEqual(["images-v1"]);
+    expect(await databaseExists(page)).toBe(true);
+    expect(await queuedEntries(page)).toBe(1);
+    await expectServedFromNetwork(page);
+    await page.waitForTimeout(1_000);
+    expect(await uncontrolled.evaluate(() => navigator.serviceWorker.controller === null), "recovery failed, so nothing is claimed").toBe(true);
   });
 });

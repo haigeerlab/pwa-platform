@@ -62,5 +62,12 @@ worker 配置新增可选字段 `networkTimeoutSeconds`，只在计划中存在�
 
 上文“激活时先删除以应用缓存前缀开头的全部缓存，再接管已打开的客户端”描述的是恢复 worker 自身的执行顺序：删除完成后才调用 `clients.claim()`。它**不是**页面可观察的保证。对在恢复 worker 部署前已由旧平台 worker 控制的页面，浏览器在新 worker 激活时就切换其控制者并触发 `controllerchange`，不等激活处理中的清理完成；`clients.claim()` 只影响尚未受控的页面。真实 Chrome 中测得，这类页面的接管比预缓存被清空早约 1–1.5 秒。
 
-这不构成安全缺陷：恢复 worker 不注册 `fetch`，接管后页面请求一律走网络，旧缓存不会被用来应答；清理随后完成。故障注入（页面持有离线写数据库的未关闭连接）下恢复仍会完成；用标准浏览器 API 无法让 `caches.delete` 对 worker 自有缓存失败，因此“删除失败后的残留”只能靠专门的测试构建验证，暂未覆盖。浏览器测试见 `packages/examples-browser-e2e/browser-tests/recovery.spec.ts` 中的两条 R14 用例。
+这不构成安全缺陷：恢复 worker 不注册 `fetch`，接管后页面请求一律走网络，旧缓存不会被用来应答；清理随后完成。故障注入（页面持有离线写数据库的未关闭连接）下恢复仍会完成。浏览器测试见 `packages/examples-browser-e2e/browser-tests/recovery.spec.ts` 中的两条 R14 用例。
+
+**删除失败（2026-09-28 增补，审查建议 #15）。** 用标准浏览器 API 无法让 `caches.delete` 或 `indexedDB.deleteDatabase` 对 worker 自己的数据失败，因此用只存在于测试构建中的故障注入版恢复 worker（`packages/sw-runtime/browser-tests/recovery-fault-entry.ts`，与正式恢复 worker 用同一个 `registerRecoveryWorker`）在真实 Chrome 中测得：
+
+- `activate` 的 `waitUntil` 被拒绝时，worker 照样进入 activated，原先受控的页面照样被接管；受阻的只有 `clients.claim()`，即尚未受控的页面保持不受控。“删除失败时不 claim”因此只对未受控页面生效。
+- 修改前第一次删除失败就中止整个清理：后续缓存和存有待发写入的离线写数据库都不再删除，之后也不会重试（`activate` 只运行一次），残留会保留到下次部署。
+
+据此改为：每项删除各自尝试，全部尝试完后若有失败再拒绝，并照旧跳过 Push 取消与 `clients.claim()`。残留只剩真正删不掉的那一项；恢复 worker 不注册 `fetch`，残留不会被用来应答请求。用例见 `packages/sw-runtime/browser-tests/offline-write.spec.ts` 的“recovery with a deletion failure (#15)”。
 
