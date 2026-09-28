@@ -102,7 +102,7 @@ describe("package manifest", () => {
       "./client": { types: "./dist/client/index.d.ts", import: "./dist/client/index.js" },
     });
     expect(manifest["private"]).not.toBe(true);
-    expect(manifest["version"]).toBe("0.2.2");
+    expect(manifest["version"]).toBe("0.2.3");
     expect(manifest["license"]).toBe("MIT");
     expect(manifest["publishConfig"]).toEqual({
       registry: "https://registry.npmjs.org/",

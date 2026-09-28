@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/core",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Compile PWA Platform policies into deployment plans.",
   "license": "MIT",
   "type": "module",
