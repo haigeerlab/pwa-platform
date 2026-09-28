@@ -110,7 +110,7 @@ type PwaClient = {
 
 | 事件 | 发出时机 | metadata |
 |---|---|---|
-| `registered` | `navigator.serviceWorker.register` 成功 | `{ scope }`：注册返回的 scope，是带 origin 的绝对 URL，不是配置里的路径 |
+| `registered` | `navigator.serviceWorker.register` 成功；或回访时已有 scope 恰为配置 scope、活动 worker 脚本恰为 `serviceWorkerUrl` 的注册，此时不等待排在挂起更新之后的 `register()`（[ADR-0043](../docs/adr/0043-registered-from-existing-active-registration.md)） | `{ scope }`：注册的 scope，是带 origin 的绝对 URL，不是配置里的路径 |
 | `install-eligible` | 收到 `beforeinstallprompt` 并保存 | `{}` |
 | `installed` | 收到 `appinstalled` | `{}` |
 | `update-waiting` | 注册出现 `waiting` 的 worker，且页面已被另一个 worker 控制 | `{}` |
