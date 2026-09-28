@@ -488,6 +488,37 @@ describe("register", () => {
       expect(events.map((event) => event.type)).toEqual(["registered", "update-waiting"]);
     });
 
+    it("announces an update that was already installing on that registration once it is waiting", async () => {
+      // The browser's navigation-time update check began installing before the page's script ran, so its
+      // `updatefound` fired before the facade could listen. The old path never met this case: its register() queued
+      // behind that update and returned with the worker already waiting.
+      const installing = new FakeWorker();
+      const { client, container, events, existing } = returnVisit((registration) => {
+        registration.installing = installing;
+      });
+      container.controller = existing.active as unknown as ServiceWorker;
+      await client.register();
+      expect(events.map((event) => event.type)).toEqual(["registered"]);
+
+      existing.waiting = installing;
+      existing.installing = null;
+      installing.moveTo("installed");
+      expect(events.map((event) => event.type)).toEqual(["registered", "update-waiting"]);
+    });
+
+    it("does not announce an already-installing version to a page no worker controls", async () => {
+      // A hard reload leaves the page uncontrolled: the installed version will not replace anything it runs.
+      const installing = new FakeWorker();
+      const { client, events, existing } = returnVisit((registration) => {
+        registration.installing = installing;
+      });
+      await client.register();
+      existing.waiting = installing;
+      existing.installing = null;
+      installing.moveTo("installed");
+      expect(events.map((event) => event.type)).toEqual(["registered"]);
+    });
+
     it("still waits for register() when the existing registration has no active worker yet", async () => {
       const { client, container, events } = returnVisit((existing) => {
         existing.active = null;
