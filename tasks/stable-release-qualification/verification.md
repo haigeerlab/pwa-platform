@@ -330,3 +330,25 @@ iPhone 16 Pro，iOS 27.0，经 `ios_webkit_debug_proxy` 读取；网络开关、
 | 修复 worker 后恢复（部署 `d61ca91c-2b1f-4371-9ead-308c2f2813cd`，R2 `8c5db002…`）：默认提示 → `Update` 接管 → `Reload page`，预缓存重建；从后台划掉后断网冷启动 v2/registered/受控 | 通过 |
 
 Vue drill 当前停在上述 0.2.1 v2 部署；React drill 仍为 R9 修复构建（`75213786-…`）。
+
+### 2026-09-28 补充：iPhone React 入口恢复单 Origin 故障演练（R3，部分完成）
+
+iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`），0.2.1 构建：先把 React drill 从 R9 修复构建换回 0.2.1 v2（部署 `dc17d0c2-c158-4f9c-bfcf-79999d449f7e`，R2 `7a3bca36…`，`main` 未变）。备用入口为公开 Vue drill。清单经示例页 `__entryUpdate` / `__entryCheck` 交入，序号 3000 起；演练记录只写状态、序号、主机名与诊断码。
+
+| 演练步骤（`docs/operations/entry-recovery-drill.md`） | 结果 |
+|---|---|
+| 1 基线：`normal` 空清单（3000）被接受，`checkEntryRecovery()` 为 `none` | 通过 |
+| 2 计划迁移：`migrating`（3001）被接受；结果为 `available/migrating` 且不含备用 Origin；恢复页 `Alternative entry` 显示一个入口，4 秒内不跳转；点击后顶层导航到 Vue drill，`pwa-return` 与传入一致；以 `//` 开头的返回路径生成的链接不带返回参数 | 通过 |
+| 3 序号与形状：3000 以下被拒 `entry.sequence-not-greater`；`startPath` 含 `..` 被拒 `entry.entry-start-path-invalid`；6 条入口被拒 `entry.entries-too-many`；已过期被拒 `entry.expired`；超过 30 天被拒 `entry.validity-period-too-long`；拒绝后记录不变 | 通过 |
+| 4a 当前 Origin 不可达、已存 `migrating`：检查为 `available/migrating`；带返回路径的恢复页显示入口按钮（非离线页）；点击后到达 Vue drill，返回路径一致 | 通过（见下方故障注入说明） |
+| 4b 当前 Origin 不可达、已存 `normal`（含可达备用入口）→ `unconfirmed-outage` | **未执行**：未取得可靠的单 Origin 故障环境 |
+| 5 整机离线不误报 | **未执行** |
+| 6 过期 | **未执行**（写入路径的过期拒绝已在第 3 步通过） |
+| 8 收尾：`normal` 空清单（3100）被接受，结果为 `none` | 通过 |
+
+**故障注入的发现（写入演练方法前请复核）**
+
+- **HTTP 代理 / PAC 拦不住 iOS 的 HTTP/3。** 手机 Wi-Fi 代理指向 Mac 上的 CONNECT 代理并拒绝被测主机时，App 启动的 TCP 连接被拒，但随后请求经 QUIC（响应头 `alt-svc: h3`）直连 Cloudflare 成功（`cf-ray` 为当时时间），主入口探测得到真实 HTTP 404，即“可达”。4a 的“不可达”只覆盖了导航请求被拒的阶段，据此只把 `migrating` 行为计为通过。
+- **经过开启 Cloudflare One/WARP 的 Mac 转发会破坏 TLS。** 该客户端以 “Gateway CA - Cloudflare Managed G1” 重签所有 HTTPS，手机不信任该 CA，放行的站点也会出现“此连接非私人连接”。改用只对被测主机返回代理的 PAC 可避开，但仍受上一条 HTTP/3 限制。
+- **同一台 Mac 也无法为手机提供自建 DNS。** WARP 占用本机 `127.0.2.2/3:53`，`0.0.0.0:53` 不可绑定；项目所有者以 `sudo` 在局域网地址 `:53` 启动转发后，Mac 本机查询正常，但 iPhone 的 DNS 查询未到达该服务（推测被 WARP 拦截），手机整体无法解析，两路探测均超时。
+- 结论：iPhone 的 `unconfirmed-outage`、离线不误报与过期三项需在**不经过 WARP 的网络设备**（另一台 DNS 主机或路由器域名屏蔽）上补测。Android 上同一判定已在 0.1.x 轮次通过（React WebAPK，主入口约 5 秒超时 → `unconfirmed-outage`）；判定逻辑为同一份平台代码，但 iOS 网络行为不同（断网请求挂起、`onLine` 不可靠、HTTP/3），不以推断代替证据。
