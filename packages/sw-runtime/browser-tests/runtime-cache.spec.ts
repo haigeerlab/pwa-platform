@@ -74,7 +74,7 @@ function dataCacheNames(snapshot: ReadonlyMap<string, number>): string[] {
 }
 
 test.describe("network-first (public-data)", () => {
-  test("online read writes the runtime data cache; offline read returns the cached body", async ({ page, context, fixtureServer }) => {
+  test("online read writes the runtime data cache; offline read returns the cached body", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("v3");
     await writeCatalogFile(RUNTIME_CATALOG_ITEMS_URL, { item: "online-body" });
     await installAndControl(page, fixtureServer);
@@ -84,7 +84,7 @@ test.describe("network-first (public-data)", () => {
     // NetworkFirst can return the network response before Workbox finishes the cache write under event.waitUntil.
     await expect.poll(async () => hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_CATALOG_ITEMS_URL)).toBe(true);
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     const offline = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
     expect(offline).toMatchObject({ ok: true, body: { item: "online-body" } });
   });
@@ -153,7 +153,7 @@ test.describe("rejected responses (public-data): admitted online, network error 
   ];
 
   for (const testCase of cases) {
-    test(testCase.name, async ({ page, context, fixtureServer }) => {
+    test(testCase.name, async ({ page, fixtureServer }) => {
       fixtureServer.deploy("v3");
       if (testCase.headers) fixtureServer.setHeaderRules([{ pathPrefix: testCase.url, headers: testCase.headers }]);
       await installAndControl(page, fixtureServer);
@@ -161,7 +161,7 @@ test.describe("rejected responses (public-data): admitted online, network error 
       const online = await fetchJson(page, fixtureServer.url(testCase.url), testCase.requestHeaders);
       expect(online.ok, "online read").toBe(true);
 
-      await context.setOffline(true);
+      fixtureServer.goOffline();
       const offline = await fetchJson(page, fixtureServer.url(testCase.url), testCase.requestHeaders);
       expect(offline.ok, "offline read must be a network error").toBe(false);
 
@@ -169,7 +169,7 @@ test.describe("rejected responses (public-data): admitted online, network error 
     });
   }
 
-  test("SWR under Cache-Control: no-cache (allowed for network-first, not for SWR)", async ({ page, context, fixtureServer }) => {
+  test("SWR under Cache-Control: no-cache (allowed for network-first, not for SWR)", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("v3");
     fixtureServer.setHeaderRules([{ pathPrefix: RUNTIME_REVIEWS_NO_CACHE_URL, headers: { "Cache-Control": "no-cache" } }]);
     await installAndControl(page, fixtureServer);
@@ -177,7 +177,7 @@ test.describe("rejected responses (public-data): admitted online, network error 
     const online = await fetchJson(page, fixtureServer.url(RUNTIME_REVIEWS_NO_CACHE_URL));
     expect(online.ok).toBe(true);
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     const offline = await fetchJson(page, fixtureServer.url(RUNTIME_REVIEWS_NO_CACHE_URL));
     expect(offline.ok).toBe(false);
     expect(hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_REVIEWS_NO_CACHE_URL)).toBe(false);
@@ -187,7 +187,6 @@ test.describe("rejected responses (public-data): admitted online, network error 
 test.describe("Set-Cookie (worker cannot see it; business responsibility)", () => {
   test("a response with Set-Cookie and no private IS cached, and the page cannot read Set-Cookie either", async ({
     page,
-    context,
     fixtureServer,
   }) => {
     fixtureServer.deploy("v3");
@@ -205,12 +204,12 @@ test.describe("Set-Cookie (worker cannot see it; business responsibility)", () =
     expect(probe.probe).toBe("1");
     expect(probe.type).toBe("basic");
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     const offline = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_COOKIE_PUBLIC_URL));
     expect(offline.ok, "must be cached despite the (invisible) Set-Cookie").toBe(true);
   });
 
-  test("the same response with Cache-Control: private is NOT cached", async ({ page, context, fixtureServer }) => {
+  test("the same response with Cache-Control: private is NOT cached", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("v3");
     fixtureServer.setHeaderRules([
       { pathPrefix: RUNTIME_CATALOG_COOKIE_PRIVATE_URL, headers: { "Set-Cookie": "sid=abc; Path=/", "Cache-Control": "private" } },
@@ -219,7 +218,7 @@ test.describe("Set-Cookie (worker cannot see it; business responsibility)", () =
 
     const online = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_COOKIE_PRIVATE_URL));
     expect(online.ok).toBe(true);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     const offline = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_COOKIE_PRIVATE_URL));
     expect(offline.ok, "Cache-Control: private must dam what Set-Cookie cannot").toBe(false);
   });
@@ -228,7 +227,6 @@ test.describe("Set-Cookie (worker cannot see it; business responsibility)", () =
 test.describe("dynamic navigation (navigation-public-dynamic, runtime-pages)", () => {
   test("online navigation writes the pages cache; offline renders it; an unvisited URL falls back like any other navigation", async ({
     page,
-    context,
     fixtureServer,
   }) => {
     fixtureServer.deploy("v3");
@@ -238,7 +236,7 @@ test.describe("dynamic navigation (navigation-public-dynamic, runtime-pages)", (
     await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
     expect(hasCachedEntry(await cacheContents(page), "runtime-pages", RUNTIME_DASHBOARD_URL)).toBe(true);
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
     await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
 
@@ -391,14 +389,14 @@ test.describe("recovery clears runtime caches and their expiration records", () 
 });
 
 test.describe("v2 unchanged", () => {
-  test("a v2 fixture that declares public-data + network-first never writes a runtime cache", async ({ page, context, fixtureServer }) => {
+  test("a v2 fixture that declares public-data + network-first never writes a runtime cache", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("v2-runtime-declared");
     await installAndControl(page, fixtureServer);
 
     const online = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
     expect(online.ok).toBe(true);
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     const offline = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
     expect(offline.ok, "v1/v2 must never runtime-cache, offline read is a network error").toBe(false);
 

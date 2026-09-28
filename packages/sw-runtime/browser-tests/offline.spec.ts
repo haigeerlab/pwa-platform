@@ -5,9 +5,9 @@ import { cacheContents, installAndControl } from "./page-probe.js";
 test.use({ fixtureSite: FIXTURE_SITE });
 
 test.describe("offline startup", () => {
-  test("renders the precached shell when the app shell URL is opened offline", async ({ page, context, fixtureServer }) => {
+  test("renders the precached shell when the app shell URL is opened offline", async ({ page, fixtureServer }) => {
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     await page.goto(fixtureServer.url(SHELL_URL));
     await expect(page.locator("[data-shell]")).toHaveText("app shell v1");
@@ -17,11 +17,10 @@ test.describe("offline startup", () => {
 
   test("renders the precached shell, not the offline fallback, when the shell URL carries a query string (ADR-0034)", async ({
     page,
-    context,
     fixtureServer,
   }) => {
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     // Only `/app/index.html` is precached, not `/app/` itself, so this exercises the query-dropped fallback
     // candidates: the exact, query-preserving URL misses, and only dropping `?return=…` reaches the shell document.
@@ -30,28 +29,28 @@ test.describe("offline startup", () => {
     expect(fixtureServer.requests()).toEqual([]);
   });
 
-  test("shows the offline fallback for a route that was never cached", async ({ page, context, fixtureServer }) => {
+  test("shows the offline fallback for a route that was never cached", async ({ page, fixtureServer }) => {
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     await page.goto(fixtureServer.url("/app/products/42"));
     await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
     expect(fixtureServer.requests()).toEqual([]);
   });
 
-  test("fails closed when the plan disables the offline fallback", async ({ page, context, fixtureServer }) => {
+  test("fails closed when the plan disables the offline fallback", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("no-fallback");
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     await expect(page.goto(fixtureServer.url("/app/products/42"))).rejects.toThrow();
     expect(fixtureServer.requests()).toEqual([]);
   });
 
-  test("opens a prerendered sub-page offline without the trailing slash", async ({ page, context, fixtureServer }) => {
+  test("opens a prerendered sub-page offline without the trailing slash", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("subpage");
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     for (const url of [GUIDE_URL, `${GUIDE_URL}/`]) {
       await page.goto(fixtureServer.url(url));
@@ -60,9 +59,9 @@ test.describe("offline startup", () => {
     expect(fixtureServer.requests()).toEqual([]);
   });
 
-  test("shows the offline page, never a cached copy, for a denied navigation", async ({ page, context, fixtureServer }) => {
+  test("shows the offline page, never a cached copy, for a denied navigation", async ({ page, fixtureServer }) => {
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     await page.goto(fixtureServer.url(DENIED_URL));
     await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
@@ -70,9 +69,9 @@ test.describe("offline startup", () => {
     expect(fixtureServer.requests().filter(({ path }) => path === DENIED_URL)).toEqual([]);
   });
 
-  test("never answers an unclassified navigation", async ({ page, context, fixtureServer }) => {
+  test("never answers an unclassified navigation", async ({ page, fixtureServer }) => {
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     await expect(page.goto(fixtureServer.url(UNCLASSIFIED_URL))).rejects.toThrow();
     expect(fixtureServer.requests()).toEqual([]);
@@ -80,7 +79,7 @@ test.describe("offline startup", () => {
 });
 
 test.describe("excluded paths (shared-origin root, ADR-0019)", () => {
-  test("are never answered by this worker: online they reach the server, offline they get a network error", async ({ page, context, fixtureServer }) => {
+  test("are never answered by this worker: online they reach the server, offline they get a network error", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("excluded");
     await installAndControl(page, fixtureServer);
 
@@ -91,7 +90,7 @@ test.describe("excluded paths (shared-origin root, ADR-0019)", () => {
 
     await page.goto(fixtureServer.url(SHELL_URL));
     fixtureServer.clearRequests();
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     // Contrast on the same worker: a denied navigation falls back to the offline page, an excluded one does not.
     await page.goto(fixtureServer.url(DENIED_URL));
     await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
@@ -132,9 +131,9 @@ test.describe("denied and unclassified requests", () => {
     }
   });
 
-  test("get a network error offline instead of a cached response", async ({ page, context, fixtureServer }) => {
+  test("get a network error offline instead of a cached response", async ({ page, fixtureServer }) => {
     await installAndControl(page, fixtureServer);
-    await context.setOffline(true);
+    fixtureServer.goOffline();
 
     for (const url of [DENIED_URL, UNCLASSIFIED_URL]) {
       expect((await requestFromPage(page, url)).outcome, url).toBe("network-error");
