@@ -8,12 +8,14 @@ import { isOfflineWriteMessage, isRuntimeCachePendingMessage, isSkipWaitingMessa
 import type { PwaOfflineWriteMessage, PwaRuntimeCachePendingResult, PwaRuntimeCacheReason } from "../messages/index.js";
 import { validatePushPayload } from "../push-payload/index.js";
 import type { PwaPlatformWorkerConfig } from "../shared/config.js";
-import { admitRuntimeResponse } from "./admit.js";
+import { runtimeAdmissionRejection, type PwaRuntimeAdmitOptions, type PwaRuntimeRejectionReason } from "./admit.js";
 import { createRouter } from "./decide.js";
 import type { PwaRequestDecision } from "./decide.js";
 import { validateOfflineWriteEnqueue, validateOfflineWriteFlush } from "./offline-write-intent.js";
 import { flushOfflineWrites } from "./offline-write-flush.js";
+import type { PwaOfflineWriteFlushResult } from "./offline-write-flush.js";
 import { createOfflineWriteStore } from "./offline-write-store.js";
+import type { PwaOfflineWriteStore } from "./offline-write-store.js";
 import { resolveNotificationTarget } from "./notification-target.js";
 import { currentDataCacheName, deleteRuntimeCaches } from "./runtime-cleanup.js";
 
@@ -27,6 +29,11 @@ export type PwaPlatformWorkerHandlers = {
    * always supplies the real Workbox-backed factory. Tests inject a fake so they never need to load Workbox.
    */
   readonly createRuntimeCacheEngine?: typeof createRuntimeCacheEngine;
+  /**
+   * Overrides the offline-write store `attachPlatformWorker` would otherwise build from `config.offlineWrites`.
+   * Real store transactions need a real IndexedDB, which the browser tests exercise; unit tests inject a fake here.
+   */
+  readonly offlineWriteStore?: PwaOfflineWriteStore;
 };
 
 type PwaRuntimeDecision = Extract<PwaRequestDecision, { readonly kind: "runtime" }>;
@@ -47,10 +54,15 @@ export function attachPlatformWorker({
   config,
   engine,
   createRuntimeCacheEngine: runtimeCacheEngineFactory,
+  offlineWriteStore: offlineWriteStoreOverride,
 }: PwaPlatformWorkerHandlers): void {
   const origin = new URL(scope.location.href).origin;
   const router = createRouter({ config, manifestUrls: engine.urls(), origin });
-  const offlineWriteStore = config.offlineWrites.enabled ? createOfflineWriteStore(config.offlineWrites) : undefined;
+  const offlineWriteStore = config.offlineWrites.enabled ? (offlineWriteStoreOverride ?? createOfflineWriteStore(config.offlineWrites)) : undefined;
+  // Single-flight per session binding (spec "同一会话绑定的 flush 单飞", R5): a flush already in flight for a binding
+  // is awaited and its result reused, instead of a second concurrent message starting a second `prepareFlush`/send
+  // pass that would resend the same idempotency keys. Different bindings never share an entry.
+  const inFlightFlushes = new Map<string, Promise<PwaOfflineWriteFlushResult>>();
   const runtimeEngines = config.runtimeCache.enabled
     ? buildRuntimeEngines(config.runtimeCache, config.networkTimeoutSeconds, requireRuntimeCacheEngineFactory(runtimeCacheEngineFactory))
     : undefined;
@@ -118,7 +130,7 @@ export function attachPlatformWorker({
     }
     if (offlineWriteStore === undefined) return;
     if (event.data.type === "pwa:offline-write:enqueue") event.waitUntil(enqueue(event.data, config, origin, offlineWriteStore, port));
-    if (event.data.type === "pwa:offline-write:flush") event.waitUntil(flush(event.data, config, origin, offlineWriteStore, port, scope.fetch));
+    if (event.data.type === "pwa:offline-write:flush") event.waitUntil(flush(event.data, config, origin, offlineWriteStore, inFlightFlushes, port, scope.fetch));
   });
 
   scope.addEventListener("push", (event) => {
@@ -172,18 +184,41 @@ async function flush(
   message: Extract<PwaOfflineWriteMessage, { readonly type: "pwa:offline-write:flush" }>,
   config: PwaPlatformWorkerConfig,
   origin: string,
-  store: ReturnType<typeof createOfflineWriteStore>,
+  store: PwaOfflineWriteStore,
+  inFlightFlushes: Map<string, Promise<PwaOfflineWriteFlushResult>>,
   port: MessagePort,
   send: typeof fetch,
 ): Promise<void> {
   const checked = validateOfflineWriteFlush(message, config);
   if (!checked.ok) return reply(port, message.requestId, "rejected", checked.code);
   try {
-    const result = await flushOfflineWrites(store, checked.binding, origin, send);
+    const result = await flushOnce(store, checked.binding, origin, send, inFlightFlushes);
     replyFlush(port, message.requestId, result);
   } catch {
     reply(port, message.requestId, "rejected", "offline-write.storage");
   }
+}
+
+/**
+ * Starts `flushOfflineWrites` for `binding` unless one is already in flight, in which case its promise is reused —
+ * every waiter observes the exact same settlement (fulfillment or rejection). Once it settles, the entry is removed
+ * so the next flush request for `binding` starts a fresh pass.
+ */
+function flushOnce(
+  store: PwaOfflineWriteStore,
+  binding: string,
+  origin: string,
+  send: typeof fetch,
+  inFlightFlushes: Map<string, Promise<PwaOfflineWriteFlushResult>>,
+): Promise<PwaOfflineWriteFlushResult> {
+  const existing = inFlightFlushes.get(binding);
+  if (existing !== undefined) return existing;
+  const run = flushOfflineWrites(store, binding, origin, send);
+  inFlightFlushes.set(binding, run);
+  // Settlement cleanup must not itself become an unhandled rejection; the run's own rejection is still delivered to
+  // every caller awaiting `run` directly (this catch is on a separate chained promise nobody else awaits).
+  void run.finally(() => inFlightFlushes.delete(binding)).catch(() => undefined);
+  return run;
 }
 
 async function enqueue(
@@ -380,6 +415,7 @@ function buildRuntimeEngines(
   factory: typeof createRuntimeCacheEngine,
 ): (key: PwaRuntimeEngineKey) => PwaRuntimeCacheEngine {
   const built = new Map<PwaRuntimeEngineKey, PwaRuntimeCacheEngine>();
+  const reported = new Set<string>();
   return (key) => {
     const existing = built.get(key);
     if (existing !== undefined) return existing;
@@ -391,7 +427,7 @@ function buildRuntimeEngines(
             maxEntries: runtimeCache.maxEntries,
             maxAgeSeconds: runtimeCache.maxAgeSeconds,
             admit: (response) =>
-              admitRuntimeResponse(response, {
+              admitAndReport(response, key, reported, {
                 resourceClass: "navigation-public-dynamic",
                 strategy: "network-first",
                 maxEntryBytes: runtimeCache.maxEntryBytes,
@@ -404,7 +440,7 @@ function buildRuntimeEngines(
             maxEntries: runtimeCache.maxEntries,
             maxAgeSeconds: runtimeCache.maxAgeSeconds,
             admit: (response) =>
-              admitRuntimeResponse(response, {
+              admitAndReport(response, key, reported, {
                 resourceClass: "public-data",
                 strategy: key === "data-network-first" ? "network-first" : "stale-while-revalidate",
                 maxEntryBytes: runtimeCache.maxEntryBytes,
@@ -414,6 +450,34 @@ function buildRuntimeEngines(
     built.set(key, engine);
     return engine;
   };
+}
+
+/**
+ * Runs the admission check and, the first time an (engine, reason) pair rejects a response in this worker's lifetime,
+ * reports it with `console.warn` (spec.public-read-cache "响应准入", review risk R8). The report is a debugging aid only:
+ * it names the reason and the response's path — never its query string — plus the `Vary` value when that was the
+ * cause, and never changes the admission result.
+ */
+async function admitAndReport(
+  response: Response,
+  key: PwaRuntimeEngineKey,
+  reported: Set<string>,
+  options: PwaRuntimeAdmitOptions,
+): Promise<boolean> {
+  const reason = await runtimeAdmissionRejection(response, options);
+  if (reason === undefined) return true;
+  const reportKey = `${key}:${reason}`;
+  if (!reported.has(reportKey)) {
+    reported.add(reportKey);
+    console.warn(rejectionMessage(response, reason));
+  }
+  return false;
+}
+
+function rejectionMessage(response: Response, reason: PwaRuntimeRejectionReason): string {
+  const path = URL.canParse(response.url) ? new URL(response.url).pathname : "(unknown path)";
+  const vary = reason === "vary" ? ` (Vary: ${response.headers.get("vary") ?? ""})` : "";
+  return `[pwa-platform] runtime cache did not store ${path}: ${reason}${vary}. Further ${reason} rejections from this cache are not reported.`;
 }
 
 /** `decide()` only ever returns a `"runtime"` decision once `config.runtimeCache.enabled` made `runtimeEngines` non-undefined. */

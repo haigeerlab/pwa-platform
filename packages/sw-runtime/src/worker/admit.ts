@@ -10,15 +10,28 @@ export type PwaRuntimeAdmitOptions = {
 
 const ALLOWED_VARY_TOKENS = new Set(["accept", "accept-encoding"]);
 
+/** Why a response was not written to the runtime cache, one per admission condition (spec "响应准入"). */
+export type PwaRuntimeRejectionReason = "response-type" | "status" | "redirected" | "content-type" | "cache-control" | "vary" | "size";
+
 /** True only if `response` may be written to the runtime cache. Never consumes `response` itself. */
 export async function admitRuntimeResponse(response: Response, options: PwaRuntimeAdmitOptions): Promise<boolean> {
-  if (response.type !== "basic" || response.status !== 200 || response.redirected) return false;
-  if (!admittedMediaType(response.headers.get("content-type"), options.resourceClass)) return false;
-  if (!admittedCacheControl(response.headers.get("cache-control"), options.strategy)) return false;
-  if (!admittedVary(response.headers.get("vary"))) return false;
+  return (await runtimeAdmissionRejection(response, options)) === undefined;
+}
+
+/** The first admission condition `response` fails, or undefined when it may be written. Never consumes `response`. */
+export async function runtimeAdmissionRejection(
+  response: Response,
+  options: PwaRuntimeAdmitOptions,
+): Promise<PwaRuntimeRejectionReason | undefined> {
+  if (response.type !== "basic") return "response-type";
+  if (response.status !== 200) return "status";
+  if (response.redirected) return "redirected";
+  if (!admittedMediaType(response.headers.get("content-type"), options.resourceClass)) return "content-type";
+  if (!admittedCacheControl(response.headers.get("cache-control"), options.strategy)) return "cache-control";
+  if (!admittedVary(response.headers.get("vary"))) return "vary";
   // `Set-Cookie` is intentionally not checked: the Fetch spec makes it a forbidden response-header name on a basic
   // response, so a worker can never read it (see spec.public-read-cache "响应准入").
-  return admittedSize(response, options.maxEntryBytes);
+  return (await admittedSize(response, options.maxEntryBytes)) ? undefined : "size";
 }
 
 function admittedMediaType(contentType: string | null, resourceClass: PwaRuntimeAdmitOptions["resourceClass"]): boolean {

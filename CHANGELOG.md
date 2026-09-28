@@ -3,8 +3,13 @@
 ## Unreleased
 
 - **Built-in update notice locale:** Vue and React's `PwaUpdateNotice` accept an optional `locale?: "zh-CN" | "en"` (default `"zh-CN"`), matching the built-in Chinese and English tables the offline and entry recovery pages already offer. `messages` still overrides individual keys on top of the selected locale's built-in copy. Not passing `locale` keeps prior behavior unchanged.
+- **Release gate:** `@pwa-platform/build-verifier` exports `requiredReleaseChecks(plan)`, returning the release orchestration protocol's machine-required checks for the plan's topology, so callers pass it to `verifyReleaseGateCoverage` instead of hand-writing the list.
+- **Runtime cache diagnostics:** when a response is not admitted to the public-read runtime cache, the platform worker now reports the reason and path once per cache and reason with `console.warn`, so silent rejections (for example `Vary: Origin` added by `vite preview`) can be diagnosed.
+- **Identity scope check:** `@pwa-platform/contracts` rejects an identity whose `scope` is wider than the directory of its `serviceWorkerUrl` (`identity.scope-outside-worker-directory`). Browsers refuse such a registration; the build now fails instead.
+- **Runtime cache:** a navigation carrying an `Authorization` header is no longer written to the pages runtime cache, matching the public-read cache contract.
 - **Install icon validation:** `@pwa-platform/vite` now fails production builds when a primary manifest icon is missing, has a PNG/JPEG/WebP signature that disagrees with `type`, has an unreadable header, or has intrinsic dimensions that disagree with `sizes`. Unsupported image types emit an explicit warning instead of being reported as validated.
 - **Android install fixture:** the Vite browser fixture now ships real 192×192 and 512×512 `any`/`maskable` icons and a mobile viewport, fixing Android Chrome's “unable to install” result.
+- **Offline-write flush single-flight (review risk R5):** `@pwa-platform/sw-runtime` now single-flights concurrent `pwa:offline-write:flush` messages for the same session binding inside the worker, so two tabs (or a double click) flushing at once can no longer POST the same idempotency key twice. `@pwa-platform/offline-write` is not yet published to npm; this is an internal worker fix with no public API change.
 
 ## 0.1.0 (2026-09-26)
 
