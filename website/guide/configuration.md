@@ -102,6 +102,8 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 | <code>IDENTITY.manifestUrl</code> | <code>"/manifest.webmanifest"</code> | <code>"/app/manifest.webmanifest"</code> |
 | <code>INSTALL.startUrl</code> | <code>"/"</code> | <code>"/app/"</code> |
 | <code>INSTALL.icons[].src</code> | <code>"/icons/192.png"</code> 等 | <code>"/app/icons/192.png"</code> 等 |
+
+<code>serviceWorkerUrl</code> 必须直接位于 <code>scope</code> 目录下：<code>scope: "/app/"</code> 搭配 <code>/app/assets/sw.js</code> 会以 <code>identity.scope-outside-worker-directory</code> 构建失败，因为浏览器默认只允许 worker 控制它所在目录及以下的路径，平台也不支持用 <code>Service-Worker-Allowed</code> 响应头放宽。
 | <code>POLICY.offlineFallback.path</code> | <code>"/offline.html"</code> | 仍为 <code>"/offline.html"</code> |
 | <code>POLICY.resources[].pathPrefix</code> | <code>"/assets"</code> 等 | 仍为 <code>"/assets"</code> 等 |
 

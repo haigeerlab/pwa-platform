@@ -37,6 +37,8 @@ export type RequestRecord = {
   readonly path: string;
   /** Milliseconds since the Unix epoch. */
   readonly time: number;
+  /** Request headers exactly as Node parsed them; bodies are still never recorded. */
+  readonly headers: Readonly<Record<string, string | readonly string[] | undefined>>;
 };
 
 export type FixtureServer = {
@@ -105,7 +107,7 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
     const target = request.url ?? "";
     const path = target.split("?", 1)[0] ?? "";
     const method = request.method ?? "";
-    records.push({ method, path, time: Date.now() });
+    records.push({ method, path, time: Date.now(), headers: request.headers });
 
     // Only this server's own origins: a DNS-rebound hostname must not read fixture files.
     if (!allowedHosts.has((request.headers.host ?? "").toLowerCase())) {
