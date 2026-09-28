@@ -14,7 +14,7 @@
 
 ## 所有路径共用的基础
 
-先按[选择接入包](/start/choose)安装 0.2.1，再在 `pwa.config.ts` 中声明生产部署的真实 identity 与
+先按[选择接入包](/start/choose)安装 0.2.2，再在 `pwa.config.ts` 中声明生产部署的真实 identity 与
 install metadata。完整字段、根路径／子路径区别和稳定性要求见[身份与策略配置](/guide/configuration)。
 Vue 使用 `createPwa()`，React 使用 `PwaProvider`；两者都要在浏览器启动后显式调用 `register()`。
 
@@ -225,7 +225,7 @@ export const POLICY: PwaPolicy = {
 恢复 worker 由 `@pwa-platform/vite` 随构建生成，不是页面中的开关。发布团队必须按
 [部署与发布](/operations/release#回滚与恢复)保存并演练，不能靠修改 scope 或 worker URL 绕过事故。
 
-入口恢复需要额外安装 `@pwa-platform/entry-resilience@0.2.1`：
+入口恢复需要额外安装 `@pwa-platform/entry-resilience@0.2.2`：
 
 ```ts
 import { pwaEntryResilience } from "@pwa-platform/entry-resilience/vite";
