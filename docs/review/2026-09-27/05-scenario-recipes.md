@@ -106,7 +106,7 @@ export const POLICY: PwaPolicy = {
 | "默认更新 UI 内置中文文案；英文或其他语言由业务把自己的翻译对象传给 `messages`" | ✅ 匹配，且比较克制 | `DEFAULT_MESSAGES` 硬编码中文，`ui.ts:37-50`，无内置英文表（全仓无第二套） |
 | "平台离线页：`offlinePage.locale` 在构建时选 `zh-CN`／`en`" | ✅ 匹配 | `PwaOfflinePageLocale = "zh-CN"\|"en"`，`packages/vite/src/options.ts:20-22` |
 | "入口恢复页：以 `setPwaTheme()` 传入 `light`、`dark` 或 `system`" | ✅ 匹配 | `setPwaTheme(theme: PwaTheme)`，`packages/entry-resilience/src/client/index.ts:51-59` |
-| "默认跟随系统亮暗" 用于更新提示和离线页 | ⚠️ 不完整 | 匹配"默认跟随系统"这一半；但**未说明离线页的 `data-theme` 选择器实际上没有任何脚本会去设置它**——离线页是独立静态文档，即使 CSS 写了 `[data-theme="dark"]` 选择器，也永远读不到应用侧的主题选择，这一点与恢复页的关键差异，现有文档表格没有区分出来（已核实：[offline-page-style.ts:15](../../../packages/vite/src/offline-page-style.ts#L15) 注释写明只有 `prefers-color-scheme` 路径会生效） |
+| "默认跟随系统亮暗" 用于更新提示和离线页 | ⚠️ 不完整 | 匹配"默认跟随系统"这一半；但**未说明离线页的 `data-theme` 选择器实际上没有任何脚本会去设置它**——离线页是独立静态文档，即使 CSS 写了 `[data-theme="dark"]` 选择器，也永远读不到应用侧的主题选择，这一点与恢复页的关键差异，现有文档表格没有区分出来（已核实：[offline-page-style.ts:15](https://github.com/haigeerlab/pwa-platform/blob/eb5836e13ab1a0e5d218758f155004894cde8ebc/packages/vite/src/offline-page-style.ts#L15) 注释写明只有 `prefers-color-scheme` 路径会生效） |
 
 ### 缺失（现有文档未提及）
 - **更新提示组件没有 `theme`/`data-theme` 覆盖机制**，只有 `colors` prop 覆盖具体色值 + 系统 `prefers-color-scheme`；现有文档表格写"`colors` 或 `--pwa-update-*` CSS 变量覆盖"是对的，但没有点出"不支持应用显式指定深浅色"这一边界，容易被理解为"能配置主题"。
@@ -139,7 +139,7 @@ import "@pwa-platform/react/update-notice.css";
 ### 证据
 - `packages/react/src/ui.ts:6-50`（L3，`packages/examples-browser-e2e/ui-browser-tests/update-notice.spec.ts:27-127`）
 - `packages/entry-resilience/src/client/index.ts:51-59`、`packages/entry-resilience/src/page/main.ts:63-78`（L3，`packages/entry-resilience/browser-tests/styling.spec.ts:197-279`）
-- 离线页无脚本写 `data-theme`：[offline-page-style.ts:15](../../../packages/vite/src/offline-page-style.ts#L15)（主会话已核实）
+- 离线页无脚本写 `data-theme`：[offline-page-style.ts:15](https://github.com/haigeerlab/pwa-platform/blob/eb5836e13ab1a0e5d218758f155004894cde8ebc/packages/vite/src/offline-page-style.ts#L15)（主会话已核实）
 
 ### 注意事项
 - `PwaUpdateNotice` 组件源码本身无单元测试文件，只有 L3 浏览器用例佐证。
@@ -227,7 +227,7 @@ curl -sI http://localhost:4173/api/catalog | grep -i vary
 |---|---|---|---|
 | "新 worker 安装后仍然等待；只有用户操作触发 `applyUpdate()` 才接管" | 81 行 | ✅ 匹配 | `attachPlatformWorker` 从不主动 `skipWaiting`，`packages/sw-runtime/src/worker/handlers.ts:40-43` |
 | "接管不会刷新当前页面，业务必须……决定何时调用 `location.reload()`" | 82 行 | ✅ 匹配 | `applyUpdate()` 文档注释"Never reloads the page"，`packages/client-runtime/src/client/facade.ts:66-69` |
-| "这是页面可见时调用 `registration.update()` 的定时器，不是 Periodic Background Sync" | 80 行 | ✅ 一致 | 调用点 [facade.ts:237](../../../packages/client-runtime/src/client/facade.ts#L237)；`updateCheck.intervalMs` 默认关闭、最小 60000（[update-check.ts:10-15](../../../packages/client-runtime/src/client/update-check.ts#L10)） |
+| "这是页面可见时调用 `registration.update()` 的定时器，不是 Periodic Background Sync" | 80 行 | ✅ 一致 | 调用点 [facade.ts:237](https://github.com/haigeerlab/pwa-platform/blob/eb5836e13ab1a0e5d218758f155004894cde8ebc/packages/client-runtime/src/client/facade.ts#L237)；`updateCheck.intervalMs` 默认关闭、最小 60000（[update-check.ts:10-15](https://github.com/haigeerlab/pwa-platform/blob/eb5836e13ab1a0e5d218758f155004894cde8ebc/packages/client-runtime/src/client/update-check.ts#L10)） |
 
 ### 缺失（现有文档未提及）
 - **`UPDATE_MODES` 只有一个值 `"prompt"`**（`packages/contracts/src/policy.ts:26`），`updateMode` 是必填字段而非有默认值的可选项，现有文档 71 行只给了 `updateMode: "prompt"` 这行配置，没说明这是当前**唯一合法值**，容易被误读为"未来/当前存在其它模式可选"。

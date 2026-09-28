@@ -4,6 +4,34 @@
 
 按本仓库的工作流，涉及公开契约或行为的改动（#1、#2、#5、#8）应先补规格或 ADR，再实施。
 
+## 2026-09-28 状态
+
+下文保留审查当时的建议原文。处理结果以本节为准。
+
+| # | 状态 | PR | 说明 |
+|---|---|---|---|
+| 1 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27) |  |
+| 2 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27) |  |
+| 3 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27)、[#38](https://github.com/haigeerlab/pwa-platform/pull/38) | `vite preview` 陷阱随 #27 补充，其余 4 处随 #38 补充 |
+| 4 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27) |  |
+| 5 | ❌ 撤回 | — | worker 读不到 `Set-Cookie`，见风险 R2 |
+| 6 | ✅ 已完成 | [#28](https://github.com/haigeerlab/pwa-platform/pull/28) |  |
+| 7 | ✅ 已完成（不阻断） | [#34](https://github.com/haigeerlab/pwa-platform/pull/34)、[#37](https://github.com/haigeerlab/pwa-platform/pull/37) | 改用服务器端断网，WebKit、Firefox 引擎冒烟不阻断门禁（ADR-0042） |
+| 8 | ✅ 已完成 | [#30](https://github.com/haigeerlab/pwa-platform/pull/30) |  |
+| 9 | ✅ 已完成 | [#31](https://github.com/haigeerlab/pwa-platform/pull/31) |  |
+| 10 | ◐ 部分完成 | [#25](https://github.com/haigeerlab/pwa-platform/pull/25) | iPhone 安装窗口内更新、Safari 双标签页已补齐；R9 根因、Android N-1、单源真实故障仍需真机 |
+| 11 | ✅ 已完成 | [#32](https://github.com/haigeerlab/pwa-platform/pull/32) |  |
+| 12 | ✅ 已完成 | [#33](https://github.com/haigeerlab/pwa-platform/pull/33) | 保留期检查的“可用资产”取自构建产物，不是服务器响应 |
+| 13 | ✅ 已完成（调整） | [#29](https://github.com/haigeerlab/pwa-platform/pull/29) | 改为 `requiredReleaseChecks(plan)`，与 ADR-0025 保持一致 |
+| 14 | ✅ 已完成 | [#38](https://github.com/haigeerlab/pwa-platform/pull/38) |  |
+| 15 | ✅ 已完成 | [#39](https://github.com/haigeerlab/pwa-platform/pull/39) | 删除失败场景需要专门测试构建，列为后续 |
+| 16 | ✅ 已完成 | [#41](https://github.com/haigeerlab/pwa-platform/pull/41) | 真实浏览器中耗尽配额的用例列为后续 |
+| 17 | ✅ 已完成 | [#40](https://github.com/haigeerlab/pwa-platform/pull/40) | 改用本仓库打包产物，离线安装 |
+| 18 | ⏸ 推迟 | — | 按原建议，等收到重复提示的反馈再评估 |
+| 19 | ✅ 已完成（仅文档） | [#38](https://github.com/haigeerlab/pwa-platform/pull/38) | 保持 `vue: ^3.4.0`，改为醒目标注 |
+
+此外，按项目所有者要求优化了 CI（[#42](https://github.com/haigeerlab/pwa-platform/pull/42)）：不再要求 PR 与 `main` 同步，改为合并后在 `main` 上重跑作为安全网；不阻断的 job 移出 PR 触发，每个 PR 从 5 个 job 降到 3 个。
+
 ## 第一批：投入小、收益立竿见影（建议下一个迭代完成）
 
 | # | 建议 | 关联 | 影响 | 投入 | 验收标准 |
