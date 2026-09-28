@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Offline-write flush trailing pass (review risk N2):** a `pwa:offline-write:flush` request that arrives after an in-flight flush for the same session binding has already read its pending writes (it is only still sending) no longer shares that round's now-stale result. `@pwa-platform/sw-runtime` now coalesces every such late request into exactly one trailing pass that starts once the in-flight round finishes and re-reads the store, so writes enqueued during the round are still delivered without a caller needing to notice and request another flush itself. A request that joins the round before its read (the existing single-flight behavior, R5) is unaffected. No message or result format change. `@pwa-platform/offline-write` is not yet published to npm; this is an internal worker fix with no public API change.
+
 ## 0.2.2 (2026-09-28)
 
 Patch release: upgrade all ten `@pwa-platform/*` packages together. No public API or configuration change; only `@pwa-platform/client-runtime`'s registration and update announcement behave differently on return visits. Check the second entry below if your code relied on `register()` rejecting when a return visit's background script fetch fails.

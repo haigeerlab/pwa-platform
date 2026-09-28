@@ -1329,3 +1329,164 @@ describe("offline-write flush single-flight (R5)", () => {
     expect(h.fetch).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("offline-write flush trailing pass (N2)", () => {
+  const windowClient = { type: "window", url: `${ORIGIN}/app/` };
+
+  const offlineWriteConfig: PwaPlatformWorkerConfig = {
+    ...config,
+    offlineWrites: {
+      enabled: true,
+      databaseName: "pwa-offline-write:storefront:production:r3",
+      maxEntries: 10,
+      maxTotalBodyBytes: 4096,
+      targets: [{ id: "submit-order", pathPrefix: "/app/api/orders", maxBodyBytes: 1024 }],
+    },
+  };
+
+  function storedWrite(idempotencyKey: string, sessionBinding: string, createdAt: number): PwaStoredOfflineWrite {
+    return {
+      targetId: "submit-order",
+      path: "/app/api/orders",
+      bodyJson: '{"quantity":1}',
+      idempotencyKey,
+      sessionBinding,
+      createdAt,
+      bodyBytes: 14,
+      deliveryState: "pending",
+    };
+  }
+
+  /**
+   * A fake store backed by a mutable map: `prepareFlush` re-reads it on every call and `remove` actually deletes,
+   * so a write set into `writes` between two rounds is picked up by the second `prepareFlush` but not the first.
+   */
+  function createMutableStore(): {
+    readonly store: PwaOfflineWriteStore;
+    readonly prepareFlushCalls: string[];
+    readonly writes: Map<string, PwaStoredOfflineWrite>;
+  } {
+    const writes = new Map<string, PwaStoredOfflineWrite>();
+    const prepareFlushCalls: string[] = [];
+    const store: PwaOfflineWriteStore = {
+      enqueue: async () => "queued",
+      prepareFlush: async (binding) => {
+        prepareFlushCalls.push(binding);
+        return { writes: [...writes.values()].filter((write) => write.sessionBinding === binding), purged: 0 };
+      },
+      remove: async (idempotencyKey) => {
+        writes.delete(idempotencyKey);
+      },
+      markFailed: async () => undefined,
+      clear: async () => undefined,
+    };
+    return { store, prepareFlushCalls, writes };
+  }
+
+  function dispatchFlush(h: Harness, requestId: string, sessionBinding: string): { readonly postMessage: ReturnType<typeof vi.fn>; waited: Promise<unknown> | undefined } {
+    const listener = (h.listeners.get("message") ?? [])[0];
+    if (listener === undefined) throw new Error("No message listener");
+    const postMessage = vi.fn();
+    let waited: Promise<unknown> | undefined;
+    listener({
+      data: { type: "pwa:offline-write:flush", version: 1, requestId, sessionBinding },
+      source: windowClient,
+      ports: [{ postMessage }],
+      waitUntil: (value: Promise<unknown>) => (waited = value),
+    } as never);
+    return { postMessage, waited };
+  }
+
+  function deferredResponse(): { readonly promise: Promise<Response>; readonly resolve: (response: Response) => void } {
+    let resolve!: (response: Response) => void;
+    const promise = new Promise<Response>((r) => (resolve = r));
+    return { promise, resolve };
+  }
+
+  it("sends a write enqueued during an in-flight flush via a trailing pass", async () => {
+    const h = createHarness();
+    const { store, prepareFlushCalls, writes } = createMutableStore();
+    writes.set("order-a", storedWrite("order-a", "opaque-session-123", 1));
+    attachPlatformWorker({ scope: h.scope, config: offlineWriteConfig, engine: h.engine, offlineWriteStore: store });
+
+    const gate = deferredResponse();
+    h.fetch.mockImplementation(async () => gate.promise);
+
+    const first = dispatchFlush(h, "request-1", "opaque-session-123");
+    // Let prepareFlush resolve and the loop reach `send`, without letting `gate` resolve: flush 1's read snapshot
+    // (A only) is now fixed, and it is only still sending.
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(prepareFlushCalls).toEqual(["opaque-session-123"]);
+
+    // A write enqueued after flush 1's read — directly through the store, exactly as a real enqueue() would commit
+    // it before flush 2 is requested.
+    writes.set("order-b", storedWrite("order-b", "opaque-session-123", 2));
+    const second = dispatchFlush(h, "request-2", "opaque-session-123");
+    await Promise.resolve();
+
+    // The second flush is coalesced, not a second pass yet: it waits for the first round to finish.
+    expect(prepareFlushCalls).toEqual(["opaque-session-123"]);
+
+    gate.resolve(new Response(null, { status: 201 }));
+    await first.waited;
+    await second.waited;
+
+    // Flush 1 only ever saw A; the trailing pass triggered by flush 2 re-read the store and saw B.
+    expect(prepareFlushCalls).toEqual(["opaque-session-123", "opaque-session-123"]);
+    expect(h.fetch).toHaveBeenCalledTimes(2);
+    expect(first.postMessage).toHaveBeenCalledWith({ type: "pwa:offline-write:result", version: 1, requestId: "request-1", status: "flushed", sent: 1, retained: 0, failed: 0, purged: 0 });
+    expect(second.postMessage).toHaveBeenCalledWith({ type: "pwa:offline-write:result", version: 1, requestId: "request-2", status: "flushed", sent: 1, retained: 0, failed: 0, purged: 0 });
+  });
+
+  it("coalesces several late flush requests into a single trailing round", async () => {
+    const h = createHarness();
+    const { store, prepareFlushCalls, writes } = createMutableStore();
+    writes.set("order-a", storedWrite("order-a", "opaque-session-123", 1));
+    attachPlatformWorker({ scope: h.scope, config: offlineWriteConfig, engine: h.engine, offlineWriteStore: store });
+
+    const gate = deferredResponse();
+    h.fetch.mockImplementation(async () => gate.promise);
+
+    const first = dispatchFlush(h, "request-1", "opaque-session-123");
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(prepareFlushCalls).toEqual(["opaque-session-123"]);
+
+    const second = dispatchFlush(h, "request-2", "opaque-session-123");
+    const third = dispatchFlush(h, "request-3", "opaque-session-123");
+    await Promise.resolve();
+    expect(prepareFlushCalls).toEqual(["opaque-session-123"]); // still no second pass started
+
+    gate.resolve(new Response(null, { status: 201 }));
+    await first.waited;
+    await second.waited;
+    await third.waited;
+
+    // Exactly one trailing round served both late requests: it re-reads the store (now empty, A was already sent
+    // by round 1) and finds nothing to send, so no second network request is made.
+    expect(prepareFlushCalls).toEqual(["opaque-session-123", "opaque-session-123"]);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    const trailingResult = { type: "pwa:offline-write:result", version: 1, status: "flushed", sent: 0, retained: 0, failed: 0, purged: 0 };
+    expect(second.postMessage).toHaveBeenCalledWith({ ...trailingResult, requestId: "request-2" });
+    expect(third.postMessage).toHaveBeenCalledWith({ ...trailingResult, requestId: "request-3" });
+  });
+
+  it("runs no trailing round when no other flush request arrives while it is in flight", async () => {
+    const h = createHarness();
+    const { store, prepareFlushCalls, writes } = createMutableStore();
+    writes.set("order-a", storedWrite("order-a", "opaque-session-123", 1));
+    attachPlatformWorker({ scope: h.scope, config: offlineWriteConfig, engine: h.engine, offlineWriteStore: store });
+    h.fetch.mockResolvedValue(new Response(null, { status: 201 }));
+
+    const only = dispatchFlush(h, "request-1", "opaque-session-123");
+    await only.waited;
+    // A couple of extra ticks with nothing else arriving must not conjure up a trailing round.
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(prepareFlushCalls).toEqual(["opaque-session-123"]);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    expect(only.postMessage).toHaveBeenCalledWith({ type: "pwa:offline-write:result", version: 1, requestId: "request-1", status: "flushed", sent: 1, retained: 0, failed: 0, purged: 0 });
+  });
+});

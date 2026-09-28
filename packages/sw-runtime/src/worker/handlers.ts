@@ -68,10 +68,12 @@ export function attachPlatformWorker({
   const origin = new URL(scope.location.href).origin;
   const router = createRouter({ config, manifestUrls: engine.urls(), origin });
   const offlineWriteStore = config.offlineWrites.enabled ? (offlineWriteStoreOverride ?? createOfflineWriteStore(config.offlineWrites)) : undefined;
-  // Single-flight per session binding (spec "同一会话绑定的 flush 单飞", R5): a flush already in flight for a binding
-  // is awaited and its result reused, instead of a second concurrent message starting a second `prepareFlush`/send
-  // pass that would resend the same idempotency keys. Different bindings never share an entry.
-  const inFlightFlushes = new Map<string, Promise<PwaOfflineWriteFlushResult>>();
+  // Single-flight per session binding, with a trailing pass (spec "同一会话绑定的 flush 单飞" + "增补：flush 单飞的
+  // trailing pass", R5/N2): a flush request that joins a round still reading its snapshot (`prepareFlush` not yet
+  // resolved) shares that round's result exactly as before; one that arrives after the read — while the round is
+  // only still sending — is "late" and is coalesced into exactly one extra round that starts once the current one
+  // finishes, so writes enqueued mid-flight are not silently left pending. Different bindings never share an entry.
+  const inFlightFlushes = new Map<string, PwaFlushRoundState>();
   const runtimeEngines = config.runtimeCache.enabled
     ? buildRuntimeEngines(config.runtimeCache, config.networkTimeoutSeconds, requireRuntimeCacheEngineFactory(runtimeCacheEngineFactory))
     : undefined;
@@ -200,7 +202,7 @@ async function flush(
   config: PwaPlatformWorkerConfig,
   origin: string,
   store: PwaOfflineWriteStore,
-  inFlightFlushes: Map<string, Promise<PwaOfflineWriteFlushResult>>,
+  inFlightFlushes: Map<string, PwaFlushRoundState>,
   port: MessagePort,
   send: typeof fetch,
 ): Promise<void> {
@@ -214,26 +216,69 @@ async function flush(
   }
 }
 
+/** Bookkeeping for one session binding's in-flight (and, once requested, trailing) flush round. */
+type PwaFlushRoundState = {
+  active: Promise<PwaOfflineWriteFlushResult>;
+  /** Set once `active`'s `prepareFlush` read has resolved — see `flushOfflineWrites`'s `onPrepared` hook. */
+  readPrepared: boolean;
+  /** The coalesced extra round for every flush request that arrived after `readPrepared` became true, if any. */
+  trailing?: Promise<PwaOfflineWriteFlushResult>;
+};
+
 /**
- * Starts `flushOfflineWrites` for `binding` unless one is already in flight, in which case its promise is reused —
- * every waiter observes the exact same settlement (fulfillment or rejection). Once it settles, the entry is removed
- * so the next flush request for `binding` starts a fresh pass.
+ * Starts `flushOfflineWrites` for `binding` unless one is already in flight. A request that arrives while the
+ * in-flight round is still reading its snapshot joins it and shares its exact result, unchanged from the original
+ * single-flight behaviour (R5). A request that arrives after that read has resolved — the round is only still
+ * sending — cannot observe writes enqueued from this point on, so instead of joining it is coalesced into exactly
+ * one trailing round that starts once the current round finishes (N2); every such late request shares that same
+ * trailing round's result. Once a round settles with nothing coalesced into it, its entry is removed so the next
+ * flush request for `binding` starts a fresh pass.
  */
 function flushOnce(
   store: PwaOfflineWriteStore,
   binding: string,
   origin: string,
   send: typeof fetch,
-  inFlightFlushes: Map<string, Promise<PwaOfflineWriteFlushResult>>,
+  inFlightFlushes: Map<string, PwaFlushRoundState>,
 ): Promise<PwaOfflineWriteFlushResult> {
-  const existing = inFlightFlushes.get(binding);
-  if (existing !== undefined) return existing;
-  const run = flushOfflineWrites(store, binding, origin, send);
-  inFlightFlushes.set(binding, run);
-  // Settlement cleanup must not itself become an unhandled rejection; the run's own rejection is still delivered to
-  // every caller awaiting `run` directly (this catch is on a separate chained promise nobody else awaits).
-  void run.finally(() => inFlightFlushes.delete(binding)).catch(() => undefined);
-  return run;
+  const state = inFlightFlushes.get(binding);
+  if (state === undefined) return startFlushRound(store, binding, origin, send, inFlightFlushes);
+  if (!state.readPrepared) return state.active;
+  if (state.trailing === undefined) {
+    // Runs once `state.active` settles, whether it fulfilled or rejected, and replaces this binding's map entry
+    // with the new round (see startFlushRound) so any further late arrival coalesces into a round of its own.
+    state.trailing = state.active.then(
+      () => startFlushRound(store, binding, origin, send, inFlightFlushes),
+      () => startFlushRound(store, binding, origin, send, inFlightFlushes),
+    );
+  }
+  return state.trailing;
+}
+
+function startFlushRound(
+  store: PwaOfflineWriteStore,
+  binding: string,
+  origin: string,
+  send: typeof fetch,
+  inFlightFlushes: Map<string, PwaFlushRoundState>,
+): Promise<PwaOfflineWriteFlushResult> {
+  // `active` is filled in immediately below, before any other code can observe this object (no await in between).
+  const state = { readPrepared: false } as PwaFlushRoundState;
+  const active = flushOfflineWrites(store, binding, origin, send, () => {
+    state.readPrepared = true;
+  });
+  state.active = active;
+  inFlightFlushes.set(binding, state);
+  // Settlement cleanup must not itself become an unhandled rejection; the round's own rejection is still delivered
+  // to every direct waiter (via `active`, or, for a late caller, via `trailing`'s chained promise).
+  void active
+    .finally(() => {
+      // A trailing pass already replaced this binding's entry with its own fresh state (see flushOnce above); only
+      // clear the entry here when this settlement is still the current one and nothing was coalesced into it.
+      if (inFlightFlushes.get(binding) === state && state.trailing === undefined) inFlightFlushes.delete(binding);
+    })
+    .catch(() => undefined);
+  return active;
 }
 
 async function enqueue(
