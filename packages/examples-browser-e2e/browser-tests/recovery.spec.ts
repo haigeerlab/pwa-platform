@@ -94,6 +94,83 @@ for (const example of EXAMPLES) {
       }
     });
 
+    // Review risk R14. ADR-0012 reads "先删除以应用缓存前缀开头的全部缓存，再接管已打开的客户端" (delete this
+    // app's caches, *then* take over already-open clients) — describing the `recover()` function's own program
+    // order (cache deletion is awaited before `clients.claim()`). That is the SW-side call order; it is not what an
+    // already-controlled page observes. Measured directly (Date.now(), shared clock, three independent runs): for a
+    // page controlled by the old platform worker before recovery deploys, `controllerchange` fires roughly 1–1.5s
+    // *before* the app's precache becomes empty from that page's point of view, and before the recovery worker's
+    // own `indexedDB.deleteDatabase` call for the offline-write database even reaches an open connection (see the
+    // next test). The ordering is a race the platform does not control, so this test pins only what always holds:
+    // the page is handed to the recovery worker without waiting for "activated", and the cleanup then completes.
+    // It deliberately does not assert that the precache is still present at takeover — that would pin a timing
+    // outcome that a faster machine or another Chrome build may legitimately change (ADR-0012 amendment 2026-09-28).
+    test("an already-controlled page is taken over without waiting for cleanup, and cleanup still completes", async ({
+      page,
+      fixtureServer,
+    }) => {
+      await prepareCaches(page, fixtureServer, example);
+
+      // Unlike `deployRecovery`, this stops the instant the browser hands control over; it does not also wait for
+      // "activated" (which is what makes the cleanup-has-settled assumption safe elsewhere in this file).
+      const after = await waitForControllerChange(page, async () => {
+        fixtureServer.deploy("recovery");
+        await checkForUpdate(page);
+      });
+      expect(after.active).toBe(fixtureServer.url(WORKER_URL));
+
+      // Whatever the page saw at the instant of takeover, the cleanup must still finish afterwards.
+      await expect.poll(async () => (await snapshotCaches(page)).has(PRECACHE)).toBe(false);
+    });
+
+    // Review risk R14, fault injection. `deleteOfflineWriteDatabase` (recovery-worker/index.ts) is written to
+    // reject immediately if `indexedDB.deleteDatabase` reports "blocked" — i.e. if some open connection to the
+    // offline-write database never closes — specifically so recovery does not hand control to a worker while
+    // sensitive queued-write data might still be sitting there undeleted. This test creates that exact condition
+    // for real: a page-held connection to the same database name the recovery worker always computes from identity
+    // (packages/sw-runtime/src/build/config.ts — it is derived unconditionally, even though this example never
+    // enables offline-write), deliberately left open with no `onversionchange` handler that closes it.
+    //
+    // What was NOT achievable from a genuine, unmodified browser API: a *permanent* block. `indexedDB
+    // .deleteDatabase` does fire "blocked" against the held connection (confirmed separately by wrapping
+    // `indexedDB.deleteDatabase` from the page before triggering the deploy), but this Chrome build force-resolves
+    // the block on its own within a few seconds even though the connection is never closed — so
+    // `deleteOfflineWriteDatabase`'s onblocked-rejects-immediately branch was never actually exercised here, and
+    // recovery still completes. Two other fault-injection routes were tried and ruled out rather than faked:
+    // Playwright's `context.route()` does not intercept the recovery worker's own script request (confirmed: the
+    // route handler recorded zero hits although the worker script visibly re-fetched, installed and activated), so
+    // the served bytes cannot be shimmed to make `caches.delete` throw; and there is no standards-based way to make
+    // `caches.delete` fail on a cache the worker itself owns. Making either failure durable would require a
+    // test-only build variant of the recovery worker (out of scope: packages/*/src is not touched here).
+    test("a page holding an open connection to the offline-write database does not block recovery in this Chrome build", async ({
+      page,
+      fixtureServer,
+    }) => {
+      const before = await prepareCaches(page, fixtureServer, example);
+
+      const offlineWriteDatabaseName = `pwa-offline-write:${IDENTITY.appId}:${IDENTITY.environment}:${IDENTITY.cacheNamespaceSeed}`;
+      await page.evaluate(
+        (name) =>
+          new Promise<void>((resolve, reject) => {
+            const request = indexedDB.open(name, 1);
+            request.onupgradeneeded = () => request.result.createObjectStore("queue");
+            request.onsuccess = () => {
+              // Kept alive on window so it is not garbage-collected; deliberately no onversionchange handler that
+              // closes it, which is the fault this test injects.
+              (window as unknown as { __heldOfflineWriteDb: IDBDatabase }).__heldOfflineWriteDb = request.result;
+              resolve();
+            };
+            request.onerror = () => reject(request.error);
+          }),
+        offlineWriteDatabaseName,
+      );
+
+      await deployRecovery(page, fixtureServer);
+
+      const after = await snapshotCaches(page);
+      expectDeletedExactlyUnderPrefix(before, after, APP_PREFIX);
+    });
+
     test("the recovery worker serves nothing, online or offline", async ({ page, context, fixtureServer }) => {
       await prepareCaches(page, fixtureServer, example);
 
