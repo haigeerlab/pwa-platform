@@ -9,12 +9,10 @@ for (const example of EXAMPLES) {
     test.use({ fixtureSite: fixtureSite(example) });
 
     test("loads, registers the worker at the identity's path, and shows it", async ({ page, fixtureServer, browserName }) => {
-      // Engine finding (ADR-0042, 2026-09-29): under Playwright WebKit, reading the React example's registration
-      // (`navigator.serviceWorker.getRegistration()`) is unreliable — it can hang past the test's own 30s timeout.
-      // The Vue example (same fixture server, same worker build pipeline) and Firefox are both unaffected, so this
-      // is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and reported
-      // as a finding rather than changed in product code.
-      test.skip(example === "react" && browserName === "webkit", "Reading the React example's service worker registration is unreliable under Playwright WebKit (ADR-0042 finding, 2026-09-29)");
+      // ADR-0042 (2026-09-29): under Playwright WebKit every page call stops returning once the React example's worker
+      // starts installing (no page crash, no reload by the example). Not reproduced on real Safari or iPhone, where the
+      // same example and binding pass install, offline, update and recovery; the root cause is still open.
+      test.skip(example === "react" && browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
       await page.goto(fixtureServer.url(SHELL_URL));
 
       // Asserted through the page, as a user would see it: the binding's state reaches the interface.

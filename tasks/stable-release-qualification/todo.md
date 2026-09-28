@@ -64,3 +64,4 @@
   - [x] 形成“0.1.x 暂不新增 Apple 通道、macOS／iPhone 分开记录”的 Spec／ADR-0041 草案
   - [x] 项目所有者接受 ADR-0041；公开文案继续保持“渐进兼容／部分通过”
 - [ ] R6 取得第二台 Android 后完成 N/N-1 两机门禁
+- [ ] 查明 Playwright WebKit 下 React 示例 worker 安装期间页面调用全部挂起的根因（ADR-0042 2026-09-29 增补；真机 Safari/iPhone 不出现，引擎冒烟中 React 示例相关 19 个 WebKit 用例暂以同一原因跳过）

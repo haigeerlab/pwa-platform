@@ -17,7 +17,7 @@ for (const example of EXAMPLES) {
     // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
     // reported as a finding rather than changed in product code.
     if (example === "react") {
-      test.skip(({ browserName }) => browserName === "webkit", "React example's service worker never reaches \"activated\" under Playwright WebKit (ADR-0042 finding, 2026-09-29)");
+      test.skip(({ browserName }) => browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
     }
 
     test("re-rendering does not disturb the binding", async ({ page, fixtureServer }) => {

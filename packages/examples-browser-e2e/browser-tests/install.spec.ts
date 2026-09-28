@@ -168,7 +168,7 @@ for (const example of EXAMPLES) {
       // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
       // reported as a finding rather than changed in product code. The other tests in this describe block do not
       // call installAndControl and are unaffected, so the skip is scoped to this one test rather than the describe.
-      test.skip(example === "react" && browserName === "webkit", "React example's service worker never reaches \"activated\" under Playwright WebKit (ADR-0042 finding, 2026-09-29)");
+      test.skip(example === "react" && browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
       await installAndControl(page, fixtureServer);
       await expect(page.locator("#install")).toHaveCount(0);
 
