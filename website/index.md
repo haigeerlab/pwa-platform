@@ -34,7 +34,7 @@ features:
 PWA Platform 是供多个业务应用复用的 PWA 基础设施。业务团队声明应用身份和缓存意图，平台生成 manifest、Service Worker 与离线页，并在构建时核对产物。安装按钮和业务数据仍由应用负责；更新提示可选用平台默认 UI 或自行实现。
 
 ::: warning 当前发布状态
-十个公开包的正式版本为 **0.2.0**（npm `latest`），包括 Vite、Vue、React 和可选的入口恢复包。Nuxt、Push 与离线写入包仍只在工作区。包发布不代替业务应用的生产部署验收。
+十个公开包的正式版本为 **0.2.1**（npm `latest`），包括 Vite、Vue、React 和可选的入口恢复包。Nuxt、Push 与离线写入包仍只在工作区。包发布不代替业务应用的生产部署验收。
 :::
 
 ## PC／Android／iPhone 测试清单
@@ -123,7 +123,7 @@ PWA 能把网页接入浏览器的安装、离线、更新、通知和部分系�
 
 ## 接入自己的系统
 
-1. 按技术栈[选择公开包并安装 0.2.0 版本](/start/choose)。当前公开接入面是 Vite 5／8 + Vue 3 或 React 19；Nuxt 包尚未公开。
+1. 按技术栈[选择公开包并安装 0.2.1 版本](/start/choose)。当前公开接入面是 Vite 5／8 + Vue 3 或 React 19；Nuxt 包尚未公开。
 2. 从[完整配置示例](/guide/configuration)填写身份、安装信息和缓存策略。先确定真实 HTTPS 地址、部署路径、图标文件和哪些响应确实公开；生产身份首次注册后不能随普通发版更改。
 3. 按[Vue](/start/vue)或[React](/start/react)指南挂载构建插件、读取 `virtual:pwa-config`，并在应用启动后主动调用 `register()`。安装按钮由业务实现；更新提示可选用[默认 UI](/guide/updates#可选的默认更新提示)或自行展示。
 4. 做生产构建，用 `vite preview` 或目标 HTTPS 站点检查离线与更新结果。`vite dev` 可用于普通页面开发，但不会生成平台 worker；上线前逐项完成[浏览器与发布检查](/start/checklist)。

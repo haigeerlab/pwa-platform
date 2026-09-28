@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/entry-resilience",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Validated fallback entries for installed PWA applications.",
   "license": "MIT",
   "type": "module",
