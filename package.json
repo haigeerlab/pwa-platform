@@ -28,6 +28,7 @@
     "test": "node scripts/run-workspace.mjs test",
     "test:browser": "node scripts/run-workspace.mjs test:browser",
     "test:browser:engines": "node scripts/run-workspace.mjs test:browser:engines",
+    "test:browser:network": "node scripts/run-workspace.mjs test:browser:network",
     "typecheck": "node scripts/run-workspace.mjs typecheck",
     "check:publish": "node scripts/check-package-distribution.mjs",
     "gate:local": "node packages/release-tools/dist/bin.js"

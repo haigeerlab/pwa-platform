@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-const OPERATIONS = new Set(["build", "test", "test:browser", "test:browser:engines", "typecheck"]);
+const OPERATIONS = new Set(["build", "test", "test:browser", "test:browser:engines", "test:browser:network", "typecheck"]);
 const [operation, ...rest] = process.argv.slice(2);
 
 if (!OPERATIONS.has(operation)) {

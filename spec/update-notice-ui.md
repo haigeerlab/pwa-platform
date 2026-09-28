@@ -38,7 +38,11 @@
 
 React/Vue 的 Cloudflare `drill` 预览槽显式挂载已发布的可选组件，替代该槽的示例自写更新横幅；本地示例测试和 `main` 槽保持原横幅。以同一冻结身份依次发布 v1、v2，在受控手机页面观察真实 worker 等待、用户点击更新、接管后仍显示旧页面、用户点击刷新后显示 v2。Vue 演示 `colors` 主按钮色值，React 使用默认主题。演练结果应分别记录组件、worker、设备和部署 ID；模拟客户端的 UI 测试不能代替此项。每次云端写入须先通过测试站手册的免费额度门禁，失败或中断时把 `drill` 恢复为正常 v2。
 
-## Documentation impact
+## 增补：UI 浏览器套件进入默认门禁（2026-09-28）
+
+`ui-browser-tests`（`playwright.ui.config.ts`）此前没有任何脚本调用，更新提示的真实浏览器用例只在手动运行时执行。现在示例包的 `test:browser` 在默认套件之后运行它，因此它随 `pnpm test:browser` 进入阻塞门禁（本地门禁与 CI 的 browser job）。
+
+
 
 本模块更新能力图、ADR、框架包 README 与网站更新指南；不提前把未发布的 UI 写成 npm `0.1.0-beta.1` 的能力。发布和竞品矩阵在独立门禁后更新。
 

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { GATE_COMMANDS } from "../src/gate-commands.js";
 
 describe("GATE_COMMANDS", () => {
-  it("lists the ADR-0031 commands, plus the ADR-0042 engine smoke, in run order", () => {
+  it("lists the ADR-0031 commands, plus the ADR-0042 engine smoke and the push network suite, in run order", () => {
     expect(GATE_COMMANDS.map((entry) => entry.command)).toEqual([
       "pnpm install --frozen-lockfile",
       "pnpm lint",
@@ -13,12 +13,13 @@ describe("GATE_COMMANDS", () => {
       "pnpm typecheck",
       "pnpm test:browser",
       "pnpm test:browser:engines",
+      "pnpm test:browser:network",
       "pnpm audit --ignore-registry-errors",
     ]);
   });
 
-  it("marks every command blocking except the dependency audit and the engine smoke", () => {
-    const nonBlocking = new Set(["pnpm audit --ignore-registry-errors", "pnpm test:browser:engines"]);
+  it("marks every command blocking except the dependency audit, the engine smoke and the push network suite", () => {
+    const nonBlocking = new Set(["pnpm audit --ignore-registry-errors", "pnpm test:browser:engines", "pnpm test:browser:network"]);
     for (const entry of GATE_COMMANDS) {
       expect(entry.blocking).toBe(!nonBlocking.has(entry.command));
     }
