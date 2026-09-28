@@ -12,7 +12,7 @@
 // `overrides` redirecting every `@pwa-platform/*` package to its local tarball — otherwise pnpm tries to resolve
 // that nested dependency from the public npm registry, where these prerelease versions don't exist yet.
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -95,7 +95,13 @@ export async function buildOnboardingFixture(): Promise<OnboardingFixture> {
 
   await cp(TEMPLATE_DIR, appDir, { recursive: true });
   await writeFile(join(appDir, "package.json"), `${JSON.stringify(consumerPackageJson(tarballs), null, 2)}\n`, "utf8");
-  await writeFile(join(appDir, "pnpm-workspace.yaml"), consumerWorkspaceYaml(tarballs), "utf8");
+  await writeFile(join(appDir, "pnpm-workspace.yaml"), consumerWorkspaceYaml(tarballs, await readRootAllowBuilds()), "utf8");
+
+  // Start from the root lockfile so pnpm prefers the versions it already resolved for the whole dependency closure,
+  // not just the pinned top-level react/vite: without it, transitive ranges resolve afresh (vite 8.3.0 picked
+  // rolldown 1.2.11 while the root locks 1.2.8), which only works on a machine whose store happens to hold the newer
+  // version and fails in CI's fresh store with ERR_PNPM_NO_OFFLINE_TARBALL.
+  await copyFile(join(ROOT, "pnpm-lock.yaml"), join(appDir, "pnpm-lock.yaml"));
 
   // No network: everything either comes from a local tarball above or must already be in the pnpm store the root
   // `pnpm install --frozen-lockfile` populated (react, react-dom, vite, and their own transitive dependencies).
@@ -131,10 +137,28 @@ function consumerPackageJson(tarballs: Readonly<Record<string, string>>): unknow
  * plain `0.1.0`; these overrides make pnpm resolve that nested version from the local tarball instead of the
  * public registry, where it does not exist as a plain release yet.
  */
-function consumerWorkspaceYaml(tarballs: Readonly<Record<string, string>>): string {
+function consumerWorkspaceYaml(tarballs: Readonly<Record<string, string>>, rootAllowBuilds: readonly string[]): string {
   const lines = ["packages:", '  - "."', "", "overrides:"];
   for (const [pkgName, fileName] of Object.entries(tarballs)) {
     lines.push(`  "${pkgName}": "file:../tarballs/${fileName}"`);
   }
+  // pnpm 11's strictDepBuilds fails an install on any unapproved build script, so the fixture carries the root's
+  // explicit build decisions (for example esbuild's postinstall, declined there) instead of making its own.
+  if (rootAllowBuilds.length > 0) lines.push("", "allowBuilds:", ...rootAllowBuilds);
   return `${lines.join("\n")}\n`;
+}
+
+/** The entry lines of the root pnpm-workspace.yaml `allowBuilds:` map, exactly as written there. */
+async function readRootAllowBuilds(): Promise<readonly string[]> {
+  const yaml = await readFile(join(ROOT, "pnpm-workspace.yaml"), "utf8");
+  const lines = yaml.split("\n");
+  const start = lines.findIndex((line) => line === "allowBuilds:");
+  if (start === -1) return [];
+  const entries: string[] = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^\s+#/.test(line)) continue;
+    if (!/^\s+\S/.test(line)) break;
+    entries.push(line);
+  }
+  return entries;
 }
