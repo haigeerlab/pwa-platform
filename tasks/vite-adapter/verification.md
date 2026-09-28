@@ -326,3 +326,9 @@ Android 16 + Chrome 153 打开中文 Vite 夹具时，运行环境已是 `isSecu
 夹具四个图标改为真实 192／512 文件并增加尺寸回归测试；HTML 增加移动 viewport。Android 安装窗口 `standalone=true`、本源 worker 控制；离线页中文文案与 400px 布局通过。恢复 Origin 后不点重试，页面以 `HEAD /app/sw.js 200` 探测并自动加载线上存在的 manifest 资源，排除了不存在路由的 404 歧义。
 
 最终门禁：`pnpm --filter @pwa-platform/vite test` 24 个文件、241 个测试通过；同包 `typecheck` 与 `build` 通过；真实 Chrome 153 浏览器套件 33/33 通过。新规则同时暴露并修正了两个旧测试夹具：入口恢复浏览器夹具原有四张 1×1 图标，Cloudflare 计划捕获测试则把文本写成 PNG；修正后 `entry-resilience` 单测 274/274、浏览器 20/20，`examples-browser-e2e` 单测 247/247 通过。全仓 `typecheck`、`build`、`lint` 与 `docs:build` 通过；`release-tools` 117/117 单独复跑通过。
+
+## 收尾：剩余两项的处置（2026-09-28，项目所有者决定）
+
+- **V5-4 真实业务项目验收**：移交宿主仓库，按接入作业单与项目 Skill 执行，证据记在宿主侧。本模块没有取得任何宿主源码、部署域名或生产响应头，因此**不宣称**任何业务仓库已完成接入或上线。
+- **正式发包门禁**：原计划在宿主验收后再决定 beta 版本。此后项目改为发布正式版，干净工作树与 CI 门禁分别在 [0.1.0](../stable-release-qualification/release-0.1.0.md) 与 [0.2.0](../package-distribution/release-0.2.0.md) 发布中执行并留有记录；“宿主验收之后”这一前提未满足。
+
