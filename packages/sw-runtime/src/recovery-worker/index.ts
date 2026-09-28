@@ -11,8 +11,13 @@ export type PwaRecoveryWorkerOptions = {
   readonly config: PwaRecoveryWorkerConfig;
 };
 
-/** How long the offline-write database deletion keeps waiting after `onblocked` before it is treated as a failure. */
-const BLOCKED_WAIT_MS = 10_000;
+/**
+ * How long the offline-write database deletion keeps waiting after `onblocked` before it is treated as a failure.
+ * The platform's own store closes each connection as soon as its transaction ends, so a legitimate block clears in
+ * milliseconds; a connection that never closes (application code holding the platform's database open) does not
+ * clear at all in Chrome, and until this expires `activate` — and so recovery — is held up.
+ */
+const BLOCKED_WAIT_MS = 3_000;
 
 /**
  * Registers the recovery worker (ADR-0005): it takes over immediately only after it removes every cache and the

@@ -322,9 +322,8 @@ test.describe("recovery with a blocked deletion (R14 residue)", () => {
         await (await navigator.serviceWorker.getRegistration())?.update();
       });
     });
-    // Recovery only reaches "activated" once its bounded wait past `blocked` times out (~10s), longer than the
-    // helper's default timeout.
-    await waitForActiveWorkerActivated(page, 20_000);
+    // Recovery only reaches "activated" once its bounded wait past `blocked` times out (~3s).
+    await waitForActiveWorkerActivated(page, 15_000);
 
     // The bounded wait timed out, so recovery failed closed: the database (still genuinely blocked) was never
     // reported deleted, and the uncontrolled page was never claimed.

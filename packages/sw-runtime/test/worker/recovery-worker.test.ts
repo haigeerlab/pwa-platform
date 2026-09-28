@@ -343,7 +343,7 @@ describe("activate", () => {
       registerRecoveryWorker({ scope: harness.scope, config });
       const activation = dispatch(harness, "activate");
       const assertion = expect(activation).rejects.toThrow(/offline-write database deletion blocked/);
-      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(3_000);
       await assertion;
       expect(deletedDatabases).toEqual(["pwa-offline-write:storefront:production:r3"]);
       expect(harness.calls).toEqual([
