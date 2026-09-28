@@ -260,3 +260,125 @@ test.describe("recovery with a deletion failure (#15)", () => {
     expect(await uncontrolled.evaluate(() => navigator.serviceWorker.controller === null), "recovery failed, so nothing is claimed").toBe(true);
   });
 });
+
+/**
+ * R14 residue (docs/review/2026-09-28/06-risks-delta.md): `deleteDatabase` used to reject the moment `onblocked`
+ * fired, even though a blocked deletion request stays pending in the browser and normally succeeds once the
+ * connection that blocked it closes. A page can hold such a connection legitimately (for example a second tab that
+ * opened the offline-write database directly). These guard the fix in `deleteOfflineWriteDatabase` (bounded wait
+ * past `blocked`) against the *real*, un-faulted recovery worker (the "recovery" site, built from the real
+ * `registerRecoveryWorker`, no fault injected) in a genuine `blocked` scenario, not a simulated one.
+ */
+test.describe("recovery with a blocked deletion (R14 residue)", () => {
+  /** Opens a second, raw connection to the offline-write database straight from the page and keeps it on `window`
+   * so the test can close it later. `closeOnVersionChange` mirrors a page that reacts to `versionchange` but not
+   * instantly (a real tab needs at least a task turn to react, e.g. to let a pending write finish) — closing on the
+   * same tick pre-empts `blocked` entirely, per the IndexedDB spec's version-change grace check, so this delays the
+   * close by one macrotask to genuinely trigger `blocked` first. Leaving it `false` mirrors a page that never
+   * reacts, the way a stale/inactive tab might. */
+  async function openBlockingConnection(page: Page, closeOnVersionChange: boolean): Promise<void> {
+    await page.evaluate(
+      async ({ databaseName, closeOnVersionChange: shouldClose }) => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open(databaseName, 1);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        if (shouldClose) db.addEventListener("versionchange", () => setTimeout(() => db.close(), 50));
+        Reflect.set(window, "__r14BlockingDb", db);
+      },
+      { databaseName: CONFIG_OFFLINE_WRITE.offlineWrites.enabled ? CONFIG_OFFLINE_WRITE.offlineWrites.databaseName : "", closeOnVersionChange },
+    );
+  }
+
+  /** Closes the raw connection opened by `openBlockingConnection`, simulating the blocking tab finally going away. */
+  async function closeBlockingConnection(page: Page): Promise<void> {
+    await page.evaluate(() => {
+      const db = Reflect.get(window, "__r14BlockingDb") as IDBDatabase | undefined;
+      db?.close();
+      Reflect.deleteProperty(window, "__r14BlockingDb");
+    });
+  }
+
+  test("blocked-then-closes: recovery waits out the blocked event and claims the uncontrolled page once the deletion succeeds", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("offline-write");
+    const uncontrolled = await context.newPage();
+    await uncontrolled.goto(fixtureServer.url(SHELL_URL));
+    await installAndControl(page, fixtureServer);
+    await message(page, {
+      type: "pwa:offline-write:enqueue", version: 1, requestId: "enqueue-blocked-closes",
+      intent: { targetId: "submit-order", path: "/app/api/orders", body: { quantity: 1 }, idempotencyKey: "order-blocked-closes", sessionBinding: "opaque-session-blocked-closes" },
+    });
+    expect(await queuedEntries(page)).toBe(1);
+    expect(await databaseExists(page)).toBe(true);
+
+    // A well-behaved second connection: it releases the database shortly after the delete blocks on it.
+    await openBlockingConnection(page, true);
+
+    await waitForControllerChange(page, async () => {
+      fixtureServer.deploy("recovery");
+      await page.evaluate(async () => {
+        await (await navigator.serviceWorker.getRegistration())?.update();
+      });
+    });
+    await waitForActiveWorkerActivated(page);
+
+    // The blocked deletion request stayed pending and succeeded once the blocking connection closed on
+    // `versionchange` — the database is really gone, despite the `blocked` event firing first.
+    await expect.poll(() => databaseExists(page), { message: "the offline-write database is eventually deleted after the blocking connection closes" }).toBe(false);
+
+    // Recovery kept waiting past `blocked` instead of failing closed on it, so it reached the claim step: the
+    // previously uncontrolled page is now claimed once the deletion it was waiting on actually succeeded.
+    await expect
+      .poll(() => uncontrolled.evaluate(() => navigator.serviceWorker.controller !== null), {
+        message: "recovery claims the uncontrolled page once the blocked-then-succeeds deletion resolves",
+      })
+      .toBe(true);
+  });
+
+  test("blocked-forever: recovery fails closed only after the bounded wait times out, and the browser still deletes the database once the blocking connection later closes", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("offline-write");
+    const uncontrolled = await context.newPage();
+    await uncontrolled.goto(fixtureServer.url(SHELL_URL));
+    await installAndControl(page, fixtureServer);
+    await message(page, {
+      type: "pwa:offline-write:enqueue", version: 1, requestId: "enqueue-blocked-forever",
+      intent: { targetId: "submit-order", path: "/app/api/orders", body: { quantity: 1 }, idempotencyKey: "order-blocked-forever", sessionBinding: "opaque-session-blocked-forever" },
+    });
+    expect(await queuedEntries(page)).toBe(1);
+
+    // A connection that never reacts to `versionchange`, the way a stale tab might behave.
+    await openBlockingConnection(page, false);
+
+    await waitForControllerChange(page, async () => {
+      fixtureServer.deploy("recovery");
+      await page.evaluate(async () => {
+        await (await navigator.serviceWorker.getRegistration())?.update();
+      });
+    });
+    // Recovery only reaches "activated" once its bounded wait past `blocked` times out (~3s).
+    await waitForActiveWorkerActivated(page, 15_000);
+
+    // The bounded wait timed out, so recovery failed closed: the database (still genuinely blocked) was never
+    // reported deleted, and the uncontrolled page was never claimed.
+    expect(await databaseExists(page), "the database is still there while the blocking connection stays open").toBe(true);
+    expect(
+      await uncontrolled.evaluate(() => navigator.serviceWorker.controller === null),
+      "recovery never claims once it fails closed on the bounded-wait timeout",
+    ).toBe(true);
+
+    // Once the blocking connection finally closes, the pending deletion request the browser kept queued succeeds —
+    // proving the timeout was the right call to fail closed on (the data was still there when recovery gave up),
+    // while the earlier test proves a `blocked` event alone must not be.
+    await closeBlockingConnection(page);
+    await expect.poll(() => databaseExists(page), { message: "the database is deleted once the blocking connection closes" }).toBe(false);
+  });
+});

@@ -71,3 +71,5 @@ worker 配置新增可选字段 `networkTimeoutSeconds`，只在计划中存在�
 
 据此改为：每项删除各自尝试，全部尝试完后若有失败再拒绝，并照旧跳过 Push 取消与 `clients.claim()`。残留只剩真正删不掉的那一项；恢复 worker 不注册 `fetch`，残留不会被用来应答请求。用例见 `packages/sw-runtime/browser-tests/offline-write.spec.ts` 的“recovery with a deletion failure (#15)”。
 
+**离线写数据库删除的 `blocked` 误判（2026-09-28 增补，R14 残留复查）。** 上文"删除失败"一节修改前，`indexedDB.deleteDatabase` 的 `onblocked` 处理器会立即拒绝，把它当成与 `onerror` 等价的失败。但 `blocked` 只说明还有另一个连接（例如持有离线写数据库的一个页面）尚未关闭；删除请求本身仍留在浏览器里排队，通常会在那个连接关闭后成功——用真实 Chrome 验证：一个页面持有离线写数据库的未关闭连接，部署恢复 worker 后，只要该连接随后关闭（哪怕是几十毫秒之后），数据库最终确实被删除，但恢复 worker 已经在收到 `blocked` 的一瞬间判定删除失败，从而放弃取消 Push 与 `clients.claim()`；已受控页面仍会像其他失败场景一样被接管（浏览器行为，不受这段代码影响），但尚未受控的页面本该被接管却没有被接管。据此改为：收到 `blocked` 后继续等待最终的 `onsuccess`/`onerror`，等待上限 3 秒；只有超时或收到 `onerror` 才计为失败，随后按"删除失败"一节的规则处理。若该连接一直不关闭，等待超时后恢复 worker 仍会失败关闭；此后浏览器里排队的删除请求仍可能在连接关闭时成功，但那已经是下一次部署要处理的残留。单元测试见 `packages/sw-runtime/test/worker/recovery-worker.test.ts`（blocked-then-success、blocked-then-timeout）；真实浏览器用例见 `packages/sw-runtime/browser-tests/offline-write.spec.ts` 的“recovery with a blocked deletion (R14 residue)”。
+
