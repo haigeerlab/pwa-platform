@@ -2,7 +2,7 @@
 
 ## 状态
 
-已接受（2026-09-15）。
+已接受（2026-09-15）。“不执行 `playwright install`，不下载浏览器”一条已由 [ADR-0042](0042-non-blocking-webkit-and-firefox-engine-smoke.md) 部分修订：另行批准不阻塞门禁的 WebKit、Firefox 引擎冒烟；Chrome 规则不变。
 
 ## 背景
 

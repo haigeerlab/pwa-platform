@@ -3,7 +3,7 @@
 // and nothing else in the package needs to repeat the strings.
 export type PwaGateCommand = {
   readonly command: string;
-  /** Only the dependency audit is non-blocking (ADR-0031): its exit code is recorded but never fails the gate. */
+  /** Non-blocking commands (the dependency audit, ADR-0031; the engine smoke, ADR-0042; the push network suite, spec/push-module.md) are recorded but never fail the gate. */
   readonly blocking: boolean;
 };
 
@@ -15,5 +15,7 @@ export const GATE_COMMANDS: readonly PwaGateCommand[] = [
   { command: "pnpm typecheck", blocking: true },
   { command: "pnpm test:browser", blocking: true },
   { command: "pnpm test:onboarding-smoke", blocking: true },
+  { command: "pnpm test:browser:engines", blocking: false },
+  { command: "pnpm test:browser:network", blocking: false },
   { command: "pnpm audit --ignore-registry-errors", blocking: false },
 ];

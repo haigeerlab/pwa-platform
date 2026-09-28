@@ -87,3 +87,54 @@ jobs:
 
       - name: Newcomer onboarding smoke (packages installed from packed tarballs, offline)
         run: pnpm test:onboarding-smoke
+
+  engines:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    name: Engine smoke (Playwright WebKit and Firefox, non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # ADR-0042: progressive-compatibility evidence only. A failure is recorded but never blocks a pull request.
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm and Node.js, install with frozen lockfile
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+
+      - name: Install WebKit and Firefox system dependencies
+        # The only approved browser download source is Playwright's own CDN for the pinned version (ADR-0042).
+        run: pnpm --filter @pwa-platform/sw-runtime exec playwright install --with-deps webkit firefox
+
+      - name: Engine smoke
+        run: pnpm test:browser:engines
+
+  network:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    name: Push network suite (real FCM delivery, non-blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # spec/push-module.md: reaches the real push service over the internet, so a failure is recorded but never blocks.
+    continue-on-error: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm and Node.js, install with frozen lockfile
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+
+      - name: Push network suite
+        run: pnpm test:browser:network
+

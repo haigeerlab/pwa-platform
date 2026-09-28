@@ -49,8 +49,11 @@ GitHub 仓库或 Actions 不可用期间，发布门禁的 CI 一项可以用本
 | <22.x.y> | `pnpm test` | <code> | <sha256> | <path> |
 | <22.x.y> | `pnpm typecheck` | <code> | <sha256> | <path> |
 | <22.x.y> | `pnpm test:browser` | <code> | <sha256> | <path> |
+| <22.x.y> | `pnpm test:onboarding-smoke` | <code> | <sha256> | <path> |
+| <22.x.y> | `pnpm test:browser:engines`（不阻塞，ADR-0042） | <code> | <sha256> | <path> |
+| <22.x.y> | `pnpm test:browser:network`（不阻塞，需联网，spec/push-module.md） | <code> | <sha256> | <path> |
 | <22.x.y> | `pnpm audit --ignore-registry-errors`（不阻塞） | <code> | <sha256> | <path> |
-| <24.x.y> | 同上七项，各一行 | | | |
+| <24.x.y> | 同上十项，各一行 | | | |
 
 ## 结论
 
