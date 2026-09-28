@@ -150,7 +150,7 @@
 1. ~~非 Chromium 自动化为零~~ **已解决（2026-09-28）**：sw-runtime 套件在 WebKit 与 Firefox 上以不阻断方式运行（ADR-0042，[#37](https://github.com/haigeerlab/pwa-platform/pull/37)）；其余 8 个包仍只有 Chrome，Safari/iOS 仍只能靠真机。
 2. **Android N / N-1 轮换证据未收**：`spec/public-read-cache.md` 测试策略段自述"未取得的 Android、N-1 证据按惯例登记为未执行，不折算为通过"。
 3. ~~iPhone 安装窗口内更新流程未复测~~ **已补齐（2026-09-28 更正）**：PR #25 在审查期间合入 iPhone 安装窗口真实 v1→v2 与 Safari 双标签证据（[verification.md:138-168](../../tasks/stable-release-qualification/verification.md#L138)）。
-4. **iPhone 断网恢复后短暂 `not registered`**：`release-0.1.0.md:9` 记录的真机异常，自愈但根因未定位，未解决。
+4. ~~iPhone 断网恢复后短暂 `not registered`~~ **根因查明并修复（2026-09-28）**：`register()` 在 Service Worker 任务队列中排在挂起的 update 之后；真机 iPhone 上断网请求挂起而非失败，并已确认该排队机制。ADR-0043 改为回访时以已有活动注册为准（[#54](https://github.com/haigeerlab/pwa-platform/pull/54)），修复构建在真机在线/离线回归通过；界面层现象本轮未复现，继续观察（[真机记录](../../tasks/stable-release-qualification/verification.md)）。
 5. ~~push 无真实推送服务投递证据~~ **已更正（2026-09-28）**：联网套件已验证真实 FCM 送达（见“每项详情”#24），现随门禁不阻塞运行；手机端推送仍未验证。
 6. ~~html-headers 与 release-retention 无真实服务器浏览器检查~~ **已解决（2026-09-28）**：`html-headers` 已在真实服务器响应上检查，`release-retention` 用两次真实构建的产物检查（[#33](https://github.com/haigeerlab/pwa-platform/pull/33)）；后者的可用资产取自磁盘而非服务器响应。
 7. ~~offline-write 多标签并发 flush 无测试~~ **已解决（2026-09-28）**：单飞修复与两页面并发 flush 的真实浏览器用例（[#30](https://github.com/haigeerlab/pwa-platform/pull/30)）。
