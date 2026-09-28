@@ -44,6 +44,7 @@ const config = { appId: "ui-fixture", scope: "/", serviceWorkerUrl: "/sw.js", up
 const position = params.get("position") ?? "bottom-right";
 const props = {
   position,
+  ...(params.has("locale") ? { locale: params.get("locale") } : {}),
   messages: params.has("custom") ? { readyTitle: "业务自定义更新" } : {},
   ...(params.has("colors") ? { colors: {
     surface: "#fff8e7",

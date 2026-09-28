@@ -405,7 +405,7 @@ describe("range requests", () => {
 });
 
 describe("request records", () => {
-  it("records method, the raw path without its query, and time for every request", async () => {
+  it("records method, the raw path without its query, headers and time for every request", async () => {
     const server = await start();
     const before = Date.now();
     await send(server, "GET", "/sw.js?version=1");
@@ -420,9 +420,10 @@ describe("request records", () => {
       { method: "GET", path: "/sw.js" },
     ]);
     for (const record of records) {
-      expect(Object.keys(record).sort()).toEqual(["method", "path", "time"]);
+      expect(Object.keys(record).sort()).toEqual(["headers", "method", "path", "time"]);
       expect(record.time).toBeGreaterThanOrEqual(before);
     }
+    expect(records[3]?.headers.host).toBe("attacker.example");
     server.clearRequests();
     expect(server.requests()).toEqual([]);
   });
