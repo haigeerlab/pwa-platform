@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.2.1 (2026-09-28)
+
+Patch release: upgrade all ten `@pwa-platform/*` packages together. No public API or configuration change; only `@pwa-platform/sw-runtime`'s recovery worker behaves differently.
+
 - **Recovery worker keeps deleting after a failure (review #15):** a cache or offline-write database deletion that fails no longer stops the rest of recovery's cleanup. Every deletion is attempted; if any failed, activation still rejects before cancelling the push subscription and claiming clients, as before. Previously the first failure left every later cache and the queued-write database in place until the next deployment, because `activate` runs only once. Note that pages the broken worker already controlled are taken over at activation either way; only uncontrolled pages stay unclaimed.
 
 ## 0.2.0 (2026-09-28)
