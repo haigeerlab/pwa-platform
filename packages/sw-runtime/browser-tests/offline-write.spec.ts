@@ -128,6 +128,48 @@ test.describe("offline write queue", () => {
     expect(await queuedEntries(page)).toBe(0);
   });
 
+  test("a write enqueued while a flush is in flight is sent by the request that joins it, via a trailing pass (N2)", async ({ page, fixtureServer }) => {
+    fixtureServer.deploy("offline-write");
+    await installAndControl(page, fixtureServer);
+    const binding = "opaque-session-trailing";
+    await message(page, {
+      type: "pwa:offline-write:enqueue", version: 1, requestId: "enqueue-trailing-1",
+      intent: { targetId: "submit-order", path: "/app/api/orders", body: { quantity: 1 }, idempotencyKey: "order-trailing-1", sessionBinding: binding },
+    });
+    expect(await queuedEntries(page)).toBe(1);
+
+    fixtureServer.clearRequests();
+    // Holds the network open past the point flush 1 has already read its snapshot (order-trailing-1 only) and
+    // started sending it — exactly the window the old single-flight design could not see past (spec.offline-write-
+    // extension "增补：flush 单飞的 trailing pass", N2).
+    const release = fixtureServer.stall("/app/api/orders");
+    const firstFlush = message(page, { type: "pwa:offline-write:flush", version: 1, requestId: "flush-trailing-1", sessionBinding: binding });
+    await expect.poll(() => fixtureServer.requests().filter(({ method, path }) => method === "POST" && path === "/app/api/orders").length).toBe(1);
+
+    // Enqueued only now, after flush 1's read: flush 1's own result can never include it.
+    await message(page, {
+      type: "pwa:offline-write:enqueue", version: 1, requestId: "enqueue-trailing-2",
+      intent: { targetId: "submit-order", path: "/app/api/orders", body: { quantity: 2 }, idempotencyKey: "order-trailing-2", sessionBinding: binding },
+    });
+    // Joins the in-flight flush late; the fix coalesces it into a trailing pass instead of sharing flush 1's stale result.
+    const secondFlush = message(page, { type: "pwa:offline-write:flush", version: 1, requestId: "flush-trailing-2", sessionBinding: binding });
+
+    release();
+    const [flushed1, flushed2] = await Promise.all([firstFlush, secondFlush]);
+
+    // Flush 1 sends only what it read (order-trailing-1); it never saw order-trailing-2. The trailing pass its
+    // joiner triggered re-reads the store once flush 1 finishes and sends order-trailing-2 on its own.
+    expect(flushed1).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-trailing-1", status: "flushed", sent: 1, retained: 0, purged: 0 });
+    expect(flushed2).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-trailing-2", status: "flushed", sent: 1, retained: 0, purged: 0 });
+
+    const orderRequests = fixtureServer.requests().filter(({ method, path }) => method === "POST" && path === "/app/api/orders");
+    // order-trailing-1 appears twice: the server recorded the initially held connection before `release()` reset
+    // it, and Chromium transparently retried the still-unanswered POST on a fresh connection, which is what flush
+    // 1 actually observed as its single successful send.
+    expect(orderRequests.map((request) => request.headers["idempotency-key"]).sort()).toEqual(["order-trailing-1", "order-trailing-1", "order-trailing-2"]);
+    expect(await queuedEntries(page)).toBe(0);
+  });
+
   test("recovery deletes the offline write database before it takes control", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("offline-write");
     await installAndControl(page, fixtureServer);

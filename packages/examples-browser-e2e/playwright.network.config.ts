@@ -15,6 +15,8 @@ const config: PlaywrightTestConfig = defineConfig({
   timeout: 90_000,
   // No `use.channel` here: each test launches its own persistent context (see the spec file), because Chrome
   // refuses push subscriptions in the non-persistent contexts Playwright's built-in fixtures create.
+  // Deliberately no trace on failure, unlike the other suites: a trace would record real push subscription
+  // endpoints and requests to FCM, and CI failure artifacts are downloadable by anyone who can read the repository.
 });
 
 export default config;

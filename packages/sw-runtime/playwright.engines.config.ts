@@ -10,6 +10,8 @@ const config: PlaywrightTestConfig = defineConfig({
   forbidOnly: true,
   workers: 1,
   reporter: "list",
+  // On failure, keep a trace in test-results/ (CI uploads it) so a flaky run leaves evidence (review N7).
+  use: { trace: "retain-on-failure" },
   projects: [
     { name: "webkit", use: { browserName: "webkit", headless: true } },
     { name: "firefox", use: { browserName: "firefox", headless: true } },

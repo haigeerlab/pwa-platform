@@ -99,6 +99,17 @@ jobs:
       - name: Newcomer onboarding smoke (packages installed from packed tarballs, offline)
         run: pnpm test:onboarding-smoke
 
+      - name: Upload Playwright traces on failure
+        # Traces (retain-on-failure) and screenshots from failed browser tests, so a flaky run leaves evidence
+        # (review N7). Only written for failures, so a passing run uploads nothing.
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-traces-chrome
+          path: packages/*/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   engines:
     # Non-blocking and costly (browser downloads, real FCM): not on pull requests; after merges, nightly and on demand.
     if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -126,6 +137,17 @@ jobs:
 
       - name: Engine smoke
         run: pnpm test:browser:engines
+
+      - name: Upload Playwright traces on failure
+        # Traces (retain-on-failure) and screenshots from failed browser tests, so a flaky run leaves evidence
+        # (review N7). Only written for failures, so a passing run uploads nothing.
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-traces-engines
+          path: packages/*/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
 
   network:
     # Non-blocking and costly (browser downloads, real FCM): not on pull requests; after merges, nightly and on demand.

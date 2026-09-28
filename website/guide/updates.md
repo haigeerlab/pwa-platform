@@ -50,7 +50,7 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 3. 如果当前页面仍运行旧代码，提示用户在保存工作后刷新；如果已运行新代码，提示可直接消失。
 4. 多标签页都应感知 worker 接管，不能只处理点击按钮的标签页。
 
-长期不刷新的页面可显式开启 <code>updateCheck: { intervalMs: 1_800_000 }</code>；默认不开定时检查，最小间隔为 60 秒。框架中的最小写法见[Vue 接入](/start/vue)和[React 接入](/start/react)；上线前应按本页的交互流程处理失败、稍后提醒、未保存内容及多标签页。完整可复制的自绘 React／Vue 实现（含新旧代码判断、状态机与无障碍标注）见仓库内的[更新提示接入指南](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/update-prompt.md)。
+长期不刷新的页面可显式开启 <code>updateCheck: { intervalMs: 1_800_000 }</code>；默认不开定时检查，最小间隔为 60 秒。框架中的最小写法见[Vue 接入](/start/vue)和[React 接入](/start/react)；上线前应按本页的交互流程处理失败、稍后提醒、未保存内容及多标签页。完整可复制的自绘 React／Vue 实现（含新旧代码判断、状态机与无障碍标注）见[自绘更新提示](/guide/update-prompt-custom)。
 
 ## 多标签页
 

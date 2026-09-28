@@ -98,11 +98,24 @@ type OfflineWriteQueue = {
 
 ## 增补：同一会话绑定的 flush 单飞（2026-09-28，审查风险 R5）
 
-worker 对同一 `sessionBinding` 的并发 `pwa:offline-write:flush` 消息单飞：已有一次该 binding 的 flush 在途时，新到的 flush 消息不会再触发 `prepareFlush`/发送一轮新的，而是等待在途那一次结束，并把同一个结果对象回给自己的端口。不同 binding 的 flush 彼此独立，互不等待。加入在途 flush 的请求拿到的是那一轮的结果：在途那一轮读取 `pending` 记录之后才入队的写入不在其中，仍保持 `pending`，由下一次 flush 发送；调用方若需要确保刚入队的写入已发出，应在收到结果后再请求一次。在途 flush 结束（无论成功还是失败）后，下一次该 binding 的 flush 请求会重新走一遍完整流程。
+worker 对同一 `sessionBinding` 的并发 `pwa:offline-write:flush` 消息单飞：已有一次该 binding 的 flush 在途、且那一轮还没读完 `pending` 记录时，新到的 flush 消息不会再触发 `prepareFlush`/发送一轮新的，而是等待在途那一次结束，并把同一个结果对象回给自己的端口。不同 binding 的 flush 彼此独立，互不等待。在途 flush 结束（无论成功还是失败）后，下一次该 binding 的 flush 请求会重新走一遍完整流程。
 
 **起因**：`prepareFlush`（`src/worker/offline-write-store.ts`）只读出所有 `pending` 记录，不会把它们标记为"发送中"；`flushOfflineWrites`（`src/worker/offline-write-flush.ts`）逐条发送；消息处理器（`src/worker/handlers.ts` 的 `flush()`）收到一条 `pwa:offline-write:flush` 就起一轮新的 flush。两个标签页同时可见、或用户双击触发同一个 flush 按钮，都会让同一 binding 并发进入 `flush()`，各自读到同一批 `pending` 记录并各自发送——同一个 `idempotency-key` 被 POST 两次。服务端的幂等约束（见"服务端责任"）能拦住这类重复写入本身造成的数据损坏，但两次网络请求仍然是可观察、可避免的浪费，且让"发送计数"等诊断失真。
 
-**方案**：单飞发生在 worker 内存里，而不是 IndexedDB 里——`prepareFlush` 本身不变，仍然只读不标记。`flush()` 用一个以 `sessionBinding` 为键、值为进行中 `flushOfflineWrites` promise 的映射；一次 flush 的整个生命周期（发送、`finally` 里的清理）由持有该映射的那次调用负责，等待者只订阅同一个 promise，不重新入队等待、也不重试。这不改变消息格式、不改变离线写包的公开 API，也不改变 `prepareFlush` 单个事务内的行为——单飞只发生在事务之外的 worker 闭包里。
+**方案**：单飞发生在 worker 内存里，而不是 IndexedDB 里——`prepareFlush` 本身不变，仍然只读不标记。`flush()` 用一个以 `sessionBinding` 为键、值为一轮 flush 状态（进行中的 `flushOfflineWrites` promise，加上该轮 `prepareFlush` 是否已读完的标记）的映射；一次 flush 的整个生命周期（发送、`finally` 里的清理）由持有该映射的那次调用负责，在读完之前加入的等待者只订阅同一个 promise，不重新入队等待、也不重试。这不改变消息格式、不改变离线写包的公开 API，也不改变 `prepareFlush` 单个事务内的行为——单飞只发生在事务之外的 worker 闭包里。
+
+## 增补：flush 单飞的 trailing pass（2026-09-28，审查风险 N2）
+
+上面这版单飞有个缺口：一个 flush 请求如果是在**在途那一轮已经读完 `pending` 记录、只是还在逐条发送**的窗口内到达，它会加入在途那一轮并拿到那一轮的结果——但那一轮的读快照早于这次请求，之后才入队的写入根本不在里面，会一直停在 `pending`，直到有人再手动发一次 flush 才会被送出。调用方从结果上看不出这一点：`retained` 只统计"已读到但发送失败"的记录，一个从未被读到的记录不会体现在任何计数里，结果看起来和"全部处理完"没有区别。
+
+**方案（trailing pass）**：worker 内存里的单飞状态额外记录"这一轮的 `prepareFlush` 是否已经读完"（`flushOfflineWrites` 现在接受一个 `onPrepared` 回调，在 `store.prepareFlush` resolve 之后、发送循环开始之前调用一次）。同一 binding 的新 flush 请求到达时：
+
+- 如果在途那一轮**还没读完**（`onPrepared` 还没触发），请求照旧加入那一轮，拿到同一个结果——这部分行为和上面原始单飞完全一致，因为这次请求到达时那一轮的快照还没定，之后的读天然会覆盖到它。
+- 如果在途那一轮**已经读完**（只是还在发送），请求不再加入那一轮；这次请求以及在这之后、在途那一轮结束之前到达的所有同 binding 请求，全部合并成**恰好一次**额外的 trailing pass——在当前这一轮结束（无论成功还是失败）之后才开始，重新调用一次 `prepareFlush`，因此会读到期间新入队的写入。这些"迟到"的调用方拿到的是 trailing pass 的结果，而不是它们各自加入时那一轮已经过期的结果。
+
+原始那一轮的调用方（在读完之前加入的）继续拿到原始结果不变。trailing pass 最多顺延一轮：如果又有新请求在 trailing pass 已经读完之后到达，会按同样的规则再顺延出下一轮 trailing pass，以此类推——每一轮各自最多有一次顺延，不会无限攒批，但连续、密集的迟到请求确实可能连续触发多轮。这不改变消息格式（`sent`/`retained`/`failed`/`purged` 四个字段不变，新旧客户端都按 `exactKeys` 解析），也不改变离线写包的公开 API。
+
+跨 worker（版本更新接管）不在这次修复范围内：单飞与 trailing pass 都只发生在同一个 worker 实例的内存里；一次版本更新把控制权切给新 worker 后，旧 worker 内存里的单飞状态随之失效，新 worker 从零开始，不会与旧 worker 的在途 flush 协调。
 
 ## 命令
 
