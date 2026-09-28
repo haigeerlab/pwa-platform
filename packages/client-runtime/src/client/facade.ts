@@ -172,8 +172,7 @@ export function createPwaClient(options: PwaClientOptions): PwaClient {
     container.addEventListener("controllerchange", onControllerChange);
     undoAll.push(track(() => container.removeEventListener("controllerchange", onControllerChange)));
 
-    const onUpdateFound = (): void => {
-      const installing = current.installing;
+    const watchInstalling = (installing: ServiceWorker | null): void => {
       if (installing === null) return;
       const onStateChange = (): void => {
         // The worker being watched is the one that reached "installed", so it is the one now waiting. Reading
@@ -185,8 +184,12 @@ export function createPwaClient(options: PwaClientOptions): PwaClient {
       undoAll.push(track(() => installing.removeEventListener("statechange", onStateChange)));
     };
 
+    const onUpdateFound = (): void => watchInstalling(current.installing);
     current.addEventListener("updatefound", onUpdateFound);
     undoAll.push(track(() => current.removeEventListener("updatefound", onUpdateFound)));
+    // A registration taken as it stood (R9, ADR-0043) may already be installing a version whose `updatefound` fired
+    // before this page could listen; without this it would never be announced for this page's lifetime.
+    watchInstalling(current.installing);
 
     return () => {
       for (const undo of undoAll.splice(0)) undo();

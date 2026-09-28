@@ -36,3 +36,9 @@ iPhone 真机曾在断网恢复后导航回应用时显示 `not registered`：�
 - 回访页面在网络异常时也能立即得到正确的注册状态；首次访问语义不变。
 - 回访时 `register()` 的失败（例如 `sw.js` 暂时 404）不再让 facade 的 `register()` 拒绝；需要感知脚本不可用的调用方应使用 `checkForUpdate()` 的结果。
 - iPhone 真机仍需用同一探测方法确认：网络恢复时确有挂起的 `sw.js` 请求，并且修复后不再显示 `not registered`。确认前 R9 的真机结论保持待定。
+
+## 增补：挂载时已在安装的版本（2026-09-28，审查增量复核 N1）
+
+直接采用已有注册后，这个注册可能已经有一个 installing worker：导航触发的更新检查在页面脚本运行前就开始安装新版本，其 `updatefound` 早于 facade 挂上监听。原路径不会遇到这种情况，因为浏览器的 `register()` 排在该更新之后，返回时新版本已经 waiting；新路径若只看 `waiting` 和此后的 `updatefound`，本页生命周期内就不会发出 `update-waiting`。
+
+因此 facade 在开始观察注册时，也对当时的 `installing` worker 订阅 `statechange`，它到达 `installed` 时按既有规则宣告 `update-waiting`：页面不受任何 worker 控制时不宣告，同一个 worker 不重复宣告。
