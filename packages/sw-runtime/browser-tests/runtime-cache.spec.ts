@@ -113,6 +113,8 @@ test.describe("stale-while-revalidate (public-data)", () => {
 });
 
 test.describe("admission diagnostics (review risk R8)", () => {
+  // Playwright forwards a service worker's console only in Chromium; other engines skip (ADR-0042).
+  test.skip(({ browserName }) => browserName !== "chromium", "service worker console capture is Chromium-only in Playwright");
   test("a Vary: Origin rejection is reported once on the worker console, naming the reason and the path", async ({
     page,
     context,
