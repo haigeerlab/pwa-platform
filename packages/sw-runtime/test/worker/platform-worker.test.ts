@@ -1126,6 +1126,79 @@ describe("runtime cache cleanup (T8)", () => {
   });
 });
 
+describe("runtime cache quota cleanup (R12)", () => {
+  // Only a "data" rule: a request under it is the only runtime engine this worker's lifetime ever builds, so this
+  // reproduces the risk exactly — the "pages" cache/engine is never touched before the simulated quota error.
+  const dataOnlyConfig: PwaPlatformWorkerConfig = {
+    ...config,
+    pathRules: [
+      { pathPrefix: "/app/api/catalog", action: "stale-while-revalidate" },
+      { pathPrefix: "/app", action: "network-first" },
+    ],
+    runtimeCache: {
+      enabled: true,
+      pagesCacheName: "pwa:storefront:production:r3:runtime-pages",
+      dataCacheNamePrefix: "pwa:storefront:production:r3:runtime-data-",
+      dataCacheName: "pwa:storefront:production:r3:runtime-data-0123456789abcdef",
+      maxEntries: 50,
+      maxEntryBytes: 65_536,
+      maxAgeSeconds: 300,
+      rules: [{ pathPrefix: "/app/api/catalog", resourceClass: "public-data", strategy: "stale-while-revalidate" }],
+    },
+  };
+
+  function fetchDataEvent(h: Harness): void {
+    const listener = (h.listeners.get("fetch") ?? [])[0];
+    if (listener === undefined) throw new Error("No fetch listener");
+    listener({
+      request: request(`${ORIGIN}/app/api/catalog/1`),
+      respondWith: () => undefined,
+    } as never);
+  }
+
+  it("registers a worker-level quota cleanup that deletes every current runtime cache, even one whose engine was never built", async () => {
+    const h = createHarness();
+    h.cacheNames.add(dataOnlyConfig.precacheCacheName);
+    // Never read or written by any engine this worker builds: only the "data" rule above ever matches a request.
+    h.cacheNames.add("pwa:storefront:production:r3:runtime-pages");
+    h.cacheNames.add("pwa:storefront:production:r3:runtime-data-0123456789abcdef");
+
+    let onQuotaExceeded: (() => void | Promise<void>) | undefined;
+    const registerRuntimeCacheQuotaCleanup = vi.fn((callback: () => void | Promise<void>) => {
+      onQuotaExceeded = callback;
+    });
+    const engineFactory = vi.fn(() => ({ handle: vi.fn(async () => ({ response: new Response(), servedFromCache: null })) }));
+    attachPlatformWorker({
+      scope: h.scope,
+      config: dataOnlyConfig,
+      engine: h.engine,
+      createRuntimeCacheEngine: engineFactory as never,
+      registerRuntimeCacheQuotaCleanup: registerRuntimeCacheQuotaCleanup as never,
+    });
+
+    // Only the "data" engine is ever built in this worker's lifetime -- "pages" never matches a request.
+    fetchDataEvent(h);
+    expect(engineFactory).toHaveBeenCalledTimes(1);
+    expect(engineFactory).toHaveBeenCalledWith(expect.objectContaining({ cacheName: "pwa:storefront:production:r3:runtime-data-0123456789abcdef" }));
+
+    expect(registerRuntimeCacheQuotaCleanup).toHaveBeenCalledTimes(1);
+    expect(onQuotaExceeded).toBeDefined();
+
+    await onQuotaExceeded?.();
+
+    expect(h.cachesDelete).toHaveBeenCalledWith("pwa:storefront:production:r3:runtime-pages");
+    expect(h.cachesDelete).toHaveBeenCalledWith("pwa:storefront:production:r3:runtime-data-0123456789abcdef");
+    expect(h.cacheNames.has(dataOnlyConfig.precacheCacheName)).toBe(true); // precache untouched
+  });
+
+  it("does not register the quota cleanup when the runtime cache is disabled", () => {
+    const h = createHarness();
+    const registerRuntimeCacheQuotaCleanup = vi.fn();
+    attachPlatformWorker({ scope: h.scope, config, engine: h.engine, registerRuntimeCacheQuotaCleanup: registerRuntimeCacheQuotaCleanup as never });
+    expect(registerRuntimeCacheQuotaCleanup).not.toHaveBeenCalled();
+  });
+});
+
 describe("offline-write flush single-flight (R5)", () => {
   const windowClient = { type: "window", url: `${ORIGIN}/app/` };
 

@@ -3,7 +3,7 @@
 // module only ever imports engine-workbox's *types*, never its runtime (workbox-core's dev logger touches `self` as
 // soon as any of its modules loads, which breaks a plain Node import — see worker/index.ts, which does import the
 // real values and is the only place that needs `self` stubbed first).
-import type { createRuntimeCacheEngine, PwaPrecacheEngine, PwaRuntimeCacheEngine } from "@pwa-platform/engine-workbox/worker";
+import type { createRuntimeCacheEngine, PwaPrecacheEngine, PwaRuntimeCacheEngine, registerRuntimeCacheQuotaCleanup } from "@pwa-platform/engine-workbox/worker";
 import { isOfflineWriteMessage, isRuntimeCachePendingMessage, isSkipWaitingMessage } from "../messages/index.js";
 import type { PwaOfflineWriteMessage, PwaRuntimeCachePendingResult, PwaRuntimeCacheReason } from "../messages/index.js";
 import { validatePushPayload } from "../push-payload/index.js";
@@ -30,6 +30,14 @@ export type PwaPlatformWorkerHandlers = {
    */
   readonly createRuntimeCacheEngine?: typeof createRuntimeCacheEngine;
   /**
+   * Registers the worker-wide quota cleanup (R12, spec.public-read-cache "响应准入", ADR-0035 探路 2). Used whenever
+   * `config.runtimeCache.enabled` is true, independently of `createRuntimeCacheEngine`/`buildRuntimeEngines`'s lazy
+   * per-key engine building below — so a quota error clears every current runtime cache even when this worker's
+   * lifetime never built an engine for one of them. `registerPlatformWorker` always supplies the real Workbox-backed
+   * function; tests inject a fake to capture and invoke the registered callback directly.
+   */
+  readonly registerRuntimeCacheQuotaCleanup?: typeof registerRuntimeCacheQuotaCleanup;
+  /**
    * Overrides the offline-write store `attachPlatformWorker` would otherwise build from `config.offlineWrites`.
    * Real store transactions need a real IndexedDB, which the browser tests exercise; unit tests inject a fake here.
    */
@@ -54,6 +62,7 @@ export function attachPlatformWorker({
   config,
   engine,
   createRuntimeCacheEngine: runtimeCacheEngineFactory,
+  registerRuntimeCacheQuotaCleanup: registerQuotaCleanup,
   offlineWriteStore: offlineWriteStoreOverride,
 }: PwaPlatformWorkerHandlers): void {
   const origin = new URL(scope.location.href).origin;
@@ -66,6 +75,12 @@ export function attachPlatformWorker({
   const runtimeEngines = config.runtimeCache.enabled
     ? buildRuntimeEngines(config.runtimeCache, config.networkTimeoutSeconds, requireRuntimeCacheEngineFactory(runtimeCacheEngineFactory))
     : undefined;
+  // R12 (spec.public-read-cache "响应准入", ADR-0035 探路 2): registered once here, independently of which of the
+  // engines above `buildRuntimeEngines` actually builds on demand, so a quota error clears every current runtime
+  // cache rather than only the ones this worker's lifetime happened to build an engine for.
+  if (config.runtimeCache.enabled && registerQuotaCleanup !== undefined) {
+    registerQuotaCleanup(() => deleteRuntimeCaches(scope, config.runtimeCache).catch(() => undefined));
+  }
   const pendingSignals = createPendingSignalStore();
 
   scope.addEventListener("install", (event) => {

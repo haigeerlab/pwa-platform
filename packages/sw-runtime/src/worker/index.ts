@@ -1,6 +1,6 @@
 // Platform worker (service worker scope): registers install, activate, fetch and message listeners.
 // It imports only @pwa-platform/engine-workbox/worker.
-import { createPrecacheEngine, createRuntimeCacheEngine, type PwaPrecacheManifestEntry } from "@pwa-platform/engine-workbox/worker";
+import { createPrecacheEngine, createRuntimeCacheEngine, registerRuntimeCacheQuotaCleanup, type PwaPrecacheManifestEntry } from "@pwa-platform/engine-workbox/worker";
 import { validatePlatformWorkerConfig, type PwaPlatformWorkerConfig } from "../shared/config.js";
 import { attachPlatformWorker } from "./handlers.js";
 
@@ -20,7 +20,7 @@ export type PwaPlatformWorkerOptions = {
 export function registerPlatformWorker({ scope, config, manifest }: PwaPlatformWorkerOptions): void {
   const validated = validatePlatformWorkerConfig(config);
   const engine = createPrecacheEngine({ cacheName: validated.precacheCacheName, entries: manifest });
-  attachPlatformWorker({ scope, config: validated, engine, createRuntimeCacheEngine });
+  attachPlatformWorker({ scope, config: validated, engine, createRuntimeCacheEngine, registerRuntimeCacheQuotaCleanup });
 }
 
 export type { PwaPassthroughReason, PwaRequestDecision, PwaRequestInput } from "./decide.js";

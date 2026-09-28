@@ -110,6 +110,7 @@ describe("dependency boundaries", () => {
         "engine.ts: {PrecacheController} from workbox-precaching",
         "runtime.ts: {ExpirationPlugin} from workbox-expiration",
         "runtime.ts: {NetworkFirst, StaleWhileRevalidate} from workbox-strategies",
+        "runtime.ts: {registerQuotaErrorCallback} from workbox-core",
         // Type-only: workbox-expiration@7.4.1's own .d.ts needs one explicit WorkboxPlugin cast, see runtime.ts.
         "runtime.ts: {WorkboxPlugin} from workbox-core/types.js",
       ].sort(),
