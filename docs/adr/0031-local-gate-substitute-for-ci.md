@@ -13,7 +13,7 @@ CI 的价值在于三点：环境干净、输入固定、结果可追溯。本�
 ## 决策
 
 - **替代条件**：只在 GitHub 仓库或 Actions 不可用时适用。恢复可用后，此后的发布只接受真实 CI 运行链接。
-- **执行方式**：每个 Node 版本各新建一个分离的 worktree，不复用任何已有目录、`node_modules` 或被 git 忽略的构建产物。在 Node 22 与 Node 24 下分别执行：`pnpm install --frozen-lockfile`、lint、build、test、typecheck，以及 Chrome 桌面端 N 的 `test:browser`；另外执行与 CI 相同的依赖审计（`pnpm audit --ignore-registry-errors`），审计结果不阻塞。（2026-09-28 增补：另执行不阻塞的 `pnpm test:browser:engines`（见 [ADR-0042](0042-non-blocking-webkit-and-firefox-engine-smoke.md)）与需联网的 `pnpm test:browser:network`（见 push-module 规格增补）。）每份日志开头先打印 `git rev-parse HEAD`、`node -v`、`pnpm -v`、UTC 时间与 Chrome 版本，使日志哈希能绑定到提交与运行环境。除审计、引擎冒烟与联网推送套件外，每项退出码都必须为 0。
+- **执行方式**：每个 Node 版本各新建一个分离的 worktree，不复用任何已有目录、`node_modules` 或被 git 忽略的构建产物。在 Node 22 与 Node 24 下分别执行：`pnpm install --frozen-lockfile`、lint、build、test、typecheck，以及 Chrome 桌面端 N 的 `test:browser`；另外执行与 CI 相同的依赖审计（`pnpm audit --ignore-registry-errors`），审计结果不阻塞。（2026-09-28 增补：`test:browser` 之后执行阻塞的 `pnpm test:onboarding-smoke`（新手接入冒烟，见 examples-browser-e2e 规格）；另执行不阻塞的 `pnpm test:browser:engines`（见 [ADR-0042](0042-non-blocking-webkit-and-firefox-engine-smoke.md)）与需联网的 `pnpm test:browser:network`（见 push-module 规格增补）。）每份日志开头先打印 `git rev-parse HEAD`、`node -v`、`pnpm -v`、UTC 时间与 Chrome 版本，使日志哈希能绑定到提交与运行环境。除审计、引擎冒烟与联网推送套件外，每项退出码都必须为 0。
 - **记录内容**：发布提交、Node / pnpm / 操作系统 / Chrome 的完整版本、执行的命令、每项退出码、每份日志的 SHA-256、开始与结束时间、执行者。格式见 `docs/operations/local-ci-record-template.md`。日志文件由发布系统保存，不提交到仓库，也不得包含令牌或私有数据。
 - **补跑义务**：GitHub 恢复后，对每个以本地记录发布的提交补跑真实 CI，结果追加到对应的发布证据。补跑失败按事故处理。
 - **发布证据中必须写明"CI 证据为本地替代（ADR-0031）"**，不得写成"CI 通过"。

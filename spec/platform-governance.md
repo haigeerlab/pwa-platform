@@ -336,7 +336,7 @@ ADR-0031 规定了 GitHub 不可用期间"本地干净门禁"的执行方式，�
 
 **命令与结论（纯函数）**
 
-- 固定的命令顺序：`pnpm install --frozen-lockfile`、`pnpm lint`、`pnpm build`、`pnpm test`、`pnpm typecheck`、`pnpm test:browser`、`pnpm test:browser:engines`（2026-09-28 增补，不阻塞，ADR-0042）、`pnpm test:browser:network`（2026-09-28 增补，不阻塞，需联网）、`pnpm audit --ignore-registry-errors`。单元测试读取 `.github/workflows/ci.yml`，断言除安装外的每条命令都在 CI 中以相同写法出现，防止两者走样。
+- 固定的命令顺序：`pnpm install --frozen-lockfile`、`pnpm lint`、`pnpm build`、`pnpm test`、`pnpm typecheck`、`pnpm test:browser`、`pnpm test:onboarding-smoke`（2026-09-28 增补，阻塞）、`pnpm test:browser:engines`（2026-09-28 增补，不阻塞，ADR-0042）、`pnpm test:browser:network`（2026-09-28 增补，不阻塞，需联网）、`pnpm audit --ignore-registry-errors`。单元测试读取 `.github/workflows/ci.yml`，断言除安装外的每条命令都在 CI 中以相同写法出现，防止两者走样。
 - 结论：除依赖审计外，每条命令的退出码都为 0 才算通过；任何一条缺失（没有执行）也算未通过。
 - 日志头：每份日志开头依次写 `# commit`、`# node`、`# pnpm`、`# utc`、`# chrome`、`# command` 六行，格式固定。其后紧接三行环境诊断：`# path-head`（实际 `PATH` 首项）、`# pnpm-which`（`pnpm` 的位置）与 `# pnpm-node`（pnpm 的运行时），然后才是命令输出。
 - 记录渲染：按 `docs/operations/local-ci-record-template.md` 的字段生成 Markdown 记录，退出码与哈希直接取自运行结果，不经人工转写。

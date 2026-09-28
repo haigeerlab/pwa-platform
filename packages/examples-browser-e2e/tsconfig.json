@@ -4,7 +4,10 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    // onboarding-smoke/template/vite.config.ts imports "./pwa.config.ts" with the .ts extension, per
+    // website/start/react.md step 2's literal example and its own TS5097 guidance.
+    "allowImportingTsExtensions": true
   },
   "include": [
     "apps/shared/**/*.ts",
@@ -13,6 +16,8 @@
     "browser-tests-network/**/*.ts",
     "ui-browser-tests/**/*.ts",
     "ssr-tests/**/*.ts",
+    "onboarding-smoke/*.ts",
+    "onboarding-smoke/template/*.ts",
     "playwright.config.ts",
     "playwright.network.config.ts",
     "playwright.ui.config.ts"
