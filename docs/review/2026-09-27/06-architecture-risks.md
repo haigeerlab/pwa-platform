@@ -17,9 +17,9 @@
 | R9 | ⏳ 未解决 | iPhone 断网恢复后显示 `not registered`；ADR-0041 把它定为 iPhone 晋级生产通道的阻断条件，需要真机定位根因 |
 | R10 | ✅ 已解决 | ADR-0041 裁定“离线页联网恢复”通过（[#25](https://github.com/haigeerlab/pwa-platform/pull/25) 真机证据） |
 | R11 | ⏳ 未处理 | 纵深防御项，优先级 P3 |
-| R12 | ✅ 已修复 | worker 启动时统一注册配额清理，不依赖引擎是否已创建（[#41](https://github.com/haigeerlab/pwa-platform/pull/41)）。真实 Chrome 中耗尽配额的用例已补（[runtime-cache.spec.ts](../../../packages/sw-runtime/browser-tests/runtime-cache.spec.ts)），撤掉修复后该用例失败 |
+| R12 | ✅ 已修复 | worker 启动时统一注册配额清理，不依赖引擎是否已创建（[#41](https://github.com/haigeerlab/pwa-platform/pull/41)）。真实 Chrome 中耗尽配额的用例已补（[#48](https://github.com/haigeerlab/pwa-platform/pull/48)，[runtime-cache.spec.ts](../../../packages/sw-runtime/browser-tests/runtime-cache.spec.ts)），撤掉修复后该用例失败 |
 | R13 | 📝 已文档化 | 保持 `vue: ^3.4.0`，在 Vue README、接入页和 Vue 3.4 接入作业单中标注（[#38](https://github.com/haigeerlab/pwa-platform/pull/38)） |
-| R14 | ✅ 已查明 | 已受控页面确实在清理完成前被接管，但恢复 worker 不拦截请求，不构成安全缺陷；ADR-0012 增补澄清措辞，新增 2 个用例（[#39](https://github.com/haigeerlab/pwa-platform/pull/39)）。删除失败场景已用故障注入测试构建验证：第一次失败曾中止全部后续删除，已改为逐项尝试后再判失败（[offline-write.spec.ts](../../../packages/sw-runtime/browser-tests/offline-write.spec.ts)） |
+| R14 | ✅ 已查明并修复 | 已受控页面确实在清理完成前被接管，但恢复 worker 不拦截请求，不构成安全缺陷；ADR-0012 增补澄清措辞，新增 2 个用例（[#39](https://github.com/haigeerlab/pwa-platform/pull/39)）。删除失败场景已用故障注入测试构建验证：第一次失败曾中止全部后续删除，已改为逐项尝试后再判失败（[#49](https://github.com/haigeerlab/pwa-platform/pull/49)，[offline-write.spec.ts](../../../packages/sw-runtime/browser-tests/offline-write.spec.ts)） |
 | R15 | ✅ 已修复 | `website/` 成为唯一对外文档来源；合并时漏掉的 12 个诊断码经只读核验发现，合并前已补回（[#38](https://github.com/haigeerlab/pwa-platform/pull/38)） |
 
 ### 修复过程中新发现的问题

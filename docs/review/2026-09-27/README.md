@@ -36,11 +36,13 @@
 
 审查提出的 19 条建议和 15 项风险已按三批处理，共 16 个 PR（[#27](https://github.com/haigeerlab/pwa-platform/pull/27)–[#42](https://github.com/haigeerlab/pwa-platform/pull/42)），全部合入 `main`；合并后 `main` 上的 CI 全部通过。这些改动已于 2026-09-28 随 npm `0.2.0` 发布（[发布记录](../../../tasks/package-distribution/release-0.2.0.md)）。
 
+发布后又处理了三项后续：[#48](https://github.com/haigeerlab/pwa-platform/pull/48) 补上 #16 在真实 Chrome 中耗尽配额的用例；[#49](https://github.com/haigeerlab/pwa-platform/pull/49) 为 #15 做了故障注入测试构建并修复恢复 worker（**改了 sw-runtime 产品代码，尚未发布**，记在 CHANGELOG 的 Unreleased 下）；[#50](https://github.com/haigeerlab/pwa-platform/pull/50) 评估 #18 后不采用。
+
 | | 数量 | 说明 |
 |---|---|---|
 | 建议已完成 | 17 / 19 | #5 因 worker 读不到 `Set-Cookie` 而撤回；#10 部分完成（真机补测）；#18 评估后不采用 |
 | 风险已修复、缓解或查明 | 11 / 15 | 另有 R2、R13 以文档登记；R9（iPhone `not registered`）、R11（纵深防御）未处理 |
-| 修复中新发现并已解决的问题 | 6 | UI 与联网测试套件不在门禁、macOS 专有截图路径、叠加 PR 未进 `main`、冒烟测试依赖本机 store、CI 每次合并都要整轮重跑、台账推送一行误记 |
+| 修复中新发现并已解决的问题 | 8 | UI 与联网测试套件不在门禁、macOS 专有截图路径、叠加 PR 未进 `main`、冒烟测试依赖本机 store、CI 每次合并都要整轮重跑、台账推送一行误记；发布后又发现 2 项：Workbox 的 `purgeOnQuotaError` 只清本次生命周期已读写过的缓存（#41 的统一清理已覆盖，写入规格），恢复 worker 第一次删除失败即中止全部后续清理（已修复） |
 
 几处改变了审查原结论的事实：
 
@@ -48,6 +50,8 @@
 - **R2 的原建议无法实现**：Fetch 规范不让 worker 读取 `Set-Cookie`。
 - **R4 被高估**：ADR-0025 和发布协议早已规定必需检查集，只补了一个 `requiredReleaseChecks(plan)` 辅助函数。
 - **审查期间合入的 PR #25** 补齐了 iPhone 安装窗口内的更新和双标签页证据；按 ADR-0041，R10 已解决。
+- **R12 的缺口比审查时更大**：真实 Chrome 中，worker 重启后第一次写入就遇到配额错误时，连已构建引擎的缓存也不会被 Workbox 清理；#41 的统一清理不受影响。
+- **R14 除了接管时机，还有残留问题**：删除失败时恢复 worker 曾中止全部后续清理，包括存有待发写入的离线写数据库；另外激活失败并不会阻止已受控页面被接管，受阻的只有 `clients.claim()`。
 
 每条风险和建议的当前状态见 [06 风险清单](06-architecture-risks.md) 与 [07 改进建议](07-recommendations.md) 开头的“2026-09-28 状态”一节；证据等级的变化见[功能证据台账](../../operations/feature-evidence-ledger.md)。
 
