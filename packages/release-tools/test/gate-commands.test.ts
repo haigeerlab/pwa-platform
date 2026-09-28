@@ -33,6 +33,9 @@ describe("GATE_COMMANDS", () => {
 const CI_RUN_EXCLUSIONS: ReadonlySet<string> = new Set([
   // Diagnostic-only: prints the runner's preinstalled Chrome version, it doesn't run any gate command.
   "google-chrome --version",
+  // Diagnostic-only, same as above for the non-blocking Edge job (ADR-0044); that job's test command is
+  // `pnpm test:browser`, already a gate command, run with PWA_BROWSER_CHANNEL=msedge.
+  "microsoft-edge --version",
   // Documentation publishing is a CI check, but it is outside the PWA package release gate.
   "pnpm docs:build",
   // Installs the engine-smoke browsers with their Linux system libraries; the gate's own command downloads the same

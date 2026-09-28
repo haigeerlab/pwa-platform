@@ -13,7 +13,8 @@ const config: PlaywrightTestConfig = defineConfig({
     // On failure, keep a trace in test-results/ (CI uploads it) so a flaky run leaves evidence (review N7).
     trace: "retain-on-failure",
     // The installed Google Chrome stable; tests never download browsers.
-    channel: "chrome",
+    // PWA_BROWSER_CHANNEL=msedge runs the same suite in the runner's preinstalled Edge (ADR-0044, non-blocking).
+    channel: process.env.PWA_BROWSER_CHANNEL ?? "chrome",
     headless: true,
   },
 });

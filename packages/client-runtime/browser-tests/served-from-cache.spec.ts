@@ -56,14 +56,14 @@ async function expirationRecordCacheNames(page: Page): Promise<readonly string[]
 }
 
 test.describe("served-from-cache: subresource (network-failed)", () => {
-  test("exactly one event per offline read, with reason network-failed and a plausible cachedAt", async ({ page, context, fixtureServer }) => {
+  test("exactly one event per offline read, with reason network-failed and a plausible cachedAt", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("runtime-cache");
     await installAndControl(page, fixtureServer);
     const url = `${RUNTIME_CATALOG_ITEMS_URL}?x=1`;
     const before = Date.now();
     await fetchOk(page, fixtureServer.url(url));
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     await fetchOk(page, fixtureServer.url(url));
     await waitForClientEvent(page, "served-from-cache");
     const after = Date.now();
@@ -87,14 +87,14 @@ test.describe("served-from-cache: subresource (network-failed)", () => {
 });
 
 test.describe("served-from-cache: navigation (page subscribes only after the worker already served it)", () => {
-  test("exactly one event, delivered through the pending-query path, not a lost direct message", async ({ page, context, fixtureServer }) => {
+  test("exactly one event, delivered through the pending-query path, not a lost direct message", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("runtime-cache");
     await installAndControl(page, fixtureServer);
     // Warm the pages cache online, with a plain navigation (no facade involvement).
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
     await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     // A fresh navigation: a brand-new document, whose page script has not called register() yet, so nothing is
     // listening for the worker's message when it answers this navigation from the runtime cache.
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
