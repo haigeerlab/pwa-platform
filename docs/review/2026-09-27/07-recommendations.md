@@ -25,7 +25,7 @@
 | 13 | ✅ 已完成（调整） | [#29](https://github.com/haigeerlab/pwa-platform/pull/29) | 改为 `requiredReleaseChecks(plan)`，与 ADR-0025 保持一致 |
 | 14 | ✅ 已完成 | [#38](https://github.com/haigeerlab/pwa-platform/pull/38) |  |
 | 15 | ✅ 已完成 | [#39](https://github.com/haigeerlab/pwa-platform/pull/39) | 删除失败场景需要专门测试构建，列为后续 |
-| 16 | ✅ 已完成 | [#41](https://github.com/haigeerlab/pwa-platform/pull/41) | 真实浏览器中耗尽配额的用例列为后续 |
+| 16 | ✅ 已完成 | [#41](https://github.com/haigeerlab/pwa-platform/pull/41) | 真实 Chrome 中耗尽配额的用例已补（[runtime-cache.spec.ts](../../../packages/sw-runtime/browser-tests/runtime-cache.spec.ts)） |
 | 17 | ✅ 已完成 | [#40](https://github.com/haigeerlab/pwa-platform/pull/40) | 改用本仓库打包产物，离线安装 |
 | 18 | ⏸ 推迟 | — | 按原建议，等收到重复提示的反馈再评估 |
 | 19 | ✅ 已完成（仅文档） | [#38](https://github.com/haigeerlab/pwa-platform/pull/38) | 保持 `vue: ^3.4.0`，改为醒目标注 |

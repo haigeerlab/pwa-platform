@@ -154,7 +154,7 @@
 7. ~~offline-write 多标签并发 flush 无测试~~ **已解决（2026-09-28）**：单飞修复与两页面并发 flush 的真实浏览器用例（[#30](https://github.com/haigeerlab/pwa-platform/pull/30)）。
 8. ~~mutation/stream/session-data 非导航请求逐类 E2E 缺失~~ **已解决（2026-09-28）**：非导航五类请求 × 在线/断网共 10 个 Chrome 用例（[#32](https://github.com/haigeerlab/pwa-platform/pull/32)）。
 9. ~~identity 门禁是 opt-in~~ **已解决（2026-09-28）**：`requiredReleaseChecks(plan)` 按拓扑给出必需检查集，调用方不再手写清单（[#29](https://github.com/haigeerlab/pwa-platform/pull/29)）；是否执行门禁仍由发布系统决定（ADR-0025）。
-10. **配额清理只有单元测试**：修复（[#41](https://github.com/haigeerlab/pwa-platform/pull/41)）覆盖了未创建的引擎，但真实浏览器中耗尽存储配额的用例尚未编写。
+10. ~~配额清理只有单元测试~~ **已解决（2026-09-28）**：真实 Chrome 用例用 DevTools 协议把源配额压到当前用量，在重启后的 worker 里触发一次 `QuotaExceededError`，断言 `runtime-pages` 与 `runtime-data` 都被清空、预缓存保留（[runtime-cache.spec.ts](../../packages/sw-runtime/browser-tests/runtime-cache.spec.ts)）；撤掉 [#41](https://github.com/haigeerlab/pwa-platform/pull/41) 的修复后该用例失败，两个运行时缓存都残留。Chromium 专有，WebKit/Firefox 跳过。
 11. **恢复 worker 删除失败场景**：标准浏览器 API 无法让 `caches.delete` 对 worker 自有缓存失败，需要专门的测试构建（[#39](https://github.com/haigeerlab/pwa-platform/pull/39) 已固定其余行为）。
 12. **从打包产物安装已有阻断门禁**：新人接入冒烟（[#40](https://github.com/haigeerlab/pwa-platform/pull/40)）用本仓库打包的 tarball 离线安装、构建，并在 Chrome 中验证最小接入；它验证的是发布包的完整性，不替代真机证据。
 
