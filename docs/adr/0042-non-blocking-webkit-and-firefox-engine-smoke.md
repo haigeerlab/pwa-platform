@@ -42,3 +42,9 @@ Playwright 驱动的 WebKit 与 Firefox 都是打过补丁的专用构建，系�
 client-runtime 的浏览器套件（`packages/client-runtime/browser-tests/`，22 个用例）按 sw-runtime 的先例接入：新增 `playwright.engines.config.ts`（同形状，`webkit`/`firefox` 两个 project，`trace: "retain-on-failure"`）与 `test:browser:engines` 脚本；`served-from-cache.spec.ts` 中两处 `context.setOffline(true)` 改为 fixture 服务器的 `fixtureServer.goOffline()`，因为 `context.setOffline`/`context.route` 不会拦截 WebKit/Firefox 里 Service Worker 自身发出的请求。
 
 两个引擎上跑通 43 个、跳过 1 个：`registration.spec.ts` 里"回访时更新检查被挂起"一例（R9, ADR-0043）在 Firefox 上以 `test.skip` 跳过——这正是本 ADR 决定时已发现、并被 ADR-0043 的探测表记录在案的引擎差异：Firefox 的 Service Worker 任务队列不会让 `register()` 排在一个挂起的 `update()` 请求之后（Chromium 与 WebKit 都会），所以该用例的前置断言（`browserRegister` 处于 `"pending"`）在 Firefox 上不成立。产品代码未改动：facade 的 `register()` 立即返回已有活动注册的行为不受影响，R9 依赖的正是这一行为，与浏览器是否排队无关。Chrome 上同一改动全绿（22 个），`--repeat-each=10` 在三个引擎上重跑改动过的用例（`served-from-cache.spec.ts` 4 例 + 该 skip 用例）均无新增失败。
+
+## 增补：examples-browser-e2e 接入（2026-09-29）
+
+`packages/examples-browser-e2e` 的默认浏览器套件（`browser-tests/`，两个示例各约 31 个用例）接入引擎冒烟，新增 `playwright.engines.config.ts` 与同名 `test:browser:engines` 脚本，网络故障同样改由 fixture 服务器（`goOffline`/`goOnline`/`stall`/`reset`）制造。`install.spec.ts` 依赖真实 `beforeinstallprompt` 与 CDP 安装性诊断的用例按规格用 `test.skip` 跳过非 Chromium 项目。
+
+试跑发现一处**原因未查明**的问题：在 Playwright WebKit 中，React 示例的 worker 一进入安装阶段，该页面上的所有 Playwright 调用（包括 `page.evaluate(() => 1)`）都不再返回，直到测试超时；可稳定复现。Vue 示例（相同 fixture 服务器与 worker 构建流程）、Firefox 与 Chromium 均不受影响。主会话复核（2026-09-29）排除了两种解释：Playwright 未收到页面崩溃事件，主框架也没有第二次导航；示例代码中唯一的 `reload()` 在用户点击的回调里。**没有证据表明这是产品缺陷**：同一 React 示例与 `@pwa-platform/react` 已在 iPhone 16 Pro（iOS 27）与 Mac Safari 18.6 真机上通过安装、离线、更新与恢复验证（`tasks/stable-release-qualification/verification.md`）。受影响的用例（`handover`、`offline`、`recovery`、`update` 中 React 示例整组，以及 `install`、`smoke` 各一个）在 WebKit 上以同一原因跳过，不放宽断言；根因排查登记为待办。

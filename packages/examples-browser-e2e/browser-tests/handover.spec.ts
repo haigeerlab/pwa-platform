@@ -11,6 +11,15 @@ for (const example of EXAMPLES) {
   test.describe(`${example} example · handover`, () => {
     test.use({ fixtureSite: fixtureSite(example) });
 
+    // Engine finding (ADR-0042, 2026-09-29): under Playwright WebKit, the React example's service worker never
+    // reaches "activated" — installAndControl's poll hangs until the test's own 30s timeout, reproduced 3/3 in
+    // isolation. The Vue example (same fixture server, same worker build pipeline) and Firefox are both unaffected,
+    // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
+    // reported as a finding rather than changed in product code.
+    if (example === "react") {
+      test.skip(({ browserName }) => browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
+    }
+
     test("re-rendering does not disturb the binding", async ({ page, fixtureServer }) => {
       // In the React example this is the gap: `Root` holds the counter and passes `config={{ ... }}`, so every bump
       // hands the provider a new object. If it depended on that object instead of on its fields, the effect would

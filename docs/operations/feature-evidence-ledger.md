@@ -25,6 +25,7 @@
 - 等级取"有断言支撑的最高级"；单元测试**文件存在**不算 L2，必须指向具体 `describe`/`it`/`expect` 或构建断言。
 - E2E 全部只在桌面 Chrome 上跑——仓库内 9 个 `playwright.config.ts`（`browser-test-harness`、`client-runtime`、`engine-workbox`、`entry-resilience`、`examples-browser-e2e`、`nuxt`、`push`、`sw-runtime`、`vite`）均为 `channel: "chrome"`、无 `projects` 矩阵，无 Firefox/WebKit/移动模拟项目（逐份读取确认）。因此本表所有"L3"均指桌面 Chrome，不代表跨浏览器覆盖。
 - **2026-09-28 起**：sw-runtime 套件另在 Playwright 自带的 WebKit 与 Firefox 上以不阻断方式运行（`pnpm test:browser:engines`，ADR-0042）。这类结果只记作“WebKit 引擎 / Firefox”的渐进兼容参考，不升级任何功能的等级，也不代表 Safari 或 iOS。**2026-09-29 起**：client-runtime 套件同样接入（22 个用例，1 个因 Firefox 与 Chromium/WebKit 的 Service Worker 任务队列行为差异被 `test.skip`，ADR-0043 已记录该差异）。
+- **2026-09-29 起**：引擎冒烟扩到 client-runtime 与 examples-browser-e2e（后者 React 示例在 WebKit 上的 19 个用例因原因未查明的 Playwright 挂起而跳过，见 ADR-0042 增补）；另新增不阻断的 **Microsoft Edge 稳定版**运行（ADR-0044）：`main` @ `3097193` 的 CI（run 36457351633）在 Edge 153.0.4234.48 上 `pnpm test:browser` 全部 281 个用例通过。Edge 是真实的 Edge 稳定版，结果可记为桌面 Edge 的自动化证据，但不阻断发布。
 - 本表标注"未确认"的单元格，表示三份复核或本次核查都没有找到可验证的一手证据，不代表功能不存在或未测试。
 
 ## 测试运行证据（2026-09-28 增量复审，`main` @ `dad5d1e`）

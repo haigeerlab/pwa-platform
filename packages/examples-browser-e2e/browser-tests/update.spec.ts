@@ -7,6 +7,15 @@ for (const example of EXAMPLES) {
   test.describe(`${example} example · update`, () => {
     test.use({ fixtureSite: fixtureSite(example) });
 
+    // Engine finding (ADR-0042, 2026-09-29): under Playwright WebKit, the React example's service worker never
+    // reaches "activated" — installAndControl's poll hangs until the test's own 30s timeout, reproduced 3/3 in
+    // isolation. The Vue example (same fixture server, same worker build pipeline) and Firefox are both unaffected,
+    // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
+    // reported as a finding rather than changed in product code.
+    if (example === "react") {
+      test.skip(({ browserName }) => browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
+    }
+
     test("a new deployment waits for the user and the interface says so", async ({ page, fixtureServer }) => {
       await installAndControl(page, fixtureServer);
       await expect(page.locator("#apply-update")).toHaveCount(0);
@@ -147,23 +156,19 @@ for (const example of EXAMPLES) {
 
     test("a currency check that never answers still lets the ordinary prompt appear after its timeout", async ({
       page,
-      context,
       fixtureServer,
     }) => {
       await installAndControl(page, fixtureServer);
 
-      // Hold only the page's own currency request: a `fetch()` of the shell URL. Navigations to the shell are
-      // `document` requests and pass through untouched. Held requests are never answered, the way a stalled network
-      // would behave; `stalled` proves the hold was actually hit, so the test cannot pass just because the check
-      // happened to answer quickly.
-      let stalled = 0;
-      await context.route(fixtureServer.url(SHELL_URL), async (route) => {
-        if (route.request().resourceType() === "fetch") {
-          stalled += 1;
-          return;
-        }
-        await route.continue();
-      });
+      // Hold the shell path at the fixture server rather than with context.route, which intercepts a service
+      // worker's own requests only in Chromium (spec/browser-test-harness.md "增补：服务器端断网与网络故障"). Only
+      // the page's own currency request — a `fetch()` of the shell URL — reaches the server during this test: the
+      // update check below is driven by `registration.update()`, not a navigation, so no `document` request to the
+      // same path is in flight to be held by mistake. Held requests are never answered, the way a stalled network
+      // would behave; the fixture server's own request log proves the hold was actually hit, so the test cannot pass
+      // just because the check happened to answer quickly.
+      fixtureServer.clearRequests();
+      const release = fixtureServer.stall(SHELL_URL);
 
       try {
         fixtureServer.deploy("v2");
@@ -174,11 +179,11 @@ for (const example of EXAMPLES) {
         // (spec: 补充修订：区分"页面已是新代码"), which is also the truth here — the page is still v1.
         await expect(page.locator("#update-banner")).toBeVisible({ timeout: 15_000 });
         expect(Date.now() - started).toBeGreaterThanOrEqual(4_000);
-        expect(stalled).toBeGreaterThan(0);
+        expect(fixtureServer.requests().some(({ path }) => path === SHELL_URL)).toBe(true);
         await expect(page.locator("#update-banner")).toContainText("A new version is available");
         await expect(page.locator("#version")).toHaveText("v1");
       } finally {
-        await context.unrouteAll({ behavior: "ignoreErrors" });
+        release();
       }
     });
   });
