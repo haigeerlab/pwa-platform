@@ -26,4 +26,4 @@ Vue 与 React 入门示例假设浏览器提供 <code>navigator.serviceWorker</c
 
 ## 包发布与生产部署是两道门
 
-十个 npm 包当前统一为 <code>0.1.0</code>，发布在 `latest` 标签。包可安装、示例在浏览器中运行，并不等于某个业务应用已完成自己的 HTTPS 部署、响应头、回滚、旧资产保留及真实浏览器验收。上线应按[部署与发布](/operations/release)执行。
+十个 npm 包当前统一为 <code>0.2.0</code>，发布在 `latest` 标签。包可安装、示例在浏览器中运行，并不等于某个业务应用已完成自己的 HTTPS 部署、响应头、回滚、旧资产保留及真实浏览器验收。上线应按[部署与发布](/operations/release)执行。

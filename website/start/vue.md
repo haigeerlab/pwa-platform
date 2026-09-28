@@ -1,12 +1,12 @@
 # Vite + Vue 接入
 
-适用范围：Vite 5／8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)安装 0.1.0，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
+适用范围：Vite 5／8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)安装 0.2.0，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
 
 ::: warning Vue 3.4 不会在应用卸载时释放 facade
 <code>app.onUnmount</code> 是 Vue 应用唯一的卸载钩子，Vue 3.5 才引入；3.4 的 <code>App</code> 接口没有任何卸载回调注册点，因此 <code>createPwa()</code> 创建的 facade 在 Vue 3.4 下**不会**被释放。普通场景（应用启动时挂载一次、页面生命周期内不再卸载）不受影响；只有反复挂载/卸载同一应用（例如微前端宿主）才需要升级到 Vue 3.5+ 以避免逐次泄漏。
 :::
 
-0.1.0 在 <code>vite dev</code> 和生产构建中都提供 <code>virtual:pwa-config</code>；开发服务不生成平台 worker。安装、离线与更新仍须运行生产构建，再用 <code>vite preview</code> 或目标 HTTPS 站点验收。
+自 0.1.0 起，<code>vite dev</code> 和生产构建中都提供 <code>virtual:pwa-config</code>；开发服务不生成平台 worker。安装、离线与更新仍须运行生产构建，再用 <code>vite preview</code> 或目标 HTTPS 站点验收。
 示例要求浏览器提供 <code>navigator.serviceWorker</code>；若业务系统还要在不提供此 API 的环境运行，请先看[兼容范围中的降级说明](/reference/compatibility#不支持-service-worker-的环境)。
 
 示例使用 <code>App.vue</code> 单文件组件，需要在 Vite 中启用 <code>@vitejs/plugin-vue</code>。已有 Vite + Vue 项目保留原有 Vue 插件；若尚未安装，应按所用 Vite 主版本选择兼容的插件版本并核对其 peer 依赖。
