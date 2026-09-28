@@ -30,6 +30,10 @@
 
 控制台里对 <code>getRegistration()</code> 拿到的对象调用原生 <code>update()</code> 时，如果报 <code>InvalidStateError</code>，说明这个注册对象上已经没有任何 worker（installing、waiting、active 都为空），通常是它已被注销，例如登出清理之后，页面还拿着旧对象。这是浏览器按 Service Worker 规范拒绝，不是平台故障。检查更新请改用 <code>checkForUpdate()</code>：它每次重新查找当前注册，找不到时返回 <code>"unavailable"</code>，并与定时检查共用同一次请求；浏览器检查本身失败（例如 worker 脚本请求出错）时，它会把原始错误抛给调用方。
 
+## `checkForUpdate()` 一直不返回
+
+浏览器的更新检查卡在一个挂起的 worker 脚本请求上时（常见于手机刚恢复联网，连接还没真正可用），<code>checkForUpdate()</code> 会一直等待，定时检查也排在它后面。这是浏览器按 Service Worker 规范把同一 scope 的更新任务排队执行的结果，平台没有给它加超时：超时解除不了浏览器那边卡住的任务（见 [ADR-0043](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0043-registered-from-existing-active-registration.md) 增补）。连接恢复或重新打开页面后即恢复正常。界面需要限时时，可以自己用 <code>Promise.race</code> 包一层，但超时只表示“这次没有结果”，不能当作“没有新版本”。已激活的注册不受影响：离线使用、<code>registered</code> 状态和已在等待的更新提示都照常工作。
+
 ## 安装按钮没有出现
 
 先检查 HTTPS、manifest 的启动 URL 与图标、worker 注册及浏览器特性。<code>installEligible</code> 是渐进能力，不保证每次访问都会出现；不要把它作为应用正常使用的前提。

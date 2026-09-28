@@ -47,6 +47,7 @@ export default defineConfig({
           { text: "离线体验", link: "/guide/offline" },
           { text: "公共读取缓存", link: "/guide/public-read-cache" },
           { text: "安装与更新", link: "/guide/updates" },
+          { text: "自绘更新提示", link: "/guide/update-prompt-custom" },
           { text: "从 vite-plugin-pwa 迁移", link: "/guide/migration" },
           { text: "入口恢复", link: "/guide/entry-resilience" },
           { text: "常见问题", link: "/guide/troubleshooting" },

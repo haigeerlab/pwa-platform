@@ -42,3 +42,9 @@ iPhone 真机曾在断网恢复后导航回应用时显示 `not registered`：�
 直接采用已有注册后，这个注册可能已经有一个 installing worker：导航触发的更新检查在页面脚本运行前就开始安装新版本，其 `updatefound` 早于 facade 挂上监听。原路径不会遇到这种情况，因为浏览器的 `register()` 排在该更新之后，返回时新版本已经 waiting；新路径若只看 `waiting` 和此后的 `updatefound`，本页生命周期内就不会发出 `update-waiting`。
 
 因此 facade 在开始观察注册时，也对当时的 `installing` worker 订阅 `statechange`，它到达 `installed` 时按既有规则宣告 `update-waiting`：页面不受任何 worker 控制时不宣告，同一个 worker 不重复宣告。
+
+## 增补：`checkForUpdate()` 在卡住的更新任务后等待（2026-09-28，项目所有者决定）
+
+`checkForUpdate()` 调用浏览器的 `registration.update()`，它与导航触发的更新检查排在同一个任务队列里。浏览器的更新任务卡在一个挂起的 `sw.js` 请求上时，`checkForUpdate()` 返回的 Promise 也会一直等待；定时检查（`updateCheck`）与手动检查共用同一次在途请求，因此也排在它后面。连接恢复、浏览器放弃该请求，或页面重新打开后，检查恢复正常。
+
+决定维持现状，不给 `checkForUpdate()` 加超时：超时只能让调用方更早拿到一个“失败”，卡住的浏览器任务不会因此解除，之后再发起的检查仍排在它后面；这与上文“备选方案”否决给 `update()` 加超时的理由相同。该行为写入文档站的常见问题页，R9 余项据此关闭。需要限时的调用方可以自行用 `Promise.race` 包一层，但应把超时理解为“这次没有结果”，而不是“没有新版本”。
