@@ -78,7 +78,7 @@ const messages = { readyTitle: "发现新版本", update: "立即更新", later:
 ```
 
 The notice is opt-in and non-modal. Positions are `bottom-right`, `bottom-center`, `top-right` and `top-center`.
-`messages` overrides any of the built-in Chinese strings; `colors` controls surface, text, muted text, border and
+`locale` selects the built-in copy (`"zh-CN"`, the default, or `"en"`); `messages` overrides individual keys on top of it; `colors` controls surface, text, muted text, border and
 primary button colors. CSS variables prefixed with `--pwa-update-` provide deeper theming. `reloadPage` runs only
 after the worker takeover and an explicit click, so the host can protect unsaved work.
 

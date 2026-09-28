@@ -50,6 +50,9 @@ export const SITE_V3_CHANGED_LIMIT_ROOT: string = here("../browser-build/site-v3
 export const SITE_V2_RUNTIME_DECLARED_ROOT: string = here("../browser-build/site-v2-runtime-declared/");
 /** NT6: same rules and limits as v3, plus `networkTimeoutSeconds: 1` (ADR-0038 real-browser scenarios). */
 export const SITE_TIMEOUT_ROOT: string = here("../browser-build/site-timeout/");
+/** v1's files plus explicit `mutation` and `stream` path rules, for the non-navigation deny-class coverage
+ * (docs/architecture/v1-acceptance-matrix.md "未缓存、私有或流式请求"). */
+export const SITE_DENY_CLASSES_ROOT: string = here("../browser-build/site-deny-classes/");
 
 /** Served paths the tests use. */
 export const SHELL_URL = "/app/";
@@ -58,6 +61,10 @@ export const OFFLINE_URL = "/app/offline.html";
 export const DENIED_URL = "/app/api/account/profile.json";
 /** Outside the app's mount path, so no path rule matches it. */
 export const UNCLASSIFIED_URL = "/outside/thing.json";
+/** Mutation-class path (deny-classes fixture): POST returns 201, GET returns 200 (both `responseRules` below). */
+export const MUTATION_URL = "/app/api/orders";
+/** Stream-class path (deny-classes fixture): GET returns 200 (`responseRules` below). */
+export const STREAM_URL = "/app/api/live/events";
 /** A sub-page's route, spelled without the trailing slash; only the `subpage` version precaches its index.html. */
 export const GUIDE_URL = "/app/guide";
 /** Binary asset precached only by the `range` version, for a Range request against a precached asset (ADR-0023). */
@@ -80,8 +87,13 @@ export const FIXTURE_SITE: FixtureServerOptions = {
     "v3-changed-limit": SITE_V3_CHANGED_LIMIT_ROOT,
     "v2-runtime-declared": SITE_V2_RUNTIME_DECLARED_ROOT,
     timeout: SITE_TIMEOUT_ROOT,
+    "deny-classes": SITE_DENY_CLASSES_ROOT,
   },
-  responseRules: [{ method: "POST", path: "/app/api/orders", status: 201 }],
+  responseRules: [
+    { method: "POST", path: "/app/api/orders", status: 201 },
+    { method: "GET", path: "/app/api/orders", status: 200 },
+    { method: "GET", path: "/app/api/live/events", status: 200 },
+  ],
 };
 
 /** Paths served by site-runtime, relative to the app mount (T11 runtime-cache fixtures). */
@@ -367,6 +379,37 @@ export const PLAN_TIMEOUT: PwaPlan = compile(input(V3_FILES_A, timeoutPolicy));
 export const CONFIG_TIMEOUT: PwaPlatformWorkerConfig = createPlatformWorkerConfig(PLAN_TIMEOUT);
 if (CONFIG_TIMEOUT.networkTimeoutSeconds !== 1) throw new Error("The timeout fixture must set networkTimeoutSeconds: 1");
 if (!CONFIG_TIMEOUT.runtimeCache.enabled) throw new Error("The timeout fixture did not enable the runtime cache");
+
+// --- Deny-class fixture: explicit `mutation` and `stream` path rules (v1-acceptance-matrix "未缓存、私有或流式请求") ----
+
+/** v1's policy plus a `mutation` rule at `/api/orders` and a `stream` rule at `/api/live`, both `cache: "none"`
+ * (so they compile to `action: "deny"`), alongside the existing `/api/account` (`session-data`) rule. */
+const denyClassesPolicy: PwaPolicy = {
+  ...policy,
+  resources: [
+    ...policy.resources,
+    { pathPrefix: "/api/orders", resourceClass: "mutation", cache: "none" },
+    { pathPrefix: "/api/live", resourceClass: "stream", cache: "none" },
+  ],
+};
+export const PLAN_DENY_CLASSES: PwaPlan = compile(
+  input(
+    [
+      file("index.html", "1111111111111111"),
+      file("assets/app.3f9a2c7d.js", "3333333333333333", true),
+      file("assets/logo.svg", "4444444444444444"),
+      ...COMMON_FILES,
+    ],
+    denyClassesPolicy,
+  ),
+);
+export const CONFIG_DENY_CLASSES: PwaPlatformWorkerConfig = createPlatformWorkerConfig(PLAN_DENY_CLASSES);
+if (
+  !PLAN_DENY_CLASSES.pathRules.some((rule) => rule.resourceClass === "mutation" && rule.action === "deny") ||
+  !PLAN_DENY_CLASSES.pathRules.some((rule) => rule.resourceClass === "stream" && rule.action === "deny")
+) {
+  throw new Error("The deny-classes fixture must compile its mutation and stream rules to action: \"deny\"");
+}
 
 export const PRECACHE_CACHE_NAME: string = CONFIG_V1.precacheCacheName;
 /** `pwa:swfixture:production:`: everything the recovery worker deletes. */

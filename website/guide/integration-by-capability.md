@@ -110,12 +110,13 @@ React 使用相同概念：从 `@pwa-platform/react/ui` 导入组件，并导入
 
 | 界面 | 语言 | 主题 |
 | --- | --- | --- |
-| Vue／React 更新提示 | `messages` 由应用运行时传入，可接现有 i18n | 默认跟随系统亮暗；`colors` 或 `--pwa-update-*` CSS 变量覆盖 |
+| Vue／React 更新提示 | `locale` 在运行时选内置 `zh-CN`（默认）／`en`；`messages` 逐项覆盖，可接现有 i18n | 默认跟随系统亮暗；`colors` 或 `--pwa-update-*` CSS 变量覆盖 |
 | 平台离线页 | `offlinePage.locale` 在构建时选 `zh-CN`／`en`，`messages` 局部覆盖 | 默认跟随系统亮暗；`offlinePage.css` 覆盖 |
 | 入口恢复页 | `pwaEntryResilience.locale` 在构建时选择，`messages` 局部覆盖 | 默认跟随系统；以 `setPwaTheme()` 传入 `light`、`dark` 或 `system`，`css` 覆盖 |
 | manifest 名称和描述 | 由 `PwaInstallMetadata` 在构建时写入 | `themeColor`／`backgroundColor` 是安装元数据，不是应用运行时主题开关 |
 
-默认更新 UI 内置中文文案；英文或其他语言由业务把自己的翻译对象传给 `messages`。离线页与入口恢复页
+默认更新 UI 内置中文（`zh-CN`）和英文（`en`）两套文案，通过 `locale` 在运行时选择，默认 `zh-CN`；
+其他语言由业务把自己的翻译对象传给 `messages`。离线页与入口恢复页
 是独立静态文档，只内置中文和英文，语言在构建时固定；若一个部署必须根据用户即时切换语言，应由业务
 自建离线页，不能假设它们能读取框架 i18n 状态。
 

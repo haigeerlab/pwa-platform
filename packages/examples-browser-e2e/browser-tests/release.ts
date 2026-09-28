@@ -104,6 +104,27 @@ export function expectedPrecacheCacheName(): string {
   return cacheName(IDENTITY, "precache");
 }
 
+/**
+ * The public HTML paths `verifyHtmlHeaders` (ADR-0032) judges, in the same order and with the same "first field
+ * wins" dedup it applies internally (build-verifier/src/html-headers.ts): the mount path; the install start URL,
+ * when the plan carries install metadata; the offline fallback page, when enabled; and every precache entry with
+ * a non-null revision whose URL ends in `.html` — a fingerprinted (`revision: null`) `.html` entry belongs to
+ * `headerPaths` instead, because its URL changes with its content.
+ *
+ * `verifyHtmlHeaders` computes this set to judge headers, not to hand it back, so a caller collecting real
+ * response headers has to derive the same set independently. This mirrors
+ * `release-verifier/observe.ts`'s `requiredHtmlHeaderPaths`, which derives it for the production CLI the same way.
+ */
+export function htmlHeaderPaths(plan: PwaPlan): readonly string[] {
+  const paths = new Set<string>([plan.identity.mountPath]);
+  if (plan.install !== null) paths.add(plan.install.startUrl);
+  if (plan.offlineFallback.enabled) paths.add(plan.offlineFallback.path);
+  for (const entry of plan.precache) {
+    if (entry.revision !== null && entry.url.endsWith(".html")) paths.add(entry.url);
+  }
+  return [...paths];
+}
+
 /** Every file the build published, as the absolute paths the server serves them at. */
 export async function publishedPaths(example: ExampleName, version: VersionName): Promise<readonly string[]> {
   const root = siteRoot(example, version);
