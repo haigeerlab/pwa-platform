@@ -27,8 +27,18 @@
 | 15 | ✅ 已完成 | [#39](https://github.com/haigeerlab/pwa-platform/pull/39) | 删除失败场景已补：故障注入测试构建，并改为逐项尝试后再判失败（[offline-write.spec.ts](../../../packages/sw-runtime/browser-tests/offline-write.spec.ts)） |
 | 16 | ✅ 已完成 | [#41](https://github.com/haigeerlab/pwa-platform/pull/41) | 真实 Chrome 中耗尽配额的用例已补（[runtime-cache.spec.ts](../../../packages/sw-runtime/browser-tests/runtime-cache.spec.ts)） |
 | 17 | ✅ 已完成 | [#40](https://github.com/haigeerlab/pwa-platform/pull/40) | 改用本仓库打包产物，离线安装 |
-| 18 | ⏸ 推迟 | — | 按原建议，等收到重复提示的反馈再评估 |
+| 18 | ✅ 已评估，不采用 | — | workbox-window 的两个信号在本平台都已有对应，见下方“#18 评估” |
 | 19 | ✅ 已完成（仅文档） | [#38](https://github.com/haigeerlab/pwa-platform/pull/38) | 保持 `vue: ^3.4.0`，改为醒目标注 |
+
+### #18 评估（2026-09-28）
+
+结论：**不引入 `isExternal` 式语义**，不改代码。workbox-window 用两个信号解决的问题，本平台都已按自己的模型处理，并有真实 Chrome 用例（L3，本次在 Vue 与 React 示例上重跑通过）：
+
+- **`isExternal`（等待中的 worker 不是本页注册的）**：同一 scope 的所有标签页注册的是同一个 worker URL，更新对每个页面的含义和可做的操作都相同（确认后接管，是否刷新由应用决定）。区分“谁触发的”不会改变任何一个页面该显示什么。每个页面各自观察浏览器的 `controllerchange`，一处确认、所有标签页的提示同时清除（[update.spec.ts:56](../../../packages/examples-browser-e2e/browser-tests/update.spec.ts#L56)）。
+- **`wasWaitingBeforeRegister`（页面加载前 worker 就已在等待）**：真正要回答的是“这个页面是不是已经跑在新代码上”，本平台的参考实现直接判定这一点：已是新代码时文案为 `An update is ready for offline use`，接管后横幅消失、不再提示刷新（[update.spec.ts:119](../../../packages/examples-browser-e2e/browser-tests/update.spec.ts#L119)，[更新提示指南](../../guides/update-prompt.md)）。
+- **重复提示**：`client-runtime` 对同一个等待中的 worker 在同一页面生命周期内只发一次 `update-waiting`（`announcedWaiting` 去重）；页面刷新或新开标签页后再次提示是有意为之，因为更新仍待确认，“稍后”只是隐藏横幅。
+
+若以后收到“提示重复或误导”的具体反馈，应先按反馈复现，再考虑给 `update-waiting` 增加元数据，而不是照搬 workbox-window 的布尔值。
 
 此外，按项目所有者要求优化了 CI（[#42](https://github.com/haigeerlab/pwa-platform/pull/42)）：不再要求 PR 与 `main` 同步，改为合并后在 `main` 上重跑作为安全网；不阻断的 job 移出 PR 触发，每个 PR 从 5 个 job 降到 3 个。
 

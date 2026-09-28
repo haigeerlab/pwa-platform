@@ -63,7 +63,7 @@
 | 缺口 | 对标来源 | 判断 |
 |---|---|---|
 | 非 Chromium 浏览器的自动化验证 | —（对标项目同样不公开跨浏览器矩阵） | **真实缺口**，见建议 #3 |
-| 多标签页中区分“本页发起的更新”与“别处早已在等的 worker” | workbox-window 的 `isExternal` | 目前靠浏览器统一的 `controllerchange` 已够用，属于低优先级增强 |
+| 多标签页中区分“本页发起的更新”与“别处早已在等的 worker” | workbox-window 的 `isExternal` | 目前靠浏览器统一的 `controllerchange` 已够用，属于低优先级增强。2026-09-28 评估后不采用，见[建议 #18 评估](07-recommendations.md#18-评估2026-09-28) |
 | 声明式离线兜底插件 | Serwist `PrecacheFallbackPlugin` | 平台的回退链是固定的，属于有意取舍 |
 | 离线写入走后台同步 | Workbox、Serwist | **有意取舍**（ADR-0027：显式、按会话绑定，不做静默重放） |
 | 自动更新模式 | vite-plugin-pwa `autoUpdate`、Serwist | **有意取舍**（ADR-0005：只提示，从不强制刷新） |
