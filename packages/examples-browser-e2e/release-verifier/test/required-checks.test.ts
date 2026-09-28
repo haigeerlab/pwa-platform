@@ -2,6 +2,7 @@
 // shared-origin fixtures here are built by hand rather than through the real compiler or a fully valid registry —
 // they are structurally enough to exercise this one pure function, not claims about a valid plan.
 import { readFileSync } from "node:fs";
+import { requiredReleaseChecks } from "@pwa-platform/build-verifier";
 import type { PwaIdentity, PwaOriginRegistry, PwaPlan } from "@pwa-platform/contracts";
 import { describe, expect, it } from "vitest";
 import { requiredChecksFor } from "../required-checks.ts";
@@ -47,6 +48,12 @@ describe("requiredChecksFor", () => {
       "release-retention",
       "html-headers",
     ]);
+  });
+
+  it("is exactly build-verifier's requiredReleaseChecks for every plan it accepts (R4: one source of truth)", () => {
+    for (const plan of [storefront, sharedOriginPlan(storefront.identity, [childIdentity])]) {
+      expect(requiredChecksFor(plan)).toEqual(requiredReleaseChecks(plan));
+    }
   });
 
   it("rejects a shared-origin child plan as unsupported", () => {
