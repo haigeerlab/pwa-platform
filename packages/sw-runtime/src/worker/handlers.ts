@@ -83,13 +83,13 @@ export function attachPlatformWorker({
   // in workbox-core), so it also fires for a precache write made by engine-workbox's PrecacheController during
   // *this very worker's own install* — before it has won activation. Running the cleanup then would delete the
   // runtime caches the still-active previous version is serving from, and installation fails anyway (the quota is
-  // still exhausted), so it would repeat on every retry. `scope.registration.installing` is this worker itself
-  // while it is still installing, and becomes null once it starts activating (spec — "activate" only ever fires
-  // once a worker has won activation), so checking it here — at the moment of the error, rather than caching a flag
-  // set by the "activate" listener below — also covers a worker the browser restarts after idle termination: that
-  // restart re-runs this module's top-level code without re-dispatching "install" or "activate", so a flag would
-  // wrongly stay stuck at "not yet activated" forever for an already-active, merely-restarted worker (the scenario
-  // review risk R12's own browser test exercises).
+  // still exhausted), so it would repeat on every retry. The cleanup therefore skips while the registration has an
+  // installing worker. The registration is shared, so this also skips the active worker's own cleanup during another
+  // version's install: that runtime write is dropped anyway and the next quota error after the install cleans up,
+  // which is simpler than telling the two apart through `self.serviceWorker`, an API the platform does not rely on
+  // elsewhere. It is read at the moment of the error, not cached in a flag set by the "activate" listener below: a
+  // worker restarted after idle termination re-runs this module without "install" or "activate", so such a flag would
+  // stay "not activated" forever for an already-active worker (the scenario R12's browser test exercises).
   if (config.runtimeCache.enabled && registerQuotaCleanup !== undefined) {
     registerQuotaCleanup(() => {
       if (scope.registration.installing !== null) return undefined;
