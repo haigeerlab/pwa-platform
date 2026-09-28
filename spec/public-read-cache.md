@@ -109,6 +109,7 @@ type PwaPolicyV3 = Omit<PwaPolicyV2, "schemaVersion"> & {
 - 正文字节数不超过 `maxEntryBytes`。没有可信 `Content-Length` 时按实际读取的字节数判定，超出即放弃写入。
 - **拒绝时的诊断（2026-09-28 增补，审查风险 R8）**：响应因上述任一条件未写入时，平台 worker 以 `console.warn` 报告拒绝原因（`response-type`、`status`、`redirected`、`content-type`、`cache-control`、`vary`、`size` 之一）与该响应的 URL 路径（不含查询串）；`vary` 时附带响应的 `Vary` 值。同一 worker 生命周期内，每个（运行时引擎，原因）组合只报告一次。它只是开发与排查辅助：不改变准入结果、不向页面发送消息、不属于公开 API；恢复 worker 与 push 路径仍不调用 `console`。
 - 写入失败（含 `QuotaExceededError`）只丢弃这一次写入；配额错误时清空**全部**运行时缓存以回收空间（Workbox 的配额回调是全局的，见 ADR-0035 探路 2），预缓存不受影响；页面收到的响应不受影响。
+- **配额清理独立于引擎是否已构建（2026-09-28 增补，审查风险 R12）**：sw-runtime 按（缓存，策略）惰性构建运行时引擎（`buildRuntimeEngines`），只在某个规则第一次匹配请求时才创建对应引擎；`ExpirationPlugin` 的 `purgeOnQuotaError` 回调只在引擎被构建的那一刻才注册进 Workbox 的全局回调集合。若本次 worker 生命周期内只命中了其中一类规则（例如只有 `data` 规则被访问过），另一类（`pages`）从未构建引擎，则单靠 `purgeOnQuotaError` 不会清空它——这就是 ADR-0035"已知限制"一节原先记录的"尚未被访问的运行时缓存不会被清"。为了让"配额错误清空全部运行时缓存"这条承诺不依赖引擎是否已构建，平台在 worker 启动时另外注册一个不依赖任何具体引擎实例的清理回调（`@pwa-platform/engine-workbox/worker` 的 `registerRuntimeCacheQuotaCleanup`，包装 Workbox 同一个全局配额回调注册表），直接按 `runtimeCache.pagesCacheName` 与当前 digest 的 `dataCacheName` 删除两个缓存，与 `deleteRuntimeCaches` 用于登出的删除范围一致。
 
 ### 读取与时效
 

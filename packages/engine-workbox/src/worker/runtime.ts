@@ -1,3 +1,4 @@
+import { registerQuotaErrorCallback } from "workbox-core";
 import { ExpirationPlugin } from "workbox-expiration";
 import { NetworkFirst, StaleWhileRevalidate } from "workbox-strategies";
 // Type-only: workbox-expiration@7.4.1's own .d.ts does not satisfy WorkboxPlugin under exactOptionalPropertyTypes
@@ -37,6 +38,20 @@ export type PwaRuntimeCacheEngine = {
   /** Handles one fetch event; registers its own background work with event.waitUntil. */
   handle(event: FetchEvent): Promise<PwaRuntimeCacheResult>;
 };
+
+/**
+ * Registers a worker-wide quota cleanup, run whenever *any* runtime-cache write hits `QuotaExceededError` for the
+ * lifetime of this worker (spec.public-read-cache "响应准入", ADR-0035 探路 2). Workbox's `registerQuotaErrorCallback`
+ * is a single global registry (`workbox-core`'s `quotaErrorCallbacks`), not scoped to any one cache or plugin
+ * instance, so this is the same mechanism `ExpirationPlugin({ purgeOnQuotaError: true })` uses internally — but
+ * registering it here, once, independently of `createRuntimeCacheEngine`, means it fires even for a runtime cache
+ * whose engine was never built (and therefore never constructed its own `ExpirationPlugin`) in this worker's
+ * lifetime. Exists so `sw-runtime`, which never imports Workbox, can still guarantee "quota error clears every
+ * runtime cache" without depending on which of its lazily-built engines happened to run first.
+ */
+export function registerRuntimeCacheQuotaCleanup(onQuotaExceeded: () => void | Promise<void>): void {
+  registerQuotaErrorCallback(onQuotaExceeded);
+}
 
 /** Clones `response`'s status, statusText and body with `headers` in place of its own. */
 function withHeaders(response: Response, headers: Headers): Response {

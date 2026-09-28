@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createRuntimeCacheEngine } from "../../src/worker/runtime.js";
+import { createRuntimeCacheEngine, registerRuntimeCacheQuotaCleanup } from "../../src/worker/runtime.js";
 import type { PwaRuntimeCacheEngine } from "../../src/worker/runtime.js";
 
 // NT3 (tasks/network-timeout/plan.md): createRuntimeCacheEngine's networkTimeoutSeconds option and the
@@ -17,7 +17,7 @@ import type { PwaRuntimeCacheEngine } from "../../src/worker/runtime.js";
 // this file's own real-Workbox coverage (predating this option) is in browser-tests/runtime.spec.ts.
 //
 // vi.mock is hoisted above this file's imports, so the fakes it references are built inside vi.hoisted().
-const { MockNetworkFirst, MockStaleWhileRevalidate, MockExpirationPlugin, cacheStore, resetCacheStore } = vi.hoisted(() => {
+const { MockNetworkFirst, MockStaleWhileRevalidate, MockExpirationPlugin, mockRegisterQuotaErrorCallback, cacheStore, resetCacheStore } = vi.hoisted(() => {
   type PluginLike = {
     fetchDidFail?: (param: { readonly error: Error; readonly event: unknown; readonly originalRequest: Request; readonly request: Request }) => Promise<void>;
     cacheWillUpdate?: (param: { readonly response: Response }) => Promise<Response | null>;
@@ -191,11 +191,16 @@ const { MockNetworkFirst, MockStaleWhileRevalidate, MockExpirationPlugin, cacheS
     constructor(public readonly options: Record<string, unknown>) {}
   }
 
-  return { MockNetworkFirst, MockStaleWhileRevalidate, MockExpirationPlugin, cacheStore, resetCacheStore };
+  const mockRegisterQuotaErrorCallback = vi.fn();
+
+  return { MockNetworkFirst, MockStaleWhileRevalidate, MockExpirationPlugin, mockRegisterQuotaErrorCallback, cacheStore, resetCacheStore };
 });
 
 vi.mock("workbox-strategies", () => ({ NetworkFirst: MockNetworkFirst, StaleWhileRevalidate: MockStaleWhileRevalidate }));
 vi.mock("workbox-expiration", () => ({ ExpirationPlugin: MockExpirationPlugin }));
+// workbox-core's real module touches `self` at import time (its dev logger), which Node doesn't have; this file's
+// unit tests never need the real Workbox runtime (see the file banner above), so it is faked like the other two.
+vi.mock("workbox-core", () => ({ registerQuotaErrorCallback: mockRegisterQuotaErrorCallback }));
 
 /** Minimal FetchEvent/ExtendableEvent stand-in: collects every event.waitUntil() promise so a test can await them. */
 class FakeFetchEvent {
@@ -408,5 +413,13 @@ describe("createRuntimeCacheEngine: stale-while-revalidate is unaffected by netw
 
     expect(await result.response.text()).toBe("v1");
     expect(result.servedFromCache?.reason).toBe("stale-while-revalidate");
+  });
+});
+
+describe("registerRuntimeCacheQuotaCleanup (R12)", () => {
+  it("forwards the given callback to workbox-core's global quota-error registry", () => {
+    const callback = vi.fn();
+    registerRuntimeCacheQuotaCleanup(callback);
+    expect(mockRegisterQuotaErrorCallback).toHaveBeenCalledWith(callback);
   });
 });
