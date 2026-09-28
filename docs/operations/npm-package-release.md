@@ -1,6 +1,6 @@
 # npm 包发布流程
 
-本流程只处理库包分发，不替代[业务应用生产发布门禁](release-and-incident-runbook.md)。首批范围与版本见[规格](../../spec/package-distribution.md)和[ADR-0028](../adr/0028-npm-prerelease-distribution.md)。首批九包已于 2026-09-20 发布，实际结果见[发布记录](../../tasks/package-distribution/release-2026-09-20.md)；后续的 [beta.1](../../tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](../../tasks/package-distribution/release-2026-09-26-beta2.md) 各有发布记录。`0.1.0` 正式版增加 `entry-resilience`，十包实际发布与读回结果见[正式版发布记录](../../tasks/stable-release-qualification/release-0.1.0.md)，验收依据[正式版规格](../../spec/stable-release-qualification.md)和[验证记录](../../tasks/stable-release-qualification/verification.md)。`0.2.0` 的发布与核对结果见[0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)。以下门禁用于后续版本。
+本流程只处理库包分发，不替代[业务应用生产发布门禁](release-and-incident-runbook.md)。首批范围与版本见[规格](../../spec/package-distribution.md)和[ADR-0028](../adr/0028-npm-prerelease-distribution.md)。首批九包已于 2026-09-20 发布，实际结果见[发布记录](../../tasks/package-distribution/release-2026-09-20.md)；后续的 [beta.1](../../tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](../../tasks/package-distribution/release-2026-09-26-beta2.md) 各有发布记录。`0.1.0` 正式版增加 `entry-resilience`，十包实际发布与读回结果见[正式版发布记录](../../tasks/stable-release-qualification/release-0.1.0.md)，验收依据[正式版规格](../../spec/stable-release-qualification.md)和[验证记录](../../tasks/stable-release-qualification/verification.md)。`0.2.0` 的发布与核对结果见[0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)，后续见 [0.2.1](../../tasks/package-distribution/release-0.2.1.md) 与 [0.2.3](../../tasks/package-distribution/release-0.2.3.md) 发布记录（0.2.2 已准备但未发布）。以下门禁用于后续版本。
 
 ## 候选门禁
 
@@ -11,6 +11,8 @@
 5. 正式版发布使用 `pnpm publish --access public --tag latest`，按下列依赖顺序逐包执行并完成 2FA；不要直接从工作区运行 `npm publish`，因为 `workspace:*` 需要 pnpm 打包转换。发布源码必须是已审核的干净提交；若本次确有不提交 Git 的明确要求，才从与审核源码一致的临时副本使用 `--no-git-checks`，并记录两者差异核对。每步查询 registry，确认 tarball 版本与标签符合记录。
 6. **逐包等待可下载再发下一包**（2026-09-28 补充，见 [0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)）：registry 登记是异步的，0.2.0 中 `sw-runtime` 报告成功后约 5 分钟才可下载，而依赖它的包已经发布并把 `latest` 指向新版本，窗口内安装失败。每个包 `publish` 后，先确认 `https://registry.npmjs.org/@pwa-platform/<包>/-/<包>-<版本>.tgz` 返回 200，再发布依赖它的下一个包。发布循环开始前还要检查克隆中的版本号等于目标版本，否则不开始。
 7. **暂存发布需要逐包批准**（2026-09-28 补充，见 [0.2.1 发布记录](../../tasks/package-distribution/release-0.2.1.md)）：npm 可能把 `publish` 先作为暂存版本，发布者在 npm 上认证批准后才公开；`Published package` 的输出不代表已公开，暂存期间 tarball 为 404。**按上面的依赖顺序批准**，公开顺序由批准顺序决定。已暂存的版本不能再次 `publish`（409），只能批准；不要为提速中断后重发。
+8. **暂存状态的三种报错都表示“已提交过”**（2026-09-28 补充，见 [0.2.3 发布记录](../../tasks/package-distribution/release-0.2.3.md)）：非交互 shell 中 `pnpm publish` 报 `ERR_PNPM_OTP_NON_INTERACTIVE` 时版本可能已进入暂存；之后再发会得到 `409 ... previously staged`，批准后再发得到 `403 ... previously published`。遇到这三种情况都去 npm 批准或跳过该包，不要重发。发布须在交互终端中进行，以便完成 2FA。
+9. **批量提交时，批准顺序就是公开顺序**（同上）：为提速可先把各包提交进暂存、再统一批准，但这放弃了第 6 条的逐包等待。此时必须严格按下方依赖顺序批准，且在被依赖的包可下载之前不要批准依赖它的包；0.2.3 中 `vite`、`vue`、`react` 先于 `sw-runtime` 公开，造成约 9 分钟 `npm install` 失败。
 
 ## 顺序
 

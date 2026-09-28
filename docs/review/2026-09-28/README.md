@@ -47,3 +47,15 @@
 - 新增本目录；更新 `docs/operations/feature-evidence-ledger.md`。
 - 另开 [#60](https://github.com/haigeerlab/pwa-platform/pull/60) 修复 N1（`packages/client-runtime`、ADR-0043 增补、CHANGELOG）。
 - 没有改动 `website/` 和上一轮审查文件；上一轮文件中过时的结论，以本目录为准。
+
+## 后续进展（2026-09-29）
+
+[07 改进建议](07-recommendations-delta.md)的第一、二批已全部处理，改动随 npm **`0.2.3`** 发布（[发布记录](../../../tasks/package-distribution/release-0.2.3.md)；0.2.2 已准备但未发布）。上文及 02、06、07 中“待合并”“未发布”的表述指当时状态。
+
+| 批次 | 处理 |
+|---|---|
+| 第一批 | N1 修复 [#60](https://github.com/haigeerlab/pwa-platform/pull/60)；R4 复核后降为“门禁自带清单与 `requiredReleaseChecks` 重复维护”，改为直接取用 [#62](https://github.com/haigeerlab/pwa-platform/pull/62)；N4、N6 与网站 5 处文档 [#63](https://github.com/haigeerlab/pwa-platform/pull/63) |
+| 第二批 | R15 自绘更新提示迁入网站、R9 余项（`checkForUpdate()` 在卡住的更新任务后等待）按所有者决定写入文档 [#65](https://github.com/haigeerlab/pwa-platform/pull/65)；N7 未能复现，改为失败时保留 trace 并由 CI 上传 [#66](https://github.com/haigeerlab/pwa-platform/pull/66)；R14 [#67](https://github.com/haigeerlab/pwa-platform/pull/67)、N3 [#68](https://github.com/haigeerlab/pwa-platform/pull/68)、N2 [#69](https://github.com/haigeerlab/pwa-platform/pull/69) 均先以真实浏览器探针证实再修复 |
+| 过程中新发现 | R14 的首版修复把等待上限设为 10 秒，示例应用 E2E 证明永不关闭的连接会让恢复激活等满上限，改为 3 秒；Chrome 自动请求 `/favicon.ico` 的偶发失败 [#70](https://github.com/haigeerlab/pwa-platform/pull/70)；N2 之后两个 flush 用例的引擎与时序假设 [#71](https://github.com/haigeerlab/pwa-platform/pull/71) |
+
+第三批（证据覆盖：Android N-1、iPhone 入口恢复余下三步、引擎冒烟扩面、Edge 冒烟、首份正式发布浏览器证据）尚未开始。
