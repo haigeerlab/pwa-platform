@@ -4,19 +4,29 @@ on:
   pull_request:
     branches: [main]
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+  # Safety net after merging: the ruleset does not require a PR to be up to date with main (that forced a full rerun
+  # of every open PR after each merge), so the merged result is checked here instead, once per merge.
+  push:
+    branches: [main]
+  # The non-blocking engine smoke and push network suite also run nightly, to catch browser or FCM drift between merges.
+  schedule:
+    - cron: "17 18 * * *"
   workflow_dispatch:
 
 # Least privilege: the workflow only reads the repository and never uses secrets.
 permissions:
   contents: read
 
+# A newer push to the same PR, or a newer merge to main, cancels the run it supersedes; only the latest result matters.
+# Scheduled and manual runs get their own group, so a merge never cancels them.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || (github.event_name == 'push' && github.ref || github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
 
 jobs:
   quality:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    # Gating jobs: every non-draft PR, every push to main, manual runs; not the nightly schedule.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
     name: Quality (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -61,7 +71,8 @@ jobs:
         run: pnpm audit --ignore-registry-errors
 
   browser:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    # Gating jobs: every non-draft PR, every push to main, manual runs; not the nightly schedule.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
     name: Browser (Google Chrome stable, Node 24)
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -89,7 +100,8 @@ jobs:
         run: pnpm test:onboarding-smoke
 
   engines:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    # Non-blocking and costly (browser downloads, real FCM): not on pull requests; after merges, nightly and on demand.
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: Engine smoke (Playwright WebKit and Firefox, non-blocking)
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -116,7 +128,8 @@ jobs:
         run: pnpm test:browser:engines
 
   network:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    # Non-blocking and costly (browser downloads, real FCM): not on pull requests; after merges, nightly and on demand.
+    if: github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     name: Push network suite (real FCM delivery, non-blocking)
     runs-on: ubuntu-latest
     timeout-minutes: 20
