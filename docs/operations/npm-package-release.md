@@ -1,6 +1,6 @@
 # npm 包发布流程
 
-本流程只处理库包分发，不替代[业务应用生产发布门禁](release-and-incident-runbook.md)。首批范围与版本见[规格](../../spec/package-distribution.md)和[ADR-0028](../adr/0028-npm-prerelease-distribution.md)。首批九包已于 2026-09-20 发布，实际结果见[发布记录](../../tasks/package-distribution/release-2026-09-20.md)；后续的 [beta.1](../../tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](../../tasks/package-distribution/release-2026-09-26-beta2.md) 各有发布记录。`0.1.0` 正式版增加 `entry-resilience`，十包实际发布与读回结果见[正式版发布记录](../../tasks/stable-release-qualification/release-0.1.0.md)，验收依据[正式版规格](../../spec/stable-release-qualification.md)和[验证记录](../../tasks/stable-release-qualification/verification.md)。以下门禁用于后续版本。
+本流程只处理库包分发，不替代[业务应用生产发布门禁](release-and-incident-runbook.md)。首批范围与版本见[规格](../../spec/package-distribution.md)和[ADR-0028](../adr/0028-npm-prerelease-distribution.md)。首批九包已于 2026-09-20 发布，实际结果见[发布记录](../../tasks/package-distribution/release-2026-09-20.md)；后续的 [beta.1](../../tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](../../tasks/package-distribution/release-2026-09-26-beta2.md) 各有发布记录。`0.1.0` 正式版增加 `entry-resilience`，十包实际发布与读回结果见[正式版发布记录](../../tasks/stable-release-qualification/release-0.1.0.md)，验收依据[正式版规格](../../spec/stable-release-qualification.md)和[验证记录](../../tasks/stable-release-qualification/verification.md)。`0.2.0` 的发布与核对结果见[0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)。以下门禁用于后续版本。
 
 ## 候选门禁
 
@@ -9,6 +9,7 @@
 3. 执行 `pnpm check:publish`。逐包 `pnpm pack --pack-destination <临时目录>`，检查包内 `package.json`、README、LICENSE、所有 `exports` 路径与依赖版本；扫描敏感信息与多余文件。从独立项目安装全部 tarball，再导入公开入口。
 4. 确认本次目标版本（如 `@pwa-platform/*@0.1.0`）未在 registry 存在，审核最终 tarball 哈希和包列表。若任何包失败，停止整批发布并记录已发布项；同一版本不可覆盖，不用 `unpublish` 当回滚。
 5. 正式版发布使用 `pnpm publish --access public --tag latest`，按下列依赖顺序逐包执行并完成 2FA；不要直接从工作区运行 `npm publish`，因为 `workspace:*` 需要 pnpm 打包转换。发布源码必须是已审核的干净提交；若本次确有不提交 Git 的明确要求，才从与审核源码一致的临时副本使用 `--no-git-checks`，并记录两者差异核对。每步查询 registry，确认 tarball 版本与标签符合记录。
+6. **逐包等待可下载再发下一包**（2026-09-28 补充，见 [0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)）：registry 登记是异步的，0.2.0 中 `sw-runtime` 报告成功后约 5 分钟才可下载，而依赖它的包已经发布并把 `latest` 指向新版本，窗口内安装失败。每个包 `publish` 后，先确认 `https://registry.npmjs.org/@pwa-platform/<包>/-/<包>-<版本>.tgz` 返回 200，再发布依赖它的下一个包。发布循环开始前还要检查克隆中的版本号等于目标版本，否则不开始。
 
 ## 顺序
 
