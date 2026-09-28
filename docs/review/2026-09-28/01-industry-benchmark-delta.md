@@ -14,7 +14,7 @@
 | UI 主题 | 🔧 | 不变：更新提示仍无内置主题切换，靠 `colors` 与 CSS 变量 | — |
 | 兼容性声明 | 自动化只覆盖 Chrome 桌面 | Chrome 桌面仍是唯一**阻断**的自动化浏览器；新增 WebKit 引擎与 Firefox（Playwright 固定版本）的**不阻断**冒烟，只覆盖 sw-runtime，120 通过 / 10 跳过 | ADR-0042；GitHub Actions run 36417040999；本轮本机重跑一致 |
 | 移动端证据 | 一台 Android、一台 iPhone，集中在两天 | 两台 Android（小米、三星，均为 Chrome N）、iPhone 16 Pro（React、Vue 各一轮，另有 R9 复核与入口恢复的部分演练）；**Android N-1 仍缺** | [03 证据增量](03-evidence-delta.md) (c) |
-| 身份不可变 | 门禁默认可跳过（R4）· L2 | 仍然如此：新增的 `requiredReleaseChecks(plan)` 没有调用方，`verifyRelease` 空报告仍为 `ok` | [06 风险增量](06-risks-delta.md) R4 |
+| 身份不可变 | 门禁默认可跳过（R4）· L2 | 比上一轮判断的好：参考发布门禁本来就检查覆盖率并要求 baseline；直接调用 `verifyRelease` 时空报告仍为 `ok`（API 注释写明的设计）· L2 | [06 风险增量](06-risks-delta.md) R4 |
 | 更新机制 | 只有提示更新 · L4 | 不变。回访时的注册状态修复（R9）与其后续 N1 都**尚未发布** | 同上 R9、N1 |
 
 ## 结论变化
