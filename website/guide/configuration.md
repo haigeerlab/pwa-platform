@@ -82,6 +82,21 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 截图和快捷方式图标也要放在 <code>public/</code> 对应路径，快捷方式目标须处于应用 scope 内。子路径部署时，将上例的浏览器 URL 分别改为 <code>/app/screenshots/desktop.png</code>、<code>/app/dashboard</code> 和 <code>/app/icons/192.png</code>。构建校验会检查截图和快捷方式图标是否存在；业务仍需验证目标页面可打开。
 
+## 其他可选安装字段
+
+除了截图和快捷方式，<code>PwaInstallMetadata</code> 还接受以下可选字段，全部不写时 manifest 与以前完全相同：
+
+| 字段 | 取值 | 用途 |
+| --- | --- | --- |
+| <code>description</code> | 非空文本 | Android 安装提示中展示 |
+| <code>categories</code> | 小写、非空、不重复的字符串 | 浏览器不使用，供分发平台分类 |
+| <code>orientation</code> | <code>any</code>／<code>natural</code>／<code>portrait</code>／<code>portrait-primary</code>／<code>portrait-secondary</code>／<code>landscape</code>／<code>landscape-primary</code>／<code>landscape-secondary</code> | 主要在 Android 与独立窗口中锁定方向 |
+| <code>displayOverride</code> | <code>window-controls-overlay</code>／<code>fullscreen</code>／<code>standalone</code>／<code>minimal-ui</code>／<code>browser</code> 的有序列表 | 按顺序取第一个受支持的值，例如桌面端窗口控件覆盖；都不支持时回退到 <code>display</code> |
+
+新增的数组字段（<code>categories</code>、<code>displayOverride</code>、<code>screenshots</code>、<code>shortcuts</code>）至少要有一项，写空数组会被拒绝。以下 manifest 成员平台不接受：<code>lang</code>、<code>dir</code>（浏览器未实现）、<code>launch_handler</code>、<code>share_target</code>、<code>file_handlers</code>、<code>protocol_handlers</code>、<code>related_applications</code>，以及 <code>displayOverride</code> 中仍在孵化的 <code>tabbed</code>、<code>borderless</code>。
+
+以下是来自 Chrome 产品行为、只提示不阻断构建的警告，数值可能随 Chrome 版本调整：截图宽高不在 320–3840 像素之间、长边超过短边 2.3 倍、同一 <code>formFactor</code> 截图宽高比不一致、<code>wide</code> 超过 8 张或 <code>narrow</code> 超过 5 张、没有 <code>wide</code> 截图（桌面端不显示）、<code>description</code> 超过 324 个 UTF-16 码元。Android 从 Chrome 109 起忽略 <code>wide</code> 截图，因此建议桌面用 <code>wide</code>、手机用 <code>narrow</code> 各准备一套。字段取舍的完整原因见 [ADR-0037](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0037-install-metadata-manifest-members.md)。
+
 ## 只使用离线与更新，不启用平台安装提示
 
 若业务不使用平台的安装元数据和 <code>promptInstall()</code>，将上例 <code>POLICY.install</code> 改为 <code>{ enabled: false }</code>，并将 Vite 插件的 <code>install: INSTALL</code> 改为 <code>install: null</code>。这样平台仍生成 worker 并支持离线与更新，但不生成 manifest，也不接管浏览器的安装提示事件；页面侧 <code>promptInstall()</code> 会返回 <code>unavailable</code>。

@@ -253,7 +253,7 @@ setPwaTheme(currentTheme);
 
 平台只校验形状、递增序号和有效期，不认证清单来源，也不限制目标 Origin；业务后端和请求层承担信任
 边界。页面只给应用返回同源恢复页 URL，最终跨 Origin 导航必须由用户点击确认。完整 manifest 格式、
-撤回流程、语言、主题和 CSP 见[入口恢复接入说明](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/entry-recovery-integration.md)。
+撤回流程、语言、主题和 CSP 见[入口恢复](/guide/entry-resilience)。
 
 ## 每增加一层后怎么验收
 

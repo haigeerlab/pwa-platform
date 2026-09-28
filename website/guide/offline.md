@@ -30,9 +30,21 @@ pwa({
 })
 ~~~
 
-生成页会显示应用名，支持亮暗主题。也可以由应用自行提供 <code>public/offline.html</code>，此时不要同时开启生成选项，否则构建会报告路径冲突。
+生成页会显示应用名，支持亮暗主题。也可以由应用自行提供 <code>public/offline.html</code>，此时不要同时开启生成选项，否则构建会报告路径冲突。以下情况构建会直接失败：
+
+| 诊断码 | 原因 |
+| --- | --- |
+| <code>vite.offline-page-without-fallback</code> | 设置了 <code>offlinePage</code>，但策略没有开启 <code>offlineFallback</code> |
+| <code>vite.offline-page-conflict</code> | 该路径上已有文件（例如自带的 <code>public/offline.html</code>）；二选一 |
+| <code>vite.offline-page-locale-invalid</code> | <code>locale</code> 不是 <code>zh-CN</code> 或 <code>en</code> |
+| <code>vite.offline-page-message-invalid</code> | <code>messages</code> 有未知键、空串、非字符串，或超过 200 个字符 |
+| <code>vite.offline-page-css-invalid</code> | <code>css</code> 不是字符串，或含 <code>&lt;/style</code>（不区分大小写） |
 
 离线页只在导航请求失败（网络错误）或超时时展示；只要服务器确实返回了响应，无论状态码是 200 还是 4xx／5xx，worker 都会原样返回该响应，不会替换成离线页。不要把离线页当作“服务器故障页”。
+
+语言在**构建时固定**，默认 <code>zh-CN</code>，不会按浏览器语言切换；<code>messages</code> 可逐项覆盖内置的 <code>documentTitle</code>、<code>heading</code>、<code>body</code>、<code>retry</code> 四个键，应用名称取自 <code>install.name</code>。<code>css</code> 只能**追加**为第二个 `<style>`，不能替换默认样式；可覆盖的变量为 <code>--pwa-offline-bg</code>、<code>-fg</code>、<code>-muted</code>、<code>-accent</code>、<code>-accent-fg</code>、<code>-radius</code>、<code>-max-width</code>、<code>-font</code>，class 为 <code>pwa-offline</code>、<code>pwa-offline__app</code>、<code>pwa-offline__heading</code>、<code>pwa-offline__body</code>、<code>pwa-offline__retry</code>；表上没有的都不是契约。离线页是独立静态文档，CSS 支持 <code>[data-theme]</code> 选择器写法，但没有任何脚本会去设置它，实际只跟随系统的亮暗偏好。
+
+页面自带一段固定脚本：点击“重试”按钮刷新；收到浏览器 <code>online</code> 事件时、以及页面可见时每 10 秒，用不经过平台缓存的同源 <code>HEAD</code> 请求探测当前应用的公开 worker 脚本，只有返回 2xx 才自动刷新（探测不访问业务接口或第三方域名）。严格 CSP 下需要把构建日志打印的默认样式、宿主 `css`、脚本三段内联内容的哈希分别放行 `style-src`／`script-src`，并让 `connect-src` 允许 `'self'` 以支持同源探测；平台升级或修改 `css` 后需要重新取值。
 
 ## 弱网超时
 
@@ -43,6 +55,17 @@ pwa({
 ~~~ts
 networkTimeoutSeconds: 5,
 ~~~
+
+超时生效后的导航行为：
+
+| 情况 | 结果 |
+| --- | --- |
+| N 秒内网络有响应（包括 4xx、5xx） | 返回网络响应，与未开启时相同 |
+| N 秒内网络失败 | 使用回退（应用壳或离线页），与未开启时相同 |
+| N 秒到了还没响应，且有可用回退 | 立即返回回退；之后到达的网络结果被丢弃 |
+| N 秒到了还没响应，但没有任何可用回退 | 继续等网络，按上面两行处理 |
+
+超时不会把一个本来能成功的请求变成错误，也不会中止背后的网络请求（弱网下仍会消耗流量）。对运行时缓存（下一节）而言，超时命中缓存时页面收到的 <code>served-from-cache</code> 事件 <code>reason</code> 为 <code>network-timeout</code>，与网络直接失败的 <code>network-failed</code>、SWR 的 <code>stale-while-revalidate</code> 是三个不同取值；按 <code>reason</code> 分支处理的业务代码需要接住这个新值。
 
 ## 公共读取的运行时缓存
 

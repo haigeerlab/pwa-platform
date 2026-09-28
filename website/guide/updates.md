@@ -29,7 +29,19 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 
 浏览器根据 worker 脚本的字节判断是否有新版本。平台把预缓存清单注入脚本，已预缓存资源或 worker 代码变化会触发新版本；业务 API 数据变化、未预缓存文件变化和同一构建原样重部署不会触发。
 
-新 worker 安装完后默认等待。调用 <code>applyUpdate()</code> 只完成 worker 接管与离线版本切换，**不会自动刷新当前页面**。已经运行的旧 JS 仍在内存中，因此发布前就打开的页面通常还需要用户确认刷新；发布后在线刷新过的页面可能已经运行新 JS，只需更新离线版本。
+| 变化 | 是否触发新版本 |
+| --- | --- |
+| 预缓存的 JS、CSS、HTML、离线页、图标 | 会：指纹文件名或 revision 改变，worker 字节随之改变 |
+| 平台 worker 的运行时代码或配置 | 会：即使业务资源未变，worker 字节也已改变 |
+| 业务 API 返回的数据 | 不会 |
+| 未被预缓存规则覆盖的静态文件 | 不会；哪些文件预缓存由 <code>PwaPolicy</code> 的预缓存规则决定 |
+| 同一份构建原样重新部署 | 不会：worker 字节相同 |
+
+浏览器在作用域内导航或刷新、调用 <code>register()</code>、定时检查 <code>updateCheck</code> 或手动 <code>checkForUpdate()</code> 时检查 worker；不开定时检查时，长时间停留在同一页面、不刷新的用户看不到新版本。
+
+新 worker 安装完后默认等待。调用 <code>applyUpdate()</code> 只完成 worker 接管与离线版本切换，**不会自动刷新当前页面**。已经运行的旧 JS 仍在内存中，因此发布前就打开的页面通常还需要用户确认刷新；发布后在线刷新过的页面可能已经运行新 JS，只需更新离线版本——完整判断逻辑需要业务自己实现（取一次最新应用壳，比较其入口脚本地址与当前文档是否一致），完整参考写法见 React 示例 [`app.tsx`](https://github.com/haigeerlab/pwa-platform/blob/main/packages/examples-browser-e2e/apps/react/src/app.tsx) 与 Vue 示例 [`app.ts`](https://github.com/haigeerlab/pwa-platform/blob/main/packages/examples-browser-e2e/apps/vue/src/app.ts)。若应用壳导航策略不是 <code>network-first</code>（例如缓存优先），这个判断没有意义，应统一按"页面仍是旧代码"处理。
+
+不点确认时的兜底：该应用所有标签页关闭后，下次打开时新 worker 自动生效，不需要业务处理。
 
 推荐的界面流程：
 
@@ -38,7 +50,7 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 3. 如果当前页面仍运行旧代码，提示用户在保存工作后刷新；如果已运行新代码，提示可直接消失。
 4. 多标签页都应感知 worker 接管，不能只处理点击按钮的标签页。
 
-长期不刷新的页面可显式开启 <code>updateCheck: { intervalMs: 1_800_000 }</code>；默认不开定时检查，最小间隔为 60 秒。框架中的最小写法见[Vue 接入](/start/vue)和[React 接入](/start/react)；上线前应按本页的交互流程处理失败、稍后提醒、未保存内容及多标签页。
+长期不刷新的页面可显式开启 <code>updateCheck: { intervalMs: 1_800_000 }</code>；默认不开定时检查，最小间隔为 60 秒。框架中的最小写法见[Vue 接入](/start/vue)和[React 接入](/start/react)；上线前应按本页的交互流程处理失败、稍后提醒、未保存内容及多标签页。完整可复制的自绘 React／Vue 实现（含新旧代码判断、状态机与无障碍标注）见仓库内的[更新提示接入指南](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/update-prompt.md)。
 
 ## 多标签页
 
@@ -83,6 +95,12 @@ import "@pwa-platform/react/update-notice.css";
 `colors` 可直接设置 `primaryButtonBackground`、`primaryButtonText`、`surface`、`text`、`mutedText`、`border`；仅影响当前提示，并优先于祖先元素继承的色值。内置文案覆盖中文（`zh-CN`，默认）与英文（`en`）两种语言，通过 `locale` 选择；不传 `locale` 时行为与此前完全相同。`messages` 仍是逐项覆盖，叠加在所选 `locale` 的内置文案之上；不做浏览器语言自动探测，需要其他语言时用 `messages` 传入完整翻译。宿主也可通过 `--pwa-update-surface`、`--pwa-update-text`、`--pwa-update-muted`、`--pwa-update-border`、`--pwa-update-accent`、`--pwa-update-accent-text`、`--pwa-update-font`、`--pwa-update-radius`、`--pwa-update-shadow` 或 `--pwa-update-z-index` CSS 变量换肤。自定义按钮背景与文字色时，应保持文字清晰可读。业务有未保存的表单时，传入 `reloadPage` 回调，在回调里先确认是否可以离开页面；缺省才直接调用浏览器刷新。提示只消费既有更新状态，不替业务调用 `register()`；长期停留页面仍需自行启用 `updateCheck`。
 
 若业务构建使用 PurgeCSS 且只扫描业务源码，须把 `/^pwa-update-notice/` 加入 safelist，避免从依赖包导入的组件类名被删。首个 Vite 5 项目的真实构建仍需对此做产物和浏览器检查。
+
+## 自绘更新提示的已知边界
+
+- **已打开的旧页面仍运行旧代码**：若按需加载的懒加载 chunk 在部署时已被删除，刷新前触发懒加载会 404；发布时应保留上一版指纹资源，见[部署与发布](/operations/release)。
+- **新旧代码判断依赖入口脚本地址**：适用于入口脚本带内容指纹的构建（Vite 默认如此）；入口地址不随内容变化的应用需要改用自己的版本标识。
+- 默认组件与自绘参考实现都不会替业务判断表单是否已保存；需要拦截刷新时，由宿主提供 `reloadPage` 或等价逻辑。
 
 ## 安装提示的限制
 

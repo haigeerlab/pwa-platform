@@ -13,6 +13,10 @@
 
 公共读取缓存属于已发布正式包中的 <code>PwaPolicy v3</code> 能力，不需要另装包。它由业务显式开启，并受[公共响应准入条件](/guide/public-read-cache#响应必须满足的条件)约束。目前 Nuxt 不支持开启。
 
+## 入口灾备的完整接入说明
+
+入口灾备（`@pwa-platform/entry-resilience`）已作为 npm 正式包发布，完整接入步骤见[入口恢复](/guide/entry-resilience)。具体业务接入仍要核对浏览器行为和发布证据。
+
 ## 何时阅读工作区指南
 
-拥有源仓库访问权限的平台维护者可参考内部的[包边界](https://github.com/haigeerlab/pwa-platform/blob/main/docs/architecture/package-boundaries.md)、[Push 接入](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/push-integration.md)和[入口灾备接入](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/entry-recovery-integration.md)。入口灾备已公开，但具体业务接入仍要核对浏览器行为和发布证据。
+其余仍是工作区私有包的能力（Push、Nuxt 适配等）尚未对外发布，接入说明留在仓库内部维护；拥有源仓库访问权限的平台维护者可参考内部的[包边界](https://github.com/haigeerlab/pwa-platform/blob/main/docs/architecture/package-boundaries.md)和 `docs/guides/push-integration.md`。

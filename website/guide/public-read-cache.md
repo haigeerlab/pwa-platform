@@ -65,10 +65,38 @@ export const POLICY: PwaPolicy = {
 同源请求通常会携带 Cookie，而平台不据此判断内容是否公开。Service Worker 也读不到响应中的 `Set-Cookie`。被规则覆盖的接口不能按用户、会话或权限返回不同内容，也不应设置 Cookie；若可能产生私有响应，服务端必须返回 `Cache-Control: private`，并从公共规则中移除该路径。不要让含一次性 `token`、`code` 等查询参数的 URL 落入可执行规则，缓存键会包含查询串。
 :::
 
+## `served-from-cache` 事件
+
+只有响应确实由运行时缓存提供时才会发出；网络响应、预缓存命中和离线降级页都不会触发它。事件沿用生命周期事件信封：
+
+~~~ts
+{
+  version: 1,
+  type: "served-from-cache",
+  timestamp: string,          // ISO 8601
+  appId: string,
+  metadata: {
+    url: string,               // 同源路径 + 查询串，不含 origin 与片段
+    cachedAt: number,           // 写入时间，epoch 毫秒
+    reason: "network-failed" | "network-timeout" | "stale-while-revalidate",
+  },
+}
+~~~
+
+订阅方式与其他生命周期事件相同：`pwa.subscribe((event) => { if (event.type === "served-from-cache") { ... } })`。Vue、React 绑定本身不新增公开状态或方法，一律通过 client-runtime 的 `subscribe` 接口订阅。
+
+若某次页面导航是由运行时缓存回答的，新页面收到这条消息时可能还没来得及注册监听器；worker 会暂存该次导航的信号，`register()` 成功后 client-runtime 会主动查询一次，因此监听器建立得晚也不会错过。但暂存不是永久的：最多保留 16 条待取记录，每条 30 秒后过期，worker 重启也会丢失，业务不应假设这个事件一定能等到。`metadata.url` 可能带用户输入的查询串，转发到遥测系统前应去掉或做脱敏处理。
+
+::: warning 破坏性变更：穷举 `reason`／事件类型的代码需要改
+`served-from-cache` 同时加入了 contracts 的 `LIFECYCLE_EVENT_TYPES` 与 client-runtime 的 `CLIENT_EVENT_TYPES`。如果业务代码对事件类型或 `reason` 做了穷举 `switch`（例如末尾用 `default` 断言 `never`），升级后会因为少处理这个新分支而编译失败，需要自己补上对应分支。
+:::
+
 ## 离线与更新行为
 
 `network-first` 在线时先取网络，网络失败时才尝试尚未过期的缓存；弱网请求一直挂起时，默认不会自动回退。需要限时回退可另设 `networkTimeoutSeconds: 5`，范围为 1–30 秒。SWR 只用于公共数据，可能先返回旧值并在后台更新，业务界面应容忍短暂旧数据。
 
-用户登出、worker 激活和异常恢复各有平台缓存清理流程，但不能把它们当作内容分类错误的补救措施。上线时至少验证：在线访问公共接口、断网重试命中缓存、私有响应不入缓存，以及重新部署后的数据更新。
+用户登出、worker 激活和异常恢复各有平台缓存清理流程，但不能把它们当作内容分类错误的补救措施。`logout()` 在 `runtimeCache.enabled: true` 时，任一项清理失败都会让它解析为 `false` 并保留 registration，业务照旧检查返回值即可，不需要额外包 `try/catch`。上线时至少验证：在线访问公共接口、断网重试命中缓存、私有响应不入缓存，以及重新部署后的数据更新。
 
-拥有源仓库访问权限的平台维护者可查看[实现边界与已知限制](https://github.com/haigeerlab/pwa-platform/blob/main/docs/guides/public-read-cache.md)；业务接入所需的配置、准入与验收条件以上述内容为准。
+::: warning Nuxt 暂不支持
+`@pwa-platform/nuxt` 收到 <code>runtimeCache.enabled: true</code> 的 v3 策略时，会在构建期明确失败，而不是静默忽略；`enabled: false` 的 v3 策略可以正常构建。
+:::

@@ -2,6 +2,15 @@
 
 适用于已使用 <code>vite-plugin-pwa</code> 的 Vite + Vue 3 或 Vite + React 19 应用。迁移前先确认 Vite 5／8、框架版本和部署路径符合[兼容范围](/reference/compatibility)，并盘点线上已有的 worker URL、scope、manifest ID 和注册用户；已投产的 worker 切换需要单独的迁移与回滚方案。
 
+## 先确认能不能迁
+
+| 条件 | 要求 |
+| --- | --- |
+| Vite | <code>^5.0.0</code> 或 <code>^8.0.0</code> |
+| 框架 | Vue <code>^3.4.0</code> 或 React <code>^19.2.0</code>；其他框架没有绑定，只能直接用 <code>@pwa-platform/client-runtime</code> |
+| Vite <code>base</code> | 同源绝对路径，以 <code>/</code> 开头、以 <code>/</code> 结尾（例如 <code>/</code> 或 <code>/admin/</code>）；相对路径 <code>./</code> 或完整 URL 会在构建时报错 |
+| 部署形态 | 一个源上只有这一个 PWA，或按共享 origin 登记表声明的根应用与子路径应用 |
+
 ## 配置对应关系
 
 | 原有做法 | PWA Platform 做法 |
@@ -38,3 +47,16 @@
 子路径部署时，策略里仍写相对挂载点的 <code>/config</code>，而浏览器请求地址应带实际部署前缀。构建后在浏览器的 Cache Storage 检查启动必需文件是否入库，禁用 HTTP 缓存并断网重新打开页面。<code>compile.asset-rule-unmatched</code> 表示某条资产规则没有匹配到任何产物；没有这个警告也不代表所有启动文件已被覆盖。
 
 迁移时以本站的[当前包状态](/reference/packages)与[公共读取规则](/guide/public-read-cache)为准。已有 worker 的 URL、scope 和 manifest ID 涉及浏览器身份，必须在目标业务项目制定迁移与回滚方案，不能直接照搬新项目的配置示例。
+
+## 迁移后暂时得不到的能力
+
+- 任意运行时缓存：只支持显式允许的同源公共 GET；私有、写入、流媒体和未分类请求不缓存。
+- 推送通知与显式离线写队列：相关包目前仍是工作区私有包，尚未公开发布；后台自动同步也未提供。
+- manifest 的 <code>share_target</code>、自动更新模式（<code>autoUpdate</code>）、周期性后台同步、角标：不提供。
+
+## 其他注意事项
+
+- **旧缓存不会被平台自动清理。** 平台 worker 只管理自己命名空间下的缓存；<code>vite-plugin-pwa</code> 留下的 Workbox 缓存会一直留在已访问过的用户浏览器里，需要自行评估存储占用或提供清理方案。
+- **同一 scope 只有一个注册。** 用新的 worker 脚本地址重新注册会替换原注册；原 worker 在所有受控标签页关闭前，仍会继续控制已打开的页面。
+- 构建报错只给诊断码和契约路径，不会回显配置的值。
+- 若你使用的框架脚手架会在产物根目录生成文件名随构建变化的运行时配置脚本（例如某些后台管理框架模板），记得按上面"核对自定义构建产物"一节把它移入固定子目录并补一条 <code>asset</code> 规则，否则断网时应用会停在启动画面。
