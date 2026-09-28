@@ -21,4 +21,4 @@
 
 ## 当前发布范围
 
-公开包支持 **Vite 5／8 + Vue 3** 或 **Vite 5／8 + React 19**。当前正式包版本是 <code>0.2.1</code>（npm `latest`）。V1 桌面端发布通道以 Chrome 当前和上一个稳定版为必测目标；正式包不等于业务应用已完成生产验收。Android 尚不能按已支持平台对外承诺。详见[兼容范围](/reference/compatibility)。
+公开包支持 **Vite 5／8 + Vue 3** 或 **Vite 5／8 + React 19**。当前正式包版本是 <code>0.2.2</code>（npm `latest`）。V1 桌面端发布通道以 Chrome 当前和上一个稳定版为必测目标；正式包不等于业务应用已完成生产验收。Android 尚不能按已支持平台对外承诺。详见[兼容范围](/reference/compatibility)。
