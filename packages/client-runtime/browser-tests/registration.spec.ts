@@ -6,7 +6,7 @@ import {
   waitForWorkerState,
 } from "@pwa-platform/browser-test-harness";
 import { CLIENT_CONFIG, FIXTURE_SITE, SHELL_URL, WORKER_URL } from "./fixture-site.js";
-import { collectedEvents, pageRegister, waitForActiveWorkerActivated } from "./page-probe.js";
+import { collectedEvents, installAndControl, pageRegister, waitForActiveWorkerActivated } from "./page-probe.js";
 
 test.use({ fixtureSite: FIXTURE_SITE });
 
@@ -72,5 +72,36 @@ test.describe("first online visit", () => {
     await page.reload();
     await waitForActiveWorkerActivated(page);
     expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+  });
+});
+
+test.describe("return visit while an update check is stalled (R9, ADR-0043)", () => {
+  test("register() reports the existing active registration at once instead of waiting behind the stalled update", async ({
+    page,
+    fixtureServer,
+  }) => {
+    await installAndControl(page, fixtureServer);
+    await page.reload();
+    const release = fixtureServer.stall(WORKER_URL);
+    try {
+      // An update check whose script fetch never answers, as after the network returns on iPhone. The browser's own
+      // register() queues behind it; the facade must not.
+      const browserRegister = await page.evaluate(async (url) => {
+        void (await navigator.serviceWorker.getRegistration())?.update().catch(() => undefined);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return Promise.race([
+          navigator.serviceWorker.register(url).then(() => "resolved"),
+          new Promise((resolve) => setTimeout(() => resolve("pending"), 2_000)),
+        ]);
+      }, WORKER_URL);
+      expect(browserRegister, "the precondition: the browser's register() is queued behind the stalled update").toBe("pending");
+
+      const startedAt = Date.now();
+      await pageRegister(page);
+      expect(Date.now() - startedAt).toBeLessThan(1_000);
+      expect(await collectedEvents(page)).toMatchObject([{ type: "registered", metadata: { scope: fixtureServer.url(SHELL_URL) } }]);
+    } finally {
+      release();
+    }
   });
 });

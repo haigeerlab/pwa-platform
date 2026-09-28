@@ -342,6 +342,23 @@ export function createPwaClient(options: PwaClientOptions): PwaClient {
     }
   }
 
+  /**
+   * The browser's registration for exactly this scope, if its active worker already runs this app's worker script
+   * (ADR-0043). A registration of a wider scope, one with only an installing or waiting worker, one running another
+   * script, or a failed lookup all return undefined, so the caller waits for register() as before.
+   */
+  async function activeRegistration(): Promise<ServiceWorkerRegistration | undefined> {
+    try {
+      const current = await container.getRegistration(config.scope);
+      const active = current?.active;
+      if (current === undefined || active === null || active === undefined) return undefined;
+      if (current.scope !== new URL(config.scope, current.scope).href) return undefined;
+      return active.scriptURL === new URL(config.serviceWorkerUrl, current.scope).href ? current : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   function forgetRegistration(): void {
     // The facade must not keep handing out a registration that no longer exists, nor keep listening to it: a
     // detached registration could still report an update that the next register() knows nothing about. This runs
@@ -397,10 +414,21 @@ export function createPwaClient(options: PwaClientOptions): PwaClient {
       if (registration === undefined) {
         // A failed registration is not remembered, so the caller can retry; only a success is reused.
         const pending = container.register(config.serviceWorkerUrl, { scope: config.scope });
-        registration = pending.catch((error: unknown) => {
-          registration = undefined;
-          throw error;
-        });
+        // R9 / ADR-0043: register() is a job on the same per-scope queue as update(), so it waits behind an update
+        // whose script fetch is stalled (iOS after the network returns). getRegistration() is not queued. When the
+        // browser already holds this exact registration with an activated worker, that is the registration: use it
+        // and leave register() running in the background, where a failure only means this check found nothing new.
+        // `registration` is assigned synchronously, so a concurrent call shares this attempt instead of starting one.
+        registration = activeRegistration()
+          .then((existing) => {
+            if (existing === undefined) return pending;
+            pending.catch(() => undefined);
+            return existing;
+          })
+          .catch((error: unknown) => {
+            registration = undefined;
+            throw error;
+          });
         const result = await registration;
         // dispose() may have run while the registration was in flight. Emitting now would reach nobody, and
         // watching this registration would attach listeners that outlive the facade.

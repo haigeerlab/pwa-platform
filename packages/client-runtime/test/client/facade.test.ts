@@ -16,6 +16,8 @@ const CONFIG: PwaClientConfig = {
 /** A service worker whose state the test drives; `postMessage` records what the page sent it. */
 class FakeWorker extends EventTarget {
   state: ServiceWorkerState = "installing";
+  /** The absolute script URL, as the browser reports it. */
+  scriptURL = "https://shop.example.com/app/sw.js";
   readonly messages: unknown[] = [];
   /** When set, `postMessage` throws it, as the browser does for a worker that already went redundant. */
   postMessageFailure: Error | undefined;
@@ -86,6 +88,7 @@ function fakeMessageChannel(): MessageChannel {
 }
 
 class FakeRegistration extends EventTarget {
+  active: FakeWorker | null = null;
   waiting: FakeWorker | null = null;
   installing: FakeWorker | null = null;
   unregistered = 0;
@@ -442,6 +445,87 @@ describe("register", () => {
     expect(container.registerCalls).toHaveLength(2);
     expect(events).toHaveLength(1);
   });
+
+  describe("an existing, already active registration (R9, ADR-0043)", () => {
+    /** A return visit: the browser already holds this app's registration with an activated worker. */
+    function returnVisit(configure?: (existing: FakeRegistration, active: FakeWorker) => void): Harness & { readonly existing: FakeRegistration } {
+      const context = harness({ autoResolve: false });
+      const existing = new FakeRegistration("https://shop.example.com/app/");
+      const active = new FakeWorker();
+      active.state = "activated";
+      existing.active = active;
+      configure?.(existing, active);
+      context.container.registration = existing;
+      return { ...context, existing };
+    }
+
+    it("counts as registered without waiting for a register() queued behind a stalled update", async () => {
+      const { client, container, events } = returnVisit();
+      await client.register();
+      expect(events.map((event) => event.type)).toEqual(["registered"]);
+      expect(events[0]?.metadata).toEqual({ scope: "https://shop.example.com/app/" });
+      // The browser is still asked to register, so a changed script is still picked up; nothing waits for it.
+      expect(container.registerCalls).toEqual([{ url: "/app/sw.js", options: { scope: "/app/" } }]);
+      expect(container.getRegistrationScopes).toContain("/app/");
+    });
+
+    it("keeps the registration and stays quiet when the background register() fails later", async () => {
+      const { client, container, events } = returnVisit();
+      await client.register();
+      container.finish(new Error("script fetch failed"));
+      await client.register();
+      expect(container.registerCalls).toHaveLength(1);
+      expect(events.map((event) => event.type)).toEqual(["registered"]);
+    });
+
+    it("announces an update that was already waiting on that registration", async () => {
+      const waiting = new FakeWorker();
+      const { client, container, events, existing } = returnVisit((registration) => {
+        registration.waiting = waiting;
+      });
+      container.controller = existing.active as unknown as ServiceWorker;
+      await client.register();
+      expect(events.map((event) => event.type)).toEqual(["registered", "update-waiting"]);
+    });
+
+    it("still waits for register() when the existing registration has no active worker yet", async () => {
+      const { client, container, events } = returnVisit((existing) => {
+        existing.active = null;
+      });
+      const pending = client.register();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events).toEqual([]);
+      container.finish();
+      await pending;
+      expect(events.map((event) => event.type)).toEqual(["registered"]);
+    });
+
+    it("still waits for register() when the active worker runs another script", async () => {
+      const { client, container, events } = returnVisit((_existing, active) => {
+        active.scriptURL = "https://shop.example.com/app/old-sw.js";
+      });
+      const pending = client.register();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events).toEqual([]);
+      container.finish();
+      await pending;
+      expect(events).toHaveLength(1);
+    });
+
+    it("still waits for register() when the registration found belongs to a wider scope", async () => {
+      const { client, container, events } = returnVisit();
+      container.registration = Object.assign(new FakeRegistration("https://shop.example.com/"), { active: container.registration?.active ?? null });
+      const pending = client.register();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events).toEqual([]);
+      container.finish();
+      await pending;
+      expect(events).toHaveLength(1);
+    });
+  });
 });
 
 describe("update-waiting", () => {
@@ -537,10 +621,11 @@ describe("applyUpdate", () => {
   it("returns false and sends nothing when no worker is waiting", async () => {
     const { client, container } = harness();
     await client.register();
+    const lookupsBefore = container.getRegistrationScopes.length;
     const waiting = new FakeWorker();
     await expect(client.applyUpdate()).resolves.toBe(false);
     expect(waiting.messages).toEqual([]);
-    expect(container.getRegistrationScopes).toEqual(["/app/"]);
+    expect(container.getRegistrationScopes.slice(lookupsBefore)).toEqual(["/app/"]);
   });
 
   it("returns false when there is no registration at all", async () => {

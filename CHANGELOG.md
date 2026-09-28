@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Return visits report `registered` without waiting behind a stalled update (review risk R9, ADR-0043):** `@pwa-platform/client-runtime`'s `register()` now looks up the browser's existing registration first; when it has exactly this scope and an activated worker running `serviceWorkerUrl`, the facade emits `registered` and resolves at once, leaving the browser's `register()` running in the background. Previously `register()` waited for the browser's `register()`, which the Service Worker job queue holds behind any in-flight update, so a page whose update check was stuck on a stalled `sw.js` request (iPhone right after the network returns) showed "not registered" although a worker was active and controlling it. First visits are unchanged. A background `register()` failure on a return visit is no longer reported by `register()`; use `checkForUpdate()` to detect an unavailable worker script.
+
 ## 0.2.1 (2026-09-28)
 
 Patch release: upgrade all ten `@pwa-platform/*` packages together. No public API or configuration change; only `@pwa-platform/sw-runtime`'s recovery worker behaves differently.
