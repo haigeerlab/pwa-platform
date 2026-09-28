@@ -53,7 +53,7 @@
 
 ### 本平台的优势（对标项目普遍没有）
 
-1. **默认拒绝缓存**：8 个对标对象都没有声明“未分类请求默认不缓存”，本平台把它写进了契约，并有真实浏览器 E2E 证明（[offline.spec.ts:63-78](../../../packages/sw-runtime/browser-tests/offline.spec.ts#L63)）。
+1. **默认拒绝缓存**：8 个对标对象都没有声明“未分类请求默认不缓存”，本平台把它写进了契约，并有真实浏览器 E2E 证明（[offline.spec.ts:63-78](https://github.com/haigeerlab/pwa-platform/blob/eb5836e13ab1a0e5d218758f155004894cde8ebc/packages/sw-runtime/browser-tests/offline.spec.ts#L63)）。
 2. **身份契约**：scope、SW URL、manifest id 和缓存命名空间统一建模，并纳入发布门禁。对标项目都把这些交给开发者自己保证。
 3. **两层恢复**：恢复 worker 处理同源 SW 清场，entry-resilience 处理整个源不可用时的迁移，对标项目最多只有前者。
 4. **构建期验证与发布证据体系**：build-verifier、ADR 和真机证据模板一应俱全。

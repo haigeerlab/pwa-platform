@@ -4,6 +4,34 @@
 
 按本仓库的工作流，涉及公开契约或行为的改动（#1、#2、#5、#8）应先补规格或 ADR，再实施。
 
+## 2026-09-28 状态
+
+下文保留审查当时的建议原文。处理结果以本节为准。
+
+| # | 状态 | PR | 说明 |
+|---|---|---|---|
+| 1 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27) |  |
+| 2 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27) |  |
+| 3 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27)、[#38](https://github.com/haigeerlab/pwa-platform/pull/38) | `vite preview` 陷阱随 #27 补充，其余 4 处随 #38 补充 |
+| 4 | ✅ 已完成 | [#27](https://github.com/haigeerlab/pwa-platform/pull/27) |  |
+| 5 | ❌ 撤回 | — | worker 读不到 `Set-Cookie`，见风险 R2 |
+| 6 | ✅ 已完成 | [#28](https://github.com/haigeerlab/pwa-platform/pull/28) |  |
+| 7 | ✅ 已完成（不阻断） | [#34](https://github.com/haigeerlab/pwa-platform/pull/34)、[#37](https://github.com/haigeerlab/pwa-platform/pull/37) | 改用服务器端断网，WebKit、Firefox 引擎冒烟不阻断门禁（ADR-0042） |
+| 8 | ✅ 已完成 | [#30](https://github.com/haigeerlab/pwa-platform/pull/30) |  |
+| 9 | ✅ 已完成 | [#31](https://github.com/haigeerlab/pwa-platform/pull/31) |  |
+| 10 | ◐ 部分完成 | [#25](https://github.com/haigeerlab/pwa-platform/pull/25) | iPhone 安装窗口内更新、Safari 双标签页已补齐；R9 根因、Android N-1、单源真实故障仍需真机 |
+| 11 | ✅ 已完成 | [#32](https://github.com/haigeerlab/pwa-platform/pull/32) |  |
+| 12 | ✅ 已完成 | [#33](https://github.com/haigeerlab/pwa-platform/pull/33) | 保留期检查的“可用资产”取自构建产物，不是服务器响应 |
+| 13 | ✅ 已完成（调整） | [#29](https://github.com/haigeerlab/pwa-platform/pull/29) | 改为 `requiredReleaseChecks(plan)`，与 ADR-0025 保持一致 |
+| 14 | ✅ 已完成 | [#38](https://github.com/haigeerlab/pwa-platform/pull/38) |  |
+| 15 | ✅ 已完成 | [#39](https://github.com/haigeerlab/pwa-platform/pull/39) | 删除失败场景需要专门测试构建，列为后续 |
+| 16 | ✅ 已完成 | [#41](https://github.com/haigeerlab/pwa-platform/pull/41) | 真实浏览器中耗尽配额的用例列为后续 |
+| 17 | ✅ 已完成 | [#40](https://github.com/haigeerlab/pwa-platform/pull/40) | 改用本仓库打包产物，离线安装 |
+| 18 | ⏸ 推迟 | — | 按原建议，等收到重复提示的反馈再评估 |
+| 19 | ✅ 已完成（仅文档） | [#38](https://github.com/haigeerlab/pwa-platform/pull/38) | 保持 `vue: ^3.4.0`，改为醒目标注 |
+
+此外，按项目所有者要求优化了 CI（[#42](https://github.com/haigeerlab/pwa-platform/pull/42)）：不再要求 PR 与 `main` 同步，改为合并后在 `main` 上重跑作为安全网；不阻断的 job 移出 PR 触发，每个 PR 从 5 个 job 降到 3 个。
+
 ## 第一批：投入小、收益立竿见影（建议下一个迭代完成）
 
 | # | 建议 | 关联 | 影响 | 投入 | 验收标准 |
@@ -12,7 +40,7 @@
 | 2 | **身份契约增加“scope 不能超出 SW 脚本所在目录”的校验**，新增诊断码；或者把 `Service-Worker-Allowed` 作为显式支持的选项写进契约 | R3 | 把一种浏览器才会拒绝的注册失败提前到构建期 | S | `validate.test.ts` 覆盖 `scope=/app/`、`sw=/app/assets/sw.js` 被拒绝；Vite 与 Nuxt 行为一致 |
 | 3 | **接入文档补 5 处**：`vite preview` 默认带 `Vary: Origin` 的陷阱；等 worker 变为 `activated` 后再刷新（平台不 `clients.claim`）；单页应用深层路由断网时的表现及“建议同时开启离线页”；离线页不处理 4xx/5xx；新增“多标签页”和“断网与恢复”两节 | C-1 至 C-6 | 直接消除接入中唯一的高严重度卡点和 4 个默认行为盲区 | S | 按[场景配置示例](05-scenario-recipes.md)末尾的清单逐项并入 `website/guide/` |
 | 4 | **准入拒绝时输出诊断**：在 `vite preview` 或开发构建中，worker 通过 `console.debug` 或页面事件报告被拒绝的原因（例如 `vary`、`authorization`、`set-cookie`） | R8 | 把静默失败变成可排查的问题；生产环境里 CDN 往响应里加 `Vary` 时同样受益 | S–M | E2E 断言：`Vary: Origin` 的响应产生一条带原因的诊断 |
-| 5 | **public-read 默认拒绝带 `Set-Cookie` 的响应**（除非规则显式允许），或至少在文档和诊断中醒目提示 | R2 | 业务误把会下发会话 Cookie 的接口标为公共数据时，不再把响应体共享给其他会话 | S | 修改 `runtime-cache.spec.ts:163` 的预期，或补一段显式的文档警告 |
+| 5 | ~~public-read 默认拒绝带 `Set-Cookie` 的响应~~ **撤回（2026-09-28）**：worker 读不到 `Set-Cookie`，无法实现，文档警告已存在。后续候选：在 build-verifier 中对服务端采集的公共读取路径响应头检查 `Set-Cookie`（新增校验项，需要 ADR，投入 M） | R2 | — | — | — |
 | 6 | **本地门禁不再被偶发超时拖垮**：给 `run-gate.integration.test.ts` 显式设置更长的超时（或串行执行）；`pnpm test` 改为不中止地跑完全部包再汇总 | R7 | 一个包偶发超时，不会再挡住其余 15 个包的结果 | S | 连续 3 次 `pnpm test` 都通过 |
 
 ## 第二批：补齐证据（决定“能不能对外宣称兼容”）
@@ -22,7 +50,7 @@
 | 7 | **增加 WebKit 和 Firefox 的最小冒烟矩阵**：注册、离线打开应用壳、离线页、更新接管、恢复 worker，这 5 个用例在 Playwright 中增加 `webkit`、`firefox` 两个 project | R6 | 证据台账中所有 L3 目前都只代表 Chrome；这是对外宣称兼容性的前提 | M | 两个浏览器 project 的 CI 或本地门禁通过；非 Chromium 的安装用例继续显式 `skip` |
 | 8 | **离线写入 `flush` 做单飞控制**：在 worker 内按会话绑定加锁，或在 `prepareFlush` 时把记录标为“发送中” | R5 | 在该包发布之前关掉重复发送的路径 | M | 并发 `flush` 测试断言：每个幂等键只发送一次 |
 | 9 | **更新提示 UI 增加 `locale: "zh-CN" \| "en"` 和内置英文文案**，与离线页、恢复页对齐；补充组件单元测试 | 02 矩阵 | 多语言配置方式一致；组件目前完全没有单元测试 | S–M | 7 个 E2E 场景加上英文 locale 断言；新增组件单元测试 |
-| 10 | **收集并补齐证据台账的缺口**：iPhone 安装窗口内的更新流程；iPhone 断网恢复后显示 `not registered`（R9）的根因定位；离线页在 iPhone 上自动重试（R10）的复测；Android N-1 | R9、R10 | 把证据台账中“待补”的 L4 变成结论 | M（需要人工操作真机） | `verification.md` 中对应行有明确的结论 |
+| 10 | **收集并补齐证据台账的缺口**：iPhone 断网恢复后显示 `not registered`（R9）的根因定位；Android N-1；单 Origin 真实故障下的入口恢复。（iPhone 安装窗口内更新与 R10 已在审查期间由 PR #25 补齐，见 ADR-0041） | R9、R10 | 把证据台账中“待补”的 L4 变成结论 | M（需要人工操作真机） | `verification.md` 中对应行有明确的结论 |
 | 11 | **补齐非导航请求的拒绝类 E2E**：mutation（POST）、stream、session-data 各一个用例，断言在线时不写缓存、断网时得到网络错误 | V1 验收矩阵 | 让默认拒绝缓存从“导航有 L3”升级为“V1 矩阵要求的全部类别有 L3” | S–M | 3 个新用例 |
 | 12 | **真实浏览器的发布检查加入 `html-headers` 和 `release-retention`** | 台账 #17、#27 | 这两项目前只有合成输入的 L2 | S | `release.spec.ts:64` 的检查列表包含这两项 |
 | 13 | **发布门禁默认严格**：提供一个“生产”预设，默认要求 `identity-baseline` 等检查项全部执行，缺少输入即失败 | R4 | 让“身份不可变”不再取决于调用方是否用对了 API | M | 使用生产预设、不传 `baseline` 时门禁失败 |
