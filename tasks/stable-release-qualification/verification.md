@@ -315,3 +315,18 @@ pnpm check:publish
 5. 顺带取得 iPhone React 安装窗口在 0.2.1 上的更新提示、确认接管与显式刷新证据。
 
 结论：R9 的平台侧根因（`registered` 依赖会排队的 `register()`）已在真机上确认并由 ADR-0043 修复，修复构建在 iOS 在线与离线均正常；界面层的 `not registered` 未在本轮复现，按 ADR-0041 仍需在后续轮次观察，修复前后对比证据以桌面 Chrome 用例（修复前 26.8 秒）为准。
+
+### 2026-09-28 补充：iPhone Vue（0.2.1）安装、离线与恢复演练
+
+iPhone 16 Pro，iOS 27.0，经 `ios_webkit_debug_proxy` 读取；网络开关、添加到主屏幕与从图标启动由项目所有者执行。构建来自 `main` @ `f59b251`（0.2.1）。
+
+| 场景 | 结果 |
+|---|---|
+| 首次访问（清除 Vue drill origin 后；v2/registered，首访不受控，预缓存写入） | 通过 |
+| 主屏幕网页 App（`standalone=true`，首次启动不受控、重载后受控） | 通过 |
+| 断网冷启动（从后台划掉后从图标启动；v2/registered/受控，网络探测超时） | 通过 |
+| 断网访问未缓存 `/app/never-precached-vue-ios`（`title=Offline`、`lang=en`、受控） | 通过 |
+| 恢复 worker（部署 `feced751-d439-42f6-bc4f-81efd573f786`，R2 `e22e41dc…`）：`controllerchange`；删除 `pwa:pwavuedrill:test:r1:precache`，页面预置的 `images-v1` 保留；断网请求 `/app/` 无响应直至 5 秒中止（未由 worker 或缓存应答） | 通过 |
+| 修复 worker 后恢复（部署 `d61ca91c-2b1f-4371-9ead-308c2f2813cd`，R2 `8c5db002…`）：默认提示 → `Update` 接管 → `Reload page`，预缓存重建；从后台划掉后断网冷启动 v2/registered/受控 | 通过 |
+
+Vue drill 当前停在上述 0.2.1 v2 部署；React drill 仍为 R9 修复构建（`75213786-…`）。
