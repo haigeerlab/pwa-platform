@@ -106,8 +106,10 @@ test.describe("denied navigations online", () => {
     const response = await page.goto(fixtureServer.url(DENIED_URL));
     expect(response?.status()).toBe(200);
     // The worker now answers this navigation, but from its own network request: the server saw exactly one request.
+    // Chrome also asks for /favicon.ico after navigating to this JSON document, at a moment of its own choosing; a
+    // JSON response cannot carry the inline empty icon the fixture pages use to prevent that, so it is excluded.
     expect(response?.fromServiceWorker()).toBe(true);
-    expect(fixtureServer.requests().map(({ path }) => path)).toEqual([DENIED_URL]);
+    expect(fixtureServer.requests().map(({ path }) => path).filter((path) => path !== "/favicon.ico")).toEqual([DENIED_URL]);
 
     const contents = await cacheContents(page);
     expect(Object.keys(contents)).toEqual([PRECACHE_CACHE_NAME]);
