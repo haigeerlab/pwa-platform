@@ -117,6 +117,14 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 <code>IDENTITY.manifestUrl</code> 此时仍是必需的身份字段。应用须自行把 manifest 文件放在对应构建产物路径：根路径示例为 <code>public/manifest.webmanifest</code>，浏览器地址为 <code>/manifest.webmanifest</code>；部署在 <code>/app/</code> 时，仍放在 Vite 的 <code>public/</code>，浏览器地址改为 <code>/app/manifest.webmanifest</code>。缺少文件会使构建失败。插件仍会在 HTML 中注入该 manifest 的链接；浏览器是否提供安装入口取决于自备 manifest 和浏览器行为，关闭平台安装提示并不保证浏览器禁止安装。
 
+## `origin` 填什么
+
+<code>IDENTITY.origin</code> 是这个身份部署到的站点，只写协议、主机和端口，例如 <code>https://app.example.com</code>，不带路径和结尾斜杠。必须是 <code>https:</code>；只有 <code>localhost</code> 这类本机回环地址允许 <code>http:</code>，否则构建以 <code>identity.invalid-origin</code> 失败。
+
+它不影响浏览器里的行为：worker 只按自己实际所在的地址判断同源请求，不读取这个字段。它用于构建和发布时的一致性校验：已有的 manifest 链接写成完整 URL 时，必须位于这个 origin 下；共享 origin 拓扑的注册表必须与它相同；它还属于生产身份基线，换域名等同于换身份。
+
+因此生产身份填正式域名；本地用 <code>vite preview</code> 验收时，配合下一节的独立 <code>environment</code>，填本地地址（如 `http://localhost:4173`）即可。
+
 ## `cacheNamespaceSeed` 是什么
 
 <code>cacheNamespaceSeed</code> 是缓存命名空间前缀里的身份修订段，与 <code>appId</code>、<code>environment</code> 共同决定 Cache Storage 里所有缓存名称的前缀。正常发版不需要改它。只有当 <code>scope</code>、worker URL、manifest ID 或其他生产不可变字段发生了身份迁移（需要专门的架构决策和迁移计划）时，才把它改成这个应用在该环境下**从未用过**的新值（ADR-0009）。改动后旧缓存不会被自动删除，而是仍留在旧前缀下，需要按迁移计划显式清理；复用旧种子会让新身份读到旧 revision 遗留的缓存。
