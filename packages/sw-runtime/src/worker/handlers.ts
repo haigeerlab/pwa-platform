@@ -80,8 +80,23 @@ export function attachPlatformWorker({
   // R12 (spec.public-read-cache "响应准入", ADR-0035 探路 2): registered once here, independently of which of the
   // engines above `buildRuntimeEngines` actually builds on demand, so a quota error clears every current runtime
   // cache rather than only the ones this worker's lifetime happened to build an engine for.
+  //
+  // N3 (docs/review/2026-09-28/06-risks-delta.md): Workbox's quota-error callback is global (registerQuotaErrorCallback
+  // in workbox-core), so it also fires for a precache write made by engine-workbox's PrecacheController during
+  // *this very worker's own install* — before it has won activation. Running the cleanup then would delete the
+  // runtime caches the still-active previous version is serving from, and installation fails anyway (the quota is
+  // still exhausted), so it would repeat on every retry. The cleanup therefore skips while the registration has an
+  // installing worker. The registration is shared, so this also skips the active worker's own cleanup during another
+  // version's install: that runtime write is dropped anyway and the next quota error after the install cleans up,
+  // which is simpler than telling the two apart through `self.serviceWorker`, an API the platform does not rely on
+  // elsewhere. It is read at the moment of the error, not cached in a flag set by the "activate" listener below: a
+  // worker restarted after idle termination re-runs this module without "install" or "activate", so such a flag would
+  // stay "not activated" forever for an already-active worker (the scenario R12's browser test exercises).
   if (config.runtimeCache.enabled && registerQuotaCleanup !== undefined) {
-    registerQuotaCleanup(() => deleteRuntimeCaches(scope, config.runtimeCache).catch(() => undefined));
+    registerQuotaCleanup(() => {
+      if (scope.registration.installing !== null) return undefined;
+      return deleteRuntimeCaches(scope, config.runtimeCache).catch(() => undefined);
+    });
   }
   const pendingSignals = createPendingSignalStore();
 

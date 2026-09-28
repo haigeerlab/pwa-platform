@@ -53,6 +53,8 @@ type Harness = {
   /** Every cache "name" the fake CacheStorage currently holds (T8 exercises this directly). */
   readonly cacheNames: Set<string>;
   readonly cachesDelete: ReturnType<typeof vi.fn>;
+  /** `scope.registration.installing`, mutable so a test can simulate this worker instance still being installed (N3). */
+  readonly registration: { installing: unknown };
 };
 
 function createHarness(): Harness {
@@ -73,6 +75,9 @@ function createHarness(): Harness {
   const claim = vi.fn(async () => undefined);
   const cacheNames = new Set<string>();
   const cachesDelete = vi.fn(async (name: string) => cacheNames.delete(name));
+  // Defaults to "not installing" (this worker instance is already active), matching the common case: most unit
+  // tests never simulate an in-progress install of this exact worker (N3 below sets it to a truthy value).
+  const registration: { installing: unknown } = { installing: null };
   const scope = {
     addEventListener: (type: string, listener: Listener) => {
       listeners.set(type, [...(listeners.get(type) ?? []), listener]);
@@ -82,6 +87,7 @@ function createHarness(): Harness {
     skipWaiting,
     clients: { claim },
     caches: { keys: vi.fn(async () => [...cacheNames]), delete: cachesDelete },
+    registration,
   };
   const engine = { install, activate, match, urls: () => MANIFEST } as unknown as PwaPrecacheEngine;
   return {
@@ -97,6 +103,7 @@ function createHarness(): Harness {
     claim,
     cacheNames,
     cachesDelete,
+    registration,
   };
 }
 
@@ -1162,6 +1169,8 @@ describe("runtime cache quota cleanup (R12)", () => {
     // Never read or written by any engine this worker builds: only the "data" rule above ever matches a request.
     h.cacheNames.add("pwa:storefront:production:r3:runtime-pages");
     h.cacheNames.add("pwa:storefront:production:r3:runtime-data-0123456789abcdef");
+    // This worker instance is not installing (createHarness's default), matching the R12 browser test's scenario: an
+    // already-active worker restarted after idle termination, whose own runtime-cache write hits a quota error.
 
     let onQuotaExceeded: (() => void | Promise<void>) | undefined;
     const registerRuntimeCacheQuotaCleanup = vi.fn((callback: () => void | Promise<void>) => {
@@ -1196,6 +1205,36 @@ describe("runtime cache quota cleanup (R12)", () => {
     const registerRuntimeCacheQuotaCleanup = vi.fn();
     attachPlatformWorker({ scope: h.scope, config, engine: h.engine, registerRuntimeCacheQuotaCleanup: registerRuntimeCacheQuotaCleanup as never });
     expect(registerRuntimeCacheQuotaCleanup).not.toHaveBeenCalled();
+  });
+
+  it("N3 (docs/review/2026-09-28/06-risks-delta.md): a quota error during install (before activation) does not delete runtime caches", async () => {
+    const h = createHarness();
+    h.cacheNames.add(dataOnlyConfig.precacheCacheName);
+    // Populated by a still-active previous version this worker instance must not touch while only installing.
+    h.cacheNames.add("pwa:storefront:production:r3:runtime-pages");
+    h.cacheNames.add("pwa:storefront:production:r3:runtime-data-0123456789abcdef");
+    // This worker instance is still installing: `scope.registration.installing` refers to itself, exactly as it
+    // would while engine-workbox's PrecacheController is writing the precache and a write overruns quota.
+    h.registration.installing = { state: "installing" };
+
+    let onQuotaExceeded: (() => void | Promise<void>) | undefined;
+    const registerRuntimeCacheQuotaCleanup = vi.fn((callback: () => void | Promise<void>) => {
+      onQuotaExceeded = callback;
+    });
+    attachPlatformWorker({
+      scope: h.scope,
+      config: dataOnlyConfig,
+      engine: h.engine,
+      createRuntimeCacheEngine: vi.fn() as never,
+      registerRuntimeCacheQuotaCleanup: registerRuntimeCacheQuotaCleanup as never,
+    });
+    expect(onQuotaExceeded).toBeDefined();
+
+    await onQuotaExceeded?.();
+
+    expect(h.cachesDelete).not.toHaveBeenCalled();
+    expect(h.cacheNames.has("pwa:storefront:production:r3:runtime-pages")).toBe(true);
+    expect(h.cacheNames.has("pwa:storefront:production:r3:runtime-data-0123456789abcdef")).toBe(true);
   });
 });
 
