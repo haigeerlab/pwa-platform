@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.0 (unreleased — publish date recorded on release)
+
+Upgrade all ten `@pwa-platform/*` packages together. `^0.1.0` ranges do not pick this version up automatically: two checks below can fail a build that passed on 0.1.0.
+
+**Before upgrading, check:**
+- **Manifest icons.** Every primary install icon must exist, carry a PNG/JPEG/WebP signature matching its `type`, and have intrinsic dimensions matching its `sizes` (`vite.manifest-icon-*` diagnostics).
+- **Identity scope.** `scope` must equal the directory of `serviceWorkerUrl` (`identity.scope-outside-worker-directory`). Browsers already refused to register such identities, so only configurations that never worked are affected.
+
 - **Quota-error cleanup covers every runtime cache (review risk R12):** a `QuotaExceededError` now clears both the pages and current-digest data runtime caches even when this worker's lifetime lazily built an engine for only one of them. Previously the cleanup relied entirely on each `ExpirationPlugin` instance's own `purgeOnQuotaError`, which Workbox only registers once that instance's engine is actually constructed; `@pwa-platform/sw-runtime` builds its runtime-cache engines on demand, per matching rule, so a cache whose rule was never hit in this worker's lifetime kept its stale entries after a quota error. `@pwa-platform/engine-workbox` now exports `registerRuntimeCacheQuotaCleanup`, registered once at worker startup independently of which engines get built, no public API change to `PwaRuntimeCacheEngineOptions`.
 - **Built-in update notice locale:** Vue and React's `PwaUpdateNotice` accept an optional `locale?: "zh-CN" | "en"` (default `"zh-CN"`), matching the built-in Chinese and English tables the offline and entry recovery pages already offer. `messages` still overrides individual keys on top of the selected locale's built-in copy. Not passing `locale` keeps prior behavior unchanged.
 - **Release gate:** `@pwa-platform/build-verifier` exports `requiredReleaseChecks(plan)`, returning the release orchestration protocol's machine-required checks for the plan's topology, so callers pass it to `verifyReleaseGateCoverage` instead of hand-writing the list.
