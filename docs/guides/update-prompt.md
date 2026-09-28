@@ -1,5 +1,7 @@
 # 更新提示接入指南
 
+> 概念、触发条件和推荐交互流程已合并进文档站的[安装与更新](https://pwa-platform-docs.pages.dev/guide/updates)（本仓库源文件：`website/guide/updates.md`），请以文档站为准。本文件保留完整的可复制 React／Vue 自绘参考实现（新旧代码判断、状态机与无障碍标注），供需要自定义界面的开发者直接参考代码。
+
 平台负责发现新版本、让新 worker 等待、在用户确认后完成接管。宿主可使用 Vue／React 包提供的可选提示组件，也可自行实现界面（[ADR-0005](../adr/0005-update-prompt-and-recovery-worker.md)、[ADR-0013](../adr/0013-client-facade-and-page-side-lifecycle-events.md)）。本指南给出推荐交互与两种接入方式；完整自定义参考实现见 React 示例 [`app.tsx`](../../packages/examples-browser-e2e/apps/react/src/app.tsx) 与 Vue 示例 [`app.ts`](../../packages/examples-browser-e2e/apps/vue/src/app.ts)。
 
 ## 使用默认提示组件

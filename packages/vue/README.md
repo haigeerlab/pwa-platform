@@ -4,6 +4,11 @@ Vue 3.4+ binding for PWA Platform. It creates one browser lifecycle facade for t
 install/update state through `usePwa()`, forwards the five supported actions, and provides an optional accessible
 update notice. Configure build artifacts separately with `@pwa-platform/vite`.
 
+> **Vue 3.4 limitation:** `app.onUnmount` — the only hook this binding can use to dispose the facade — does not exist
+> before Vue 3.5. On Vue 3.4 the facade is never disposed when the app unmounts. A single app mounted once for the
+> lifetime of the page (the normal case) is unaffected. Repeated mount/unmount of the same app, such as a
+> micro-frontend host, needs Vue 3.5+ to avoid leaking a facade per mount/unmount cycle.
+
 ## Install
 
 ```sh

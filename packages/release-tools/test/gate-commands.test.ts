@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { GATE_COMMANDS } from "../src/gate-commands.js";
 
 describe("GATE_COMMANDS", () => {
-  it("lists the ADR-0031 commands in run order, marking only the audit as non-blocking", () => {
+  it("lists the ADR-0031 commands, plus the ADR-0042 engine smoke and the push network suite, in run order", () => {
     expect(GATE_COMMANDS.map((entry) => entry.command)).toEqual([
       "pnpm install --frozen-lockfile",
       "pnpm lint",
@@ -12,13 +12,16 @@ describe("GATE_COMMANDS", () => {
       "pnpm test",
       "pnpm typecheck",
       "pnpm test:browser",
+      "pnpm test:browser:engines",
+      "pnpm test:browser:network",
       "pnpm audit --ignore-registry-errors",
     ]);
   });
 
-  it("marks every command blocking except the dependency audit", () => {
+  it("marks every command blocking except the dependency audit, the engine smoke and the push network suite", () => {
+    const nonBlocking = new Set(["pnpm audit --ignore-registry-errors", "pnpm test:browser:engines", "pnpm test:browser:network"]);
     for (const entry of GATE_COMMANDS) {
-      expect(entry.blocking).toBe(entry.command !== "pnpm audit --ignore-registry-errors");
+      expect(entry.blocking).toBe(!nonBlocking.has(entry.command));
     }
   });
 });
@@ -31,6 +34,9 @@ const CI_RUN_EXCLUSIONS: ReadonlySet<string> = new Set([
   "google-chrome --version",
   // Documentation publishing is a CI check, but it is outside the PWA package release gate.
   "pnpm docs:build",
+  // Installs the engine-smoke browsers with their Linux system libraries; the gate's own command downloads the same
+  // browsers without system packages (ADR-0042).
+  "pnpm --filter @pwa-platform/sw-runtime exec playwright install --with-deps webkit firefox",
 ]);
 
 describe("CI parity", () => {

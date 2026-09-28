@@ -14,6 +14,7 @@
 - **必测覆盖两个平台。** Chrome 桌面端和 Chrome Android 分别计算，一个平台通过不能代替另一个。本次发布要求哪些平台，由下文的发布通道决定。
 - **Chrome Android 的 N-1 怎么获得。** 应用商店只提供最新版本，因此准备两台关闭自动更新的测试设备，只通过 Google Play 更新，不从其他来源安装 APK。新的稳定版发布后，只把当前处于 N-1 的那台升级到新版本，原来处于 N 的那台随之成为 N-1。拿不到 N-1 时，这一项按未通过处理，不设例外。
 - **参考档。** Edge 与必测档跑同一组场景。失败不阻塞，但要登记 Issue，并在验证记录中写上 Issue 链接。
+- **引擎冒烟（2026-09-28，[ADR-0042](../adr/0042-non-blocking-webkit-and-firefox-engine-smoke.md)）。** 门禁以不阻塞命令 `pnpm test:browser:engines` 在 Playwright 自带的 WebKit 与 Firefox 上运行已接入的包。结果归入渐进兼容档，只能记为“WebKit 引擎 / Firefox（Playwright 版本号）”，不代表 Safari、iOS 或 Firefox 稳定版。
 - **渐进兼容档。** 安装与 Push 不做保证。离线启动和更新行为与必测档不同时，写成兼容性说明（见下文）。无论哪项能力不可用，基础 Web 体验都必须可用。
 
 ## 发布通道

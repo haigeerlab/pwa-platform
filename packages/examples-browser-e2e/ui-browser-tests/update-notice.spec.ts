@@ -64,7 +64,7 @@ for (const framework of ["vue", "react"] as const) {
     await expect(page.getByRole("button", { name: "刷新页面" })).toBeVisible();
   });
 
-  test(`${framework}: position, theme override and narrow viewport stay usable`, async ({ page }) => {
+  test(`${framework}: position, theme override and narrow viewport stay usable`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 320, height: 650 });
     await page.goto(`${origin}/?framework=${framework}&position=top-center&custom`);
     await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
@@ -82,10 +82,10 @@ for (const framework of ["vue", "react"] as const) {
     await expect(page.getByRole("button", { name: "更新", exact: true })).toHaveCSS("background-color", "rgb(0, 110, 82)");
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "更新", exact: true })).toBeFocused();
-    if (framework === "vue") await page.screenshot({ path: "/private/tmp/pwa-update-notice-mobile.png" });
+    if (framework === "vue") await page.screenshot({ path: testInfo.outputPath("pwa-update-notice-mobile.png") });
   });
 
-  test(`${framework}: colors prop overrides inherited colors for this notice`, async ({ page }) => {
+  test(`${framework}: colors prop overrides inherited colors for this notice`, async ({ page }, testInfo) => {
     await page.goto(`${origin}/?framework=${framework}&colors`);
     await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
     await page.evaluate("document.documentElement.style.setProperty('--pwa-update-accent', '#ff0000')");
@@ -99,7 +99,7 @@ for (const framework of ["vue", "react"] as const) {
     await expect(primary).toHaveCSS("background-color", "rgb(0, 110, 82)");
     await expect(primary).toHaveCSS("color", "rgb(255, 255, 255)");
     await expect(page.locator("html")).toHaveCSS("--pwa-update-accent", "#ff0000");
-    if (framework === "vue") await page.screenshot({ path: "/private/tmp/pwa-update-notice-colors.png" });
+    if (framework === "vue") await page.screenshot({ path: testInfo.outputPath("pwa-update-notice-colors.png") });
   });
 
   test(`${framework}: later reminds again and refresh is an explicit browser action`, async ({ page }) => {
@@ -152,7 +152,7 @@ for (const framework of ["vue", "react"] as const) {
 }
 
 for (const framework of ["vue", "react"] as const) {
-  test(`${framework}: desktop light and dark modes keep readable contrast inside the viewport`, async ({ page }) => {
+  test(`${framework}: desktop light and dark modes keep readable contrast inside the viewport`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     for (const colorScheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme });
@@ -183,7 +183,7 @@ for (const framework of ["vue", "react"] as const) {
       expect(box!.x + box!.width).toBeLessThanOrEqual(1280);
       expect(box!.y + box!.height).toBeLessThanOrEqual(800);
       if (framework === "vue" && colorScheme === "dark") {
-        await page.screenshot({ path: "/private/tmp/pwa-update-notice-dark.png" });
+        await page.screenshot({ path: testInfo.outputPath("pwa-update-notice-dark.png") });
       }
     }
   });
