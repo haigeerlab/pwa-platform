@@ -14,7 +14,7 @@
 | R6 | ✅ 已缓解 | 测试服务器改为服务器端断网（[#34](https://github.com/haigeerlab/pwa-platform/pull/34)）；WebKit 与 Firefox 引擎冒烟以不阻断方式进入门禁和 CI（ADR-0042，[#37](https://github.com/haigeerlab/pwa-platform/pull/37)）。Chrome 仍是唯一阻断的浏览器，引擎冒烟结果不代表 Safari |
 | R7 | ✅ 已修复 | 工作区测试不再在首个失败处中止；release-tools 集成测试超时放宽（[#28](https://github.com/haigeerlab/pwa-platform/pull/28)） |
 | R8 | ✅ 已修复 | 准入拒绝时 worker 以 `console.warn` 报告原因与路径（[#27](https://github.com/haigeerlab/pwa-platform/pull/27)） |
-| R9 | ⏳ 未解决 | iPhone 断网恢复后显示 `not registered`；ADR-0041 把它定为 iPhone 晋级生产通道的阻断条件，需要真机定位根因 |
+| R9 | ✅ 根因查明并修复 | `registered` 依赖会排在挂起 update 之后的 `register()`；iOS 模拟器、桌面 Chrome/WebKit 与真机 iPhone（iOS 27）均确认排队机制，ADR-0043 改为回访时以已有活动注册为准（[#54](https://github.com/haigeerlab/pwa-platform/pull/54)）。界面层 `not registered` 本轮真机未复现，按 ADR-0041 继续观察（[真机记录](../../../tasks/stable-release-qualification/verification.md)） |
 | R10 | ✅ 已解决 | ADR-0041 裁定“离线页联网恢复”通过（[#25](https://github.com/haigeerlab/pwa-platform/pull/25) 真机证据） |
 | R11 | ⏳ 未处理 | 纵深防御项，优先级 P3 |
 | R12 | ✅ 已修复 | worker 启动时统一注册配额清理，不依赖引擎是否已创建（[#41](https://github.com/haigeerlab/pwa-platform/pull/41)）。真实 Chrome 中耗尽配额的用例已补（[#48](https://github.com/haigeerlab/pwa-platform/pull/48)，[runtime-cache.spec.ts](../../../packages/sw-runtime/browser-tests/runtime-cache.spec.ts)），撤掉修复后该用例失败 |

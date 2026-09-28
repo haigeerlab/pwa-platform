@@ -260,3 +260,58 @@ pnpm check:publish
 依据本记录已经取得的 Mac Safari 与 iPhone Safari 实证，项目所有者于 2026-09-27 接受 [ADR-0041](../../docs/adr/0041-keep-apple-as-progressive-compatibility.md)：`0.1.x` 暂不新增 Apple 生产发布通道，macOS Safari 与 iPhone Safari 作为两个独立的渐进兼容证据面继续逐场景记录。Mac 端已经覆盖 Vue／React 的安装、真实更新、离线启动、默认离线页和自动恢复；iPhone 也覆盖了大量安装、更新和离线分支，但仍缺当前 Origin 单独失效的入口恢复实证，并存在恢复联网后 active worker/controller 仍在、SDK 却显示 `not registered`、注册／更新调用挂起直至退出重开的差异。
 
 裁决把“离线页已经自动恢复”和“恢复后的注册／更新就绪”拆开判定：前者保留通过，后者记为部分通过并阻止 iPhone 晋级。它不修改现有 `desktop`／`desktop+android` 门禁，也不扩大首页、README、浏览器矩阵或公开生产声明。R5 至此关闭；iPhone 单 Origin 故障仍作为渐进兼容缺口保留，不阻塞 `desktop` 通道。
+
+## 2026-09-28：0.2.1 两机 Android 真机轮次与 iPhone R9 复核
+
+执行者：Claude（本机 adb、Chrome DevTools 协议、`ios_webkit_debug_proxy`），项目所有者负责实体网络开关、添加到主屏幕与系统授权。站点为 Cloudflare `drill` 隔离槽（`main` 未变）；构建来自 `main` @ `f59b251`（npm `0.2.1` 发布提交），R9 复核另用 `claude/r9-registered-existing` @ `237ec67`。
+
+### drill 部署序列
+
+| 批次 | React 部署 ID | Vue 部署 ID | 说明 |
+|---|---|---|---|
+| 还原 | `d80a9d93-…`（既有 v2） | `33c6b84f-…`（既有 v2） | 本机无运营状态，从 R2 取回当前 drill 发布包、还原暂存与归档，`r2:cloudflare:index --mode=check` 通过 |
+| v1 | `8f2cd239-a69f-4487-b8f4-52c9b55b062f` | `2946b0e4-e2fd-4383-ab78-ab81f35b5f3a` | R2 `b3afd374…` / `3459e851…` |
+| v2 | `c7a4d511-f9bc-4ddc-a47b-e8be4a5dada3` | `20925f9f-57f1-4c27-b484-98022c82d16e` | R2 `8b7a761f…` / `e5bf5f79…` |
+| recovery | `a09960d5-f894-4784-bcb0-c425329abf62` | `ac0756dd-a9e2-4060-908a-bedf59038ec9` | `sw.js` 与 `pwa-recovery-worker.js` 字节相同 |
+| v2（修复后） | `c80a91ff-fc58-4a7a-a05e-5bcb32384d69` | `a6e67ec2-a60c-4e18-877f-54f533dec7e5` | R2 `d14d2e23…` / `b0605fec…` |
+| v2 + R9 修复 | `75213786-65ca-4175-b9d0-d23cb513890b` | — | 仅 React；R2 `b7f4c5dd…`，非发布构建，React drill 当前停在此版本 |
+
+每次部署均经 `deploy --mode=check`、R2 上传读回、预检，部署后自动写索引并归档。
+
+### Android（两台实体设备，均为 Chrome N）
+
+| 设备 | Android | Chrome（Google Play） |
+|---|---|---|
+| Xiaomi 14（23127PN0CC） | 16 | 153.0.8010.53 |
+| Samsung Galaxy A24（SM-A245F） | 16 | 153.0.8010.52 |
+
+开始前卸载小米上旧的 React/Vue Drill WebAPK，并在两台设备上清除两个 drill origin 的注册、Cache Storage、IndexedDB 与存储。
+
+| 场景 | 小米 React | 小米 Vue | 三星 React | 三星 Vue |
+|---|---|---|---|---|
+| 首次在线访问（v1、registered、首访不受控、预缓存写入、出现安装入口） | 通过 | 通过 | 通过 | 通过 |
+| 原生安装（Chrome 富安装面板 → WebAPK → 从启动器进入 `SameTaskWebApkActivity`，`display-mode: standalone`，起始 `/app/`，受控） | 通过 | 通过 | 通过 | 通过 |
+| 断网冷启动（飞行模式；小米另关 Wi-Fi；force-stop Chrome 后从图标启动，v1、受控、`onLine=false`） | 通过 | 通过 | 通过 | 通过 |
+| 断网访问未缓存 `/app/never-precached`（英文离线页、受控） | 通过 | 通过 | 通过 | 通过 |
+| 更新检测（部署 v2 → `registration.update()` → 默认更新提示 → `Update` 接管、页面不自动刷新 → `Reload page` → v2） | 通过 | 通过* | 通过 | 通过* |
+| 恢复 worker（接管；只删除 `pwa:<app>:test:` 前缀，页面预置的 `images-v1` 保留；断网请求 `/app/` 得到网络错误） | 通过 | 通过 | 通过 | 通过 |
+| 修复 worker 后恢复离线启动（`Update` 接管、预缓存重建；断网冷启动 v2/registered/受控） | 通过 | 通过 | 通过 | 通过 |
+
+\* Vue 安装窗口此前停在离线页，导航回 `/app/` 时应用壳走网络，直接得到 v2 页面，因此覆盖的是“页面已是新代码”分支；React 覆盖“旧页面提示”分支。
+
+- **N-1 未取得**：两台设备均为 Chrome 153（N），`desktop+android` 通道的 N-1 仍为“未执行”，通道不得判为通过。下一个 Chrome 稳定版发布时只更新其中一台以形成 N/N-1。
+- **未在真机执行**：隐私与流式响应的非导航请求（桌面 Chrome 已由 #32 覆盖）。
+- **发现（待裁决）**：平台默认更新提示（ADR-0039）在页面已是新代码时仍显示 `A new version is available` 并在接管后提示 `Reload page`；“已是新代码”的判定只存在于[更新提示指南](../../docs/guides/update-prompt.md)的参考实现中。
+- 小米每次从启动器冷启动 WebAPK 时，MIUI 弹出“React/Vue Drill 想要打开 Chrome”确认，均选择“本次允许”，未改系统设置。
+
+### iPhone R9 复核（iPhone 16 Pro，iOS 27.0，主屏幕网页 App）
+
+清除 React drill origin 状态后，从 Safari 添加到主屏幕并从图标进入：`standalone=true`、v2/registered，首次启动不受控、重载后受控（与既有记录一致）。
+
+1. **断网时请求挂起而非失败**：关闭 Wi-Fi 与蜂窝数据后，页面内 `fetch` 超过 20 秒未完成，`navigator.onLine` 仍为 `true`。
+2. **排队机制在真机上成立**：断网时先发起 `registration.update()`（挂起），300 毫秒后调用 `navigator.serviceWorker.register()`：超过 8 秒未完成；同时 `getRegistration()` 0 毫秒返回 activated 注册。这是 [ADR-0043](../../docs/adr/0043-registered-from-existing-active-registration.md) 修复所依赖的前提。
+3. **界面层复现未命中**：从离线页恢复联网后立即导航回 `/app/`，连续 6 秒均为 `registered`；断网挂起 update 后重载页面，同样为 `registered`（重载似乎一并取消了挂起的任务）。界面上的 `not registered` 取决于新页面加载时恰有挂起请求，本轮未能人为制造。
+4. **修复构建回归**：部署 React v2 + R9 修复后，安装窗口经默认提示 `Update` → `controllerchange` → `Reload page` 切换到修复构建（`index-D0ybAdi3.js`）；在线 registered/受控；断网并确认浏览器 `register()` 排在挂起的 update 之后（超过 4 秒），再重载页面，1/3/6 秒均为 registered、受控。
+5. 顺带取得 iPhone React 安装窗口在 0.2.1 上的更新提示、确认接管与显式刷新证据。
+
+结论：R9 的平台侧根因（`registered` 依赖会排队的 `register()`）已在真机上确认并由 ADR-0043 修复，修复构建在 iOS 在线与离线均正常；界面层的 `not registered` 未在本轮复现，按 ADR-0041 仍需在后续轮次观察，修复前后对比证据以桌面 Chrome 用例（修复前 26.8 秒）为准。
