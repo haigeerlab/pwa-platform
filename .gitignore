@@ -17,4 +17,6 @@ website/.vitepress/cache/
 website/.vitepress/dist/
 # push:keys' generated VAPID key pair (packages/examples-browser-e2e/.push-demo/vapid.json)
 .push-demo/
+# onboarding-smoke's hand-off from global-setup.ts to the spec's worker process (packages/examples-browser-e2e/onboarding-smoke/build-fixture.ts)
+.onboarding-fixture-pointer.json
 .agent/state.json

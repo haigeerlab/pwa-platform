@@ -305,6 +305,17 @@ drill 现场演示发现：示例的应用壳导航为 `network-first`，在线�
 - 变异：示例未开启 `networkTimeoutSeconds` 时超时场景转红；删除一张截图时构建失败。
 - Cloudflare 构建脚本对新产物不报错；对白名单外的新文件仍报错。
 
+## 修订：新增新手接入冒烟，从打包 tarball 而非 workspace 符号链接验证（项目所有者决定，2026-09-28）
+
+本包其余示例（`apps/react`、`apps/vue`）全部通过 `workspace:*` 消费平台包，验证的是"源码今天能否协同工作"，不能证明**已发布的 tarball**本身完整——`files` 字段漏收文件、`exports` 路径写错、`workspace:*` 遗漏改写都不会在符号链接下暴露。`pnpm check:publish`（`scripts/check-package-distribution.mjs`）只核验包元数据与产物路径存在，并不实际打包、安装或构建；本次新增的 `packages/examples-browser-e2e/onboarding-smoke/` 补上这一环，复用 `check:publish` 校验过的同一份 `packages/*/package.json` 与 `dist`，而不是重新定义一套发布规则。
+
+- **位置**：本包之下的 `onboarding-smoke/` 子目录，而非独立 workspace 包。它依赖本包已有的 `@playwright/test` 与 `@pwa-platform/browser-test-harness` devDependencies，且 `pnpm-workspace.yaml` 的 `packages: ["packages/*"]` 不会把它当成第二个 workspace 项目——放在这里比新开一个包侵入更小。
+- **流程**：`build-fixture.ts` 用 `pnpm pack` 逐一打包 `contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`react`（`@pwa-platform/vite` 与 `@pwa-platform/react` 的全部生产依赖闭包），在系统临时目录组装一个全新的、按 [website/start/react.md](../website/start/react.md) 与 [website/guide/configuration.md](../website/guide/configuration.md) 逐步照做的最小 Vite+React+TS 项目（真实 PNG 图标复用自 `apps/react/public/icons/`，已通过平台自身的图标校验），用 `pnpm install --offline` 安装后执行 `vite build`。
+- **离线安装如何成立**：`pnpm pack` 会把包内 `@pwa-platform/*` 依赖的 `workspace:*` 改写为当前版本号（如 `0.1.0`），这份改写过的 `package.json` 打进 tarball——与真实 `pnpm publish` 完全一致（已实测核对打包后 `@pwa-platform/vite` 的 `package.json`）。因此新项目的 `pnpm-workspace.yaml` 用 `overrides` 把每个 `@pwa-platform/*` 包重定向到本地 tarball 路径，pnpm 才不会去公共 registry 找一个尚未发布的版本号；`react`、`react-dom`、`vite` 固定为根 `pnpm-lock.yaml` 已解析的版本（`19.3.0`／`19.3.0`／`8.3.0`），使其能直接命中根 `pnpm install --frozen-lockfile` 已经填充的本机 pnpm store。实测：将 `HTTPS_PROXY`／`HTTP_PROXY` 指到不可达地址后重跑，安装与构建依然成功——证明整条链路不依赖网络。
+- **浏览器校验**：构建产物用 `@pwa-platform/browser-test-harness` 的 `startFixtureServer` 就地提供服务（无需另起 `vite preview`），channel 固定为 `"chrome"`（与本包其余套件一致）。单个测试内核对 manifest 链接、worker 在身份 scope 下注册为 `active`、刷新后页面被接管、`fixtureServer.goOffline()` 后已访问过的应用壳仍渲染、未缓存路由回退到平台离线页。
+- **门禁接入**：新增根脚本 `pnpm test:onboarding-smoke`，追加进 [ADR-0031](../docs/adr/0031-local-gate-substitute-for-ci.md) 的 `GATE_COMMANDS`（`packages/release-tools/src/gate-commands.ts`，`blocking: true`），并在 `.github/workflows/ci.yml` 的 `browser` job 里紧跟 `pnpm test:browser` 之后新增一步，同名同拼写；`gate-commands.test.ts` 的 CI 对齐测试相应更新。未修改本包自己的 `package.json`：`test:onboarding-smoke` 只通过根脚本的 `pnpm --filter ... exec playwright test --config onboarding-smoke/playwright.config.ts` 调用，符合上面"本包只声明 `typecheck` 与 `test:browser`"的既有约束。
+- **不覆盖的范围**：只验证 React 绑定；Vue 的等价冒烟不在本次范围内，留待其自身模块决定是否需要（与"不覆盖 Vue 3.4 清理缺口"同样的边界）。真实安装（`beforeinstallprompt` 触发的原生安装 UI）不在本次范围，遵循本模块"真实安装流程无法自动化"的既有已知限制。
+
 ## 已知限制
 
 - **Chrome Android 未执行**：本模块没有测试设备，[浏览器矩阵](../docs/architecture/browser-matrix.md)的 Android 必测项（N 与 N-1）继续作为已知限制。[ADR-0010](../docs/adr/0010-real-browser-verification-with-playwright.md)把决定权留给"第一个具备测试设备的运行时模块"，并指出 Playwright 的 Android 支持会忽略离线等上下文选项、**可能让测试误报通过**——这对以离线验证为核心的本模块尤其危险，因此即便取得设备也需先验证该风险。

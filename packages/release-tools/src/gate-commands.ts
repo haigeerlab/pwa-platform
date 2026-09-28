@@ -14,5 +14,6 @@ export const GATE_COMMANDS: readonly PwaGateCommand[] = [
   { command: "pnpm test", blocking: true },
   { command: "pnpm typecheck", blocking: true },
   { command: "pnpm test:browser", blocking: true },
+  { command: "pnpm test:onboarding-smoke", blocking: true },
   { command: "pnpm audit --ignore-registry-errors", blocking: false },
 ];

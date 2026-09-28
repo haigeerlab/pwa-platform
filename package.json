@@ -27,6 +27,7 @@
     "lint": "eslint .",
     "test": "node scripts/run-workspace.mjs test",
     "test:browser": "node scripts/run-workspace.mjs test:browser",
+    "test:onboarding-smoke": "pnpm --filter @pwa-platform/examples-browser-e2e exec playwright test --config onboarding-smoke/playwright.config.ts",
     "typecheck": "node scripts/run-workspace.mjs typecheck",
     "check:publish": "node scripts/check-package-distribution.mjs",
     "gate:local": "node packages/release-tools/dist/bin.js"

@@ -84,3 +84,6 @@ jobs:
 
       - name: Browser tests
         run: pnpm test:browser
+
+      - name: Newcomer onboarding smoke (packages installed from packed tarballs, offline)
+        run: pnpm test:onboarding-smoke

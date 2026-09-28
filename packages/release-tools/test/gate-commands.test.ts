@@ -12,6 +12,7 @@ describe("GATE_COMMANDS", () => {
       "pnpm test",
       "pnpm typecheck",
       "pnpm test:browser",
+      "pnpm test:onboarding-smoke",
       "pnpm audit --ignore-registry-errors",
     ]);
   });
