@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.2.0 (unreleased — publish date recorded on release)
+## 0.2.0 (2026-09-28)
 
 Upgrade all ten `@pwa-platform/*` packages together. `^0.1.0` ranges do not pick this version up automatically: two checks below can fail a build that passed on 0.1.0.
 

@@ -34,7 +34,7 @@
 
 ## 2026-09-28 进展
 
-审查提出的 19 条建议和 15 项风险已按三批处理，共 16 个 PR（[#27](https://github.com/haigeerlab/pwa-platform/pull/27)–[#42](https://github.com/haigeerlab/pwa-platform/pull/42)），全部合入 `main`；合并后 `main` 上的 CI 全部通过。这些改动**尚未发版**，npm `0.1.0` 不包含。
+审查提出的 19 条建议和 15 项风险已按三批处理，共 16 个 PR（[#27](https://github.com/haigeerlab/pwa-platform/pull/27)–[#42](https://github.com/haigeerlab/pwa-platform/pull/42)），全部合入 `main`；合并后 `main` 上的 CI 全部通过。这些改动已于 2026-09-28 随 npm `0.2.0` 发布（[发布记录](../../../tasks/package-distribution/release-0.2.0.md)）。
 
 | | 数量 | 说明 |
 |---|---|---|
