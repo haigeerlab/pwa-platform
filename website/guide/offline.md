@@ -32,6 +32,8 @@ pwa({
 
 生成页会显示应用名，支持亮暗主题。也可以由应用自行提供 <code>public/offline.html</code>，此时不要同时开启生成选项，否则构建会报告路径冲突。
 
+离线页只在导航请求失败（网络错误）或超时时展示；只要服务器确实返回了响应，无论状态码是 200 还是 4xx／5xx，worker 都会原样返回该响应，不会替换成离线页。不要把离线页当作“服务器故障页”。
+
 ## 弱网超时
 
 可在 v1、v2 或 v3 策略中设置 <code>networkTimeoutSeconds</code>，取值为 1–30 秒，默认关闭。导航超时且有可用回退时，worker 会先返回回退；没有回退时继续等待网络。此设置不会给业务代码直接发出的 API 请求加超时。
@@ -47,3 +49,7 @@ networkTimeoutSeconds: 5,
 <code>PwaPolicy v3</code> 可显式开启公共读取缓存。它只适用于明确允许的同源 GET 公共响应，并要求数量、单项大小与最长存活时间上限。<code>public-data</code> 支持 network-first 或 stale-while-revalidate；<code>navigation-public-dynamic</code> 仅支持 network-first。v1、v2 或 v3 且未开启时，这些未预缓存请求照旧透传。
 
 **先确认数据绝对不按用户、Cookie 或权限变化。** 平台 worker 读不到响应的 <code>Set-Cookie</code>，也不靠请求的凭据模式判断数据是否公开；会设置 Cookie 的路径不应进入缓存规则，私有响应必须带 <code>Cache-Control: private</code>。配置示例、响应准入与验证步骤见[公共读取缓存](/guide/public-read-cache)。
+
+## 断网与恢复
+
+无需任何配置。平台**不提供**在线／离线状态 API：客户端 facade、Vue 和 React 绑定都没有暴露 <code>online</code>／<code>offline</code> 事件或状态。网络恢复后，只有平台生成的默认离线页会自动探测并 <code>location.reload()</code> 自己——这段脚本只存在于离线页本身，不是给业务路由页面用的能力。业务页面停留在断网状态下发出的请求，需要自己实现重试；平台不会在网络恢复时通知应用或自动重放任何请求。

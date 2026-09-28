@@ -40,6 +40,10 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 
 长期不刷新的页面可显式开启 <code>updateCheck: { intervalMs: 1_800_000 }</code>；默认不开定时检查，最小间隔为 60 秒。框架中的最小写法见[Vue 接入](/start/vue)和[React 接入](/start/react)；上线前应按本页的交互流程处理失败、稍后提醒、未保存内容及多标签页。
 
+## 多标签页
+
+无需任何配置。平台不使用 <code>BroadcastChannel</code> 或其他跨标签消息通道，每个同 scope 标签页都各自监听浏览器原生的 <code>controllerchange</code> 事件。一个标签页确认更新、完成 worker 接管后，其余标签页会各自观察到同一次 <code>controllerchange</code>，从而各自清除自己的更新提示；**没有任何标签页会因此被自动刷新**。这意味着其他标签页里仍在运行的是旧版本前端代码，只是已经交给新 worker 控制——业务要自行决定是否、以及何时提示这些标签页刷新。
+
 ## 可选的默认更新提示
 
 在使用 `createPwa()` 的 Vue 应用根组件中挂载：

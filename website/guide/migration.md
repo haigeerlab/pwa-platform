@@ -9,7 +9,7 @@
 | <code>VitePWA({ manifest })</code> | <code>pwa({ identity, install, policy, topology })</code> |
 | <code>workbox.globPatterns</code> | <code>PwaPolicy.resources</code> 中的 <code>asset</code> 规则 |
 | <code>workbox.runtimeCaching</code> | 只对明确的公共读取使用 v3 运行时缓存；私有接口不能直接照搬 |
-| <code>navigateFallback</code> | <code>offlineFallback</code> 与导航资源规则 |
+| <code>navigateFallback</code> | <code>offlineFallback</code> 与导航资源规则；**没有**通配符式的应用壳兜底——未被精确预缓存的 history 路由深链接断网时得到的是网络错误页，不是应用壳，见[按功能接入](/guide/integration-by-capability)路径三的提示 |
 | <code>registerType: "prompt"</code> | <code>updateWaiting</code> + <code>applyUpdate()</code> |
 | <code>registerType: "autoUpdate"</code> | 无直接对应；平台要求用户确认接管 |
 | <code>virtual:pwa-register</code> | 框架绑定提供 <code>register()</code>，由应用主动调用 |

@@ -88,6 +88,14 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 <code>IDENTITY.manifestUrl</code> 此时仍是必需的身份字段。应用须自行把 manifest 文件放在对应构建产物路径：根路径示例为 <code>public/manifest.webmanifest</code>，浏览器地址为 <code>/manifest.webmanifest</code>；部署在 <code>/app/</code> 时，仍放在 Vite 的 <code>public/</code>，浏览器地址改为 <code>/app/manifest.webmanifest</code>。缺少文件会使构建失败。插件仍会在 HTML 中注入该 manifest 的链接；浏览器是否提供安装入口取决于自备 manifest 和浏览器行为，关闭平台安装提示并不保证浏览器禁止安装。
 
+## `cacheNamespaceSeed` 是什么
+
+<code>cacheNamespaceSeed</code> 是缓存命名空间前缀里的身份修订段，与 <code>appId</code>、<code>environment</code> 共同决定 Cache Storage 里所有缓存名称的前缀。正常发版不需要改它。只有当 <code>scope</code>、worker URL、manifest ID 或其他生产不可变字段发生了身份迁移（需要专门的架构决策和迁移计划）时，才把它改成这个应用在该环境下**从未用过**的新值（ADR-0009）。改动后旧缓存不会被自动删除，而是仍留在旧前缀下，需要按迁移计划显式清理；复用旧种子会让新身份读到旧 revision 遗留的缓存。
+
+## 本地验收用什么 <code>environment</code>
+
+<code>PwaIdentity.environment</code> 的约定是“每个环境都是独立身份”：不同 <code>environment</code> 的应用各自拥有互不影响的缓存命名空间。用 <code>vite preview</code> 在本地做验收时，建议给本地验收单独声明一个 <code>environment</code>（例如 <code>"preview"</code>），而不是直接复用生产身份；这样本地验收产生的缓存不会与生产环境的缓存共用前缀，清理或反复重跑也不会影响线上数据。
+
 ## 生产身份要保持稳定
 
 <code>scope</code>、worker URL、manifest ID、挂载路径与缓存命名空间共同决定浏览器如何识别这个应用。生产注册后变更它们属于迁移，需要专门的架构决策和迁移计划。不要把一次普通发版当作修改身份的机会。
