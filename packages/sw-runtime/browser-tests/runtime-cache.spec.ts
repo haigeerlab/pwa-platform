@@ -306,6 +306,70 @@ test.describe("quota error clears every runtime cache (review risk R12)", () => 
   });
 });
 
+test.describe("N3: a new version's install must not clear the still-active version's runtime caches (risks-delta N3)", () => {
+  // Storage.overrideQuotaForOrigin is a Chromium DevTools Protocol command (ADR-0042).
+  test.skip(({ browserName }) => browserName !== "chromium", "Storage.overrideQuotaForOrigin is a Chromium DevTools Protocol command");
+  test("a precache write that hits QuotaExceededError while a v2 worker is only installing does not delete v1's runtime-data entry", async ({
+    page,
+    context,
+    fixtureServer,
+  }) => {
+    fixtureServer.deploy("v3");
+    await writeCatalogFile(RUNTIME_CATALOG_ITEMS_URL, { item: "v1-body" });
+    await installAndControl(page, fixtureServer);
+
+    // v1 (the worker this test keeps active throughout) writes and serves a runtime-data entry.
+    const online = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
+    expect(online).toMatchObject({ ok: true, body: { item: "v1-body" } });
+    await expect.poll(async () => hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_CATALOG_ITEMS_URL)).toBe(true);
+    fixtureServer.goOffline();
+    const offlineBefore = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
+    expect(offlineBefore, "v1 must serve the entry offline before any v2 install is attempted").toMatchObject({ ok: true, body: { item: "v1-body" } });
+    fixtureServer.goOnline();
+
+    const session = await context.newCDPSession(page);
+    const origin = new URL(fixtureServer.url("/")).origin;
+    // Zero headroom: the very first precache write of the next installing worker throws QuotaExceededError, exactly
+    // as review risk R12's fixture does for a runtime-cache write. v1 stays active and controlling throughout — this
+    // test never confirms the update, so v1's own runtime cache is the only one that should still exist afterwards.
+    const { usage } = await session.send("Storage.getUsageAndQuota", { origin });
+    await session.send("Storage.overrideQuotaForOrigin", { origin, quotaSize: usage });
+
+    try {
+      // v3-same-config differs byte-for-byte from v3 (V3_FILES_B) but shares v3's runtimeCache configDigest, so this
+      // is a genuine new worker version whose install precaches from scratch rather than reusing v1's entries.
+      fixtureServer.deploy("v3-same-config");
+      await page.evaluate(async () => {
+        await (await navigator.serviceWorker.getRegistration())?.update();
+      });
+      // The installing worker's install event fails (its precache download rejects with QuotaExceededError), so the
+      // browser discards it: `installing` returns to null and no `waiting` worker ever appears.
+      await expect
+        .poll(
+          async () =>
+            page.evaluate(async () => {
+              const registration = await navigator.serviceWorker.getRegistration();
+              return { installing: registration?.installing?.state ?? null, waiting: registration?.waiting !== null && registration?.waiting !== undefined };
+            }),
+          { message: "the v3-same-config install must fail under zero headroom", timeout: 10_000 },
+        )
+        .toEqual({ installing: null, waiting: false });
+
+      // N3: the installing worker's global quota-cleanup callback (handlers.ts registerRuntimeCacheQuotaCleanup) must
+      // not have deleted the runtime-data cache the still-active v1 worker is serving from.
+      expect(hasCachedEntry(await cacheContents(page), "runtime-data", RUNTIME_CATALOG_ITEMS_URL), "v1's runtime-data entry must survive v2's failed install").toBe(
+        true,
+      );
+      fixtureServer.goOffline();
+      const offlineAfter = await fetchJson(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
+      expect(offlineAfter, "v1 must still serve the entry offline after v2's install failed").toMatchObject({ ok: true, body: { item: "v1-body" } });
+    } finally {
+      fixtureServer.goOnline();
+      await session.send("Storage.overrideQuotaForOrigin", { origin });
+    }
+  });
+});
+
 test.describe("activation cleanup", () => {
   test("a new version with the same runtimeCache config clears runtime-pages but keeps the current-digest runtime-data; other caches untouched", async ({
     page,

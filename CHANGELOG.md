@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Quota cleanup no longer runs during a still-installing worker's own install (review follow-up N3, ADR-0035 增补):** the runtime-cache quota-error cleanup registered by `@pwa-platform/sw-runtime` now checks `scope.registration.installing` before deleting anything, so a precache write that exceeds the browser's storage quota while a new version is installing no longer deletes the pages and data runtime caches the still-active previous version is serving offline data from. Previously, because Workbox's quota-error callback is global and also fires for precache writes (`workbox-precaching`'s `PrecacheController` uses the same `StrategyHandler.cachePut`), an installing worker's own failing precache write triggered the cleanup meant only for runtime-cache writes, wiping the active version's offline data and repeating on every install retry. No public API change.
+
 ## 0.2.2 (2026-09-28)
 
 Patch release: upgrade all ten `@pwa-platform/*` packages together. No public API or configuration change; only `@pwa-platform/client-runtime`'s registration and update announcement behave differently on return visits. Check the second entry below if your code relied on `register()` rejecting when a return visit's background script fetch fails.

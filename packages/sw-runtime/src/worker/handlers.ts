@@ -78,8 +78,23 @@ export function attachPlatformWorker({
   // R12 (spec.public-read-cache "响应准入", ADR-0035 探路 2): registered once here, independently of which of the
   // engines above `buildRuntimeEngines` actually builds on demand, so a quota error clears every current runtime
   // cache rather than only the ones this worker's lifetime happened to build an engine for.
+  //
+  // N3 (docs/review/2026-09-28/06-risks-delta.md): Workbox's quota-error callback is global (registerQuotaErrorCallback
+  // in workbox-core), so it also fires for a precache write made by engine-workbox's PrecacheController during
+  // *this very worker's own install* — before it has won activation. Running the cleanup then would delete the
+  // runtime caches the still-active previous version is serving from, and installation fails anyway (the quota is
+  // still exhausted), so it would repeat on every retry. `scope.registration.installing` is this worker itself
+  // while it is still installing, and becomes null once it starts activating (spec — "activate" only ever fires
+  // once a worker has won activation), so checking it here — at the moment of the error, rather than caching a flag
+  // set by the "activate" listener below — also covers a worker the browser restarts after idle termination: that
+  // restart re-runs this module's top-level code without re-dispatching "install" or "activate", so a flag would
+  // wrongly stay stuck at "not yet activated" forever for an already-active, merely-restarted worker (the scenario
+  // review risk R12's own browser test exercises).
   if (config.runtimeCache.enabled && registerQuotaCleanup !== undefined) {
-    registerQuotaCleanup(() => deleteRuntimeCaches(scope, config.runtimeCache).catch(() => undefined));
+    registerQuotaCleanup(() => {
+      if (scope.registration.installing !== null) return undefined;
+      return deleteRuntimeCaches(scope, config.runtimeCache).catch(() => undefined);
+    });
   }
   const pendingSignals = createPendingSignalStore();
 
