@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **Recovery worker no longer treats a blocked database deletion as a failure (R14 residue):** the offline-write database deletion's `onblocked` handler used to reject immediately, the same as `onerror`. `onblocked` only means another connection (for example a page with the offline-write database still open) has not closed yet; the browser keeps the delete request pending and it usually still succeeds once that connection closes. Recovery now keeps waiting past `blocked` for the eventual `onsuccess`/`onerror`, bounded by a 10-second wait; only a timeout after `blocked`, or an outright `onerror`, is treated as a failure (unchanged: push cancellation and `clients.claim()` are skipped on failure, per review #15). Previously a page that merely had the offline-write database open elsewhere could make recovery report failure and skip claiming uncontrolled pages, even though the database was in fact deleted moments later.
+
 ## 0.2.2 (2026-09-28)
 
 Patch release: upgrade all ten `@pwa-platform/*` packages together. No public API or configuration change; only `@pwa-platform/client-runtime`'s registration and update announcement behave differently on return visits. Check the second entry below if your code relied on `register()` rejecting when a return visit's background script fetch fails.

@@ -11,6 +11,9 @@ export type PwaRecoveryWorkerOptions = {
   readonly config: PwaRecoveryWorkerConfig;
 };
 
+/** How long the offline-write database deletion keeps waiting after `onblocked` before it is treated as a failure. */
+const BLOCKED_WAIT_MS = 10_000;
+
 /**
  * Registers the recovery worker (ADR-0005): it takes over immediately only after it removes every cache and the
  * identity-derived offline-write database of this app in this environment, then serves nothing, so page requests go
@@ -71,13 +74,28 @@ async function deleteExpirationRecordsBestEffort(appCachePrefix: string): Promis
   }
 }
 
-/** Rejects on failure or blocked deletion so recovery does not take control while sensitive queue data remains. */
+/**
+ * Rejects on failure so recovery does not take control while sensitive queue data remains. `onblocked` alone is not
+ * a failure (ADR-0012 addendum, R14 residue): it only means another connection to this database has not closed yet
+ * — the delete request stays pending in the browser and usually still succeeds once that connection closes. So a
+ * `blocked` event keeps this waiting for the eventual `onsuccess`/`onerror`, bounded by `BLOCKED_WAIT_MS`; only a
+ * timeout after `blocked`, or an outright `onerror`, is treated as a failure.
+ */
 function deleteOfflineWriteDatabase(name: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(name);
-    request.onsuccess = (): void => resolve();
-    request.onerror = (): void => reject(request.error ?? new Error("offline-write database deletion failed"));
-    request.onblocked = (): void => reject(new Error("offline-write database deletion blocked"));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    request.onsuccess = (): void => {
+      if (timer !== undefined) clearTimeout(timer);
+      resolve();
+    };
+    request.onerror = (): void => {
+      if (timer !== undefined) clearTimeout(timer);
+      reject(request.error ?? new Error("offline-write database deletion failed"));
+    };
+    request.onblocked = (): void => {
+      timer = setTimeout(() => reject(new Error("offline-write database deletion blocked")), BLOCKED_WAIT_MS);
+    };
   });
 }
 

@@ -137,6 +137,7 @@
 - `install` 在 `event.waitUntil` 中调用 `scope.skipWaiting()`。
 - `activate` 在 `event.waitUntil` 中先删除名称以 `appCachePrefix` 开头的全部缓存，再尝试取消当前注册的 Push 订阅，最后调用 `scope.clients.claim()`。没有订阅时跳过；`getSubscription()` 或 `unsubscribe()` 的失败被吞掉，不能阻断接管。
 - 删除失败（2026-09-28 增补，审查建议 #15）：某个缓存或离线写数据库删除失败时，其余删除照常尝试，因为 `activate` 只运行一次，跳过的内容会一直残留到下次部署。全部尝试完后只要有一项失败，`waitUntil` 的 Promise 即以第一个失败拒绝，不取消 Push 订阅、不调用 `clients.claim()`。
+- 离线写数据库删除的 `blocked` 事件不等同于失败（2026-09-28 增补，R14 残留）：`indexedDB.deleteDatabase` 触发 `onblocked` 只说明还有另一个连接（例如持有该数据库的页面）尚未关闭，删除请求本身仍留在浏览器中排队，通常会在该连接关闭后成功。收到 `blocked` 时继续等待最终的 `onsuccess`/`onerror`，等待上限为 10 秒；只有等待超时或收到 `onerror` 才计为失败，此时按上一条"删除失败"的规则处理（其余删除照常尝试，全部尝试完后再拒绝，不取消 Push、不 `clients.claim()`）。
 - 只注册 `install` 与 `activate` 两个监听：不注册 `fetch`、`message`、`push` 或 `notificationclick`，不导入 Workbox，不访问网络。
 
 ### 页面与 worker 共用：跳过等待消息

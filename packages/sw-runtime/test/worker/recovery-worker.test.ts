@@ -37,7 +37,12 @@ type Listener = (event: ExtendableEvent) => void;
  * - "unsubscribe-rejects": resolves to a subscription whose `unsubscribe` rejects.
  */
 type SubscriptionMode = "none" | "present" | "getSubscription-rejects" | "unsubscribe-rejects";
-type DatabaseOutcome = "success" | "blocked" | "error";
+/**
+ * "blocked" fires `onblocked` and then never resolves, for the bounded-wait timeout (R14 residue). "blocked-then-
+ * success" fires `onblocked` and later `onsuccess`, mirroring a blocking connection that closes once the browser's
+ * pending delete request lets it through — the case the recovery worker used to misjudge as a failure.
+ */
+type DatabaseOutcome = "success" | "blocked" | "blocked-then-success" | "error";
 
 let databaseOutcome: DatabaseOutcome;
 let deletedDatabases: string[];
@@ -118,8 +123,12 @@ beforeEach(() => {
       const request = {} as IDBOpenDBRequest;
       queueMicrotask(() => {
         if (databaseOutcome === "success") request.onsuccess?.(new Event("success"));
-        if (databaseOutcome === "blocked") request.onblocked?.(new Event("blocked") as IDBVersionChangeEvent);
         if (databaseOutcome === "error") request.onerror?.(new Event("error"));
+        if (databaseOutcome === "blocked" || databaseOutcome === "blocked-then-success") {
+          request.onblocked?.(new Event("blocked") as IDBVersionChangeEvent);
+          // Mirrors the blocking connection closing shortly after, well within the bounded wait.
+          if (databaseOutcome === "blocked-then-success") setTimeout(() => request.onsuccess?.(new Event("success")), 100);
+        }
       });
       return request;
     }),
@@ -327,15 +336,43 @@ describe("activate", () => {
     ]);
   });
 
-  it("does not cancel push or claim clients when the precise queue database cannot be deleted", async () => {
-    databaseOutcome = "blocked";
-    registerRecoveryWorker({ scope: harness.scope, config });
-    await expect(dispatch(harness, "activate")).rejects.toThrow(/offline-write database deletion blocked/);
-    expect(deletedDatabases).toEqual(["pwa-offline-write:storefront:production:r3"]);
-    expect(harness.calls).toEqual([
-      "delete pwa:storefront:production:r3:precache",
-      "delete pwa:storefront:production:r2:precache",
-    ]);
+  it("keeps waiting past a blocked deletion and only fails once the bounded wait times out, without cancelling push or claiming (blocked-then-timeout, R14 residue)", async () => {
+    vi.useFakeTimers();
+    try {
+      databaseOutcome = "blocked";
+      registerRecoveryWorker({ scope: harness.scope, config });
+      const activation = dispatch(harness, "activate");
+      const assertion = expect(activation).rejects.toThrow(/offline-write database deletion blocked/);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await assertion;
+      expect(deletedDatabases).toEqual(["pwa-offline-write:storefront:production:r3"]);
+      expect(harness.calls).toEqual([
+        "delete pwa:storefront:production:r3:precache",
+        "delete pwa:storefront:production:r2:precache",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not treat a blocked deletion as a failure by itself: it waits and still cancels push and claims once the deletion succeeds (blocked-then-success, R14 residue)", async () => {
+    vi.useFakeTimers();
+    try {
+      databaseOutcome = "blocked-then-success";
+      registerRecoveryWorker({ scope: harness.scope, config });
+      const activation = dispatch(harness, "activate");
+      await vi.advanceTimersByTimeAsync(200);
+      await activation;
+      expect(deletedDatabases).toEqual(["pwa-offline-write:storefront:production:r3"]);
+      expect(harness.calls).toEqual([
+        "delete pwa:storefront:production:r3:precache",
+        "delete pwa:storefront:production:r2:precache",
+        "getSubscription",
+        "claim",
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps deleting after one cache deletion rejects, then fails without cancelling push or claiming (#15)", async () => {
