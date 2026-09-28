@@ -50,6 +50,8 @@ pwa({
 
 可在 v1、v2 或 v3 策略中设置 <code>networkTimeoutSeconds</code>，取值为 1–30 秒，默认关闭。导航超时且有可用回退时，worker 会先返回回退；没有回退时继续等待网络。此设置不会给业务代码直接发出的 API 请求加超时。
 
+写成 0、31 或小数等非法整数秒时，构建失败并给出诊断码 `schema.invalid-value`，路径 `/networkTimeoutSeconds`；写成字符串等错误类型时为 `schema.invalid-type`。
+
 生产应用只要使用 <code>network-first</code> 导航，就应显式决定这个值。iPhone 真机物理断网对照中，未配置时约 60 秒才从白屏回退，配置 5 秒后约 5 秒显示缓存或离线页；这不是所有 Safari 版本的固定时长，但证明不能依赖浏览器自行超时。建议从 5 秒开始，再按真实用户网络和首屏目标调整，并在支持的手机上做物理断网冷启动。
 
 ~~~ts

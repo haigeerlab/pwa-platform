@@ -33,7 +33,11 @@ export const POLICY: PwaPolicy = {
 
 仍需在 Vite 插件中启用 `offlinePage: {}`，并保证业务接口路径与实际部署的 `mountPath` 一致。策略的 `pathPrefix` 是相对 `mountPath` 的路径，不要重复写挂载前缀。
 
-`maxEntries` 可设为 1–200，按动态页面与公共数据两个缓存分别计数；`maxEntryBytes` 为 1–1,048,576 字节；`maxAgeSeconds` 为 60–604,800 秒。三项都没有默认值。若要关闭 v3 运行时缓存，设置 `enabled: false`，同时将三项上限全部设为 `0`。v1、v2 策略不会因升级平台包而自动开启此能力。
+`maxEntries` 可设为 1–200，按动态页面与公共数据两个缓存分别计数；`maxEntryBytes` 为 1–1,048,576 字节；`maxAgeSeconds` 为 60–604,800 秒。三项都没有默认值。若要关闭 v3 运行时缓存，设置 `enabled: false`，同时将三项上限全部设为 `0`。
+
+::: warning 已上线的 v1／v2 应用不需要任何改动，但 worker 产物不是逐字节不变
+请求判断不会因为升级平台包而改变——只有显式声明 <code>schemaVersion: 3</code> 且 <code>runtimeCache.enabled: true</code> 才会开始运行时缓存。但**从这一版本起，平台 worker 静态引入了运行时缓存引擎，所有应用（包括 v1、v2 和未开启的 v3）的 worker 产物都会多出 <code>workbox-strategies</code>、<code>workbox-expiration</code> 两个模块（约 50 KB，未压缩）**，worker 配置也多出一个 <code>runtimeCache</code> 字段（未启用时只带两个缓存名）。新 worker 激活与登出时会尽力删除本应用的运行时缓存与过期记录，通常两者都不存在。
+:::
 
 ## 可用的规则
 
@@ -43,6 +47,11 @@ export const POLICY: PwaPolicy = {
 | `navigation-public-dynamic` | 仅 `network-first` | 不因用户身份变化的公共动态 HTML |
 
 `cache: "none"` 仍透传。给上述类别配置 `cache-first`，或给公共动态 HTML 配置 `stale-while-revalidate`，会以 `compile.runtime-strategy-unsupported` 阻止构建。动态 HTML 不提供 SWR，因为旧 HTML 可能引用已被移除的指纹资源。
+
+| 诊断码 | 严重度 | 含义与修复 |
+| --- | --- | --- |
+| `compile.runtime-strategy-unsupported` | 构建失败 | 某条规则声明的资源类别与 `cache` 组合不在可执行范围内（例如给 `navigation-public-dynamic` 配 `cache-first` 或 SWR）；把 `cache` 改成上表允许的策略 |
+| `compile.runtime-cache-unused` | 警告，不阻塞构建 | `runtimeCache.enabled: true`，但没有任何规则落在可执行的组合里；多半是开了开关却忘了把某条规则的 `cache` 改成 `network-first` 或 `stale-while-revalidate` |
 
 ## 响应必须满足的条件
 
@@ -97,6 +106,12 @@ export const POLICY: PwaPolicy = {
 
 用户登出、worker 激活和异常恢复各有平台缓存清理流程，但不能把它们当作内容分类错误的补救措施。`logout()` 在 `runtimeCache.enabled: true` 时，任一项清理失败都会让它解析为 `false` 并保留 registration，业务照旧检查返回值即可，不需要额外包 `try/catch`。上线时至少验证：在线访问公共接口、断网重试命中缓存、私有响应不入缓存，以及重新部署后的数据更新。
 
+## 已知限制
+
+- **回滚残留**：回滚到不认识运行时缓存的旧平台版本时，旧 worker 不会删除这些缓存；它们不会被读取，但会一直占用空间，直到恢复 worker 或下一次 v3 激活清理它们。
+- **配额错误时清空全部运行时缓存**：写入触发 `QuotaExceededError` 时，两个运行时缓存都会被清空以回收空间，不只是出错的那一个；预缓存不受影响，页面收到的响应不受影响。但只有本次 worker 启动以来被读写过的运行时缓存会被清——worker 重启后还没被访问过的那个，这次不会被清，腾出的空间可能少于预期。
+- **清理与进行中的写入存在竞态**：登出或新 worker 激活清理时，如果某个读取的写入（例如 SWR 的后台更新、旧 worker 仍在处理的导航）恰好在清理之后才落盘，Workbox 会把刚删掉的缓存重新建出来；激活时这可能写回旧版本的 HTML。残留会在下一次激活、登出或条目过期时清掉，业务不需要额外处理，但不应假设清理是瞬时、绝对干净的。
+
 ::: warning Nuxt 暂不支持
-`@pwa-platform/nuxt` 收到 <code>runtimeCache.enabled: true</code> 的 v3 策略时，会在构建期明确失败，而不是静默忽略；`enabled: false` 的 v3 策略可以正常构建。
+`@pwa-platform/nuxt` 收到 <code>runtimeCache.enabled: true</code> 的 v3 策略时，会在构建期以诊断码 <code>nuxt.runtime-cache-unsupported</code> 明确失败，而不是静默忽略；`enabled: false` 的 v3 策略可以正常构建。
 :::

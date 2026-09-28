@@ -95,6 +95,20 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 新增的数组字段（<code>categories</code>、<code>displayOverride</code>、<code>screenshots</code>、<code>shortcuts</code>）至少要有一项，写空数组会被拒绝。以下 manifest 成员平台不接受：<code>lang</code>、<code>dir</code>（浏览器未实现）、<code>launch_handler</code>、<code>share_target</code>、<code>file_handlers</code>、<code>protocol_handlers</code>、<code>related_applications</code>，以及 <code>displayOverride</code> 中仍在孵化的 <code>tabbed</code>、<code>borderless</code>。
 
+构建会拒绝以下情况，诊断码只给字段路径，不回显配置值（主图标错误例外，见下表说明）：
+
+| 诊断码 | 原因 |
+| --- | --- |
+| <code>install.shortcut-url-outside-scope</code> | 快捷方式的 <code>url</code> 不在应用 scope 内 |
+| <code>compile.shortcut-url-in-child-scope</code> | 共享 origin 拓扑下，根应用的快捷方式落进了子应用的 scope |
+| <code>vite.manifest-icon-missing</code> | manifest 主 <code>icons</code> 引用的文件不在本次 Vite 构建产物或 <code>base</code> 下 |
+| <code>vite.manifest-icon-invalid</code> | 主图标 PNG／JPEG／WebP 的文件头损坏，或无法按声明的 <code>type</code> 解析 |
+| <code>vite.manifest-icon-type-mismatch</code> | 声明的 <code>type</code> 与文件签名不一致 |
+| <code>vite.manifest-icon-size-mismatch</code> | 文件固有尺寸与声明的 <code>sizes</code> 不一致 |
+| <code>verify.manifest-asset-missing</code> | 截图或快捷方式图标引用的文件不在构建产物中 |
+
+主图标相关的四个 <code>vite.manifest-icon-*</code> 错误是通用规则的例外：为了方便定位 Android 安装资格问题，它们会显示公开的图标 URL、声明的 MIME／尺寸与文件实测值（但不输出图片字节）。
+
 以下是来自 Chrome 产品行为、只提示不阻断构建的警告，数值可能随 Chrome 版本调整：截图宽高不在 320–3840 像素之间、长边超过短边 2.3 倍、同一 <code>formFactor</code> 截图宽高比不一致、<code>wide</code> 超过 8 张或 <code>narrow</code> 超过 5 张、没有 <code>wide</code> 截图（桌面端不显示）、<code>description</code> 超过 324 个 UTF-16 码元。Android 从 Chrome 109 起忽略 <code>wide</code> 截图，因此建议桌面用 <code>wide</code>、手机用 <code>narrow</code> 各准备一套。字段取舍的完整原因见 [ADR-0037](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0037-install-metadata-manifest-members.md)。
 
 ## 只使用离线与更新，不启用平台安装提示

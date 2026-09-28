@@ -96,6 +96,16 @@ setPwaTheme("dark"); // 或 "light"；"system" 删除该键，回到跟随系统
 
 文案默认中文，语言在构建时固定，可选 `zh-CN`（默认）或 `en`，`messages` 可逐项覆盖：`documentTitle`、`loading`、`empty`、`headlineMigrating`、`headlineIncident`、`headlineUnconfirmedOutage`、`expiry`、`go`。`expiry` 必须恰好包含一次 `{expiresAt}`，`go` 必须恰好包含一次 `{host}`，否则构建失败；每项不超过 200 个字符，只按纯文本显示。清单里业务自己写的 `reason.message` 原样显示，平台不翻译。
 
+## 常见诊断码
+
+| 诊断码 | 阶段 | 含义与修复 |
+| --- | --- | --- |
+| `entry.locale-invalid` | 构建期 | `pwaEntryResilience` 的 `locale` 选项不是 `zh-CN` 或 `en` |
+| `entry.message-invalid` | 构建期 | `messages` 里 `expiry` 缺少或多次出现 `{expiresAt}`、`go` 缺少或多次出现 `{host}`，或某项超过 200 个字符 |
+| `entry.sequence-not-greater` | 运行时（`updateEntryManifest()`） | 交入的清单 `sequence` 不大于客户端已存记录，会被拒绝；同一序号发两份不同内容，客户端不会展示任何入口。序号必须严格递增 |
+
+其余构建期与清单字段校验码（例如清单形状、`origin`／`startPath`、有效期相关）见 `packages/entry-resilience/src/diagnostics.ts`；运行时的 <code>updateEntryManifest()</code>／<code>checkEntryRecovery()</code> 不抛异常，失败一律体现为 <code>diagnostics</code> 数组里的这些码。
+
 ## 下发前自查
 
 运行时的拒绝只体现为页面上的一个诊断码，没有自查就等于没有反馈。用运行时同一个校验器在后端或 CI 里先过一遍：
