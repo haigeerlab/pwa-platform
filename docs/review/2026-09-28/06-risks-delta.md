@@ -4,10 +4,11 @@
 
 > **主会话复核结论（优先于下文）**
 >
-> - **R4、R9、R15 的“部分完成”属实**，已逐条复现：`requiredReleaseChecks` 在 `packages/*/src` 中除导出外无调用方；`git merge-base --is-ancestor 237ec67 c077274` 为否，R9 修复不在 npm 0.2.1；`docs/guides/` 下仍有 10 份指南，`website/` 仍链接 `blob/main/docs/guides/update-prompt.md`。
+> - **R9、R15 的“部分完成”属实**，已逐条复现：`git merge-base --is-ancestor 237ec67 c077274` 为否，R9 修复不在 npm 0.2.1；`docs/guides/` 下仍有 10 份指南，`website/` 仍链接 `blob/main/docs/guides/update-prompt.md`。
 > - **N1 属实，已修复**：[#60](https://github.com/haigeerlab/pwa-platform/pull/60)（待合并）。新增单元测试在去掉修复后失败、恢复后通过；全量单元测试 2430 个、client-runtime 与示例应用 Chrome E2E 共 103 个通过。未发布版本不受影响。
+> - **R4 比下表所写的轻**：`requiredReleaseChecks` 确实没有调用方，但仓库的参考发布门禁 `examples-browser-e2e/release-verifier` 早已用 `verifyReleaseGateCoverage` 检查覆盖，不传 baseline 时报 `verify.baseline-missing` 并失败，上一轮 #13 的验收标准其实已经满足。真正的余项是门禁自带一份硬编码清单，与 `requiredReleaseChecks` 重复维护；[#62](https://github.com/haigeerlab/pwa-platform/pull/62) 已改为直接取用。直接调用 `verifyRelease` 时空报告为 `ok`，这是 API 注释写明的设计。
 > - **N4 降为文档问题**：拒绝以 `Service-Worker-Allowed` 放宽 scope 是 [spec/contracts-foundation.md:21](../../../spec/contracts-foundation.md) 与 [website/guide/configuration.md:143](../../../website/guide/configuration.md) 明文写下的有意取舍，不是回归；只有 `CHANGELOG.md:19` “浏览器本来就拒绝，只影响从未工作的配置”一句不准确（部署方自加该响应头时浏览器会接受）。
-> - **补充 N6（P3，注释过时）**：`packages/sw-runtime/src/worker/decide.ts:34`、`:71` 的注释仍说 `Authorization` 只对非导航 `public-data` 生效，而同文件 `:125` 已对 `navigation-public-dynamic` 导航生效（R1 修复）。
+> - **补充 N6（P3，注释过时）**：`packages/sw-runtime/src/worker/decide.ts:71` 的注释仍说 `authorization` 只对 `public-data` 规则生效，而同文件 `:125` 已对 `navigation-public-dynamic` 导航生效（R1 修复）。`:34` 描述的是只用于非导航请求的透传原因，是准确的。
 > - **补充 N7（P3，偶发失败）**：本轮 client-runtime Chrome E2E 首跑时 `browser-tests/served-from-cache.spec.ts:59` 失败 1 次，随后单独重跑 3 次、整套重跑 1 次均通过。
 > - N2、N3 仍为“待验证”，本轮未做浏览器探针。
 
