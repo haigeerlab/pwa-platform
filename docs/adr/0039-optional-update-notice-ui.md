@@ -19,3 +19,18 @@ ADR-0005 与 ADR-0013 把更新提示的展示留给应用。现有 Vue/React �
 ## 影响
 
 本 ADR 只扩展框架包的可选公开子路径，不修改既有入口和 worker 协议。原 `vue-react-adapters` 规格中的“无任何界面”约束继续适用于原有根入口；可选 UI 的验收归 [update-notice-ui](../../spec/update-notice-ui.md)。发布前须在真实浏览器验证布局、可访问性与多标签页；`0.1.0-beta.1` 不含此入口。
+
+## 增补：内置语言选择（2026-09-28，架构审查建议 #9）
+
+**背景**：平台离线页与入口恢复页都内置 `zh-CN`、`en` 两种文案并通过 `locale` 选择，默认更新提示却只有中文默认值，英文只能由每个宿主各自翻译整套 `messages`。公开示例已经为 Android 与 iPhone 真机验证维护了一份英文文案（`packages/examples-browser-e2e/apps/shared/update-notice-messages.ts`）。三处界面的多语言方式不一致，增加了接入成本。
+
+**决定**：
+
+- Vue、React 的 `PwaUpdateNotice` 各增加可选属性 `locale?: "zh-CN" | "en"`，默认 `"zh-CN"`。不传时行为与此前完全相同，向后兼容。
+- 内置英文文案采用公开示例已在真机上验证过的那一份，由框架包导出为唯一来源；示例改为引用包内文案，不再自带副本。
+- `messages` 仍是逐项覆盖，叠加在所选语言的内置文案之上：最终文案 = 所选 `locale` 的内置表，再用 `messages` 中出现的键替换。
+- 不做浏览器语言自动探测，也不接入框架 i18n：语言由宿主显式决定，与离线页、恢复页一致。需要其他语言时，继续用 `messages` 传入完整翻译。
+- 两个框架包导出相同的类型 `PwaUpdateNoticeLocale`，并由现有的跨包一致性测试守护两侧取值与文案完全一致。
+
+**影响**：只扩展 `./ui` 子路径的可选属性与导出，不改变根入口、事件或 worker 协议。验收写入 [update-notice-ui](../../spec/update-notice-ui.md) 规格。
+

@@ -3,6 +3,9 @@ import { usePwa } from "./index.js";
 
 export type PwaUpdateNoticePosition = "bottom-right" | "bottom-center" | "top-right" | "top-center";
 
+/** Built-in copy is available for these locales; anything else needs a full `messages` override. */
+export type PwaUpdateNoticeLocale = "zh-CN" | "en";
+
 export type PwaUpdateNoticeMessages = {
   readonly readyTitle: string;
   readonly readyBody: string;
@@ -42,11 +45,35 @@ const DEFAULT_MESSAGES: PwaUpdateNoticeMessages = {
   retry: "重试",
 };
 
+/** English copy, verified on real Android and iPhone devices via the public examples. */
+const EN_MESSAGES: PwaUpdateNoticeMessages = {
+  readyTitle: "A new version is available",
+  readyBody: "The new offline resources are ready. Update when it suits you.",
+  update: "Update",
+  later: "Later",
+  updatingTitle: "Updating",
+  updatingBody: "Switching offline resources. Please wait.",
+  reloadTitle: "Update complete",
+  reloadBody: "Reload this page when you're ready to use the latest version.",
+  reload: "Reload page",
+  errorTitle: "Update incomplete",
+  errorBody: "Check your connection and try again.",
+  retry: "Retry",
+};
+
+/** The single source of truth for built-in copy, keyed by locale (ADR-0039, "增补：内置语言选择"). Exported so the
+ * public examples can reference it instead of keeping their own copy. */
+export const PWA_UPDATE_NOTICE_MESSAGES: Readonly<Record<PwaUpdateNoticeLocale, PwaUpdateNoticeMessages>> = {
+  "zh-CN": DEFAULT_MESSAGES,
+  en: EN_MESSAGES,
+};
+
 const REMIND_AFTER_MS = 30 * 60_000;
 const STABLE_WAITING_MS = 100;
 
 const noticeProps = {
   position: { type: String as PropType<PwaUpdateNoticePosition>, default: "bottom-right" },
+  locale: { type: String as PropType<PwaUpdateNoticeLocale>, default: "zh-CN" },
   messages: { type: Object as PropType<Partial<PwaUpdateNoticeMessages>>, default: (): Partial<PwaUpdateNoticeMessages> => ({}) },
   colors: { type: Object as PropType<Partial<PwaUpdateNoticeColors>>, required: false },
   reloadPage: { type: Function as PropType<() => void>, required: false },
@@ -54,6 +81,8 @@ const noticeProps = {
 
 export type PwaUpdateNoticeProps = {
   readonly position?: PwaUpdateNoticePosition;
+  /** Selects the built-in message table `messages` is layered on top of. Defaults to `"zh-CN"`. */
+  readonly locale?: PwaUpdateNoticeLocale;
   readonly messages?: Partial<PwaUpdateNoticeMessages>;
   readonly colors?: Partial<PwaUpdateNoticeColors>;
   readonly reloadPage?: () => void;
@@ -149,7 +178,7 @@ export const PwaUpdateNotice: ReturnType<typeof defineComponent<PwaUpdateNoticeP
       const mode = phase.value === "ready" ? (waiting && stableWaiting.value && !dismissed.value ? "ready" : null) : phase.value;
       if (mode === null) return null;
 
-      const messages = { ...DEFAULT_MESSAGES, ...props.messages };
+      const messages = { ...PWA_UPDATE_NOTICE_MESSAGES[props.locale ?? "zh-CN"], ...props.messages };
       const title = messages[`${mode}Title`];
       const body = messages[`${mode}Body`];
       const actions: VNode[] = [];
