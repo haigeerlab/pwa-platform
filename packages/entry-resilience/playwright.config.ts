@@ -7,6 +7,8 @@ const config: PlaywrightTestConfig = defineConfig({
   workers: 1,
   reporter: "list",
   use: {
+    // On failure, keep a trace in test-results/ (CI uploads it) so a flaky run leaves evidence (review N7).
+    trace: "retain-on-failure",
     // The installed Google Chrome stable; tests never download browsers.
     channel: "chrome",
     headless: true,
