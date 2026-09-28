@@ -79,7 +79,13 @@ test.describe("return visit while an update check is stalled (R9, ADR-0043)", ()
   test("register() reports the existing active registration at once instead of waiting behind the stalled update", async ({
     page,
     fixtureServer,
+    browserName,
   }) => {
+    // Genuine engine difference (ADR-0043's probe table): Firefox does not queue register() behind a pending
+    // update() fetch on the same registration the way Chromium and WebKit do, so the precondition this test proves
+    // (browserRegister === "pending") never holds there. Product code is unaffected — the facade's own register()
+    // still reports the existing active registration at once, which is what R9 actually depends on.
+    test.skip(browserName === "firefox", "Firefox resolves register() immediately behind a pending update() fetch, unlike Chromium/WebKit (ADR-0043)");
     await installAndControl(page, fixtureServer);
     await page.reload();
     const release = fixtureServer.stall(WORKER_URL);

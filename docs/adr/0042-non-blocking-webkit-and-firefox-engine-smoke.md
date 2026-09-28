@@ -36,3 +36,9 @@ Playwright 驱动的 WebKit 与 Firefox 都是打过补丁的专用构建，系�
 ## 增补：CI 中的触发时机（2026-09-28，项目所有者决定）
 
 为减少每个 PR 的 CI 耗时，引擎冒烟 job 不再在 pull request 上运行，改为在推送到 `main`（即每次合并后）、每晚定时（UTC 18:17）和手动触发时运行。本地门禁中的 `pnpm test:browser:engines` 不变。
+
+## 增补：client-runtime 接入（2026-09-29）
+
+client-runtime 的浏览器套件（`packages/client-runtime/browser-tests/`，22 个用例）按 sw-runtime 的先例接入：新增 `playwright.engines.config.ts`（同形状，`webkit`/`firefox` 两个 project，`trace: "retain-on-failure"`）与 `test:browser:engines` 脚本；`served-from-cache.spec.ts` 中两处 `context.setOffline(true)` 改为 fixture 服务器的 `fixtureServer.goOffline()`，因为 `context.setOffline`/`context.route` 不会拦截 WebKit/Firefox 里 Service Worker 自身发出的请求。
+
+两个引擎上跑通 43 个、跳过 1 个：`registration.spec.ts` 里"回访时更新检查被挂起"一例（R9, ADR-0043）在 Firefox 上以 `test.skip` 跳过——这正是本 ADR 决定时已发现、并被 ADR-0043 的探测表记录在案的引擎差异：Firefox 的 Service Worker 任务队列不会让 `register()` 排在一个挂起的 `update()` 请求之后（Chromium 与 WebKit 都会），所以该用例的前置断言（`browserRegister` 处于 `"pending"`）在 Firefox 上不成立。产品代码未改动：facade 的 `register()` 立即返回已有活动注册的行为不受影响，R9 依赖的正是这一行为，与浏览器是否排队无关。Chrome 上同一改动全绿（22 个），`--repeat-each=10` 在三个引擎上重跑改动过的用例（`served-from-cache.spec.ts` 4 例 + 该 skip 用例）均无新增失败。
