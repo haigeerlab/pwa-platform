@@ -42,3 +42,13 @@
 | public-read-cache | `spec/public-read-cache.md`、`docs/adr/0035-explicit-public-read-runtime-cache.md`、`docs/guides/public-read-cache.md`、`tasks/public-read-cache/plan.md` | target | 定义 v1.1 公共读取缓存：PwaPolicy v3 显式开启、响应准入、配额与时效、激活/登出/恢复清理和 `served-from-cache` 页面信号；规格已于 2026-09-24 批准，ADR-0035 已接受并记录实现修订，接入与迁移指南已交付。模块质量门禁（T13）仍待执行，本行保持 `target`。 2026-09-24：已知限制"不做网络超时"由 network-timeout 模块解除（显式开启）。 |
 
 本基线有意将架构意图与实现证据分离。`target` 文档定义必需的文档形态，不代表对应功能已经实现。
+
+## 文档归属规则（2026-09-28）
+
+`website/`（VitePress 文档站）是**唯一**面向外部业务开发者的文档来源：接入步骤、字段参考、默认行为、已知限制和可复制的参考实现都应该写在这里。`docs/guides/` 是仓库内部维护材料：尚未公开发布的能力（例如工作区私有包）的接入说明、针对特定宿主项目的作业单／工作指令，以及只对平台维护者有意义的实现细节。
+
+新增或修改开发者可见的接入说明时：
+
+1. 先确认对应能力是否已作为公开 npm 包发布。已发布的能力，开发者内容一律写进或合并进 `website/`；未发布的能力才允许只留在 `docs/guides/` 并在文件顶部注明"内部文档"。
+2. 不要在 `website/` 之外新建面向外部开发者的第二份接入说明；如果 `docs/guides/` 下已有对应旧文件，将其内容迁移进 `website/` 后，把旧文件替换为指向文档站对应页面的指引，保留文件本身以免外部链接失效。
+3. `docs/architecture/`、`docs/adr/`、`docs/operations/`、`spec/` 与 `tasks/` 下的架构决策、发布运维和验证证据文档有意保留在仓库内，不需要迁移；`website/` 中链接到这些文档属于正常情况，应在文档变更时一并列出仍然指向仓库内容的链接及原因。

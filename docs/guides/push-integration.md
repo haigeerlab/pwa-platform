@@ -1,5 +1,7 @@
 # Push 接入说明
 
+> **内部文档。** `@pwa-platform/push` 目前仍是工作区私有包，尚未发布到 npm（见[可选能力与交付状态](../../website/guide/optional.md)），不面向外部业务开发者；本文件供仓库内部维护者和后续对外发布前的接入验证使用。发布后应参照本次约定把开发者可用的部分迁移到文档站。
+
 `@pwa-platform/push` 提供订阅、取消订阅与平台 Push 格式契约；平台不会发送请求、保存订阅或替应用发送 Push。推送是渐进增强：先做特性检测，基础体验不能依赖它。平台 worker 的格式与点击规则见 [ADR-0021](../adr/0021-push-handling-in-the-platform-worker.md)。
 
 ## 订阅与登出
