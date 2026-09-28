@@ -327,3 +327,7 @@ pnpm test:browser
 | shared-origin-topology | follow | 不涉及。 |
 | push-module | update | 验证记录、ADR-0021 补充节与接入说明的本地联调一节；本后续追加桌面 N-1 真实联网结果。 |
 | public-read-cache | follow | 不涉及。 |
+
+## 增补：联网套件在 CI 中的触发时机（2026-09-28，项目所有者决定）
+
+CI 中的联网套件 job 不再在 pull request 上运行，改为在推送到 `main`、每晚定时（UTC 18:17）和手动触发时运行；本地门禁中的 `pnpm test:browser:network` 不变，仍不阻塞。

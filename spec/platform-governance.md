@@ -228,6 +228,7 @@ pnpm typecheck
 ## 建议（不属于代码变更）
 
 - 如果要把 CI 设为合并前的必需检查，需要仓库管理员在 GitHub 的分支保护设置中开启。本模块只在文档中写明这项建议。
+- **2026-09-28 现状（项目所有者决定）**：`main` 的规则集 “main: PR and CI gate” 要求走 PR，并以 `Quality (Node 22)`、`Quality (Node 24)`、`Browser (Google Chrome stable, Node 24)` 为必需检查；**不再要求分支与 `main` 同步**（`strict_required_status_checks_policy: false`）。原先开启时，每合并一个 PR 都要把其余所有 PR 更新到最新 `main` 并整轮重跑 CI。取而代之的安全网是：CI 在每次推送到 `main` 时重新运行，检查合并后的实际结果；若失败，应立即修复或回滚。
 
 ## 修订：桌面端发布通道与本地门禁替代 CI（2026-09-22，已评审通过）
 
