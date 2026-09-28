@@ -3,7 +3,7 @@ export { expectCacheControl } from "./cache-control.js";
 export type { CacheControlExpectation, ResponseHeaders } from "./cache-control.js";
 export { diffCacheSnapshots, expectDeletedExactlyUnderPrefix } from "./cache-diff.js";
 export type { CacheCountChange, CacheDiff, CacheSnapshot } from "./cache-diff.js";
-export { createCaches, snapshotCaches } from "./caches.js";
+export { cacheNames, createCaches, snapshotCaches } from "./caches.js";
 export type { CacheSpec } from "./caches.js";
 export { contrastRatio } from "./contrast.js";
 export { fixturePath, MINIMAL_PAGE_MARKER } from "./fixtures.js";
