@@ -15,7 +15,9 @@
 
 Next、TanStack Start 和同源多 PWA 目前没有本表的发布目标。它们不随 React/Vue 项目附带上传。
 
-**2026-09-26 当前 Vue 隔离槽：** `drill` 为正常 v2 部署 `5422f6b7-53a5-4962-b0be-a5b02630c1da`，私有 R2 发布包 SHA-256 为 `c7816e1645af60b2779eb46ec91a33543e8c84c2ace65a3bfc7a5fd447e45af5`；部署索引读回验证 23 个公开文件，本地归档保留 10 个指纹资源。此前缺失的 `394afa95-77d7-430a-8966-2e3e29868115` 归档已按历史回执与线上字节恢复，并补齐私有 R2 制品与索引。Android Chrome 与 iPhone Safari 的 v1→v2、显式刷新及真实断网结果见[更新提示验证记录](../../tasks/update-notice-ui/verification.md)。以下历史部署计数和 ID 清单保留其原记录日期；进行下一次发布时应以当前 Pages 部署及 R2 索引为准。
+**2026-09-28 当前隔离槽（两站）：** 两站 `drill` 均为 npm `0.2.1`（`main` @ `f59b251`）构建的正常 v2 部署——React `dc17d0c2-c158-4f9c-bfcf-79999d449f7e`，私有 R2 发布包 SHA-256 `7a3bca366053c60248568a65a3ca4a318d71bb1f7405c7ab8e8f8796924c97dd`；Vue `d61ca91c-2b1f-4371-9ead-308c2f2813cd`，SHA-256 `8c5db002e9e8a2109c3dc72faa6f20a44d1659216c90fe059da12fa6054cab0d`。每次部署均经预检、上传后自动写索引并归档。当日经 v1、v2、recovery、修复后 v2 与一次 React R9 修复构建的完整序列见[真机验证记录](../../tasks/stable-release-qualification/verification.md)。本地运营状态当日从 R2 取回（`r2:cloudflare:bundle --mode=download`、`restore:cloudflare:site --mode=restore`、`archive:cloudflare:site`、`r2:cloudflare:index --mode=check`），`drill` 可照此在任一机器上恢复。`main` 未变。
+
+**2026-09-26（历史）Vue 隔离槽：** `drill` 为正常 v2 部署 `5422f6b7-53a5-4962-b0be-a5b02630c1da`，私有 R2 发布包 SHA-256 为 `c7816e1645af60b2779eb46ec91a33543e8c84c2ace65a3bfc7a5fd447e45af5`；部署索引读回验证 23 个公开文件，本地归档保留 10 个指纹资源。此前缺失的 `394afa95-77d7-430a-8966-2e3e29868115` 归档已按历史回执与线上字节恢复，并补齐私有 R2 制品与索引。Android Chrome 与 iPhone Safari 的 v1→v2、显式刷新及真实断网结果见[更新提示验证记录](../../tasks/update-notice-ui/verification.md)。以下历史部署计数和 ID 清单保留其原记录日期；进行下一次发布时应以当前 Pages 部署及 R2 索引为准。
 
 ## 免费额度与云端写入
 
