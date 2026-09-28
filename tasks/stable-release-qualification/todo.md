@@ -58,7 +58,7 @@
   - [x] Android React WebAPK 完成旧 v1 DOM 保持、真实 v2 waiting、确认接管与显式刷新重新取证
 - [ ] R3 补齐 Android／iPhone 入口恢复的单 Origin 故障分支
   - [x] Android React WebAPK 完成当前 Origin 超时、备用 Origin 可达、预缓存恢复页、用户确认跳转与撤回
-  - [ ] iPhone 完成同等单 Origin 故障分支；2026-09-27 Safari 本地 URL 覆盖未穿透 Service Worker，重建 Web Inspector 后远程求值通道仍无响应，本轮不计通过
+  - [ ] iPhone 完成同等单 Origin 故障分支（2026-09-28：基线、计划迁移、序号与形状、`migrating` 下不可达展示与收尾通过；`unconfirmed-outage`、离线不误报与过期待在不经 WARP 的网络上补测，见 verification.md）；2026-09-27 Safari 本地 URL 覆盖未穿透 Service Worker，重建 Web Inspector 后远程求值通道仍无响应，本轮不计通过
 - [x] R4 复核交叉边界并关闭仓库内可验证缺口
 - [x] R5 形成 Apple 发布通道 Spec／ADR 并经项目所有者评审
   - [x] 形成“0.1.x 暂不新增 Apple 通道、macOS／iPhone 分开记录”的 Spec／ADR-0041 草案
