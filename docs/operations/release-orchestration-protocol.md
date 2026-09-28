@@ -92,7 +92,7 @@ prepared -> verified -> deployed -> recorded
 3. 调用 `verifyRelease(candidatePlan, collectedFacts)`。独立源与共享源根应用的机器必需集是
    `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`；共享源子应用额外
    要求 `release-order`，并传入线上根计划。
-4. 调用 `verifyReleaseGateCoverage(report, requiredChecks)`。正常发布只有在 `report.ok` 与
+4. 调用 `verifyReleaseGateCoverage(report, requiredReleaseChecks(candidatePlan))`（`requiredReleaseChecks` 由 build-verifier 按上一步的规则从计划推导，不要手写清单；ADR-0025 增补）。正常发布只有在 `report.ok` 与
    覆盖结果的 `ok` 都为 `true` 时，机器门禁才通过；二者缺一不可。
 5. 将 CI、浏览器矩阵、原生安装、恢复演练和类生产环境核对的证据引用附入记录。它们是
    发布门禁的一部分，不由覆盖函数代替。

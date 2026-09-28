@@ -451,6 +451,11 @@ function identityInvariants(identity: PwaIdentity, at: readonly PropertyKey[] = 
   if (!identity.serviceWorkerUrl.startsWith(identity.scope)) {
     findings.push(diagnostic("identity.service-worker-outside-scope", [...at, "serviceWorkerUrl"]));
   }
+  // Browsers cap the scope at the script's directory; the platform never widens it with Service-Worker-Allowed.
+  const workerDirectory = identity.serviceWorkerUrl.slice(0, identity.serviceWorkerUrl.lastIndexOf("/") + 1);
+  if (!identity.scope.startsWith(workerDirectory)) {
+    findings.push(diagnostic("identity.scope-outside-worker-directory", [...at, "scope"]));
+  }
   if (!identity.manifestUrl.startsWith(identity.scope)) {
     findings.push(diagnostic("identity.manifest-outside-scope", [...at, "manifestUrl"]));
   }

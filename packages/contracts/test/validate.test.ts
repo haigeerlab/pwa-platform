@@ -54,6 +54,13 @@ describe("validateIdentity", () => {
     ["numeric appId", { appId: 42 }, ["schema.invalid-type", "/appId"]],
     ["mount path outside scope", { mountPath: "/shop" }, ["identity.scope-excludes-mount-path", "/scope"]],
     ["worker outside scope", { serviceWorkerUrl: "/sw.js" }, ["identity.service-worker-outside-scope", "/serviceWorkerUrl"]],
+    // Browsers cap a registration's scope at the script's directory unless Service-Worker-Allowed widens it, which
+    // the platform does not support: /app/ cannot be registered from /app/assets/sw.js.
+    [
+      "scope wider than the worker's directory",
+      { serviceWorkerUrl: "/app/assets/sw.js" },
+      ["identity.scope-outside-worker-directory", "/scope"],
+    ],
     [
       "manifest in a sibling path segment",
       { manifestUrl: "/application/manifest.webmanifest" },

@@ -883,6 +883,60 @@ describe("runtime cache (T7)", () => {
     const swrCall = factory.mock.calls.find(([options]) => options["strategy"] === "stale-while-revalidate");
     expect(swrCall?.[0]).not.toHaveProperty("networkTimeoutSeconds");
   });
+
+  describe("admission diagnostics (spec.public-read-cache, review risk R8)", () => {
+    /** A basic 200 JSON response as the runtime engine would hand it to `admit`, with a real-looking URL. */
+    function engineResponse(url: string, headers: Record<string, string>): Response {
+      const res = new Response("{}", { status: 200, headers: { "content-type": "application/json", ...headers } });
+      Object.defineProperty(res, "type", { value: "basic", configurable: true });
+      Object.defineProperty(res, "url", { value: url, configurable: true });
+      return res;
+    }
+
+    function dataAdmit(): (response: Response) => Promise<boolean> {
+      const h = createRuntimeHarness();
+      const handle = vi.fn(async () => ({ response: new Response("ok"), servedFromCache: null }));
+      const factory = vi.fn<(options: Record<string, unknown>) => { handle: typeof handle }>(() => ({ handle }));
+      attachPlatformWorker({ scope: h.scope, config: runtimeConfig, engine: h.engine, createRuntimeCacheEngine: factory as never });
+      fetchRuntimeEvent(h, request(`${ORIGIN}/app/api/catalog/1`));
+      const admit = factory.mock.calls[0]?.[0]["admit"];
+      if (typeof admit !== "function") throw new Error("No admit callback passed to the runtime engine");
+      return admit as (response: Response) => Promise<boolean>;
+    }
+
+    it("warns once per reason with the reason, the path without its query and the offending Vary value", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      try {
+        const admit = dataAdmit();
+        await expect(admit(engineResponse(`${ORIGIN}/app/api/catalog/1?token=secret`, { vary: "Origin" }))).resolves.toBe(false);
+        await expect(admit(engineResponse(`${ORIGIN}/app/api/catalog/2`, { vary: "Origin" }))).resolves.toBe(false);
+
+        expect(warn).toHaveBeenCalledTimes(1);
+        const message = String(warn.mock.calls[0]?.[0]);
+        expect(message).toContain("vary");
+        expect(message).toContain("Origin");
+        expect(message).toContain("/app/api/catalog/1");
+        expect(message).not.toContain("secret");
+
+        await expect(admit(engineResponse(`${ORIGIN}/app/api/catalog/3`, { "cache-control": "private" }))).resolves.toBe(false);
+        expect(warn).toHaveBeenCalledTimes(2);
+        expect(String(warn.mock.calls[1]?.[0])).toContain("cache-control");
+      } finally {
+        warn.mockRestore();
+      }
+    });
+
+    it("stays silent for an admitted response", async () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+      try {
+        const admit = dataAdmit();
+        await expect(admit(engineResponse(`${ORIGIN}/app/api/catalog/1`, { vary: "Accept-Encoding" }))).resolves.toBe(true);
+        expect(warn).not.toHaveBeenCalled();
+      } finally {
+        warn.mockRestore();
+      }
+    });
+  });
 });
 
 describe("runtime cache cleanup (T8)", () => {

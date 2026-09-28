@@ -30,3 +30,12 @@
 - `build-verifier` 会增加一个小型公开纯函数及相应测试；不会改变已有 `verifyRelease` 的可选输入语义。
 - 外部发布系统须按协议保存计划、时间、资产可用性和证据引用，并在每个部署槽位上串行执行。
 - 浏览器矩阵的 Android N/N-1、桌面 N-1 和原生安装未取得时仍阻塞 V1 发布；不得以本地 Chrome N 结果替代。
+
+## 增补：由计划推导机器必需检查集（2026-09-28，架构审查建议 #13）
+
+**背景**：[发布编排协议](../operations/release-orchestration-protocol.md)规定了机器必需检查集（独立源与共享源根应用 5 项，共享源子应用另加 `release-order`），但调用方仍要手写这份清单再交给 `verifyReleaseGateCoverage`。清单抄漏一项，覆盖判定就会对缺失的检查保持沉默；2026-09-27 架构审查把这一点记为风险 R4。
+
+**决定**：`@pwa-platform/build-verifier` 新增纯函数 `requiredReleaseChecks(plan)`，按计划的拓扑返回协议规定的必需检查名，顺序与 `VERIFICATION_CHECKS` 一致。它只读取计划，不访问网络，不执行任何检查，也不判断首次发布：缺少基线时 `identity-baseline` 仍在必需集中，报告里 `verify.baseline-missing` 的放行与否，仍按本 ADR 由发布系统显式人工决定。协议中的检查集以本函数为准，二者变更必须同步。
+
+**不变**：`verifyRelease` 的“输入缺省即不执行”语义、`verifyReleaseGateCoverage` 的签名与“覆盖和通过分开判定”原则都不改变。
+

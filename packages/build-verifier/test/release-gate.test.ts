@@ -1,7 +1,7 @@
 import type { PwaPlan } from "@pwa-platform/contracts";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
-import { verifyReleaseGateCoverage } from "../src/release-gate.js";
+import { requiredReleaseChecks, verifyReleaseGateCoverage } from "../src/release-gate.js";
 import { verifyRelease } from "../src/release.js";
 import { check, type PwaVerificationReport } from "../src/report.js";
 
@@ -70,3 +70,42 @@ describe("verifyReleaseGateCoverage", () => {
     });
   });
 });
+
+describe("requiredReleaseChecks (ADR-0025 addendum)", () => {
+  const sharedOrigin = (children: readonly { readonly appId: string }[]): PwaPlan =>
+    ({ ...plan, topology: { kind: "shared-origin", registry: { children } } }) as unknown as PwaPlan;
+
+  it("requires the protocol's five checks for a standalone origin, in VERIFICATION_CHECKS order", () => {
+    expect(requiredReleaseChecks(plan)).toEqual(["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers"]);
+  });
+
+  it("requires the same five for a shared-origin root", () => {
+    expect(requiredReleaseChecks(sharedOrigin([{ appId: "some-child" }]))).toEqual([
+      "artifacts",
+      "response-headers",
+      "identity-baseline",
+      "release-retention",
+      "html-headers",
+    ]);
+  });
+
+  it("adds release-order for a shared-origin child", () => {
+    expect(requiredReleaseChecks(sharedOrigin([{ appId: plan.identity.appId }]))).toEqual([
+      "artifacts",
+      "response-headers",
+      "identity-baseline",
+      "release-order",
+      "release-retention",
+      "html-headers",
+    ]);
+  });
+
+  it("makes a report that skipped the baseline fail coverage, so an omitted input can no longer pass silently", () => {
+    const supplied = verifyRelease({ plan, published: [] });
+    expect(verifyReleaseGateCoverage(supplied, requiredReleaseChecks(plan))).toEqual({
+      ok: false,
+      missing: ["response-headers", "identity-baseline", "release-retention", "html-headers"],
+    });
+  });
+});
+
