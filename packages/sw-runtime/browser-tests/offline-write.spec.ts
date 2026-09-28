@@ -117,10 +117,15 @@ test.describe("offline write queue", () => {
       message(page2, { type: "pwa:offline-write:flush", version: 1, requestId: "flush-shared-b", sessionBinding: binding }),
     ]);
 
-    expect(flushedFromPage).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-shared-a", status: "flushed", sent: 2, purged: 0 });
-    expect(flushedFromPage2).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-shared-b", status: "flushed", sent: 2, purged: 0 });
-    // Same underlying flush: both replies carry the identical send/retain/fail counters, not two independent passes.
-    expect({ ...(flushedFromPage as Record<string, unknown>), requestId: undefined }).toEqual({ ...(flushedFromPage2 as Record<string, unknown>), requestId: undefined });
+    expect(flushedFromPage).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-shared-a", status: "flushed", purged: 0 });
+    expect(flushedFromPage2).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-shared-b", status: "flushed", purged: 0 });
+    // The two requests race. One of them starts the pass that sends both writes. The other either joined that pass
+    // before it read its snapshot (R5) and carries the identical counters, or arrived after the read and got the
+    // trailing pass (N2), which re-read an already empty queue and sent nothing. Never two passes that both send.
+    const counters = (result: unknown): Record<string, unknown> => ({ ...(result as Record<string, unknown>), requestId: undefined });
+    const [lead, other] = [counters(flushedFromPage), counters(flushedFromPage2)].sort((a, b) => Number(b["sent"]) - Number(a["sent"]));
+    expect(lead).toMatchObject({ sent: 2, retained: 0, failed: 0 });
+    expect([lead, { ...lead, sent: 0 }]).toContainEqual(other);
 
     const orderRequests = fixtureServer.requests().filter(({ method, path }) => method === "POST" && path === "/app/api/orders");
     const idempotencyKeys = orderRequests.map((request) => request.headers["idempotency-key"]).sort();
@@ -157,15 +162,21 @@ test.describe("offline write queue", () => {
     release();
     const [flushed1, flushed2] = await Promise.all([firstFlush, secondFlush]);
 
-    // Flush 1 sends only what it read (order-trailing-1); it never saw order-trailing-2. The trailing pass its
-    // joiner triggered re-reads the store once flush 1 finishes and sends order-trailing-2 on its own.
-    expect(flushed1).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-trailing-1", status: "flushed", sent: 1, retained: 0, purged: 0 });
-    expect(flushed2).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-trailing-2", status: "flushed", sent: 1, retained: 0, purged: 0 });
+    // Flush 1 handles only what it read (order-trailing-1); it never saw order-trailing-2. `release()` resets the
+    // held connection, and engines differ from there: Chromium and Firefox transparently retry the unanswered POST on
+    // a fresh connection, so flush 1 reports it sent; WebKit does not, so flush 1 reports it retained. Either way the
+    // trailing pass its joiner triggered re-reads the store once flush 1 finishes and sends everything left,
+    // order-trailing-2 included.
+    expect(flushed1).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-trailing-1", status: "flushed", purged: 0 });
+    const first = flushed1 as { readonly sent: number; readonly retained: number };
+    expect(first.sent + first.retained).toBe(1);
+    expect(flushed2).toMatchObject({
+      type: "pwa:offline-write:result", requestId: "flush-trailing-2", status: "flushed", sent: 1 + first.retained, retained: 0, purged: 0,
+    });
 
     const orderRequests = fixtureServer.requests().filter(({ method, path }) => method === "POST" && path === "/app/api/orders");
-    // order-trailing-1 appears twice: the server recorded the initially held connection before `release()` reset
-    // it, and Chromium transparently retried the still-unanswered POST on a fresh connection, which is what flush
-    // 1 actually observed as its single successful send.
+    // order-trailing-1 appears twice in both cases: the held connection the server recorded before `release()`
+    // reset it, plus either the engine's own retry or the trailing pass's resend. order-trailing-2 is sent once.
     expect(orderRequests.map((request) => request.headers["idempotency-key"]).sort()).toEqual(["order-trailing-1", "order-trailing-1", "order-trailing-2"]);
     expect(await queuedEntries(page)).toBe(0);
   });
