@@ -104,6 +104,9 @@ function isPlatformShown(notification: NotificationSnapshot): boolean {
 }
 
 test.describe("push", () => {
+  // Pushes are delivered through a Chromium-only CDP session; other engines skip rather than weaken the assertions
+  // (ADR-0042).
+  test.skip(({ browserName }) => browserName !== "chromium", "push delivery uses a Chromium-only CDP session");
   test("a qualifying push is shown with the mapped title, body, tag and data", async ({ page, context, fixtureServer }) => {
     const origin = fixtureServer.origin;
     const scopeUrl = fixtureServer.url(SHELL_URL);
