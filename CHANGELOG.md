@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Built-in update notice locale:** Vue and React's `PwaUpdateNotice` accept an optional `locale?: "zh-CN" | "en"` (default `"zh-CN"`), matching the built-in Chinese and English tables the offline and entry recovery pages already offer. `messages` still overrides individual keys on top of the selected locale's built-in copy. Not passing `locale` keeps prior behavior unchanged.
 - **Release gate:** `@pwa-platform/build-verifier` exports `requiredReleaseChecks(plan)`, returning the release orchestration protocol's machine-required checks for the plan's topology, so callers pass it to `verifyReleaseGateCoverage` instead of hand-writing the list.
 - **Runtime cache diagnostics:** when a response is not admitted to the public-read runtime cache, the platform worker now reports the reason and path once per cache and reason with `console.warn`, so silent rejections (for example `Vary: Origin` added by `vite preview`) can be diagnosed.
 - **Identity scope check:** `@pwa-platform/contracts` rejects an identity whose `scope` is wider than the directory of its `serviceWorkerUrl` (`identity.scope-outside-worker-directory`). Browsers refuse such a registration; the build now fails instead.
