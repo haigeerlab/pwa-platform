@@ -28,6 +28,8 @@
 
 浏览器比较的是 worker 脚本字节；只改业务 API 数据或未预缓存文件，不一定产生新 worker。长时间停留在页面上可显式设置 <code>updateCheck</code>，或由用户调用 <code>checkForUpdate()</code>。提示仍以 <code>updateWaiting</code> 状态为准。
 
+控制台里对 <code>getRegistration()</code> 拿到的对象调用原生 <code>update()</code> 时，如果报 <code>InvalidStateError</code>，说明这个注册对象上已经没有任何 worker（installing、waiting、active 都为空），通常是它已被注销，例如登出清理之后，页面还拿着旧对象。这是浏览器按 Service Worker 规范拒绝，不是平台故障。检查更新请改用 <code>checkForUpdate()</code>：它每次重新查找当前注册，找不到时返回 <code>"unavailable"</code>，并与定时检查共用同一次请求；浏览器检查本身失败（例如 worker 脚本请求出错）时，它会把原始错误抛给调用方。
+
 ## 安装按钮没有出现
 
 先检查 HTTPS、manifest 的启动 URL 与图标、worker 注册及浏览器特性。<code>installEligible</code> 是渐进能力，不保证每次访问都会出现；不要把它作为应用正常使用的前提。

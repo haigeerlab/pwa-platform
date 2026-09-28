@@ -57,7 +57,7 @@ export const POLICY: PwaPolicy = {
 
 平台只会把同时满足以下条件的网络响应写入运行时缓存：
 
-- 同源 `GET`；公共数据请求不能带 `Authorization` 请求头。
+- 同源 `GET`，且不带 `Authorization` 请求头：带该头的公共数据请求直接透传到网络；带该头的动态页面导航按未开启运行时缓存时处理（走网络，失败时用离线回退），都不会读写运行时缓存。
 - 未重定向的 `200`、`basic` 响应；JSON 接口使用 `application/json` 或 `application/*+json`，动态页面使用 `text/html`。
 - `Cache-Control` 不含 `private` 或 `no-store`；`Vary` 为空，或只含 `Accept`、`Accept-Encoding`。
 - 响应正文不超过 `maxEntryBytes`。使用 SWR 时，还不能带 `no-cache`、`must-revalidate`、`max-age=0` 或 `s-maxage=0`。

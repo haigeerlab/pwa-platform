@@ -70,7 +70,9 @@ if (result.kind === "available") {
 }
 ```
 
-`status` 为 `normal` 且 `entries` 为空，表示一切正常、不展示任何入口——这应当是平时的默认下发内容，让客户端提前存好。只有 `normal` 状态下平台才会探测主入口，探测不通才以 `unconfirmed-outage` 展示；`migrating` 与 `incident` 不探测、直接展示。`origin` 必须是 HTTPS，`startPath` 以 `/` 开头且不含 `..` 段，`expiresAt` 必须是不带毫秒的 `YYYY-MM-DDTHH:mm:ssZ`。
+`status` 为 `normal` 且 `entries` 为空，表示一切正常、不展示任何入口——这应当是平时的默认下发内容，让客户端提前存好。只有 `normal` 状态下平台才会探测主入口，探测不通才以 `unconfirmed-outage` 展示；`migrating` 与 `incident` 不探测、直接展示。
+
+探测的具体做法：主入口请求挂载路径下一个不会被缓存的地址（`<mountPath>__pwa-entry-probe?<随机数>`），收到任何响应（包括 404）都算可达；备用入口以 `no-cors` 请求 `origin + startPath`，请求完成即算可达。每次请求最多等待 **5 秒**，超时按不可达处理，这个时长是固定的，不能配置。主入口不通后，平台会逐个探测全部备用入口（串行），所以最坏情况下一次检查要等 5 ×（1 + 入口数）秒，5 个入口约 30 秒；只展示确认可达的入口。`origin` 必须是 HTTPS，`startPath` 以 `/` 开头且不含 `..` 段，`expiresAt` 必须是不带毫秒的 `YYYY-MM-DDTHH:mm:ssZ`。
 
 ## 自定义样式（可选）
 

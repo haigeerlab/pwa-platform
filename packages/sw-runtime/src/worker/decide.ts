@@ -68,7 +68,11 @@ export type PwaRequestInput = {
   readonly navigation: boolean;
   /** `request.headers.has("range")`, whatever the header's value. Ignored for navigations (ADR-0023). */
   readonly range: boolean;
-  /** `request.headers.has("authorization")`, whatever the header's value. Only acted on for a `public-data` rule. */
+  /**
+   * `request.headers.has("authorization")`, whatever the header's value. Only acted on under a runtime-cache rule:
+   * a `public-data` request passes through, and a `navigation-public-dynamic` navigation navigates as it would without
+   * runtime caching.
+   */
   readonly authorization: boolean;
 };
 
