@@ -5,7 +5,7 @@
 ## 候选门禁
 
 1. 确认本地 npm 身份为组织有权发布的账号，组织方案允许公开包，2FA 可用于发布；不要把令牌或 `.npmrc` 写入仓库。
-2. 从干净副本执行 `pnpm install --frozen-lockfile`、`pnpm lint`、`pnpm build`、`pnpm typecheck`、`pnpm test`、`pnpm test:browser` 和 `pnpm audit --ignore-registry-errors`，记录环境、退出码与跳过项。浏览器测试需要本机回环端口。
+2. 从干净副本执行 `pnpm install --frozen-lockfile`、`pnpm lint`、`pnpm build`、`pnpm typecheck`、`pnpm test`、`pnpm test:browser`、`pnpm test:browser:engines`（不阻塞，ADR-0042）、`pnpm test:browser:network`（不阻塞，需联网）和 `pnpm audit --ignore-registry-errors`，记录环境、退出码与跳过项。浏览器测试需要本机回环端口。
 3. 执行 `pnpm check:publish`。逐包 `pnpm pack --pack-destination <临时目录>`，检查包内 `package.json`、README、LICENSE、所有 `exports` 路径与依赖版本；扫描敏感信息与多余文件。从独立项目安装全部 tarball，再导入公开入口。
 4. 确认本次目标版本（如 `@pwa-platform/*@0.1.0`）未在 registry 存在，审核最终 tarball 哈希和包列表。若任何包失败，停止整批发布并记录已发布项；同一版本不可覆盖，不用 `unpublish` 当回滚。
 5. 正式版发布使用 `pnpm publish --access public --tag latest`，按下列依赖顺序逐包执行并完成 2FA；不要直接从工作区运行 `npm publish`，因为 `workspace:*` 需要 pnpm 打包转换。发布源码必须是已审核的干净提交；若本次确有不提交 Git 的明确要求，才从与审核源码一致的临时副本使用 `--no-git-checks`，并记录两者差异核对。每步查询 registry，确认 tarball 版本与标签符合记录。

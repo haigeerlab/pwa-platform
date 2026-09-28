@@ -1,6 +1,6 @@
 import { spawnSync } from "node:child_process";
 
-const OPERATIONS = new Set(["build", "test", "test:browser", "typecheck"]);
+const OPERATIONS = new Set(["build", "test", "test:browser", "test:browser:engines", "test:browser:network", "typecheck"]);
 const [operation, ...rest] = process.argv.slice(2);
 
 if (!OPERATIONS.has(operation)) {
@@ -20,7 +20,7 @@ if (target) {
   // Browser suites run one package at a time. pnpm's default concurrency (4) starts several real Chromes at
   // once, and under that load the Push click scenario timed out 4 times in 20 (spec/browser-test-harness.md,
   // "增补：全仓浏览器测试逐包串行"); a gate result must not depend on how busy the machine is.
-  const concurrency = operation === "test:browser" ? ["--workspace-concurrency=1"] : [];
+  const concurrency = operation.startsWith("test:browser") ? ["--workspace-concurrency=1"] : [];
   // Every non-build operation runs to the end and fails once at the end: one flaky package must not hide the other
   // packages' results (spec/browser-test-harness.md, "增补：全仓非构建操作不在首个失败处中止"). The exit code still
   // reports any failure. `build` above keeps stopping at the first failure, since later packages need earlier dists.
