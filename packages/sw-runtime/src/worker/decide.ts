@@ -120,8 +120,9 @@ export function createRouter({ config, manifestUrls, origin }: PwaRouterOptions)
       if (navigation) {
         const fallbacks = navigationFallbacks(config, manifest, requested);
         // Only a navigation-public-dynamic rule turns a navigation into a runtime decision; a navigation under a
-        // public-data rule behaves exactly as it does without runtime caching.
-        if (runtimeRule !== undefined && runtimeRule.resourceClass === "navigation-public-dynamic") {
+        // public-data rule behaves exactly as it does without runtime caching. So does one carrying Authorization:
+        // the runtime cache never reads or writes such a request (spec.public-read-cache "请求判断").
+        if (runtimeRule !== undefined && runtimeRule.resourceClass === "navigation-public-dynamic" && !authorization) {
           return { kind: "runtime", cache: "pages", strategy: runtimeRule.strategy, resourceClass: runtimeRule.resourceClass, fallbacks };
         }
         return { kind: "navigate", fallbacks };

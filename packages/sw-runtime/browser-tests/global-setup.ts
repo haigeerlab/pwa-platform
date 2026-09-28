@@ -7,6 +7,7 @@ import {
   BUILD_ROOT,
   BUNDLE_ROOT,
   CONFIG_NO_FALLBACK,
+  CONFIG_DENY_CLASSES,
   CONFIG_EXCLUDED,
   CONFIG_RANGE,
   CONFIG_OFFLINE_WRITE,
@@ -22,6 +23,7 @@ import {
   EXPIRATION_RECORDS_TEST_URL,
   PACKAGE_ROOT,
   PLAN_NO_FALLBACK,
+  PLAN_DENY_CLASSES,
   PLAN_EXCLUDED,
   PLAN_RANGE,
   PLAN_OFFLINE_WRITE,
@@ -37,6 +39,7 @@ import {
   RECOVERY_CONFIG,
   RECOVERY_ENTRY,
   SITE_NO_FALLBACK_ROOT,
+  SITE_DENY_CLASSES_ROOT,
   SITE_RECOVERY_ROOT,
   SITE_EXCLUDED_ROOT,
   SITE_RANGE_ROOT,
@@ -66,6 +69,7 @@ export default async function globalSetup(): Promise<void> {
     SITE_V2_ROOT,
     SITE_RECOVERY_ROOT,
     SITE_NO_FALLBACK_ROOT,
+    SITE_DENY_CLASSES_ROOT,
     SITE_SUBPAGE_ROOT,
     SITE_EXCLUDED_ROOT,
     SITE_RANGE_ROOT,
@@ -94,6 +98,7 @@ export default async function globalSetup(): Promise<void> {
   await writeWorker(SITE_V1_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_V1), CONFIG_V1));
   await writeWorker(SITE_V2_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_V2), CONFIG_V2));
   await writeWorker(SITE_NO_FALLBACK_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_NO_FALLBACK), CONFIG_NO_FALLBACK));
+  await writeWorker(SITE_DENY_CLASSES_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_DENY_CLASSES), CONFIG_DENY_CLASSES));
   await writeWorker(SITE_SUBPAGE_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_SUBPAGE), CONFIG_SUBPAGE));
   await writeWorker(SITE_EXCLUDED_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_EXCLUDED), CONFIG_EXCLUDED));
   await writeWorker(SITE_RANGE_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_RANGE), CONFIG_RANGE));

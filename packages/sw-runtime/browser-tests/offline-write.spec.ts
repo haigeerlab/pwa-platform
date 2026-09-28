@@ -1,5 +1,5 @@
-import { expect, test, waitForControllerChange } from "@pwa-platform/browser-test-harness";
-import { CONFIG_OFFLINE_WRITE, FIXTURE_SITE } from "./fixture-site.js";
+import { expect, test, waitForController, waitForControllerChange } from "@pwa-platform/browser-test-harness";
+import { CONFIG_OFFLINE_WRITE, FIXTURE_SITE, SHELL_URL, WORKER_URL } from "./fixture-site.js";
 import { installAndControl, waitForActiveWorkerActivated } from "./page-probe.js";
 
 test.use({ fixtureSite: FIXTURE_SITE });
@@ -76,6 +76,44 @@ test.describe("offline write queue", () => {
     const flushed = await message(page, { type: "pwa:offline-write:flush", version: 1, requestId: "flush-success", sessionBinding: "opaque-session-success" });
     expect(flushed).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-success", status: "flushed", sent: 1, purged: 0 });
     expect(fixtureServer.requests().map(({ method, path }) => `${method} ${path}`)).toEqual(["POST /app/api/orders"]);
+    expect(await queuedEntries(page)).toBe(0);
+  });
+
+  test("single-flights concurrent flushes for one session binding across two pages (R5)", async ({ page, context, fixtureServer }) => {
+    fixtureServer.deploy("offline-write");
+    await installAndControl(page, fixtureServer);
+
+    // A second page in the same scope, already controlled by the same active worker.
+    const page2 = await context.newPage();
+    await page2.goto(fixtureServer.url(SHELL_URL));
+    await waitForController(page2, WORKER_URL);
+
+    const binding = "opaque-session-shared";
+    await message(page, {
+      type: "pwa:offline-write:enqueue", version: 1, requestId: "enqueue-shared-1",
+      intent: { targetId: "submit-order", path: "/app/api/orders", body: { quantity: 1 }, idempotencyKey: "order-shared-1", sessionBinding: binding },
+    });
+    await message(page, {
+      type: "pwa:offline-write:enqueue", version: 1, requestId: "enqueue-shared-2",
+      intent: { targetId: "submit-order", path: "/app/api/orders", body: { quantity: 2 }, idempotencyKey: "order-shared-2", sessionBinding: binding },
+    });
+    expect(await queuedEntries(page)).toBe(2);
+
+    fixtureServer.clearRequests();
+    // Both tabs ask the same worker to flush the same binding at once: only one pass may reach the fixture server.
+    const [flushedFromPage, flushedFromPage2] = await Promise.all([
+      message(page, { type: "pwa:offline-write:flush", version: 1, requestId: "flush-shared-a", sessionBinding: binding }),
+      message(page2, { type: "pwa:offline-write:flush", version: 1, requestId: "flush-shared-b", sessionBinding: binding }),
+    ]);
+
+    expect(flushedFromPage).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-shared-a", status: "flushed", sent: 2, purged: 0 });
+    expect(flushedFromPage2).toMatchObject({ type: "pwa:offline-write:result", requestId: "flush-shared-b", status: "flushed", sent: 2, purged: 0 });
+    // Same underlying flush: both replies carry the identical send/retain/fail counters, not two independent passes.
+    expect({ ...(flushedFromPage as Record<string, unknown>), requestId: undefined }).toEqual({ ...(flushedFromPage2 as Record<string, unknown>), requestId: undefined });
+
+    const orderRequests = fixtureServer.requests().filter(({ method, path }) => method === "POST" && path === "/app/api/orders");
+    const idempotencyKeys = orderRequests.map((request) => request.headers["idempotency-key"]).sort();
+    expect(idempotencyKeys).toEqual(["order-shared-1", "order-shared-2"]);
     expect(await queuedEntries(page)).toBe(0);
   });
 

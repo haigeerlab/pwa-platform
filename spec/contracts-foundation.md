@@ -18,6 +18,7 @@
 
 - 所有 URL 路径均为以 `/` 开头的同源绝对路径。
 - `scope` 必须以 `/` 结尾（浏览器按字符串前缀匹配 scope，`/app` 会同时覆盖 `/apple`），且必须包含 `mountPath`；除非未来引入专用迁移模式，`serviceWorkerUrl` 和 `manifestUrl` 必须位于 scope 内。
+- `scope` 不得超出 `serviceWorkerUrl` 所在目录（浏览器默认的最大 scope）。平台不支持以 `Service-Worker-Allowed` 响应头放宽这一上限；违反时以 `identity.scope-outside-worker-directory` 拒绝，而不是等浏览器在注册时拒绝（2026-09-28 增补，审查风险 R3）。与上一条合起来，`scope` 恰好等于 worker 脚本所在目录。
 - 身份由平台配置提供，`PwaPolicy` 永远不能覆盖它。
 - 编译器通过机器可读诊断拒绝相互冲突的路径、scope 和 origin 值。
 

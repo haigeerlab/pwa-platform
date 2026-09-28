@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { admitRuntimeResponse, type PwaRuntimeAdmitOptions } from "../../src/worker/admit.js";
+import { admitRuntimeResponse, runtimeAdmissionRejection, type PwaRuntimeAdmitOptions } from "../../src/worker/admit.js";
 
 const DATA: PwaRuntimeAdmitOptions = { resourceClass: "public-data", strategy: "network-first", maxEntryBytes: 1024 };
 const PAGE: PwaRuntimeAdmitOptions = { resourceClass: "navigation-public-dynamic", strategy: "network-first", maxEntryBytes: 1024 };
@@ -282,5 +282,23 @@ describe("the original response stays readable", () => {
     const res = response(JSON.stringify({ ok: true }), { headers: jsonHeaders({ "cache-control": "no-store" }) });
     await admitRuntimeResponse(res, DATA);
     await expect(res.text()).resolves.toBe(JSON.stringify({ ok: true }));
+  });
+});
+
+describe("rejection reasons (review risk R8)", () => {
+  it.each([
+    ["response-type", response("{}", { headers: jsonHeaders(), type: "opaque" })],
+    ["status", response("{}", { status: 404, headers: jsonHeaders() })],
+    ["redirected", response("{}", { headers: jsonHeaders(), redirected: true })],
+    ["content-type", response("{}", { headers: { "content-type": "text/plain" } })],
+    ["cache-control", response("{}", { headers: jsonHeaders({ "cache-control": "private" }) })],
+    ["vary", response("{}", { headers: jsonHeaders({ vary: "Origin" }) })],
+    ["size", response("x".repeat(2048), { headers: jsonHeaders() })],
+  ] as const)("names %s", async (reason, res) => {
+    await expect(runtimeAdmissionRejection(res, DATA)).resolves.toBe(reason);
+  });
+
+  it("names nothing for an admitted response", async () => {
+    await expect(runtimeAdmissionRejection(response("{}", { headers: jsonHeaders() }), DATA)).resolves.toBeUndefined();
   });
 });

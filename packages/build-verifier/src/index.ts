@@ -11,7 +11,7 @@ export { verifyHtmlHeaders } from "./html-headers.js";
 export { isSharedOriginChild, verifyReleaseOrder } from "./release-order.js";
 export { verifyReleaseRetention } from "./release-retention.js";
 export type { PwaReleaseRetentionInput, PwaReleaseRetentionSnapshot } from "./release-retention.js";
-export { verifyReleaseGateCoverage } from "./release-gate.js";
+export { requiredReleaseChecks, verifyReleaseGateCoverage } from "./release-gate.js";
 export type { PwaReleaseGateCoverage } from "./release-gate.js";
 export { verifyRelease } from "./release.js";
 export type { PwaVerifyReleaseInput } from "./release.js";
