@@ -7,7 +7,7 @@
   - [x] Android 16 + Chrome 153 单机 Vue／React 安装、独立窗口和基础运行
   - [ ] Android Firefox 156 已完成浏览器页、Service Worker、离线回退和自动恢复，安装入口可见但最终固定未确认；小米浏览器 20.16 已完成添加桌面、独立窗口、断网冷启动、离线回退和自动恢复；夸克 10.16 已完成补充离线冒烟但未发现安装入口
   - [x] iPhone 16 Pro + iOS 27 Vue／React 主屏幕安装、独立窗口和基础运行
-  - [ ] 取得第二台 Android，并按 Google Play 两机轮换完成 N/N-1（2026-09-28：第二台已取得，两机 Chrome 153 全部场景通过；两台同为 N，N-1 待下一稳定版轮换，见 verification.md）
+  - [ ] 取得第二台 Android，并按 Google Play 两机轮换完成 N/N-1（2026-09-28：第二台已取得，两机 Chrome 153 全部场景通过；两台同为 N，N-1 待下一稳定版轮换，见 verification.md；2026-09-29 项目所有者决定：保留一台 Android 关闭 Chrome 自动更新，待下一稳定版发布后它即为 N-1，再按既有真机清单补测）
   - [x] 接受 ADR-0041：`0.1.x` 暂不新增 Apple 发布通道，iPhone 继续标为渐进兼容
 - [x] T3 完成浏览器页和安装窗口的真实 v1→v2、稍后再提醒、双标签与离线更新验证
   - [x] 桌面 Chrome React 真实 30 分钟重提醒、双标签、确认接管和显式刷新
@@ -56,7 +56,7 @@
   - [x] iPhone Vue／React Safari 完成真实 v1→v2 双标签提示、单点接管与逐标签显式刷新
   - [x] Mac Safari 18.6 Vue／React 安装窗口完成真实 v1→v2 双窗口提示、单点接管与逐窗口显式刷新
   - [x] Android React WebAPK 完成旧 v1 DOM 保持、真实 v2 waiting、确认接管与显式刷新重新取证
-- [ ] R3 补齐 Android／iPhone 入口恢复的单 Origin 故障分支
+- [ ] R3 补齐 Android／iPhone 入口恢复的单 Origin 故障分支（iPhone 余下第 4b、5、6 步的操作单见 [iphone-entry-recovery-remaining-drill.md](iphone-entry-recovery-remaining-drill.md)）
   - [x] Android React WebAPK 完成当前 Origin 超时、备用 Origin 可达、预缓存恢复页、用户确认跳转与撤回
   - [ ] iPhone 完成同等单 Origin 故障分支（2026-09-28：基线、计划迁移、序号与形状、`migrating` 下不可达展示与收尾通过；`unconfirmed-outage`、离线不误报与过期待在不经 WARP 的网络上补测，见 verification.md）；2026-09-27 Safari 本地 URL 覆盖未穿透 Service Worker，重建 Web Inspector 后远程求值通道仍无响应，本轮不计通过
 - [x] R4 复核交叉边界并关闭仓库内可验证缺口
