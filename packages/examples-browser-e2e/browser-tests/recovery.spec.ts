@@ -125,26 +125,18 @@ for (const example of EXAMPLES) {
       await expect.poll(async () => (await cacheNames(page)).includes(PRECACHE)).toBe(false);
     });
 
-    // Review risk R14, fault injection. `deleteOfflineWriteDatabase` (recovery-worker/index.ts) is written to
-    // reject immediately if `indexedDB.deleteDatabase` reports "blocked" — i.e. if some open connection to the
-    // offline-write database never closes — specifically so recovery does not hand control to a worker while
-    // sensitive queued-write data might still be sitting there undeleted. This test creates that exact condition
-    // for real: a page-held connection to the same database name the recovery worker always computes from identity
-    // (packages/sw-runtime/src/build/config.ts — it is derived unconditionally, even though this example never
-    // enables offline-write), deliberately left open with no `onversionchange` handler that closes it.
+    // Review risk R14, fault injection. A page-held connection to the same database name the recovery worker always
+    // computes from identity (packages/sw-runtime/src/build/config.ts — derived unconditionally, even though this
+    // example never enables offline-write), deliberately left open with no `onversionchange` handler that closes it.
     //
-    // What was NOT achievable from a genuine, unmodified browser API: a *permanent* block. `indexedDB
-    // .deleteDatabase` does fire "blocked" against the held connection (confirmed separately by wrapping
-    // `indexedDB.deleteDatabase` from the page before triggering the deploy), but this Chrome build force-resolves
-    // the block on its own within a few seconds even though the connection is never closed — so
-    // `deleteOfflineWriteDatabase`'s onblocked-rejects-immediately branch was never actually exercised here, and
-    // recovery still completes. Two other fault-injection routes were tried and ruled out rather than faked:
-    // Playwright's `context.route()` does not intercept the recovery worker's own script request (confirmed: the
-    // route handler recorded zero hits although the worker script visibly re-fetched, installed and activated), so
-    // the served bytes cannot be shimmed to make `caches.delete` throw; and there is no standards-based way to make
-    // `caches.delete` fail on a cache the worker itself owns. Making either failure durable would require a
-    // test-only build variant of the recovery worker (out of scope: packages/*/src is not touched here).
-    test("a page holding an open connection to the offline-write database does not block recovery in this Chrome build", async ({
+    // Measured in Chrome (2026-09-28): `indexedDB.deleteDatabase` fires "blocked" and the browser does not release
+    // it on its own while the connection stays open. `deleteOfflineWriteDatabase` (recovery-worker/index.ts) waits a
+    // bounded 3 s past "blocked" for the deletion to finish — the platform's own store closes each connection when
+    // its transaction ends, so a legitimate block clears in milliseconds — and then fails closed. Recovery therefore
+    // still activates a few seconds later, every cache of this app is still deleted (the #15 rule: one failed
+    // deletion does not stop the others), and only the database stays behind. The sw-runtime suite covers the
+    // no-claim and the closes-later outcomes ("recovery with a blocked deletion (R14 residue)").
+    test("a page holding the offline-write database open delays recovery by the bounded wait but every cache is still deleted", async ({
       page,
       fixtureServer,
     }) => {
