@@ -1,5 +1,6 @@
 import type { BrowserContext, Page } from "@playwright/test";
 import {
+  cacheNames,
   createCaches,
   expect,
   requestFromPage,
@@ -208,7 +209,8 @@ test.describe("recovery with a deletion failure (#15)", () => {
   }) => {
     const uncontrolled = await recoverWithFault(page, context, fixtureServer, "recovery-fault-database");
 
-    await expect.poll(async () => [...(await snapshotCaches(page)).keys()]).toEqual(["images-v1"]);
+    // Names only while recovery is still deleting: a snapshot opens caches and can re-create a deleted one.
+    await expect.poll(async () => cacheNames(page)).toEqual(["images-v1"]);
     expect(await databaseExists(page)).toBe(true);
     expect(await queuedEntries(page)).toBe(1);
     await expectServedFromNetwork(page);

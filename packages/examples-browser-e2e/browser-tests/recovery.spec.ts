@@ -3,6 +3,7 @@
 // Every cache name is computed with the contracts helpers rather than written out: the drill says so, and a
 // hand-written name would silently stop matching the moment the namespace rules change.
 import {
+  cacheNames,
   createCaches,
   expect,
   expectDeletedExactlyUnderPrefix,
@@ -120,7 +121,8 @@ for (const example of EXAMPLES) {
       expect(after.active).toBe(fixtureServer.url(WORKER_URL));
 
       // Whatever the page saw at the instant of takeover, the cleanup must still finish afterwards.
-      await expect.poll(async () => (await snapshotCaches(page)).has(PRECACHE)).toBe(false);
+      // Names only while recovery is still deleting: a snapshot opens caches and can re-create a deleted one.
+      await expect.poll(async () => (await cacheNames(page)).includes(PRECACHE)).toBe(false);
     });
 
     // Review risk R14, fault injection. `deleteOfflineWriteDatabase` (recovery-worker/index.ts) is written to

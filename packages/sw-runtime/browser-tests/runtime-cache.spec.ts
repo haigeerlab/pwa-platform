@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 import {
+  cacheNames,
   createCaches,
   expect,
   snapshotCaches,
@@ -292,7 +293,8 @@ test.describe("quota error clears every runtime cache (review risk R12)", () => 
       // Stale-while-revalidate miss: the network answer still reaches the page even though its cache write fails.
       expect(await fetchJson(page, fixtureServer.url(RUNTIME_REVIEWS_LIST_URL))).toMatchObject({ ok: true, status: 200 });
       await expect
-        .poll(async () => [...(await snapshotCaches(page)).keys()].filter((name) => name.includes("runtime-")), {
+        // Names only while the worker is still deleting: a snapshot opens caches and can re-create a deleted one.
+        .poll(async () => (await cacheNames(page)).filter((name) => name.includes("runtime-")), {
           message: "every runtime cache must be cleared after the quota error",
           timeout: 5_000,
         })

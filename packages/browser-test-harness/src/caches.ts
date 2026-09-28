@@ -33,6 +33,15 @@ export async function snapshotCaches(page: Page): Promise<CacheSnapshot> {
   return new Map(entries);
 }
 
+/**
+ * The cache names of the page's origin, read with `caches.keys()` alone. Unlike `snapshotCaches`, it never opens a
+ * cache, so it is safe to poll while the worker under test is still deleting caches: `caches.open()` re-creates a
+ * cache that was deleted between `caches.has()` and the open, which would leave an empty cache behind forever.
+ */
+export async function cacheNames(page: Page): Promise<string[]> {
+  return page.evaluate(() => caches.keys());
+}
+
 /** Creates caches in the page's origin, each holding the requested number of placeholder entries. */
 export async function createCaches(page: Page, specs: readonly CacheSpec[]): Promise<void> {
   const normalized = specs.map(({ name, entries = 1 }) => {
