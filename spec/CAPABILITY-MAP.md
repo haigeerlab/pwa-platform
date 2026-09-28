@@ -40,7 +40,7 @@
 | stable-release-qualification | 对九个现有公开包和入口恢复包做跨浏览器安装、更新、离线、入口恢复与 npm 分发验收；真实记录限制，修复后复测，再决定正式版本发布。 | package-distribution, browser-release-evidence, update-notice-ui, pwa-entry-resilience |
 | production-readiness-documentation | 基于正式包、源码、自动化与真机证据审计生产就绪度；在文档站公开多端测试矩阵、可追溯的能力对比，补齐十个公开包 README，并按功能目标重组接入说明。 | stable-release-qualification, capability-comparison |
 
-Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout → stable-release-qualification → production-readiness-documentation
+Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation
 
 ---
 
@@ -117,3 +117,12 @@ Build order: contracts-foundation → policy-compiler, platform-governance, brow
 
 评审人：项目所有者
 日期：2026-09-27
+
+### 2026-09-28 修订：Build order 补入 `capability-comparison`（已评审通过）
+
+- [x] 问题：`capability-comparison` 于 2026-09-26（`bdbc816`）加入模块表，Build order 未同步，模块表 27 个模块、Build order 26 个；spec-guard 0.21.0 的严格解析据此判定能力图无效（`Build order 必须恰好包含每个模块一次`）
+- [x] 位置：放入 `network-timeout` 同组，位于其依赖 `package-distribution`、`update-notice-ui` 之后，并先于依赖它的 `production-readiness-documentation`
+- [x] 范围：只改 Build order，不改模块表、职责或依赖
+
+评审人：项目所有者
+日期：2026-09-28
