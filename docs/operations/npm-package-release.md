@@ -10,6 +10,7 @@
 4. 确认本次目标版本（如 `@pwa-platform/*@0.1.0`）未在 registry 存在，审核最终 tarball 哈希和包列表。若任何包失败，停止整批发布并记录已发布项；同一版本不可覆盖，不用 `unpublish` 当回滚。
 5. 正式版发布使用 `pnpm publish --access public --tag latest`，按下列依赖顺序逐包执行并完成 2FA；不要直接从工作区运行 `npm publish`，因为 `workspace:*` 需要 pnpm 打包转换。发布源码必须是已审核的干净提交；若本次确有不提交 Git 的明确要求，才从与审核源码一致的临时副本使用 `--no-git-checks`，并记录两者差异核对。每步查询 registry，确认 tarball 版本与标签符合记录。
 6. **逐包等待可下载再发下一包**（2026-09-28 补充，见 [0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)）：registry 登记是异步的，0.2.0 中 `sw-runtime` 报告成功后约 5 分钟才可下载，而依赖它的包已经发布并把 `latest` 指向新版本，窗口内安装失败。每个包 `publish` 后，先确认 `https://registry.npmjs.org/@pwa-platform/<包>/-/<包>-<版本>.tgz` 返回 200，再发布依赖它的下一个包。发布循环开始前还要检查克隆中的版本号等于目标版本，否则不开始。
+7. **暂存发布需要逐包批准**（2026-09-28 补充，见 [0.2.1 发布记录](../../tasks/package-distribution/release-0.2.1.md)）：npm 可能把 `publish` 先作为暂存版本，发布者在 npm 上认证批准后才公开；`Published package` 的输出不代表已公开，暂存期间 tarball 为 404。**按上面的依赖顺序批准**，公开顺序由批准顺序决定。已暂存的版本不能再次 `publish`（409），只能批准；不要为提速中断后重发。
 
 ## 顺序
 

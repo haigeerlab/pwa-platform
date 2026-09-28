@@ -36,7 +36,7 @@
 
 审查提出的 19 条建议和 15 项风险已按三批处理，共 16 个 PR（[#27](https://github.com/haigeerlab/pwa-platform/pull/27)–[#42](https://github.com/haigeerlab/pwa-platform/pull/42)），全部合入 `main`；合并后 `main` 上的 CI 全部通过。这些改动已于 2026-09-28 随 npm `0.2.0` 发布（[发布记录](../../../tasks/package-distribution/release-0.2.0.md)）。
 
-发布后又处理了三项后续：[#48](https://github.com/haigeerlab/pwa-platform/pull/48) 补上 #16 在真实 Chrome 中耗尽配额的用例；[#49](https://github.com/haigeerlab/pwa-platform/pull/49) 为 #15 做了故障注入测试构建并修复恢复 worker（**改了 sw-runtime 产品代码，尚未发布**，记在 CHANGELOG 的 Unreleased 下）；[#50](https://github.com/haigeerlab/pwa-platform/pull/50) 评估 #18 后不采用。
+发布后又处理了三项后续：[#48](https://github.com/haigeerlab/pwa-platform/pull/48) 补上 #16 在真实 Chrome 中耗尽配额的用例；[#49](https://github.com/haigeerlab/pwa-platform/pull/49) 为 #15 做了故障注入测试构建并修复恢复 worker（改了 sw-runtime 产品代码，已随 npm `0.2.1` 发布，见[发布记录](../../../tasks/package-distribution/release-0.2.1.md)）；[#50](https://github.com/haigeerlab/pwa-platform/pull/50) 评估 #18 后不采用。
 
 | | 数量 | 说明 |
 |---|---|---|
