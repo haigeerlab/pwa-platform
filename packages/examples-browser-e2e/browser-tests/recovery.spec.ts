@@ -77,6 +77,15 @@ for (const example of EXAMPLES) {
   test.describe(`${example} example · recovery`, () => {
     test.use({ fixtureSite: fixtureSite(example) });
 
+    // Engine finding (ADR-0042, 2026-09-29): under Playwright WebKit, the React example's service worker never
+    // reaches "activated" — installAndControl's poll hangs until the test's own 30s timeout, reproduced 3/3 in
+    // isolation. The Vue example (same fixture server, same worker build pipeline) and Firefox are both unaffected,
+    // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
+    // reported as a finding rather than changed in product code.
+    if (example === "react") {
+      test.skip(({ browserName }) => browserName === "webkit", "React example's service worker never reaches \"activated\" under Playwright WebKit (ADR-0042 finding, 2026-09-29)");
+    }
+
     test("the recovery worker takes over and deletes exactly this app's caches", async ({ page, fixtureServer }) => {
       const before = await prepareCaches(page, fixtureServer, example);
       await deployRecovery(page, fixtureServer);
@@ -165,7 +174,7 @@ for (const example of EXAMPLES) {
       expectDeletedExactlyUnderPrefix(before, after, APP_PREFIX);
     });
 
-    test("the recovery worker serves nothing, online or offline", async ({ page, context, fixtureServer }) => {
+    test("the recovery worker serves nothing, online or offline", async ({ page, fixtureServer }) => {
       await prepareCaches(page, fixtureServer, example);
 
       // The request has to be one the platform worker would answer, or "not answered by a worker" proves nothing
@@ -195,18 +204,19 @@ for (const example of EXAMPLES) {
       // Offline, a resource that was precached must fail rather than come back from a cache — the drill's wording.
       // On its own this cannot tell "no interception" from "intercepted, but the cache is gone"; that is why the
       // check above exists, and why the drill also leans on sw-runtime's unit test that no fetch listener exists.
-      await context.setOffline(true);
+      // Cut at the fixture server, not context.setOffline: this reaches the service worker's own fetch in every
+      // engine (spec/browser-test-harness.md "增补：服务器端断网与网络故障").
+      fixtureServer.goOffline();
       try {
         const offline = await requestFromPage(page, fixtureServer.url(precached));
         expect(offline.outcome).toBe("network-error");
       } finally {
-        await context.setOffline(false);
+        fixtureServer.goOnline();
       }
     });
 
     test("deploying the fixed worker refills the precache and restores offline start", async ({
       page,
-      context,
       fixtureServer,
     }) => {
       await prepareCaches(page, fixtureServer, example);
@@ -227,13 +237,13 @@ for (const example of EXAMPLES) {
       });
       await expect.poll(() => cacheEntryCount(page, PRECACHE)).toBeGreaterThan(0);
 
-      await context.setOffline(true);
+      fixtureServer.goOffline();
       try {
         await page.reload();
         await expect(page.locator("#shell")).toBeVisible();
         await expect(page.locator("#version")).toHaveText("v1");
       } finally {
-        await context.setOffline(false);
+        fixtureServer.goOnline();
       }
     });
   });

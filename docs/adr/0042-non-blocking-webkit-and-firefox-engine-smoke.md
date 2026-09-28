@@ -36,3 +36,9 @@ Playwright 驱动的 WebKit 与 Firefox 都是打过补丁的专用构建，系�
 ## 增补：CI 中的触发时机（2026-09-28，项目所有者决定）
 
 为减少每个 PR 的 CI 耗时，引擎冒烟 job 不再在 pull request 上运行，改为在推送到 `main`（即每次合并后）、每晚定时（UTC 18:17）和手动触发时运行。本地门禁中的 `pnpm test:browser:engines` 不变。
+
+## 增补：examples-browser-e2e 接入（2026-09-29）
+
+`packages/examples-browser-e2e` 的默认浏览器套件（`browser-tests/`，两个示例各约 31 个用例）接入引擎冒烟，新增 `playwright.engines.config.ts` 与同名 `test:browser:engines` 脚本，网络故障同样改由 fixture 服务器（`goOffline`/`goOnline`/`stall`/`reset`）制造。`install.spec.ts` 依赖真实 `beforeinstallprompt` 与 CDP 安装性诊断的用例按规格用 `test.skip` 跳过非 Chromium 项目。
+
+试跑发现一处新的引擎差异：React 示例的 Service Worker 在 Playwright WebKit 下不可靠地到达 "activated"（或 `navigator.serviceWorker.getRegistration()` 挂起），可稳定复现（同一用例连续 3 次失败 3 次）；Vue 示例（相同 fixture 服务器、相同 worker 构建产物）与 Firefox 均不受影响。未改动 `packages/*/src` 下的产品代码，受影响的用例（`handover.spec.ts`、`offline.spec.ts`、`recovery.spec.ts`、`update.spec.ts` 的 react 示例整组，以及 `install.spec.ts`、`smoke.spec.ts` 各一个用例）按引擎+示例精确跳过并注明原因，留待后续独立排查（推测与 WebKit 的 module Service Worker 生命周期或 React 示例的注册时机有关，尚未定位根因）。

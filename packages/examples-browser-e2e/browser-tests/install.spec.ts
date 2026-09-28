@@ -92,73 +92,83 @@ for (const example of EXAMPLES) {
       }
     });
 
-    installableTest("the browser offers installation on its own (real beforeinstallprompt)", async ({ page, fixtureServer, browserName }, testInfo) => {
-      // The only case that counts as install evidence. Chrome decides eligibility itself, including engagement
-      // heuristics, so the event may never fire in an automated profile. When it does not on Chromium, that is a
-      // failure: the CDP installability errors below are fetched and included in the failure message, so a run that
-      // regresses (e.g. the persistent-context fix in ./installable-context.ts breaking) is never silently green.
-      // A skip is kept only for a genuinely non-Chromium browser (feature-detected through Playwright's own
-      // `browserName` fixture, never by parsing the page's `navigator.userAgent`), where `Page.getInstallabilityErrors`
-      // does not exist to ask.
-      //
-      // The pass/fail is decided by the event itself, counted in the capture phase before any page code sees it —
-      // not by the button. Deciding by the button would record a browser that did offer installation, followed by a
-      // broken binding or interface, as "not obtained" instead of as a failure (T9 review).
-      //
-      // Runs through `installableTest` (./installable-context.ts), not the harness's default `test`: Chrome reports
-      // `in-incognito` via CDP `Page.getInstallabilityErrors` for the default `browser.newContext()` context and
-      // refuses `beforeinstallprompt` unconditionally there, independent of headless mode or engagement heuristics
-      // (verified with the CDP call below). `installableTest` launches a real (non-incognito) persistent profile
-      // instead, which is the only thing that clears the error.
-      await page.addInitScript((key) => {
-        Reflect.set(window, key, 0);
-        window.addEventListener(
-          "beforeinstallprompt",
-          () => Reflect.set(window, key, (Reflect.get(window, key) as number) + 1),
-          { capture: true },
-        );
-      }, PROMPT_COUNT_KEY);
-      await installAndControl(page, fixtureServer);
-      const fired = await page
-        .waitForFunction((key) => (Reflect.get(window, key) as number) > 0, PROMPT_COUNT_KEY, {
-          timeout: REAL_PROMPT_WAIT_MS,
-        })
-        .then(() => true)
-        .catch(() => false);
+    // installableTest's own context fixture always launches Chromium (installable-context.ts), independent of the
+    // project's browserName, so under a WebKit or Firefox project it would try to launch a Chromium binary this
+    // suite never installs. Skipped explicitly, before that fixture runs, rather than letting it fail: the real
+    // `beforeinstallprompt` event and its CDP installability diagnostics are Chromium-only mechanisms (ADR-0042).
+    installableTest.describe("real beforeinstallprompt (Chromium-only)", () => {
+      installableTest.skip(
+        ({ browserName }) => browserName !== "chromium",
+        "beforeinstallprompt and CDP installability diagnostics are Chromium-only",
+      );
 
-      if (!fired) {
-        if (browserName !== "chromium") {
-          testInfo.annotations.push({
-            type: "not-obtained",
-            description: `beforeinstallprompt did not fire within ${REAL_PROMPT_WAIT_MS} ms in ${browserName}, which has no CDP installability diagnostics`,
-          });
-          test.skip(true, "未取得：非 Chromium 浏览器，无法通过 CDP 复核安装条件（按规格跳过）");
+      installableTest("the browser offers installation on its own (real beforeinstallprompt)", async ({ page, fixtureServer }, testInfo) => {
+        // The only case that counts as install evidence. Chrome decides eligibility itself, including engagement
+        // heuristics, so the event may never fire in an automated profile. When it does not, that is a failure: the
+        // CDP installability errors below are fetched and included in the failure message, so a run that regresses
+        // (e.g. the persistent-context fix in ./installable-context.ts breaking) is never silently green. Only
+        // Chromium reaches this point at all — the describe-level skip above keeps every other engine out.
+        //
+        // The pass/fail is decided by the event itself, counted in the capture phase before any page code sees it —
+        // not by the button. Deciding by the button would record a browser that did offer installation, followed by a
+        // broken binding or interface, as "not obtained" instead of as a failure (T9 review).
+        //
+        // Runs through `installableTest` (./installable-context.ts), not the harness's default `test`: Chrome reports
+        // `in-incognito` via CDP `Page.getInstallabilityErrors` for the default `browser.newContext()` context and
+        // refuses `beforeinstallprompt` unconditionally there, independent of headless mode or engagement heuristics
+        // (verified with the CDP call below). `installableTest` launches a real (non-incognito) persistent profile
+        // instead, which is the only thing that clears the error.
+        await page.addInitScript((key) => {
+          Reflect.set(window, key, 0);
+          window.addEventListener(
+            "beforeinstallprompt",
+            () => Reflect.set(window, key, (Reflect.get(window, key) as number) + 1),
+            { capture: true },
+          );
+        }, PROMPT_COUNT_KEY);
+        await installAndControl(page, fixtureServer);
+        const fired = await page
+          .waitForFunction((key) => (Reflect.get(window, key) as number) > 0, PROMPT_COUNT_KEY, {
+            timeout: REAL_PROMPT_WAIT_MS,
+          })
+          .then(() => true)
+          .catch(() => false);
+
+        if (!fired) {
+          const session = await page.context().newCDPSession(page);
+          const { installabilityErrors } = await session.send("Page.getInstallabilityErrors");
+          await session.detach().catch(() => {});
+          const details =
+            installabilityErrors.length === 0
+              ? "none reported"
+              : installabilityErrors
+                  .map((error) => {
+                    const args = error.errorArguments.map((argument) => `${argument.name}=${argument.value}`).join(", ");
+                    return args === "" ? error.errorId : `${error.errorId} (${args})`;
+                  })
+                  .join("; ");
+          throw new Error(
+            `beforeinstallprompt did not fire within ${REAL_PROMPT_WAIT_MS} ms in ${testInfo.project.use.channel ?? "chrome"}; ` +
+              `CDP Page.getInstallabilityErrors: ${details}`,
+          );
         }
-        const session = await page.context().newCDPSession(page);
-        const { installabilityErrors } = await session.send("Page.getInstallabilityErrors");
-        await session.detach().catch(() => {});
-        const details =
-          installabilityErrors.length === 0
-            ? "none reported"
-            : installabilityErrors
-                .map((error) => {
-                  const args = error.errorArguments.map((argument) => `${argument.name}=${argument.value}`).join(", ");
-                  return args === "" ? error.errorId : `${error.errorId} (${args})`;
-                })
-                .join("; ");
-        throw new Error(
-          `beforeinstallprompt did not fire within ${REAL_PROMPT_WAIT_MS} ms in ${testInfo.project.use.channel ?? "chrome"}; ` +
-            `CDP Page.getInstallabilityErrors: ${details}`,
-        );
-      }
-      // The browser did offer installation, so from here on a missing button is a failure, never a skip.
-      await expect(page.locator("#install")).toBeVisible();
+        // The browser did offer installation, so from here on a missing button is a failure, never a skip.
+        await expect(page.locator("#install")).toBeVisible();
+      });
     });
 
-    test("wiring only: a dispatched install event reaches the interface through the binding", async ({ page, fixtureServer }) => {
+    test("wiring only: a dispatched install event reaches the interface through the binding", async ({ page, fixtureServer, browserName }) => {
       // NOT install evidence. The events below are dispatched by the test, not by the browser, so this proves only the
       // chain facade -> binding -> interface: install-eligible shows the button, appinstalled hides it and marks the
       // app installed. Whether a browser would ever offer installation is the test above.
+      //
+      // Engine finding (ADR-0042, 2026-09-29): under Playwright WebKit, the React example's service worker never
+      // reaches "activated" — installAndControl's poll hangs until the test's own 30s timeout, reproduced 3/3 in
+      // isolation. The Vue example (same fixture server, same worker build pipeline) and Firefox are both unaffected,
+      // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
+      // reported as a finding rather than changed in product code. The other tests in this describe block do not
+      // call installAndControl and are unaffected, so the skip is scoped to this one test rather than the describe.
+      test.skip(example === "react" && browserName === "webkit", "React example's service worker never reaches \"activated\" under Playwright WebKit (ADR-0042 finding, 2026-09-29)");
       await installAndControl(page, fixtureServer);
       await expect(page.locator("#install")).toHaveCount(0);
 
