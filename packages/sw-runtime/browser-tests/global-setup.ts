@@ -38,9 +38,12 @@ import {
   PLATFORM_ENTRY,
   RECOVERY_CONFIG,
   RECOVERY_ENTRY,
+  RECOVERY_FAULT_ENTRY,
   SITE_NO_FALLBACK_ROOT,
   SITE_DENY_CLASSES_ROOT,
   SITE_RECOVERY_ROOT,
+  SITE_RECOVERY_FAULT_CACHE_ROOT,
+  SITE_RECOVERY_FAULT_DATABASE_ROOT,
   SITE_EXCLUDED_ROOT,
   SITE_RANGE_ROOT,
   SITE_OFFLINE_WRITE_ROOT,
@@ -68,6 +71,8 @@ export default async function globalSetup(): Promise<void> {
     SITE_V1_ROOT,
     SITE_V2_ROOT,
     SITE_RECOVERY_ROOT,
+    SITE_RECOVERY_FAULT_CACHE_ROOT,
+    SITE_RECOVERY_FAULT_DATABASE_ROOT,
     SITE_NO_FALLBACK_ROOT,
     SITE_DENY_CLASSES_ROOT,
     SITE_SUBPAGE_ROOT,
@@ -113,6 +118,15 @@ export default async function globalSetup(): Promise<void> {
   await writeWorker(SITE_TIMEOUT_ROOT, injectWorkerConfig(injectPrecacheManifest(platform, PLAN_TIMEOUT), CONFIG_TIMEOUT));
   // The recovery worker is published at the same service worker URL (recovery-drill.md step 2).
   await writeWorker(SITE_RECOVERY_ROOT, injectWorkerConfig(recovery, RECOVERY_CONFIG));
+  // #15 deletion-failure drill: the same recovery worker with one injected failure each (recovery-fault-entry.ts).
+  const recoveryFault = await bundle(RECOVERY_FAULT_ENTRY, "recovery-fault-worker.js");
+  for (const [root, fault] of [
+    [SITE_RECOVERY_FAULT_CACHE_ROOT, "cache"],
+    [SITE_RECOVERY_FAULT_DATABASE_ROOT, "database"],
+  ] as const) {
+    if (!recoveryFault.includes("self.__PWA_RECOVERY_FAULT")) throw new Error("recovery-fault-worker.js lost its fault placeholder");
+    await writeWorker(root, injectWorkerConfig(recoveryFault.replace("self.__PWA_RECOVERY_FAULT", JSON.stringify(fault)), RECOVERY_CONFIG));
+  }
 
   // A plain page script (not a worker), served alongside v1, exposing the real deleteExpirationRecords for
   // expiration-records.spec.ts (T8 follow-up: workbox-expiration record cleanup).

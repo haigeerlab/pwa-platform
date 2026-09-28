@@ -12,6 +12,7 @@
     "src/shared/**/*.ts",
     "src/messages/**/*.ts",
     "src/push-payload/**/*.ts",
-    "test/worker/**/*.ts"
+    "test/worker/**/*.ts",
+    "browser-tests/recovery-fault-entry.ts"
   ]
 }

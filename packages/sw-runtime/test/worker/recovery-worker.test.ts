@@ -338,6 +338,37 @@ describe("activate", () => {
     ]);
   });
 
+  it("keeps deleting after one cache deletion rejects, then fails without cancelling push or claiming (#15)", async () => {
+    const failure = new DOMException("cache deletion failed", "UnknownError");
+    const realDelete = harness.scope.caches.delete;
+    vi.mocked(harness.scope.caches.delete).mockImplementationOnce(async (name: string) => {
+      harness.calls.push(`delete ${name}`);
+      throw failure;
+    });
+    registerRecoveryWorker({ scope: harness.scope, config });
+
+    await expect(dispatch(harness, "activate")).rejects.toBe(failure);
+    expect(realDelete).toHaveBeenCalledTimes(2);
+    expect(harness.calls).toEqual([
+      "delete pwa:storefront:production:r3:precache",
+      "delete pwa:storefront:production:r2:precache",
+    ]);
+    expect(harness.names.has("pwa:storefront:production:r3:precache")).toBe(true);
+    expect(harness.names.has("pwa:storefront:production:r2:precache")).toBe(false);
+    expect(expirationRecordsMock).toHaveBeenCalledTimes(1);
+    expect(deletedDatabases).toEqual(["pwa-offline-write:storefront:production:r3"]);
+  });
+
+  it("still deletes every cache when the queue database deletion fails, and reports the database failure (#15)", async () => {
+    databaseOutcome = "error";
+    registerRecoveryWorker({ scope: harness.scope, config });
+
+    await expect(dispatch(harness, "activate")).rejects.toThrow(/offline-write database deletion failed/);
+    expect([...harness.names].filter((name) => name.startsWith(config.appCachePrefix))).toEqual([]);
+    expect(harness.calls).not.toContain("claim");
+    expect(harness.calls).not.toContain("getSubscription");
+  });
+
   it("never calls console, on any push-subscription outcome", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);

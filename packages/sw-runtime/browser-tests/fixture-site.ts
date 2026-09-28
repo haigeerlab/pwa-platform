@@ -20,6 +20,8 @@ export const SITE_V2_SOURCE: string = here("./site-v2/");
 export const SITE_RUNTIME_SOURCE: string = here("./site-runtime/");
 export const PLATFORM_ENTRY: string = here("../src/entries/platform-worker-entry.ts");
 export const RECOVERY_ENTRY: string = here("../src/entries/recovery-worker-entry.ts");
+/** The real recovery worker plus one injected deletion failure (recovery-fault-entry.ts), for the #15 drill. */
+export const RECOVERY_FAULT_ENTRY: string = here("./recovery-fault-entry.ts");
 /** Exposes `deleteExpirationRecords` on `window`, bundled the same way the workers are, for expiration-records.spec.ts. */
 export const EXPIRATION_RECORDS_TEST_ENTRY: string = here("./expiration-records-test-entry.ts");
 export const EXPIRATION_RECORDS_TEST_URL = "/app/expiration-records-test.js";
@@ -31,6 +33,10 @@ export const SITE_V1_ROOT: string = here("../browser-build/site-v1/");
 export const SITE_V2_ROOT: string = here("../browser-build/site-v2/");
 /** v1 of the site with the recovery worker published at the same service worker URL (recovery-drill.md step 2). */
 export const SITE_RECOVERY_ROOT: string = here("../browser-build/site-recovery/");
+/** Like site-recovery, but its recovery worker fails its first cache deletion. */
+export const SITE_RECOVERY_FAULT_CACHE_ROOT: string = here("../browser-build/site-recovery-fault-cache/");
+/** Like site-recovery, but its recovery worker fails the offline-write database deletion. */
+export const SITE_RECOVERY_FAULT_DATABASE_ROOT: string = here("../browser-build/site-recovery-fault-database/");
 /** v1 of the site built from a plan whose policy disables the offline fallback. */
 export const SITE_NO_FALLBACK_ROOT: string = here("../browser-build/site-no-fallback/");
 /** v1 of the site with a prerendered sub-page (`guide/index.html`) in the precache. */
@@ -77,6 +83,8 @@ export const FIXTURE_SITE: FixtureServerOptions = {
     v1: SITE_V1_ROOT,
     v2: SITE_V2_ROOT,
     recovery: SITE_RECOVERY_ROOT,
+    "recovery-fault-cache": SITE_RECOVERY_FAULT_CACHE_ROOT,
+    "recovery-fault-database": SITE_RECOVERY_FAULT_DATABASE_ROOT,
     "no-fallback": SITE_NO_FALLBACK_ROOT,
     subpage: SITE_SUBPAGE_ROOT,
     excluded: SITE_EXCLUDED_ROOT,
