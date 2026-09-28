@@ -1,6 +1,6 @@
 import { readFile, realpath, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import type { AddressInfo } from "node:net";
+import type { AddressInfo, Socket } from "node:net";
 import { extname, sep } from "node:path";
 
 export type HeaderRule = {
@@ -54,6 +54,22 @@ export type FixtureServer = {
   /** Requests that reached the server; bodies are never recorded. */
   requests(): readonly RequestRecord[];
   clearRequests(): void;
+  /**
+   * Cuts the network at the server: open connections are destroyed and every new one is reset before any request
+   * is read, so page and worker requests alike fail with a network error in every browser engine. Unlike
+   * `context.setOffline`, it leaves `navigator.onLine` and the browser's `online`/`offline` events untouched.
+   */
+  goOffline(): void;
+  goOnline(): void;
+  /**
+   * Holds every request for exactly `path` open without answering, as a genuinely slow network would; the returned
+   * function resets the held connections and stops stalling. Server-side, so it also reaches requests a service
+   * worker makes, which `context.route` intercepts only in Chromium.
+   */
+  stall(path: string): () => void;
+  /** Resets the connection of every request for exactly `path`, a network failure; the returned function undoes it. */
+  reset(path: string): () => void;
+  readonly offline: boolean;
   close(): Promise<void>;
 };
 
@@ -95,6 +111,10 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
   const responseRules: readonly FixtureResponseRule[] = [...(options.responseRules ?? [])];
   let records: RequestRecord[] = [];
   let allowedHosts: ReadonlySet<string> = new Set();
+  let offline = false;
+  const stalled = new Map<string, Set<IncomingMessage>>();
+  const resetPaths = new Set<string>();
+  const sockets = new Set<Socket>();
 
   const server = createServer((request, response) => {
     handle(request, response).catch(() => {
@@ -103,11 +123,31 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
     });
   });
 
+  server.on("connection", (socket) => {
+    if (offline) {
+      socket.destroy();
+      return;
+    }
+    sockets.add(socket);
+    socket.once("close", () => sockets.delete(socket));
+  });
+
   async function handle(request: IncomingMessage, response: ServerResponse): Promise<void> {
     const target = request.url ?? "";
     const path = target.split("?", 1)[0] ?? "";
     const method = request.method ?? "";
     records.push({ method, path, time: Date.now(), headers: request.headers });
+
+    // Faults come before every other rule: they model the network between browser and server, not a response.
+    if (resetPaths.has(path)) {
+      request.socket.destroy();
+      return;
+    }
+    const held = stalled.get(path);
+    if (held !== undefined) {
+      held.add(request);
+      return;
+    }
 
     // Only this server's own origins: a DNS-rebound hostname must not read fixture files.
     if (!allowedHosts.has((request.headers.host ?? "").toLowerCase())) {
@@ -202,6 +242,31 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
     },
     clearRequests() {
       records = [];
+    },
+    goOffline() {
+      offline = true;
+      for (const socket of sockets) socket.destroy();
+      sockets.clear();
+    },
+    goOnline() {
+      offline = false;
+    },
+    stall(path) {
+      const held = new Set<IncomingMessage>();
+      stalled.set(path, held);
+      return () => {
+        if (stalled.get(path) === held) stalled.delete(path);
+        for (const request of held) request.socket.destroy();
+      };
+    },
+    reset(path) {
+      resetPaths.add(path);
+      return () => {
+        resetPaths.delete(path);
+      };
+    },
+    get offline() {
+      return offline;
     },
     close() {
       return new Promise<void>((resolveClose, rejectClose) => {

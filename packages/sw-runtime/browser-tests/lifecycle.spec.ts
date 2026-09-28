@@ -94,9 +94,9 @@ test.describe("recovery drill", () => {
     expect(await requestFromPage(page, "/app/assets/logo.svg")).toEqual({ outcome: "response", status: 200, fromServiceWorker: false });
     expect(fixtureServer.requests().map(({ path }) => path)).toEqual(["/app/assets/logo.svg"]);
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     expect((await requestFromPage(page, "/app/assets/logo.svg")).outcome).toBe("network-error");
-    await context.setOffline(false);
+    fixtureServer.goOnline();
 
     const afterRecovery = await snapshotCaches(page);
     console.log(`[recovery-drill] after recovery: ${[...afterRecovery].map(([name, count]) => `${name}=${count}`).join(", ")}`);
@@ -108,7 +108,7 @@ test.describe("recovery drill", () => {
     await waitForActiveWorkerActivated(page);
     expect((await cacheContents(page))[PRECACHE_CACHE_NAME]).toEqual(precacheCacheKeys(PLAN_V1, fixtureServer.origin));
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     await page.goto(fixtureServer.url(SHELL_URL));
     await expect(page.locator("[data-shell]")).toHaveText("app shell v1");
   });

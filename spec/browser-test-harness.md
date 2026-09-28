@@ -190,6 +190,17 @@ pnpm --filter @pwa-platform/browser-test-harness test
 
 **不变**：任何包失败，整条命令仍以非零退出码结束，门禁结论不变。
 
+## 增补：服务器端断网与网络故障（2026-09-28，架构审查建议 #7）
+
+fixture 服务器新增三种在服务器一侧制造的网络故障：`goOffline()` / `goOnline()`（断开现有连接，并在恢复前重置所有新连接）、`stall(path)`（对该路径的请求既不应答也不关闭，直到调用返回的释放函数）、`reset(path)`（立即重置该路径的连接）。页面与 service worker 发出的请求都会以网络错误失败或一直挂起，行为在各浏览器引擎中一致。
+
+**起因**：2026-09-28 在 Playwright 自带的 WebKit、Firefox 上试跑 sw-runtime 套件，失败集中在两类依赖浏览器侧模拟的手段：`context.setOffline` 在 Firefox 中拦不住 worker 自己的请求、在 WebKit 中让离线导航报内部错误；`context.route` 只在 Chromium 中拦截 worker 发出的请求。改用服务器端故障后，同一套件在两个引擎上的通过数由 65 升到 85（共 102），离线、恢复、运行时缓存与网络超时用例全部通过；Chrome 结果不变（51/51）。
+
+**约束**：
+- 服务器端断网**不改变** `navigator.onLine`，也不触发浏览器的 `online` / `offline` 事件。依赖它们的用例（例如默认离线页的自动重连）继续使用 `context.setOffline`，并在用例中写明原因。
+- 被 `stall` 挂起的请求会记入 `requests()`（它确实到达了服务器）；`goOffline()` 期间被重置的连接不会进入处理函数，因而不记录。
+- sw-runtime 的浏览器测试已全部改用这些方法；其余包按需迁移，不做强制。
+
 ## 文档影响表未回填（2026-09-23）
 
 本模块**没有** `Documentation impact` 表，因此 spec-guard 的文档核验对它报 `invalid`。**这是预期结果，不表示文档缺失或有错。**

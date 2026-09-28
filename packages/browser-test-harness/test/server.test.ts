@@ -1,5 +1,5 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
-import { request, type OutgoingHttpHeaders } from "node:http";
+import { Agent, request, type OutgoingHttpHeaders } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -107,6 +107,80 @@ describe("listening", () => {
     const server = await start();
     expect(server.url("/sw.js")).toBe(`${server.origin}/sw.js`);
     expect(() => server.url("sw.js")).toThrow();
+  });
+});
+
+describe("server-side offline", () => {
+  it("resets every connection while offline, records nothing, and serves again once back online", async () => {
+    const server = await start();
+    expect((await send(server, "GET", "/")).status).toBe(200);
+
+    server.goOffline();
+    await expect(send(server, "GET", "/")).rejects.toThrow();
+    expect(server.offline).toBe(true);
+    server.clearRequests();
+    await expect(send(server, "GET", "/")).rejects.toThrow();
+    expect(server.requests()).toEqual([]);
+
+    server.goOnline();
+    expect(server.offline).toBe(false);
+    expect((await send(server, "GET", "/")).status).toBe(200);
+  });
+
+  it("drops keep-alive connections that were open when it went offline", async () => {
+    const server = await start();
+    const port = Number(new URL(server.origin).port);
+    const agent = new Agent({ keepAlive: true, maxSockets: 1 });
+    try {
+      const first = await new Promise<number>((resolveStatus, rejectStatus) => {
+        request({ host: "127.0.0.1", port, path: "/", agent }, (incoming) => {
+          incoming.resume();
+          incoming.on("end", () => resolveStatus(incoming.statusCode ?? 0));
+        })
+          .on("error", rejectStatus)
+          .end();
+      });
+      expect(first).toBe(200);
+
+      server.goOffline();
+      const reused = new Promise<number>((resolveStatus, rejectStatus) => {
+        request({ host: "127.0.0.1", port, path: "/", agent }, (incoming) => {
+          incoming.resume();
+          incoming.on("end", () => resolveStatus(incoming.statusCode ?? 0));
+        })
+          .on("error", rejectStatus)
+          .end();
+      });
+      await expect(reused).rejects.toThrow();
+    } finally {
+      agent.destroy();
+    }
+  });
+});
+
+describe("server-side faults", () => {
+  it("stalls one path until released, then resets it; other paths are unaffected", async () => {
+    const server = await start();
+    const release = server.stall("/");
+    let settled = false;
+    const stalled = send(server, "GET", "/").finally(() => (settled = true));
+    stalled.catch(() => undefined);
+
+    await new Promise((resolveWait) => setTimeout(resolveWait, 200));
+    expect(settled).toBe(false);
+    expect(server.requests().map(({ path }) => path)).toEqual(["/"]);
+
+    release();
+    await expect(stalled).rejects.toThrow();
+    expect((await send(server, "GET", "/")).status).toBe(200);
+  });
+
+  it("resets one path immediately until undone", async () => {
+    const server = await start();
+    const undo = server.reset("/");
+    await expect(send(server, "GET", "/")).rejects.toThrow();
+    undo();
+    expect((await send(server, "GET", "/")).status).toBe(200);
   });
 });
 

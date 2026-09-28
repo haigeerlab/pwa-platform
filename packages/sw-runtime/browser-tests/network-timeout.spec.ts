@@ -1,10 +1,11 @@
 // Real-browser coverage for the explicit network timeout (NT6, spec/network-timeout.md "测试策略", ADR-0038),
-// through the real platform worker (Workbox engine included). "Stalled" means intercepted by Playwright's
-// `context.route` and never fulfilled, continued or aborted — the architecture decision in
-// tasks/network-timeout/plan.md records that this reaches a service worker's own fetch too, so the worker's
-// `networkTimeoutSeconds` timers fire exactly as they would against a genuinely slow network.
-import type { BrowserContext, Page, Route } from "@playwright/test";
-import { expect, snapshotCaches, test } from "@pwa-platform/browser-test-harness";
+// through the real platform worker (Workbox engine included). "Stalled" means the fixture server holds the
+// request open without answering (`fixtureServer.stall`), so the worker's `networkTimeoutSeconds` timers fire
+// exactly as they would against a genuinely slow network. It is done at the server rather than with Playwright's
+// `context.route`, which intercepts a service worker's own requests only in Chromium (spec/browser-test-harness.md,
+// "增补：服务器端断网与网络故障").
+import type { Page } from "@playwright/test";
+import { expect, snapshotCaches, test, type FixtureServer } from "@pwa-platform/browser-test-harness";
 import { FIXTURE_SITE, RUNTIME_CATALOG_ITEMS_URL, RUNTIME_DASHBOARD_URL } from "./fixture-site.js";
 import { installAndControl } from "./page-probe.js";
 
@@ -21,29 +22,16 @@ const TIMEOUT_LOWER_BOUND_MS = 900;
 const TIMEOUT_UPPER_BOUND_MS = 5_000;
 
 /**
- * Intercepts one URL and leaves every matching request pending: the handler never calls `fulfill`, `continue` or
- * `abort`. Call `release()` once the test is done observing the stall, so the dangling request (and, for a
- * navigation, the `page.goto()` awaiting it) can settle before the test ends.
+ * Holds every request for `url`'s path open at the fixture server. Call `release()` once the test is done observing
+ * the stall, so the dangling request (and, for a navigation, the `page.goto()` awaiting it) can settle.
  */
-async function stallRoute(context: BrowserContext, url: string): Promise<{ release: () => Promise<void> }> {
-  const captured: Route[] = [];
-  await context.route(url, (route) => {
-    captured.push(route);
-  });
-  return {
-    release: async () => {
-      await Promise.all(captured.map((route) => route.abort().catch(() => undefined)));
-      await context.unroute(url);
-    },
-  };
+function stallRoute(fixtureServer: FixtureServer, url: string): { release: () => void } {
+  return { release: fixtureServer.stall(new URL(url).pathname) };
 }
 
-/** Intercepts one URL and aborts every matching request immediately — a genuine network failure, not a stall. */
-async function abortRoute(context: BrowserContext, url: string): Promise<() => Promise<void>> {
-  await context.route(url, (route) => {
-    void route.abort();
-  });
-  return () => context.unroute(url);
+/** Resets every request for `url`'s path at the fixture server — a genuine network failure, not a stall. */
+function abortRoute(fixtureServer: FixtureServer, url: string): () => void {
+  return fixtureServer.reset(new URL(url).pathname);
 }
 
 /** A same-origin JSON GET through the page, bypassing the HTTP cache. */
@@ -106,12 +94,12 @@ async function queryPendingServed(page: Page): Promise<ServedSignal | null> {
 }
 
 test.describe("navigation timeout (ADR-0038)", () => {
-  test("a stalled navigation shows the offline fallback about a second later", async ({ page, context, fixtureServer }) => {
+  test("a stalled navigation shows the offline fallback about a second later", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("timeout");
     await installAndControl(page, fixtureServer);
     const target = fixtureServer.url(UNCACHED_NAVIGATION_PATH);
     const before = await snapshotCaches(page);
-    const stall = await stallRoute(context, target);
+    const stall = stallRoute(fixtureServer, target);
 
     const startedAt = Date.now();
     await page.goto(target);
@@ -123,14 +111,14 @@ test.describe("navigation timeout (ADR-0038)", () => {
     // navigate()'s timeout branch never writes to any cache (spec "边界": 不引入新的缓存写入).
     expect(await snapshotCaches(page)).toEqual(before);
 
-    await stall.release();
+    stall.release();
   });
 
-  test("without networkTimeoutSeconds, the same stalled path is still pending after 3s (control)", async ({ page, context, fixtureServer }) => {
+  test("without networkTimeoutSeconds, the same stalled path is still pending after 3s (control)", async ({ page, fixtureServer }) => {
     // Default deployed version (fixture-site.ts FIXTURE_SITE) is "v1", which never sets networkTimeoutSeconds.
     await installAndControl(page, fixtureServer);
     const target = fixtureServer.url(UNCACHED_NAVIGATION_PATH);
-    const stall = await stallRoute(context, target);
+    const stall = stallRoute(fixtureServer, target);
 
     // Chrome unloads the current document once a navigation starts, whether or not it ever commits, so the DOM
     // cannot tell "pending" from "committed to a blank page" here — the navigation promise itself is the signal.
@@ -145,13 +133,13 @@ test.describe("navigation timeout (ADR-0038)", () => {
 
     expect(settled, "the stalled navigation must still be pending: no timeout is configured for this site").toBe(false);
 
-    await stall.release();
+    stall.release();
     await navigation;
   });
 });
 
 test.describe("runtime cache timeout (ADR-0038)", () => {
-  test("public-data network-first: a stalled retry is answered from cache in ~1s with reason network-timeout", async ({ page, context, fixtureServer }) => {
+  test("public-data network-first: a stalled retry is answered from cache in ~1s with reason network-timeout", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("timeout");
     await installAndControl(page, fixtureServer);
     const target = fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL);
@@ -162,10 +150,10 @@ test.describe("runtime cache timeout (ADR-0038)", () => {
     await expect.poll(() => page.evaluate(async (url) => Boolean(await caches.match(url)), target)).toBe(true);
 
     const before = await snapshotCaches(page);
-    const stall = await stallRoute(context, target);
+    const stall = stallRoute(fixtureServer, target);
     const result = await fetchWithServedSignal(page, target);
     const after = await snapshotCaches(page);
-    await stall.release();
+    stall.release();
 
     expect(result.body).toEqual(online);
     expect(result.served).toMatchObject({ reason: "network-timeout" });
@@ -177,7 +165,6 @@ test.describe("runtime cache timeout (ADR-0038)", () => {
 
   test("navigation-public-dynamic network-first: a stalled reload is answered from cache in ~1s, signalled via the pending-query channel", async ({
     page,
-    context,
     fixtureServer,
   }) => {
     fixtureServer.deploy("timeout");
@@ -188,14 +175,14 @@ test.describe("runtime cache timeout (ADR-0038)", () => {
     await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
 
     const before = await snapshotCaches(page);
-    const stall = await stallRoute(context, target);
+    const stall = stallRoute(fixtureServer, target);
     const startedAt = Date.now();
     await page.goto(target);
     const elapsedMs = Date.now() - startedAt;
     await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
     const served = await queryPendingServed(page);
     const after = await snapshotCaches(page);
-    await stall.release();
+    stall.release();
 
     expect(served).toMatchObject({ reason: "network-timeout" });
     expect(elapsedMs).toBeGreaterThanOrEqual(TIMEOUT_LOWER_BOUND_MS);
@@ -205,7 +192,7 @@ test.describe("runtime cache timeout (ADR-0038)", () => {
 });
 
 test.describe("network failure, not a timeout (ADR-0038)", () => {
-  test("an aborted (not stalled) retry still reports reason network-failed", async ({ page, context, fixtureServer }) => {
+  test("an aborted (not stalled) retry still reports reason network-failed", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("timeout");
     await installAndControl(page, fixtureServer);
     const target = fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL);
@@ -213,9 +200,9 @@ test.describe("network failure, not a timeout (ADR-0038)", () => {
     const online = await fetchJson(page, target);
     expect(online).toMatchObject({ item: "a" });
 
-    const unroute = await abortRoute(context, target);
+    const unroute = abortRoute(fixtureServer, target);
     const result = await fetchWithServedSignal(page, target);
-    await unroute();
+    unroute();
 
     expect(result.body).toEqual(online);
     // The reason alone distinguishes an immediate failure from a timed-out stall; no separate upper-bound timing
