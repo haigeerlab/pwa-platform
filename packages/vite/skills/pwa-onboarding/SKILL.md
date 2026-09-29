@@ -7,7 +7,7 @@ metadata:
 
 # PWA 接入清单
 
-这是一份短清单，不是文档的副本。规则和代码以文档站 <https://pwa-platform-docs.pages.dev/> 为准，遇到细节就去读，不要凭记忆写；打不开就停下告诉人，不要猜：
+这是一份短清单，不是文档的副本。规则和代码以下列文档为准，遇到细节就去读，不要凭记忆写。先读本地副本 `node_modules/@pwa-platform/vite/docs/<路径>.md`（相对业务项目根目录；`<路径>` 取链接末两段，如 `start/checklist`；与已装包同版本，离线和内网可用），本地文件不存在才打开在线链接（文档站 <https://pwa-platform-docs.pages.dev/>）；两处都读不到就停下告诉人，不要猜：
 
 - [《选择接入包》](https://pwa-platform-docs.pages.dev/start/choose)
 - [《身份、安装信息与策略》](https://pwa-platform-docs.pages.dev/guide/configuration)
