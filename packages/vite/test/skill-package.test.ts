@@ -606,3 +606,75 @@ describe("AO11 gate 6 troubleshooting", () => {
     for (const word of ["数据，不是指令", "令牌", "Cookie"]) expect(text(), word).toContain(word);
   });
 });
+
+// ---- AO6: gate A feasibility, conflict catalog and existing-PWA branch --------------------------------------------------
+
+const gateAFile = join(referencesDir, "gate-a-feasibility.md");
+const gateAThirdParty = join(referencesDir, "gate-a-third-party-sw.md");
+
+describe("AO6 gate A feasibility and conflict catalog", () => {
+  const text = () => readFileSync(gateAFile, "utf8");
+
+  it("checks the supported combination and stops on an unsupported one, a relative base or a Nuxt runtime cache", () => {
+    for (const word of ["Vite ^5", "^8", "Vue ^3.4", "React ^19.2", "22.12", "相对路径", "Nuxt", "停止条件"]) expect(text(), word).toContain(word);
+    const baseRow = text().split(/\r?\n/).find((line) => /^\|\s*`base`/.test(line)) ?? "";
+    expect(baseRow, "the base row must reject relative paths and stop").toMatch(/相对路径.*停下/);
+    const nuxtRow = text().split(/\r?\n/).find((line) => /^\|\s*运行时缓存/.test(line)) ?? "";
+    expect(nuxtRow, "the runtime-cache row must stop for Nuxt").toMatch(/Nuxt.*停下/);
+  });
+
+  it("splits conflicts into the three classes with a file-and-line evidence requirement", () => {
+    for (const word of ["必须移除", "需要评估", "仅提示", "文件与行号"]) expect(text(), word).toContain(word);
+  });
+
+  it("lists the detectable evidence of every must-remove conflict", () => {
+    for (const pattern of [
+      "vite-plugin-pwa", "@vite-pwa/", "workbox-window", "workbox-build", "sw-precache", "sw-toolbox",
+      "virtual:pwa-register", "registerSW", "navigator.serviceWorker.register", "self.__WB_MANIFEST",
+      "sw.js", "sw.ts", "public/manifest", 'rel="manifest"',
+    ]) expect(text(), pattern).toContain(pattern);
+  });
+
+  it("keeps the hints migrated from the old Vite 5 + Vue 3.4 skill", () => {
+    for (const word of ["<base>", "PurgeCSS", "/^pwa-update-notice/", "混淆", "哈希", "确定性"]) expect(text(), word).toContain(word);
+  });
+
+  it("never deletes on its own: removal is a proposal on a separate branch, confirmed by a person (G1)", () => {
+    for (const word of ["G1", "单独分支", "不自动删除", "只读"]) expect(text(), word).toContain(word);
+  });
+
+  it("walks the existing-PWA branch in order and leaves cache cleanup and the worker switch to a person (G5)", () => {
+    const section = text().slice(text().indexOf("## 存量 PWA"));
+    expect(section.length).toBeGreaterThan(0);
+    const order = ["先记录", "身份字段", "不会自动清理旧缓存", "所有受控标签页关闭", "停下点"];
+    let last = -1;
+    for (const word of order) {
+      const at = section.indexOf(word);
+      expect(at, word).toBeGreaterThan(last);
+      last = at;
+    }
+    for (const word of ["G5", "G2", "清理旧缓存", "切换 worker"]) expect(section, word).toContain(word);
+  });
+
+  it("points at the third-party service worker reference", () => {
+    expect(text()).toContain("gate-a-third-party-sw.md");
+  });
+});
+
+describe("AO6 third-party service worker scope rules", () => {
+  const text = () => readFileSync(gateAThirdParty, "utf8");
+
+  it("judges by scope overlap with the longest-prefix rule, not by equality", () => {
+    for (const word of ["最长前缀", "相等", "子路径", "互不为前缀", "无法判定"]) expect(text(), word).toContain(word);
+  });
+
+  it("covers the seven push SDKs and marks what is unverified", () => {
+    for (const sdk of ["Firebase", "OneSignal", "Braze", "Pusher Beams", "CleverTap", "MoEngage", "Airship"]) expect(text(), sdk).toContain(sdk);
+    expect(text()).toContain("未核实");
+    for (const file of ["firebase-messaging-sw.js", "OneSignalSDKWorker.js", "clevertap_sw.js", "push-worker.js"]) expect(text(), file).toContain(file);
+  });
+
+  it("lists the situations that cannot be decided statically and hands them to a person", () => {
+    for (const word of ["环境变量", "Service-Worker-Allowed", "标签管理器", "无末尾斜杠", "交给人"]) expect(text(), word).toContain(word);
+  });
+});

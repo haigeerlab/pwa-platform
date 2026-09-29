@@ -104,6 +104,7 @@ packages/vite/skills/pwa-onboarding/
   SKILL.md                    入口：触发描述、流程总览、关卡索引、通用规则
   references/
     gate-a-feasibility.md     可行性、冲突目录、存量迁移分支
+    gate-a-third-party-sw.md  第三方 Service Worker 的 scope 判定与推送 SDK 证据表
     gate-0-interview.md       采访题库
     gate-1-configure.md       配置流程与构建诊断（再指向下面三个文件）
     gate-1-config-file.md     pwa.config.ts 与子路径部署
