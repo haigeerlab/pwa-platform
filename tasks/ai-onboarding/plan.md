@@ -212,7 +212,7 @@
 
 **实现记录（AO12）：** 新增 `onboarding-smoke/skill-not-in-bundle.spec.ts`，复用 build-fixture 已从打包 tarball 安装好的项目，因此被复制的就是发布包里真实的 `skills/pwa-onboarding/`（另有一条断言确认安装包确实带了它）。三次构建：基线；skill 副本（带哨兵行）放进 `.claude/skills` 与 `.agents/skills` 后构建，产物既无路径痕迹、哨兵也不在任何文件字节里，且逐文件 sha256 与基线完全一致；变异——副本放进 `public/`——必须被检测出路径与内容并且哈希不同。另外把正常副本改放 `public/skills` 做了一次手工变异，第二条断言随即变红，还原后与原文件一致。`pnpm test:onboarding-smoke` 连续两次 4/4 通过，examples-browser-e2e 类型检查与 lint 通过。`spec/examples-browser-e2e.md` 的增补归 AO15。
 
-### AO13：场景夹具项目与评分表
+### AO13：场景夹具项目与评分表（完成：见本任务的两个提交）
 
 **范围：** 六个夹具项目（F1 干净 Vite + Vue；F2 含 `vite-plugin-pwa`；F3 含自写 `sw.js`；F4 不受支持的组合；F5 停在关卡 1 的半成品与状态文件；F6 英文选择用的干净项目），以及评分表与记录模板。位置放在 `packages/examples-browser-e2e` 下，不进入任何发布包。
 
@@ -224,6 +224,8 @@
 **范围估计：** 大，需要拆成两个提交（夹具、评分表）。依赖：AO7。
 
 **实现记录（AO13 第一个提交：夹具）：** 六个夹具在 `packages/examples-browser-e2e/onboarding-scenarios/fixtures/`（不是工作区成员，不进任何发布包，ESLint 忽略）。`build-fixture.ts` 参数化（模板、包清单、依赖、是否跳过构建），onboarding-smoke 行为不变。F1/F3/F6 是 Vue 项目，在没有 skill 时可独立构建；F1/F6 干净且都读一个像公共的 `/api/catalog` 与一个私有的 `/api/me`，好让 SE7 有东西可列；F5 带合法状态文件、已写 `pwa.config.ts`、未接插件。**偏离验收：F2 与 F4 只是静态夹具**——`vite-plugin-pwa` 与 Vite 4 不在离线 pnpm store 里，联网安装会引入新依赖与供应链流程，而关卡 A 本来就是只读扫描、不需要安装；由测试断言它们含有对应证据（F2 含全部“必须移除”证据，F4 的 Vite 主版本为 4）。AO7 片段在 F1 上：逐字取自引用文件的 `pwa.config.ts`、`vite.config.ts`、`main.ts`、`App.vue` 与 tsconfig types 片段，`tsc --noEmit` 与生产构建都通过并产出 worker、manifest、离线页；缺图标时构建失败并含 `vite.manifest-icon`。`vite build` 不做类型检查（第一轮变异中写错函数名仍能打包，测试因此存活），所以补了 `tsc`；`.vue` 内的脚本不做类型检查（没有 vue-tsc）。测试 12 个，`pnpm test:onboarding-scenarios`；8 处变异中 7 处变红，`environment: "prod"` 那处存活，因为契约本就接受任意字符串，不是缺陷。评分表与记录模板在下一个提交。
+
+**实现记录（AO13 第二个提交：评分表）：** `onboarding-scenarios/RUBRIC.md` 写好 SE1–SE7：每个场景有夹具、开场白、扮演的人怎么回答，“应做”与“绝不”都是带“证据”出处（`git status`、`git diff`、对话记录、`grep`）的可勾选句子；另有一节“通用的绝不做”，八项与规格“边界”的“绝不”一一对应。`RECORD-TEMPLATE.md` 含日期、模型、CLI 与版本、skill 版本、夹具、场景、第几次运行、结论、违反的“绝不做”项、未做到的“应做”项、备注。`rubric.spec.ts` 守形状（10 个测试）：每个场景指向存在的夹具、至少 2 条应做和 1 条绝不、每条写明证据出处、通用清单与规格边界一致、模板字段齐全；4 处变异均变红。评分表内容本身只能靠 AO14 的实际评估检验。
 
 ### AO14：场景评估执行与修正（人工）
 
