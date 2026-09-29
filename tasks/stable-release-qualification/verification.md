@@ -301,7 +301,7 @@ pnpm check:publish
 
 - **N-1 未取得**：两台设备均为 Chrome 153（N），`desktop+android` 通道的 N-1 仍为“未执行”，通道不得判为通过。下一个 Chrome 稳定版发布时只更新其中一台以形成 N/N-1。
 - **未在真机执行**：隐私与流式响应的非导航请求（桌面 Chrome 已由 #32 覆盖）。
-- **发现（待裁决）**：平台默认更新提示（ADR-0039）在页面已是新代码时仍显示 `A new version is available` 并在接管后提示 `Reload page`；“已是新代码”的判定只存在于[更新提示指南](../../docs/guides/update-prompt.md)的参考实现中。
+- **发现（已裁决 2026-09-29，见 [ADR-0046](../../docs/adr/0046-update-notice-detects-current-page.md)：默认提示内置判定）**：平台默认更新提示（ADR-0039）在页面已是新代码时仍显示 `A new version is available` 并在接管后提示 `Reload page`；“已是新代码”的判定只存在于[更新提示指南](../../docs/guides/update-prompt.md)的参考实现中。
 - 小米每次从启动器冷启动 WebAPK 时，MIUI 弹出“React/Vue Drill 想要打开 Chrome”确认，均选择“本次允许”，未改系统设置。
 
 ### iPhone R9 复核（iPhone 16 Pro，iOS 27.0，主屏幕网页 App）

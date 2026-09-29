@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { contrastRatio } from "@pwa-platform/browser-test-harness";
 import { fileURLToPath } from "node:url";
+import type { Page, Route } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
 
 let server: ViteDevServer;
@@ -21,6 +22,31 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await server?.close();
+});
+
+/**
+ * The notice asks the server for the current document again (a `fetch`, not a navigation) and compares its entry
+ * module script with this document's (ADR-0046). Unrouted, the dev server answers with the very page under test, so
+ * the page reads as already current. Every scenario below that is about an *old* page routes that request to a
+ * shell built from a different entry script — the situation a new deployment creates.
+ */
+function isShellFetch(url: URL): boolean {
+  return url.origin === origin && url.pathname === "/";
+}
+
+async function serveShell(page: Page, answer: "stale" | "failure"): Promise<void> {
+  await page.route(isShellFetch, async (route: Route) => {
+    if (route.request().resourceType() !== "fetch") return route.fallback();
+    if (answer === "failure") return route.abort("internetdisconnected");
+    return route.fulfill({
+      contentType: "text/html",
+      body: '<!doctype html><html><head><script type="module" src="/assets/index-new.js"></script></head><body></body></html>',
+    });
+  });
+}
+
+test.beforeEach(async ({ page }, testInfo) => {
+  if (!testInfo.title.includes("[current]")) await serveShell(page, "stale");
 });
 
 for (const framework of ["vue", "react"] as const) {
@@ -120,6 +146,46 @@ for (const framework of ["vue", "react"] as const) {
     ]);
     expect(await page.evaluate("sessionStorage.getItem('before-reload')")).toBe("present");
     await expect(page.getByRole("status")).toHaveCount(0);
+  });
+}
+
+for (const framework of ["vue", "react"] as const) {
+  test(`${framework}: [current] a page already on the new code offers to finish for offline use, with no reload step`, async ({ page }) => {
+    await page.goto(`${origin}/?framework=${framework}`);
+    await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
+    await page.evaluate("window.__fixture.wait()");
+    const notice = page.getByRole("status");
+    await expect(notice).toContainText("新版已可离线使用");
+    await expect(notice).not.toContainText("有可用更新");
+    await page.getByRole("button", { name: "更新", exact: true }).click();
+    // The takeover still needs the user's confirmation, but there is nothing left to reload for.
+    await expect(notice).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "刷新页面" })).toHaveCount(0);
+    expect(await page.evaluate("window.__fixture.applyCalls()")).toBe(1);
+    expect(await page.evaluate("window.__fixture.reloadCalls()")).toBe(0);
+  });
+
+  test(`${framework}: [current] a takeover confirmed in another tab leaves no reload prompt on a current page`, async ({ page }) => {
+    await page.goto(`${origin}/?framework=${framework}&locale=en`);
+    await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
+    await page.evaluate("window.__fixture.wait()");
+    const notice = page.getByRole("status");
+    await expect(notice).toContainText("An update is ready for offline use");
+    await page.evaluate("window.__fixture.applied()");
+    await expect(notice).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Reload page" })).toHaveCount(0);
+  });
+
+  test(`${framework}: a failed currency check falls back to the ordinary prompt`, async ({ page }) => {
+    await page.unrouteAll();
+    await serveShell(page, "failure");
+    await page.goto(`${origin}/?framework=${framework}`);
+    await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
+    await page.evaluate("window.__fixture.wait()");
+    const notice = page.getByRole("status");
+    await expect(notice).toContainText("有可用更新");
+    await page.getByRole("button", { name: "更新", exact: true }).click();
+    await expect(page.getByRole("button", { name: "刷新页面" })).toBeVisible();
   });
 }
 

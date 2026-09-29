@@ -9,6 +9,8 @@ import { PWA_UPDATE_NOTICE_MESSAGES, type PwaUpdateNoticeLocale, type PwaUpdateN
 const ZH_MESSAGES: PwaUpdateNoticeMessages = {
   readyTitle: "有可用更新",
   readyBody: "新版离线资源已准备好，你可以在合适的时候更新。",
+  currentTitle: "新版已可离线使用",
+  currentBody: "当前页面已是新版。更新后，离线时也会使用新版。",
   update: "更新",
   later: "稍后",
   updatingTitle: "正在更新",
@@ -25,6 +27,8 @@ const ZH_MESSAGES: PwaUpdateNoticeMessages = {
 const EN_MESSAGES: PwaUpdateNoticeMessages = {
   readyTitle: "A new version is available",
   readyBody: "The new offline resources are ready. Update when it suits you.",
+  currentTitle: "An update is ready for offline use",
+  currentBody: "This page already runs the new version. Update to use it offline too.",
   update: "Update",
   later: "Later",
   updatingTitle: "Updating",
@@ -40,11 +44,11 @@ const EN_MESSAGES: PwaUpdateNoticeMessages = {
 const MESSAGE_KEYS = Object.keys(ZH_MESSAGES) as readonly (keyof PwaUpdateNoticeMessages)[];
 
 describe("PwaUpdateNotice built-in locales", () => {
-  it("defaults to the Chinese copy, byte-for-byte unchanged", () => {
+  it("defaults to the Chinese copy: the earlier keys byte-for-byte unchanged, plus the ADR-0046 keys", () => {
     expect(PWA_UPDATE_NOTICE_MESSAGES["zh-CN"]).toEqual(ZH_MESSAGES);
   });
 
-  it("has an English table with all 12 keys", () => {
+  it("has an English table with all 14 keys", () => {
     const locale: PwaUpdateNoticeLocale = "en";
     expect(Object.keys(PWA_UPDATE_NOTICE_MESSAGES[locale]).sort()).toEqual([...MESSAGE_KEYS].sort());
     expect(PWA_UPDATE_NOTICE_MESSAGES[locale]).toEqual(EN_MESSAGES);
