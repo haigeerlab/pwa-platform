@@ -1,19 +1,27 @@
 # Vite + Vue 接入
 
-适用范围：Vite 5／8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本。先按[包选择](/start/choose)安装 0.2.3，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
+适用范围：Vite 5／8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本（Vite 8 的要求；平台包声明 <code>>=22.0.0</code>）。先按[包选择](/start/choose)安装 0.2.3，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
 
 ::: warning Vue 3.4 不会在应用卸载时释放 facade
 <code>app.onUnmount</code> 是 Vue 应用唯一的卸载钩子，Vue 3.5 才引入；3.4 的 <code>App</code> 接口没有任何卸载回调注册点，因此 <code>createPwa()</code> 创建的 facade 在 Vue 3.4 下**不会**被释放。普通场景（应用启动时挂载一次、页面生命周期内不再卸载）不受影响；只有反复挂载/卸载同一应用（例如微前端宿主）才需要升级到 Vue 3.5+ 以避免逐次泄漏。
 :::
 
-自 0.1.0 起，<code>vite dev</code> 和生产构建中都提供 <code>virtual:pwa-config</code>；开发服务不生成平台 worker。安装、离线与更新仍须运行生产构建，再用 <code>vite preview</code> 或目标 HTTPS 站点验收。
+<code>vite dev</code> 和生产构建中都提供 <code>virtual:pwa-config</code>；开发服务不生成平台 worker。安装、离线与更新仍须运行生产构建，再用 <code>vite preview</code> 或目标 HTTPS 站点验收。
 示例要求浏览器提供 <code>navigator.serviceWorker</code>；若业务系统还要在不提供此 API 的环境运行，请先看[兼容范围中的降级说明](/reference/compatibility#不支持-service-worker-的环境)。
 
 示例使用 <code>App.vue</code> 单文件组件，需要在 Vite 中启用 <code>@vitejs/plugin-vue</code>。已有 Vite + Vue 项目保留原有 Vue 插件；若尚未安装，应按所用 Vite 主版本选择兼容的插件版本并核对其 peer 依赖。
 
+::: warning 身份字段上线后不可变更
+<code>appId</code>、<code>manifestId</code>、<code>origin</code>、<code>scope</code>、<code>serviceWorkerUrl</code>、<code>manifestUrl</code>、<code>mountPath</code>、<code>environment</code>、<code>cacheNamespaceSeed</code> 这九个字段在首次生产发布后即被记入发布基线，不可更改。首次上线前先确定真实的 HTTPS 域名、部署路径和 <code>sw.js</code> 的位置；之后再改属于迁移，需要 ADR 与迁移计划，不是普通发版。
+:::
+
 ## 1. 声明身份与策略
 
-在项目根目录新增 <code>pwa.config.ts</code>，按[配置指南](/guide/configuration)填写真实 origin、名称和图标。生产身份首次注册后不能随意改动。
+在项目根目录新增 <code>pwa.config.ts</code>，必须导出 <code>IDENTITY</code>、<code>INSTALL</code>、<code>POLICY</code> 三个常量：直接复制[配置指南](/guide/configuration)中的完整示例，再替换真实 origin、名称和图标。前置条件：
+
+- <code>public/icons</code> 下要有四个真实的 PNG 图标：192 与 512 两种尺寸，各含 <code>any</code> 和 <code>maskable</code> 两种用途；缺任何一个都会报 <code>install.missing-icon-variant</code>。
+- 下面插件里的 <code>offlinePage: {}</code> 要求 <code>POLICY.offlineFallback.enabled: true</code>，否则构建报 <code>vite.offline-page-without-fallback</code>。
+- 子路径部署（如 <code>/app/</code>）按配置指南中的[对应表](/guide/configuration#生产身份要保持稳定)逐项替换；<code>serviceWorkerUrl</code> 必须直接位于 <code>scope</code> 目录下。
 
 ## 2. 挂载构建插件
 
@@ -56,6 +64,8 @@ const app = createApp(App);
 app.use(createPwa({ config, updateCheck: { intervalMs: 1_800_000 } }));
 app.mount("#app");
 ~~~
+
+<code>updateCheck</code> 可选，默认关闭；<code>1_800_000</code> 即 30 分钟。<code>intervalMs</code> 必须是 60000 到 2147483647 之间的整数，否则创建绑定时抛错。<code>register()</code> 成功后满一个完整间隔才做第一次检查，不会立即检查；标签页隐藏时暂停，重新可见时补检；失败静默处理。详见[安装与更新](/guide/updates)。
 
 为虚拟模块增加类型：在已有 <code>tsconfig</code> 的 <code>compilerOptions.types</code> 中追加 <code>@pwa-platform/vite/virtual</code>，保留项目原有类型。
 
@@ -110,4 +120,11 @@ function applyUpdate(): void {
 
 ## 5. 构建并验收
 
-运行项目的生产构建，然后把产物部署到与 <code>IDENTITY.origin</code>、<code>scope</code> 一致的 HTTPS 地址。接着按[上线前检查](/start/checklist)确认首次注册、离线重新打开和更新等待行为。
+运行生产构建并本地预览：
+
+~~~bash
+pnpm vite build
+pnpm vite preview
+~~~
+
+<code>dist</code> 应包含：位于 <code>IDENTITY.serviceWorkerUrl</code> 的 <code>sw.js</code>、<code>manifest.webmanifest</code>、<code>pwa-recovery-worker.js</code>，启用 <code>offlinePage</code> 时还有离线页（文件名取自 <code>POLICY.offlineFallback.path</code>，示例为 <code>offline.html</code>）。部署前先读[服务器与 CDN 配置](/operations/hosting)，再把产物部署到与 <code>IDENTITY.origin</code>、<code>scope</code> 一致的 HTTPS 地址，然后按[上线前检查](/start/checklist)确认。
