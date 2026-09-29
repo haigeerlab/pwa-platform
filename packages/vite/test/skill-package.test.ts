@@ -828,3 +828,64 @@ describe("AO14 round 2: leftovers from the re-run", () => {
     expect(text).toMatch(/等待部署|等待人/);
   });
 });
+
+// ---- AO15: documentation sync -----------------------------------------------------------------------------------------------
+
+describe("AO15 documentation names the skill, both install directories, both invocations and the limits", () => {
+  const doc = (path: string) => readFileSync(join(repoRoot, path), "utf8");
+  const chooseSection = () => sectionOf(doc("website/start/choose.md"), "## 用 AI 引导接入 {#ai-onboarding}");
+
+  it("the choose page has an AI onboarding section with both directories, both invocations and the never-in-the-bundle warning", () => {
+    const section = chooseSection();
+    expect(section.length).toBeGreaterThan(0);
+    for (const word of [".claude/skills/pwa-onboarding", ".agents/skills/pwa-onboarding", "/pwa-onboarding", "$pwa-onboarding", "public/", "src/", "dist/"]) expect(section, word).toContain(word);
+    expect(section).toMatch(/两个都用[^\n]*各复制一份|各复制一份/);
+    expect(section, "must tell the reader not to put it in the site folders").toMatch(/不要把它放进[^\n]*public\/[^\n]*src\/[^\n]*dist\//);
+  });
+
+  it("says the skill is not in the published 0.2.3 and how to check the installed package", () => {
+    const section = chooseSection();
+    expect(section).toContain("0.2.3");
+    expect(section).toMatch(/不含|尚未随/);
+    expect(section).toContain("node_modules/@pwa-platform/vite/skills/pwa-onboarding");
+  });
+
+  it("says the docs site is Chinese only while the conversation can be English, and what the skill never does", () => {
+    const section = chooseSection();
+    for (const word of ["只有中文", "英文", "不会代你部署", "不收集"]) expect(section, word).toContain(word);
+  });
+
+  it("the copy commands cover POSIX shells and PowerShell", () => {
+    const section = chooseSection();
+    expect(section).toContain("cp -R");
+    expect(section).toContain("Copy-Item");
+  });
+
+  it("the capability guide and the package README point to it", () => {
+    expect(doc("website/guide/integration-by-capability.md")).toContain("/start/choose#ai-onboarding");
+    const readme = doc("packages/vite/README.md");
+    for (const word of ["pwa-onboarding", ".claude/skills/pwa-onboarding", ".agents/skills/pwa-onboarding", "Chinese"]) expect(readme, word).toContain(word);
+  });
+
+  it("the old Vite 5 + Vue 3.4 skill stays readable but says it is superseded", () => {
+    const text = doc(".agents/skills/pwa-vite5-vue-integration/SKILL.md");
+    const afterFrontMatter = text.slice(text.indexOf("---", 3) + 3);
+    expect(afterFrontMatter.slice(0, 700)).toMatch(/已被|Superseded/);
+    expect(afterFrontMatter.slice(0, 700)).toContain("pwa-onboarding");
+    expect(text).toContain("Version gate");
+  });
+
+  it("the package release procedure tells the releaser to bump metadata.version with the package version", () => {
+    const text = doc("docs/operations/npm-package-release.md");
+    expect(text).toContain("metadata.version");
+    expect(text).toContain("skills/pwa-onboarding/SKILL.md");
+  });
+
+  it("the changelog announces the skill under Unreleased", () => {
+    const text = doc("CHANGELOG.md");
+    const unreleased = text.slice(text.indexOf("## Unreleased"), text.indexOf("## 0.2.3"));
+    expect(unreleased).toContain("pwa-onboarding");
+    expect(unreleased).toContain("ADR-0045");
+    expect(unreleased, "must say it is not in the production bundle").toMatch(/does not contain it|not contain/);
+  });
+});

@@ -10,6 +10,21 @@ platform worker, recovery worker and optional offline page. It supports Vite 5 a
 npm install @pwa-platform/vite @pwa-platform/contracts
 ```
 
+## Onboarding skill
+
+The package ships an AI-assistant skill, `skills/pwa-onboarding/` (Markdown only; it adds no entry point and no runtime code). It walks an assistant through feasibility and conflict detection, an interview, configuration and build checks, server response-header checks, browser verification and post-launch troubleshooting, with a human confirmation at each gate.
+
+It is not in the published 0.2.3. Check that `node_modules/@pwa-platform/vite/skills/pwa-onboarding` exists, then copy it to the directory your assistant reads:
+
+```sh
+# Claude Code (invoke with /pwa-onboarding)
+mkdir -p .claude/skills && cp -R node_modules/@pwa-platform/vite/skills/pwa-onboarding .claude/skills/pwa-onboarding
+# Codex (invoke with $pwa-onboarding)
+mkdir -p .agents/skills && cp -R node_modules/@pwa-platform/vite/skills/pwa-onboarding .agents/skills/pwa-onboarding
+```
+
+Never copy it into `public/`, `src/` or `dist/`. The skill's `metadata.version` matches the package version, so copy it again after upgrading. The documentation site is Chinese only; the assistant can converse in English and relays the Chinese references.
+
 ## Configure Vite
 
 ```ts

@@ -13,6 +13,7 @@
 7. **暂存发布需要逐包批准**（2026-09-28 补充，见 [0.2.1 发布记录](../../tasks/package-distribution/release-0.2.1.md)）：npm 可能把 `publish` 先作为暂存版本，发布者在 npm 上认证批准后才公开；`Published package` 的输出不代表已公开，暂存期间 tarball 为 404。**按上面的依赖顺序批准**，公开顺序由批准顺序决定。已暂存的版本不能再次 `publish`（409），只能批准；不要为提速中断后重发。
 8. **暂存状态的三种报错都表示“已提交过”**（2026-09-28 补充，见 [0.2.3 发布记录](../../tasks/package-distribution/release-0.2.3.md)）：非交互 shell 中 `pnpm publish` 报 `ERR_PNPM_OTP_NON_INTERACTIVE` 时版本可能已进入暂存；之后再发会得到 `409 ... previously staged`，批准后再发得到 `403 ... previously published`。遇到这三种情况都去 npm 批准或跳过该包，不要重发。发布须在交互终端中进行，以便完成 2FA。
 9. **批量提交时，批准顺序就是公开顺序**（同上）：为提速可先把各包提交进暂存、再统一批准，但这放弃了第 6 条的逐包等待。此时必须严格按下方依赖顺序批准，且在被依赖的包可下载之前不要批准依赖它的包；0.2.3 中 `vite`、`vue`、`react` 先于 `sw-runtime` 公开，造成约 9 分钟 `npm install` 失败。
+10. **引导 skill 的版本要跟着包走**（[ADR-0045](../adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)）：升级 `@pwa-platform/vite` 的版本号时，同一提交里修改 `packages/vite/skills/pwa-onboarding/SKILL.md` 的 `metadata.version`，使两者相等；忘记时 `pnpm test` 里 `packages/vite` 的 skill 版本测试会变红。`pnpm check:publish` 还会核对只有 `@pwa-platform/vite` 的 `files` 含 `skills`、其余包与所有 `exports` 都不暴露它。
 
 ## 顺序
 

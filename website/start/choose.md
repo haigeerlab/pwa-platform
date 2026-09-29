@@ -45,4 +45,39 @@ pnpm add -D @pwa-platform/vite@0.2.3 @pwa-platform/contracts@0.2.3
 4. 在页面入口放入框架绑定并主动调用 <code>register()</code>。
 5. 构建后部署到 HTTPS 站点，按[上线前检查](/start/checklist)验证。
 
+## 用 AI 引导接入 {#ai-onboarding}
+
+`@pwa-platform/vite` 随包带一份给 AI 编程助手用的引导 skill（`skills/pwa-onboarding/`，只有 Markdown，不新增任何入口或运行时代码）。它按关卡带着助手完成：可行性与冲突检测、采访、配置并检查、服务端核对、浏览器验证、上线后排障。每个关卡结束都要你在对话里明确确认，才会继续。
+
+::: warning 已发布的 0.2.3 不含这份 skill
+它只在包含 <code>skills/</code> 目录的 <code>@pwa-platform/vite</code> 版本里提供。安装后先确认目录存在：<code>node_modules/@pwa-platform/vite/skills/pwa-onboarding</code>。skill 的 <code>metadata.version</code> 与包版本一致，升级包后要重新复制。
+:::
+
+把它复制到助手读取 skill 的目录。Claude Code 用 `.claude/skills/pwa-onboarding`，Codex 用 `.agents/skills/pwa-onboarding`；两个都用就各复制一份。
+
+macOS／Linux：
+
+~~~bash
+mkdir -p .claude/skills
+cp -R node_modules/@pwa-platform/vite/skills/pwa-onboarding .claude/skills/pwa-onboarding
+~~~
+
+Windows PowerShell：
+
+~~~powershell
+New-Item -ItemType Directory -Force .claude/skills | Out-Null
+Copy-Item -Recurse node_modules/@pwa-platform/vite/skills/pwa-onboarding .claude/skills/pwa-onboarding
+~~~
+
+用 Codex 时把目标目录里的 `.claude` 换成 `.agents`。然后在助手里调用：Claude Code 输入 `/pwa-onboarding`，Codex 输入 `$pwa-onboarding`。
+
+**不要把它放进 `public/`、`src/` 或 `dist/`**：那样它会被当作站点文件发布。它属于开发期辅助，正常构建不读取它。
+
+它的边界：
+
+- 不会代你部署、推送或切换 worker，也不会代你删除依赖或文件，这些都要你确认或亲自执行。
+- 不收集你的服务器配置，只告诉你哪些资源要满足什么响应头，由你对照自行配置。
+- 不会替你决定哪些接口是公共接口；开启公共读取缓存前，每个接口都要你逐个确认。
+- 本文档站只有中文。你可以用英文与助手对话，助手会把引用的中文文档忠实转述成英文，界面文案的语言在采访里另行选择。
+
 继续阅读：[Vue 接入](/start/vue)或[React 接入](/start/react)。

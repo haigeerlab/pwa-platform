@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **`@pwa-platform/vite` ships an AI onboarding skill (ADR-0045):** the package now includes `skills/pwa-onboarding/` (Markdown only), an assistant-guided walkthrough of the whole onboarding chain: feasibility and conflict detection, an interview, configuration and build checks, server response-header checks, browser verification and post-launch troubleshooting, with a human confirmation at every irreversible step. Copy it to `.claude/skills/pwa-onboarding` (Claude Code, `/pwa-onboarding`) or `.agents/skills/pwa-onboarding` (Codex, `$pwa-onboarding`); never into `public/`, `src/` or `dist/`. No public API, `exports` map or runtime behavior changes, and the production bundle does not contain it (checked by `pnpm test:onboarding-smoke`). The skill's `metadata.version` equals the package version. `pnpm check:publish` now requires that only `@pwa-platform/vite` lists `skills` in `files`.
+
 ## 0.2.3 (2026-09-28)
 
 Patch release: upgrade all ten `@pwa-platform/*` packages together. No public API or configuration change. `@pwa-platform/client-runtime` changes how return visits report registration and announce updates; `@pwa-platform/sw-runtime` changes the recovery worker's database deletion, runtime-cache quota cleanup and offline-write flush coalescing. Check the `register()` entry below if your code relied on `register()` rejecting when a return visit's background script fetch fails.
