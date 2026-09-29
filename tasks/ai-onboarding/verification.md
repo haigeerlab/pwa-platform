@@ -31,4 +31,4 @@
 
 ## 被搁置的相关工作
 
-`header-preflight`（Issue #87、PR #90）是同一次范围扩张的产物（一个新公开包加命令行），已搁置，等有人真的需要再重新评审。
+`header-preflight`（Issue #87、PR #90）是同一次范围扩张的产物（一个新公开包加命令行），已决定不做：Issue 与 PR 已关闭，`spec/proposals/header-preflight.md` 已删除。以后若真有需求，需要重新提 Proposal。

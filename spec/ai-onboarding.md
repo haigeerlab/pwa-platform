@@ -18,7 +18,7 @@
 
 **做**：一个 Markdown 文件；随包分发（`files` 含 `skills`）；安装到助手读取 skill 的目录（Claude Code 的 `.claude/skills/pwa-onboarding`、Codex 的 `.agents/skills/pwa-onboarding`）；文档站《选择接入包》、英文 README 说明用法与边界。
 
-**不做**（缩减掉的部分，都不再实现）：分关卡的引用文件与人工确认闸门编号；接入状态文件与续做；中英文术语表与语言选项；第三方推送 SDK 的 scope 判定表；服务端要求清单与 curl 核对脚本；浏览器验证与排障流程的复写；场景夹具、评分表与人工场景评估框架；与 `build-verifier`、`sw-runtime` 的一致性测试；命令行入口（`header-preflight` 另议并已搁置）。
+**不做**（缩减掉的部分，都不再实现）：分关卡的引用文件与人工确认闸门编号；接入状态文件与续做；中英文术语表与语言选项；第三方推送 SDK 的 scope 判定表；服务端要求清单与 curl 核对脚本；浏览器验证与排障流程的复写；场景夹具、评分表与人工场景评估框架；与 `build-verifier`、`sw-runtime` 的一致性测试；命令行入口（曾提出的 `header-preflight` 已决定不做，Issue #87 已关闭，Proposal 文件已删除）。
 
 ## 契约
 
