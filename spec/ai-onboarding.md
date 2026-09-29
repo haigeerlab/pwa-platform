@@ -1,8 +1,8 @@
 # 规格：ai-onboarding
 
-> 状态：**草稿，待评审**。Proposal [`spec/proposals/ai-onboarding.md`](proposals/ai-onboarding.md) 已于 2026-09-29 由项目所有者评审通过（Issue #84，`proposal-stage:accepted`，假设 5–14 全部勾选）。模块尚未进入能力图：当前模块 `cloudflare-test-deployment` 还有 F2/F3/F4 未完成，插入命令会拒绝。本规格随模块入图后一起评审。
+> 状态：**已批准（项目所有者，2026-09-29）**。Proposal [`spec/proposals/ai-onboarding.md`](proposals/ai-onboarding.md) 已于同日评审通过（Issue #84，`proposal-stage:accepted`，假设 5–14 全部勾选）。模块尚未进入能力图：当前模块 `cloudflare-test-deployment` 还有 F2/F3/F4 未完成，插入命令会拒绝，`verify-artifacts` 在入图前也会对本规格报错，所以**本规格随能力图行一起合入**，实现在不合并的分支上推进。包边界决定见 [ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)。
 >
-> 规格阶段新出现的决定（Proposal 没有覆盖）已在"规格阶段的决定"一节列出：项目所有者于 2026-09-29 以"按推荐继续"采纳，**随规格评审最终确认**。仍需调研的两项标注 **[待核对]**。
+> 规格阶段新出现的决定（Proposal 没有覆盖）已在"规格阶段的决定"一节列出：项目所有者于 2026-09-29 评审规格时通过。仍需调研的两项标注 **[待核对]**，由计划任务 AO2、AO3 核实后写回。
 
 ## 目标
 
@@ -53,7 +53,7 @@
 
 ### 规格阶段的决定
 
-以下由项目所有者于 2026-09-29 以"按推荐继续"采纳，随规格评审最终确认：
+以下九条最初由项目所有者以"按推荐继续"采纳，并随规格评审于 2026-09-29 通过：
 
 1. **状态文件**：仓库根目录的 `PWA-ONBOARDING.md`；是否提交由 skill 询问，默认建议提交（团队共享，不含密钥）。
 2. **体积预算**：`SKILL.md` ≤ 6 KB，每个引用文件 ≤ 8 KB，总量 ≤ 60 KB，由 DT3 强制。

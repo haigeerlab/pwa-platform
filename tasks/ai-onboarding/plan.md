@@ -1,12 +1,12 @@
 # 实现计划：ai-onboarding
 
-> 状态：**草稿，待评审**。依赖规格 [spec/ai-onboarding.md](../../spec/ai-onboarding.md)（草稿 PR #88）。模块尚未进入能力图，本计划与规格一起在模块晋级时合入。
+> 状态：**已批准（项目所有者，2026-09-29）**，与规格一起通过评审。依赖规格 [spec/ai-onboarding.md](../../spec/ai-onboarding.md)（草稿 PR #88）。模块尚未进入能力图，本计划与规格一起在模块晋级时合入。AO1 于同日完成，AO2、AO3 已开始。
 
 ## 概览
 
 按规格交付随 `@pwa-platform/vite` 发布的 AI 接入编排 skill：`skills/pwa-onboarding/` 下的 `SKILL.md` 与十个按需读取的引用文件，八个关卡、五个人工确认闸门、可续做的状态文件、服务端要求清单、中英文支持，以及确定性测试和人工场景评估。它只含 Markdown，不新增运行时代码，不新增公开入口，`exports` 不变。
 
-分支策略：规格、计划与全部实现都在**不合并的草稿分支**上推进，最后随能力图行一起合入（`verify-artifacts` 在模块入图前会对规格报错）。每个任务一个提交，提交信息带 `Task: AO<n>`。开始实现（AO4 起）之前，规格与本计划必须已由项目所有者在草稿 PR 上评审通过。
+分支策略：规格、计划与全部实现都在**不合并的草稿分支**上推进，最后随能力图行一起合入（`verify-artifacts` 在模块入图前会对规格报错）。每个任务一个提交，提交信息带 `Task: AO<n>`。开始实现（AO4 起）之前，规格与本计划必须已由项目所有者在草稿 PR 上评审通过（已于 2026-09-29 满足）；AO4 另需先完成 AO2。
 
 > Tasks tracked in this plan using local ids (AO1–AO16). 没有使用远端 tracker 的 sub-issue；commit 用 `Task: AO<n>` 标注。
 
@@ -21,7 +21,7 @@
 
 ## 任务定义
 
-### AO1：规格评审通过、ADR-0045 与本计划
+### AO1：规格评审通过、ADR-0045 与本计划（完成：见本任务的提交）
 
 **范围：** `spec/ai-onboarding.md`、`tasks/ai-onboarding/plan.md`、`docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md`。
 
