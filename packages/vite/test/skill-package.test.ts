@@ -562,6 +562,13 @@ const gate5File = join(referencesDir, "gate-5-release.md");
 const gate6File = join(referencesDir, "gate-6-troubleshoot.md");
 const faqFile = join(repoRoot, "website", "guide", "troubleshooting.md");
 
+describe("all gates delivered", () => {
+  it("leaves no placeholder wording in SKILL.md", () => {
+    const text = readFileSync(skillFile, "utf8");
+    for (const word of ["待交付", "Skeleton", "分批交付"]) expect(text, word).not.toContain(word);
+  });
+});
+
 describe("AO11 gate 5 release gate", () => {
   const text = () => readFileSync(gate5File, "utf8");
 
@@ -676,5 +683,49 @@ describe("AO6 third-party service worker scope rules", () => {
 
   it("lists the situations that cannot be decided statically and hands them to a person", () => {
     for (const word of ["环境变量", "Service-Worker-Allowed", "标签管理器", "无末尾斜杠", "交给人"]) expect(text(), word).toContain(word);
+  });
+});
+
+// ---- AO8: gate 2 public/private classification --------------------------------------------------------------------------
+
+const gate2File = join(referencesDir, "gate-2-classification.md");
+
+describe("AO8 gate 2 classification gate", () => {
+  const text = () => readFileSync(gate2File, "utf8");
+
+  it("writes no rule by default and only after a person confirms each interface (G3)", () => {
+    for (const word of ["默认一条都不写", "逐个", "G3", "明确", "状态文件"]) expect(text(), word).toContain(word);
+  });
+
+  it("does not accept a blanket yes or a guess from the interface name", () => {
+    expect(text()).toMatch(/全部|统一|都缓存/);
+    expect(text()).toContain("不能凭名字");
+  });
+
+  it("lists what the platform never caches, and what Set-Cookie, Authorization and Vary mean for admission", () => {
+    for (const word of ["私有数据", "写请求", "流媒体", "未分类", "Set-Cookie", "Authorization", "Vary"]) expect(text(), word).toContain(word);
+  });
+
+  it("refers to the public read cache page and does not copy its admission list", () => {
+    expect(text()).toContain("公共读取缓存");
+    expect(text()).not.toContain("maxEntryBytes 为");
+  });
+
+  it("names only the two runtime classes and strategies that exist, and hands unsupported combinations to the build diagnostics", () => {
+    for (const word of ["public-data", "navigation-public-dynamic", "network-first", "stale-while-revalidate"]) expect(text(), word).toContain(word);
+    for (const code of ["compile.runtime-strategy-unsupported", "compile.runtime-cache-unused"]) {
+      expect(text(), code).toContain(code);
+      const hits = execFileSync("grep", ["-rl", code, ...["core", "contracts", "vite"].map((name) => join(packagesDir, name, "src"))], { encoding: "utf8" });
+      expect(hits.trim().length, `${code} is no longer a real diagnostic code`).toBeGreaterThan(0);
+    }
+  });
+
+  it("asks for the three limits instead of assuming defaults, and stops for Nuxt or an interface it cannot confirm", () => {
+    for (const word of ["maxEntries", "maxEntryBytes", "maxAgeSeconds", "没有默认值", "Nuxt", "无法确认"]) expect(text(), word).toContain(word);
+  });
+
+  it("is skipped, and says so in the state file, when Q9 was answered no", () => {
+    expect(text()).toContain("skipped");
+    expect(text()).toContain("Q9");
   });
 });

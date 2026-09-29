@@ -1,13 +1,11 @@
 ---
 name: pwa-onboarding
-description: "把现有 Vite + Vue / React 项目接入 PWA Platform 的分步引导：可行性与冲突检测、采访、配置并检查、服务端与浏览器验证、上线后排障。适用于接入 PWA、Service Worker、离线页、安装、更新提示。Guides a Vite + Vue/React project through onboarding to PWA Platform step by step. (Skeleton: gate content is delivered by later tasks.)"
+description: "把现有 Vite + Vue / React 项目接入 PWA Platform 的分步引导：可行性与冲突检测、采访、配置并检查、服务端与浏览器验证、上线后排障。适用于接入 PWA、Service Worker、离线页、安装、更新提示。Guides a Vite + Vue/React project through onboarding to PWA Platform step by step."
 metadata:
   version: "0.2.3"
 ---
 
 # PWA 接入引导
-
-> **关卡内容分批交付。** 索引里标"待交付"的关卡还不能执行：遇到时如实告诉用户，不要凭记忆补写。
 
 ## 调用
 
@@ -64,7 +62,7 @@ metadata:
 | A | 可行性与冲突检测 | 进入关卡 A 时读取 [references/gate-a-feasibility.md](references/gate-a-feasibility.md)，它再指向第三方 worker 的判定 |
 | 0 | 采访 | 进入关卡 0 时读取 [references/gate-0-interview.md](references/gate-0-interview.md) |
 | 1 | 配置并检查 | 进入关卡 1 时读取 [references/gate-1-configure.md](references/gate-1-configure.md)，它再指向配置文件与 Vue / React 片段 |
-| 2 | 公共/私有接口分类 | 待交付 |
+| 2 | 公共/私有接口分类 | 仅当 Q9 要求运行时缓存时，进入关卡 2 读取 [references/gate-2-classification.md](references/gate-2-classification.md) |
 | 3 | 服务端核对 | 进入关卡 3 时读取 [references/gate-3-server.md](references/gate-3-server.md) |
 | 4 | 浏览器验证 | 进入关卡 4 时读取 [references/gate-4-browser.md](references/gate-4-browser.md) |
 | 5 | 发布门禁（可选） | 进入关卡 5 时读取 [references/gate-5-release.md](references/gate-5-release.md) |
