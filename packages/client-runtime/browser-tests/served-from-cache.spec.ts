@@ -55,6 +55,41 @@ async function expirationRecordCacheNames(page: Page): Promise<readonly string[]
   );
 }
 
+/**
+ * Waits until Workbox's background write for every URL has reached its last step the page can observe: the cache
+ * entry and its workbox-expiration record. The fetch or navigation resolving does not mean either exists yet
+ * (NetworkFirst and SWR write under event.waitUntil), so going offline or logging out before this races the write —
+ * a write that lands after logout's cleanup re-creates the cache (ADR-0035 known limitation).
+ */
+async function waitForRuntimeWrites(page: Page, urls: readonly string[]): Promise<void> {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async ({ targets, databaseName, storeName }) => {
+          for (const target of targets) if ((await caches.match(target)) === undefined) return false;
+          if (!(await indexedDB.databases()).some(({ name }) => name === databaseName)) return false;
+          const db = await new Promise<IDBDatabase>((resolve, reject) => {
+            const request = indexedDB.open(databaseName);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+          try {
+            const recorded = await new Promise<string[]>((resolve, reject) => {
+              const request = db.transaction(storeName, "readonly").objectStore(storeName).getAll();
+              request.onsuccess = () => resolve((request.result as { readonly url: string }[]).map((entry) => entry.url));
+              request.onerror = () => reject(request.error);
+            });
+            return targets.every((target) => recorded.includes(target));
+          } finally {
+            db.close();
+          }
+        },
+        { targets: urls, databaseName: DATABASE_NAME, storeName: OBJECT_STORE_NAME },
+      ),
+    )
+    .toBe(true);
+}
+
 test.describe("served-from-cache: subresource (network-failed)", () => {
   test("exactly one event per offline read, with reason network-failed and a plausible cachedAt", async ({ page, fixtureServer }) => {
     fixtureServer.deploy("runtime-cache");
@@ -62,6 +97,7 @@ test.describe("served-from-cache: subresource (network-failed)", () => {
     const url = `${RUNTIME_CATALOG_ITEMS_URL}?x=1`;
     const before = Date.now();
     await fetchOk(page, fixtureServer.url(url));
+    await waitForRuntimeWrites(page, [fixtureServer.url(url)]);
 
     fixtureServer.goOffline();
     await fetchOk(page, fixtureServer.url(url));
@@ -93,6 +129,7 @@ test.describe("served-from-cache: navigation (page subscribes only after the wor
     // Warm the pages cache online, with a plain navigation (no facade involvement).
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
     await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await waitForRuntimeWrites(page, [fixtureServer.url(RUNTIME_DASHBOARD_URL)]);
 
     fixtureServer.goOffline();
     // A fresh navigation: a brand-new document, whose page script has not called register() yet, so nothing is
@@ -167,6 +204,7 @@ test.describe("logout clears the runtime cache and its expiration records", () =
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
     await fetchOk(page, fixtureServer.url(RUNTIME_CATALOG_ITEMS_URL));
     await fetchOk(page, fixtureServer.url(RUNTIME_REVIEWS_LIST_URL));
+    await waitForRuntimeWrites(page, [RUNTIME_DASHBOARD_URL, RUNTIME_CATALOG_ITEMS_URL, RUNTIME_REVIEWS_LIST_URL].map((path) => fixtureServer.url(path)));
     await pageRegister(page);
 
     const beforeCaches = await snapshotCaches(page);

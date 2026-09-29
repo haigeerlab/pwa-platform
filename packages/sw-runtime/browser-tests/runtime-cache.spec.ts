@@ -237,7 +237,8 @@ test.describe("dynamic navigation (navigation-public-dynamic, runtime-pages)", (
 
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
     await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
-    expect(hasCachedEntry(await cacheContents(page), "runtime-pages", RUNTIME_DASHBOARD_URL)).toBe(true);
+    // NetworkFirst can return the network response before Workbox finishes the cache write under event.waitUntil.
+    await expect.poll(async () => hasCachedEntry(await cacheContents(page), "runtime-pages", RUNTIME_DASHBOARD_URL)).toBe(true);
 
     fixtureServer.goOffline();
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
