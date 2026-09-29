@@ -105,7 +105,10 @@ packages/vite/skills/pwa-onboarding/
   references/
     gate-a-feasibility.md     可行性、冲突目录、存量迁移分支
     gate-0-interview.md       采访题库
-    gate-1-configure.md       配置与构建诊断
+    gate-1-configure.md       配置流程与构建诊断（再指向下面三个文件）
+    gate-1-config-file.md     pwa.config.ts 与子路径部署
+    gate-1-vue.md             Vite + Vue 的挂载、注册、更新提示
+    gate-1-react.md           Vite + React 的挂载、注册、更新提示
     gate-2-classification.md  公共/私有接口分类闸门
     gate-3-server.md          服务端要求清单与 curl 核对
     gate-4-browser.md         浏览器验证与恢复演练

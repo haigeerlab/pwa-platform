@@ -348,3 +348,126 @@ describe("AO5 state file reference", () => {
     for (const word of ["令牌", "Cookie", "响应体", "服务器配置"]) expect(text, word).toContain(word);
   });
 });
+
+// ---- AO7: gate 0 interview and gate 1 configuration ---------------------------------------------------------------
+
+const repoRoot = join(packageDir, "..", "..");
+const gate0File = join(referencesDir, "gate-0-interview.md");
+const gate1File = join(referencesDir, "gate-1-configure.md");
+const gate1Snippets = ["gate-1-config-file.md", "gate-1-vue.md", "gate-1-react.md"].map((name) => join(referencesDir, name));
+
+type CodeBlock = { text: string; startLine: number };
+
+/** Fenced code blocks of a Markdown document, each with the 1-based line its opening fence is on. */
+function codeBlocks(markdown: string): CodeBlock[] {
+  const blocks: CodeBlock[] = [];
+  const lines = markdown.split(/\r?\n/);
+  let open: { char: string; length: number; start: number; body: string[] } | undefined;
+  lines.forEach((line, index) => {
+    const fence = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (open === undefined) {
+      if (fence) open = { char: fence.charAt(0), length: fence.length, start: index + 1, body: [] };
+    } else if (fence && fence.charAt(0) === open.char && fence.length >= open.length) {
+      blocks.push({ text: open.body.join("\n"), startLine: open.start });
+      open = undefined;
+    } else {
+      open.body.push(line);
+    }
+  });
+  return blocks;
+}
+
+/** Every `<!-- 出处：path -->` marker with the code block that follows it. */
+function sourcedBlocks(markdown: string): Array<{ source: string; block: string }> {
+  const blocks = codeBlocks(markdown);
+  const lines = markdown.split(/\r?\n/);
+  const found: Array<{ source: string; block: string }> = [];
+  lines.forEach((line, index) => {
+    const source = /^<!-- 出处：(\S+) -->$/.exec(line.trim())?.[1];
+    if (!source) return;
+    const next = blocks.find((block) => block.startLine > index + 1);
+    if (!next) throw new Error(`No code block after the source marker for ${source}`);
+    found.push({ source, block: next.text });
+  });
+  return found;
+}
+
+describe("AO7 gate 0 interview", () => {
+  const text = () => readFileSync(gate0File, "utf8");
+
+  it("has the ten questions, each with a default and an effect", () => {
+    const rows = new Map<string, string[]>();
+    for (const line of text().split(/\r?\n/)) {
+      const cells = line.split("|").map((cell) => cell.trim());
+      const id = /^Q(\d+)$/.exec(cells[1] ?? "")?.[1];
+      if (id) rows.set(id, cells.slice(2, -1));
+    }
+    expect([...rows.keys()].sort((a, b) => Number(a) - Number(b))).toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]);
+    for (const [id, cells] of rows) {
+      expect(cells.length, `Q${id} needs question, default and effect`).toBe(3);
+      for (const cell of cells) expect(cell.length, `Q${id} has an empty cell`).toBeGreaterThan(0);
+    }
+  });
+
+  it("names the three places the language choice lands, and records the answers", () => {
+    for (const word of ["PwaUpdateNotice", "offlinePage", "安装信息", "PWA-ONBOARDING.md"]) expect(text(), word).toContain(word);
+  });
+
+  it("stops on requests outside the supported scope (Push, offline writes)", () => {
+    for (const word of ["Push", "离线写入", "停"]) expect(text(), word).toContain(word);
+  });
+});
+
+describe("AO7 gate 1 configuration", () => {
+  const text = () => readFileSync(gate1File, "utf8");
+
+  it("covers the diagnostic families and who decides each", () => {
+    for (const prefix of ["identity.", "install.", "vite.manifest-icon", "vite.offline-page", "compile.", "schema.", "verify."]) {
+      expect(text(), prefix).toContain(prefix);
+    }
+  });
+
+  it("gates identity fields (G2), asks for real icons and builds for production", () => {
+    for (const word of ["G2", "真实", "图标", "生产构建", "不可变"]) expect(text(), word).toContain(word);
+    // The word G2 also appears in the diagnostics table, so require it on the step that actually writes the identity.
+    const identityStep = text().split(/\r?\n/).find((line) => line.startsWith("2. "));
+    expect(identityStep, "the identity step must exist").toBeDefined();
+    expect(identityStep, "the identity step must name the G2 gate").toContain("G2");
+  });
+
+  it("links the config-file, Vue and React snippet files and says when to read them", () => {
+    const links = relativeLinks(text());
+    for (const name of ["gate-1-config-file.md", "gate-1-vue.md", "gate-1-react.md"]) {
+      const hit = links.find((link) => link.target.endsWith(name));
+      expect(hit, name).toBeDefined();
+      expect(hit?.line, `${name}: the line must say 读取`).toContain("读取");
+    }
+  });
+});
+
+describe("AO7 snippets stay identical to the official onboarding docs", () => {
+  it("carries a source marker on every verbatim block and enough of them", () => {
+    const counts = gate1Snippets.map((file) => sourcedBlocks(readFileSync(file, "utf8")).length);
+    expect(counts[0], "gate-1-config-file.md").toBeGreaterThanOrEqual(1);
+    expect(counts[1], "gate-1-vue.md").toBeGreaterThanOrEqual(4);
+    expect(counts[2], "gate-1-react.md").toBeGreaterThanOrEqual(3);
+  });
+
+  it("matches a block in the cited document, byte for byte", () => {
+    for (const file of gate1Snippets) {
+      for (const { source, block } of sourcedBlocks(readFileSync(file, "utf8"))) {
+        const docPath = join(repoRoot, source);
+        expect(existsSync(docPath), `${source} does not exist`).toBe(true);
+        const docBlocks = codeBlocks(readFileSync(docPath, "utf8")).map((candidate) => candidate.text);
+        expect(docBlocks, `${relative(skillDir, file)}: block not found in ${source}`).toContain(block);
+      }
+    }
+  });
+
+  it("keeps the periodic update check in the default main entry snippets", () => {
+    const vue = readFileSync(join(referencesDir, "gate-1-vue.md"), "utf8");
+    const react = readFileSync(join(referencesDir, "gate-1-react.md"), "utf8");
+    expect(vue).toContain("updateCheck: { intervalMs: 1_800_000 }");
+    expect(react).toContain("updateCheck={{ intervalMs: 1_800_000 }}");
+  });
+});
