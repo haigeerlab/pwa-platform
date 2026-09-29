@@ -4,7 +4,7 @@
 
 `pwa-platform` 是一个与框架无关的 PWA 基础设施，用于构建可安装、具备韧性的 Web 应用。它统一处理 Service Worker 生命周期、安全缓存、离线降级、更新体验和构建校验；每个接入应用仍自行拥有产品策略。
 
-仓库的模块级能力已完成交付；业务应用生产发布仍以各通道的验收门禁为准。十个公开包统一为 npm 正式版 `0.2.3`（`latest`），包括可选的入口恢复包。Nuxt、Push 与离线写入包仍是工作区私有包。各模块状态与未取得的证据见下文。
+仓库的模块级能力已完成交付；业务应用生产发布仍以各通道的验收门禁为准。十个公开包统一为 npm 正式版 `0.2.4`（`latest`），包括可选的入口恢复包。Nuxt、Push 与离线写入包仍是工作区私有包。各模块状态与未取得的证据见下文。
 
 ## 范围
 
@@ -62,7 +62,7 @@ PwaIdentity + PwaPolicy + 宿主构建产物
 - `offline-write-extension`：`PwaPolicy v2` 显式开启、会话绑定的离线写入队列（[ADR-0027](docs/adr/0027-explicit-session-bound-offline-write-queue.md)）。
 - `pwa-entry-resilience`：当前 Origin 迁移或不可达时，使用业务应用提供的备用入口清单，让已安装用户确认后跳转（[接入说明](docs/guides/entry-recovery-integration.md)）。
 - `public-read-cache`：自正式包 `0.1.0` 起可通过 `PwaPolicy v3` 显式开启公共读取的运行时缓存（[ADR-0035](docs/adr/0035-explicit-public-read-runtime-cache.md)、[接入说明](docs/guides/public-read-cache.md)）。Nuxt 暂不支持开启。
-- `ai-onboarding`：`@pwa-platform/vite` 随包分发的一份 AI 接入清单（`skills/pwa-onboarding/SKILL.md`，只有一个 Markdown 文件），把接入中最容易出错的几件事交代给 AI 助手，规则本身指向文档站；开发期辅助，不进入生产构建。**尚未随已发布版本提供**（0.2.3 不含它；[规格](spec/ai-onboarding.md)、[使用说明](website/start/choose.md)）。
+- `ai-onboarding`：`@pwa-platform/vite` 随包分发的一份 AI 接入清单（`skills/pwa-onboarding/SKILL.md`，只有一个 Markdown 文件），把接入中最容易出错的几件事交代给 AI 助手，规则本身指向文档站；开发期辅助，不进入生产构建。**自 0.2.4 起随包提供**（连同所引文档页的离线副本；[规格](spec/ai-onboarding.md)、[使用说明](website/start/choose.md)）。
 
 **发布就绪**
 
@@ -99,7 +99,7 @@ React 示例的安卓 PWA 冒烟验收使用 Cloudflare Pages Direct Upload。�
 
 ## npm 正式包
 
-npm 组织 scope 为 `@pwa-platform`。已发布的十包是 `contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`entry-resilience`、`vue` 与 `react`，统一版本 `0.2.3`、MIT 许可证。`latest` 指向正式版；业务应用通常安装一个框架绑定以及构建期的 `@pwa-platform/vite`，内部依赖由包管理器解析。需要入口灾备时另装 `@pwa-platform/entry-resilience`。npm 包正式发布不代表某个业务应用已通过生产部署门禁。
+npm 组织 scope 为 `@pwa-platform`。已发布的十包是 `contracts`、`core`、`engine-workbox`、`build-verifier`、`sw-runtime`、`client-runtime`、`vite`、`entry-resilience`、`vue` 与 `react`，统一版本 `0.2.4`、MIT 许可证。`latest` 指向正式版；业务应用通常安装一个框架绑定以及构建期的 `@pwa-platform/vite`，内部依赖由包管理器解析。需要入口灾备时另装 `@pwa-platform/entry-resilience`。npm 包正式发布不代表某个业务应用已通过生产部署门禁。
 
 `browser-test-harness`、`examples-browser-e2e`、`nuxt`、`push`、`offline-write` 继续保持私有，不在正式版分发范围。入口恢复的接入方式与信任模型见[入口恢复接入说明](docs/guides/entry-recovery-integration.md)。详细的本地发布顺序、tarball 验收和后续生产门禁见 [npm 包发布流程](docs/operations/npm-package-release.md)。
 

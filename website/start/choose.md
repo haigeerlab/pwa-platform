@@ -8,8 +8,8 @@ Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code
 
 | 项目 | 直接安装 | 公开状态 |
 | --- | --- | --- |
-| Vite 5／8 + Vue >=3.4、<4 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/vue</code> | npm 0.2.3 |
-| Vite 5／8 + React >=19.2、<20 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/react</code> | npm 0.2.3 |
+| Vite 5／8 + Vue >=3.4、<4 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/vue</code> | npm 0.2.4 |
+| Vite 5／8 + React >=19.2、<20 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/react</code> | npm 0.2.4 |
 | Nuxt 4.5.x | <code>@pwa-platform/nuxt</code> | 工作区私有，尚未公开 |
 | TanStack Start / Next.js | 暂无可用的公开适配包 | 不在当前接入范围 |
 
@@ -20,18 +20,18 @@ Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code
 Vue：
 
 ~~~bash
-pnpm add @pwa-platform/vue@0.2.3
-pnpm add -D @pwa-platform/vite@0.2.3 @pwa-platform/contracts@0.2.3
+pnpm add @pwa-platform/vue@0.2.4
+pnpm add -D @pwa-platform/vite@0.2.4 @pwa-platform/contracts@0.2.4
 ~~~
 
 React：
 
 ~~~bash
-pnpm add @pwa-platform/react@0.2.3
-pnpm add -D @pwa-platform/vite@0.2.3 @pwa-platform/contracts@0.2.3
+pnpm add @pwa-platform/react@0.2.4
+pnpm add -D @pwa-platform/vite@0.2.4 @pwa-platform/contracts@0.2.4
 ~~~
 
-安装命令固定 0.2.3；npm `latest` 指向该正式包版本。业务应用仍需单独完成生产部署验收。
+安装命令固定 0.2.4；npm `latest` 指向该正式包版本。业务应用仍需单独完成生产部署验收。
 
 ::: warning 同一次构建中的平台包必须是同一版本
 带新字段的构建计划不能被旧版本的平台包校验；升级 <code>@pwa-platform/vite</code>、框架绑定或 <code>@pwa-platform/contracts</code> 时要一起升级，不要只升级其中一个。
@@ -55,8 +55,8 @@ pnpm add -D @pwa-platform/vite@0.2.3 @pwa-platform/contracts@0.2.3
 
 包里还带着清单引用的文档页的离线副本，放在 `node_modules/@pwa-platform/vite/docs/`，与已装包同版本，不联网（内网）也能读；助手先读本地副本，读不到才打开文档站链接。
 
-::: warning 已发布的 0.2.3 不含这份清单
-它只在包含 <code>skills/</code> 目录的 <code>@pwa-platform/vite</code> 版本里提供。先确认目录存在：<code>node_modules/@pwa-platform/vite/skills/pwa-onboarding</code>。清单里的 <code>metadata.version</code> 与包版本一致，升级包后要重新复制。
+::: warning 自 0.2.4 起提供
+清单与离线文档从 <code>@pwa-platform/vite@0.2.4</code> 起随包发布，0.2.3 及更早版本不含。先确认目录存在：<code>node_modules/@pwa-platform/vite/skills/pwa-onboarding</code>。清单里的 <code>metadata.version</code> 与包版本一致，升级包后要重新复制。
 :::
 
 复制到助手读取 skill 的目录：Claude Code 用 `.claude/skills/pwa-onboarding`，Codex 用 `.agents/skills/pwa-onboarding`，两个都用就各复制一份。
