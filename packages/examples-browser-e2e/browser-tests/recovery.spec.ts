@@ -18,7 +18,7 @@ import {
 import { appCachePrefix, cacheName } from "@pwa-platform/contracts";
 import type { Page } from "@playwright/test";
 import { IDENTITY, SHELL_URL, WORKER_URL } from "../apps/shared/identity.js";
-import { cacheEntryCount, checkForUpdate, installAndControl, waitForActivatedWorker } from "./page.js";
+import { cacheEntryCount, checkForUpdate, installAndControl, waitForActivatedWorker, keepWebKitOffPushManager } from "./page.js";
 import { readShippedWorker } from "./release.js";
 import { EXAMPLES, fixtureSite, type ExampleName } from "./sites.js";
 
@@ -77,13 +77,9 @@ for (const example of EXAMPLES) {
   test.describe(`${example} example · recovery`, () => {
     test.use({ fixtureSite: fixtureSite(example) });
 
-    // Engine finding (ADR-0042, 2026-09-29): under Playwright WebKit, the React example's service worker never
-    // reaches "activated" — installAndControl's poll hangs until the test's own 30s timeout, reproduced 3/3 in
-    // isolation. The Vue example (same fixture server, same worker build pipeline) and Firefox are both unaffected,
-    // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
-    // reported as a finding rather than changed in product code.
+    // ADR-0042: Playwright's WebKit loses the page when the React example's push panel queries PushManager.
     if (example === "react") {
-      test.skip(({ browserName }) => browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
+      test.beforeEach(async ({ context, browserName }) => keepWebKitOffPushManager(context, browserName));
     }
 
     test("the recovery worker takes over and deletes exactly this app's caches", async ({ page, fixtureServer }) => {

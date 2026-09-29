@@ -1,7 +1,7 @@
 import { expect, test } from "@pwa-platform/browser-test-harness";
 import { INSTALL, MANIFEST_URL, SHELL_URL } from "../apps/shared/identity.js";
 import { test as installableTest } from "./installable-context.js";
-import { installAndControl } from "./page.js";
+import { installAndControl, keepWebKitOffPushManager } from "./page.js";
 import { EXAMPLES, fixtureSite } from "./sites.js";
 
 /** How long to give the browser to decide on its own that the app is installable. */
@@ -157,18 +157,9 @@ for (const example of EXAMPLES) {
       });
     });
 
-    test("wiring only: a dispatched install event reaches the interface through the binding", async ({ page, fixtureServer, browserName }) => {
-      // NOT install evidence. The events below are dispatched by the test, not by the browser, so this proves only the
-      // chain facade -> binding -> interface: install-eligible shows the button, appinstalled hides it and marks the
-      // app installed. Whether a browser would ever offer installation is the test above.
-      //
-      // Engine finding (ADR-0042, 2026-09-29): under Playwright WebKit, the React example's service worker never
-      // reaches "activated" — installAndControl's poll hangs until the test's own 30s timeout, reproduced 3/3 in
-      // isolation. The Vue example (same fixture server, same worker build pipeline) and Firefox are both unaffected,
-      // so this is a WebKit/React-example-specific difference, not a flaky wait; skipped rather than weakened, and
-      // reported as a finding rather than changed in product code. The other tests in this describe block do not
-      // call installAndControl and are unaffected, so the skip is scoped to this one test rather than the describe.
-      test.skip(example === "react" && browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
+    test("wiring only: a dispatched install event reaches the interface through the binding", async ({ page, context, fixtureServer, browserName }) => {
+      // ADR-0042: Playwright's WebKit loses the page when the React example's push panel queries PushManager.
+      if (example === "react") await keepWebKitOffPushManager(context, browserName);
       await installAndControl(page, fixtureServer);
       await expect(page.locator("#install")).toHaveCount(0);
 

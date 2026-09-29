@@ -47,4 +47,12 @@ client-runtime 的浏览器套件（`packages/client-runtime/browser-tests/`，2
 
 `packages/examples-browser-e2e` 的默认浏览器套件（`browser-tests/`，两个示例各约 31 个用例）接入引擎冒烟，新增 `playwright.engines.config.ts` 与同名 `test:browser:engines` 脚本，网络故障同样改由 fixture 服务器（`goOffline`/`goOnline`/`stall`/`reset`）制造。`install.spec.ts` 依赖真实 `beforeinstallprompt` 与 CDP 安装性诊断的用例按规格用 `test.skip` 跳过非 Chromium 项目。
 
-试跑发现一处**原因未查明**的问题：在 Playwright WebKit 中，React 示例的 worker 一进入安装阶段，该页面上的所有 Playwright 调用（包括 `page.evaluate(() => 1)`）都不再返回，直到测试超时；可稳定复现。Vue 示例（相同 fixture 服务器与 worker 构建流程）、Firefox 与 Chromium 均不受影响。主会话复核（2026-09-29）排除了两种解释：Playwright 未收到页面崩溃事件，主框架也没有第二次导航；示例代码中唯一的 `reload()` 在用户点击的回调里。**没有证据表明这是产品缺陷**：同一 React 示例与 `@pwa-platform/react` 已在 iPhone 16 Pro（iOS 27）与 Mac Safari 18.6 真机上通过安装、离线、更新与恢复验证（`tasks/stable-release-qualification/verification.md`）。受影响的用例（`handover`、`offline`、`recovery`、`update` 中 React 示例整组，以及 `install`、`smoke` 各一个）在 WebKit 上以同一原因跳过，不放宽断言；根因排查登记为待办。
+试跑发现：在 Playwright WebKit 中，React 示例的页面会失去响应，所有 Playwright 调用都不再返回。**根因已查明（2026-09-29）**：React 示例的推送面板在挂载时、以及 worker 注册完成后，会调用 `PushManager.getSubscription()`；在 Playwright 自带的 WebKit 构建里，这个调用会让 WebKit 网络进程收到它判定为不合法的 IPC 消息并自行终止（`NetworkConnectionToWebProcess::didReceiveInvalidMessage`，`EXC_GUARD`，macOS 崩溃报告 `com.apple.WebKit.Networking.Development`）。WebKit 随后重新加载页面，Playwright 与该页面失去联系。
+
+排查过程：
+
+- 交换两个示例的页面与 worker：Vue 页面搭配 React 的 worker 正常，React 页面搭配 Vue 的 worker 挂起，问题跟着页面走；
+- 逐步删减 React 示例：推迟注册、模拟更重的启动都无关；只去掉推送面板即恢复正常；
+- 最小复现：普通 Vue 页面在 worker 激活后调用一次原生 `registration.pushManager.getSubscription()`，同样出现页面重载并失去响应，不涉及任何平台代码。
+
+这不是平台缺陷：真机 iPhone（iOS 27）与 Mac Safari 18.6 上，同一 React 示例（含推送面板）的安装、离线、更新与恢复都已通过（`tasks/stable-release-qualification/verification.md`）；更可能的原因是 Playwright 的 WebKit 构建没有接入推送服务。处理方式：在 WebKit 上，React 示例的相关用例在页面脚本运行前把 `PushManager.prototype.getSubscription` 替换为直接返回“无订阅”（`browser-tests/page.ts` 的 `keepWebKitOffPushManager`），原先跳过的 19 个用例全部恢复运行；这些用例的断言都不涉及推送，推送行为仍由 Chromium 覆盖。

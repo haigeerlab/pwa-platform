@@ -1,5 +1,6 @@
 import { expect, readRegistration, test } from "@pwa-platform/browser-test-harness";
 import { SHELL_URL, WORKER_URL } from "../apps/shared/identity.js";
+import { keepWebKitOffPushManager } from "./page.js";
 import { EXAMPLES, VERSIONS, fixtureSite } from "./sites.js";
 
 // One set of assertions, run once per example. Both examples share the identity and the element ids, so a failure
@@ -8,11 +9,9 @@ for (const example of EXAMPLES) {
   test.describe(`${example} example`, () => {
     test.use({ fixtureSite: fixtureSite(example) });
 
-    test("loads, registers the worker at the identity's path, and shows it", async ({ page, fixtureServer, browserName }) => {
-      // ADR-0042 (2026-09-29): under Playwright WebKit every page call stops returning once the React example's worker
-      // starts installing (no page crash, no reload by the example). Not reproduced on real Safari or iPhone, where the
-      // same example and binding pass install, offline, update and recovery; the root cause is still open.
-      test.skip(example === "react" && browserName === "webkit", "Playwright WebKit stops answering the page while the React example's worker installs; root cause unknown, not seen in real Safari or on iPhone (ADR-0042, 2026-09-29)");
+    test("loads, registers the worker at the identity's path, and shows it", async ({ page, context, fixtureServer, browserName }) => {
+      // ADR-0042: Playwright's WebKit loses the page when the React example's push panel queries PushManager.
+      if (example === "react") await keepWebKitOffPushManager(context, browserName);
       await page.goto(fixtureServer.url(SHELL_URL));
 
       // Asserted through the page, as a user would see it: the binding's state reaches the interface.
