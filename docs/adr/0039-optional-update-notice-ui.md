@@ -34,3 +34,6 @@ ADR-0005 与 ADR-0013 把更新提示的展示留给应用。现有 Vue/React �
 
 **影响**：只扩展 `./ui` 子路径的可选属性与导出，不改变根入口、事件或 worker 协议。验收写入 [update-notice-ui](../../spec/update-notice-ui.md) 规格。
 
+## 增补：页面已是新代码（2026-09-29）
+
+默认提示内置"页面已是新代码"判定：已是新代码时换用 `currentTitle`/`currentBody` 文案，接管后不再提示刷新。决定与影响见 [ADR-0046](0046-update-notice-detects-current-page.md)。

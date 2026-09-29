@@ -9,6 +9,14 @@ export type PwaUpdateNoticeLocale = "zh-CN" | "en";
 export type PwaUpdateNoticeMessages = {
   readonly readyTitle: string;
   readonly readyBody: string;
+  /**
+   * Shown instead of `readyTitle` when this page already runs the new code (ADR-0046). Optional so a full custom
+   * table written before it existed still type-checks; when missing, a `messages.readyTitle` override is used,
+   * otherwise the built-in copy of the selected locale.
+   */
+  readonly currentTitle?: string;
+  /** Shown instead of `readyBody` when this page already runs the new code; falls back like `currentTitle`. */
+  readonly currentBody?: string;
   readonly update: string;
   readonly later: string;
   readonly updatingTitle: string;
@@ -33,6 +41,8 @@ export type PwaUpdateNoticeColors = {
 const DEFAULT_MESSAGES: PwaUpdateNoticeMessages = {
   readyTitle: "有可用更新",
   readyBody: "新版离线资源已准备好，你可以在合适的时候更新。",
+  currentTitle: "新版已可离线使用",
+  currentBody: "当前页面已是新版。更新后，离线时也会使用新版。",
   update: "更新",
   later: "稍后",
   updatingTitle: "正在更新",
@@ -49,6 +59,8 @@ const DEFAULT_MESSAGES: PwaUpdateNoticeMessages = {
 const EN_MESSAGES: PwaUpdateNoticeMessages = {
   readyTitle: "A new version is available",
   readyBody: "The new offline resources are ready. Update when it suits you.",
+  currentTitle: "An update is ready for offline use",
+  currentBody: "This page already runs the new version. Update to use it offline too.",
   update: "Update",
   later: "Later",
   updatingTitle: "Updating",
@@ -70,6 +82,39 @@ export const PWA_UPDATE_NOTICE_MESSAGES: Readonly<Record<PwaUpdateNoticeLocale, 
 
 const REMIND_AFTER_MS = 30 * 60_000;
 const STABLE_WAITING_MS = 100;
+const PAGE_CURRENCY_TIMEOUT_MS = 5_000;
+
+type PageCurrency = "current" | "stale";
+
+/**
+ * Whether reloading would change the code this page runs (ADR-0046). Navigations are network-first while online, so
+ * a page can already be on the new code while the new worker still waits. Asks the server for this document again
+ * and compares its entry module script with the one this document loaded. Anything ambiguous — no module script,
+ * a failed or non-OK request, the timeout, an abort — is "stale", the behaviour this notice had before the check.
+ */
+async function detectPageCurrency(signal: AbortSignal): Promise<PageCurrency> {
+  const ownScript = document.querySelector('script[type="module"][src]');
+  if (!(ownScript instanceof HTMLScriptElement)) return "stale";
+  const request = new AbortController();
+  const stop = (): void => request.abort();
+  const timer = setTimeout(stop, PAGE_CURRENCY_TIMEOUT_MS);
+  signal.addEventListener("abort", stop, { once: true });
+  try {
+    const url = new URL(window.location.href);
+    url.hash = "";
+    const response = await fetch(url.href, { cache: "no-store", credentials: "same-origin", signal: request.signal });
+    if (!response.ok) return "stale";
+    const latest = new DOMParser().parseFromString(await response.text(), "text/html").querySelector('script[type="module"][src]');
+    const latestSrc = latest?.getAttribute("src");
+    if (typeof latestSrc !== "string") return "stale";
+    return new URL(latestSrc, response.url).href === ownScript.src ? "current" : "stale";
+  } catch {
+    return "stale";
+  } finally {
+    clearTimeout(timer);
+    signal.removeEventListener("abort", stop);
+  }
+}
 
 const noticeProps = {
   position: { type: String as PropType<PwaUpdateNoticePosition>, default: "bottom-right" },
@@ -99,6 +144,8 @@ export const PwaUpdateNotice: ReturnType<typeof defineComponent<PwaUpdateNoticeP
     const phase = ref<Phase>("ready");
     const dismissed = ref(false);
     const stableWaiting = ref(false);
+    const currency = ref<PageCurrency | null>(null);
+    let currencyCheck: AbortController | undefined;
     let takeoverObserved = false;
     let reminder: ReturnType<typeof setTimeout> | undefined;
     let waitingTimer: ReturnType<typeof setTimeout> | undefined;
@@ -114,6 +161,16 @@ export const PwaUpdateNotice: ReturnType<typeof defineComponent<PwaUpdateNoticeP
       waitingTimer = undefined;
     }
 
+    function cancelCurrencyCheck(): void {
+      currencyCheck?.abort();
+      currencyCheck = undefined;
+    }
+
+    /** After a takeover: a stale page is offered a reload; a current one has nothing left to reload for. */
+    function afterTakeover(): Phase {
+      return currency.value === "current" ? "ready" : "reload";
+    }
+
     watch(
       () => pwa.state.value.updateWaiting,
       (waiting, wasWaiting) => {
@@ -122,18 +179,28 @@ export const PwaUpdateNotice: ReturnType<typeof defineComponent<PwaUpdateNoticeP
           phase.value = "ready";
           dismissed.value = false;
           stableWaiting.value = false;
+          currency.value = null;
           clearReminder();
           clearWaitingTimer();
+          cancelCurrencyCheck();
           waitingTimer = setTimeout(() => {
             waitingTimer = undefined;
-            if (pwa.state.value.updateWaiting) stableWaiting.value = true;
+            if (!pwa.state.value.updateWaiting) return;
+            stableWaiting.value = true;
+            const check = new AbortController();
+            currencyCheck = check;
+            void detectPageCurrency(check.signal).then((result) => {
+              if (!check.signal.aborted) currency.value = result;
+            });
           }, STABLE_WAITING_MS);
         } else if (!waiting && wasWaiting) {
           const wasStable = stableWaiting.value;
           clearWaitingTimer();
+          // A check still in flight can no longer matter; without its answer the page is treated as stale.
+          cancelCurrencyCheck();
           stableWaiting.value = false;
           takeoverObserved = wasStable;
-          phase.value = wasStable ? "reload" : "ready";
+          phase.value = wasStable ? afterTakeover() : "ready";
           dismissed.value = false;
           clearReminder();
         }
@@ -145,6 +212,7 @@ export const PwaUpdateNotice: ReturnType<typeof defineComponent<PwaUpdateNoticeP
       mounted = false;
       clearReminder();
       clearWaitingTimer();
+      cancelCurrencyCheck();
     });
 
     function later(): void {
@@ -162,9 +230,9 @@ export const PwaUpdateNotice: ReturnType<typeof defineComponent<PwaUpdateNoticeP
       try {
         const applied = await pwa.applyUpdate();
         if (!mounted) return;
-        phase.value = applied || takeoverObserved ? "reload" : "ready";
+        phase.value = applied || takeoverObserved ? afterTakeover() : "ready";
       } catch {
-        if (mounted) phase.value = takeoverObserved ? "reload" : "error";
+        if (mounted) phase.value = takeoverObserved ? afterTakeover() : "error";
       }
     }
 
@@ -175,12 +243,15 @@ export const PwaUpdateNotice: ReturnType<typeof defineComponent<PwaUpdateNoticeP
 
     return (): VNode | null => {
       const waiting = pwa.state.value.updateWaiting;
-      const mode = phase.value === "ready" ? (waiting && stableWaiting.value && !dismissed.value ? "ready" : null) : phase.value;
+      const ready = waiting && stableWaiting.value && currency.value !== null && !dismissed.value;
+      const mode = phase.value === "ready" ? (ready ? "ready" : null) : phase.value;
       if (mode === null) return null;
 
-      const messages = { ...PWA_UPDATE_NOTICE_MESSAGES[props.locale ?? "zh-CN"], ...props.messages };
-      const title = messages[`${mode}Title`];
-      const body = messages[`${mode}Body`];
+      const overrides = props.messages ?? {};
+      const messages = { ...PWA_UPDATE_NOTICE_MESSAGES[props.locale ?? "zh-CN"], ...overrides };
+      const current = mode === "ready" && currency.value === "current";
+      const title = current ? (overrides.currentTitle ?? overrides.readyTitle ?? messages.currentTitle ?? messages.readyTitle) : messages[`${mode}Title`];
+      const body = current ? (overrides.currentBody ?? overrides.readyBody ?? messages.currentBody ?? messages.readyBody) : messages[`${mode}Body`];
       const actions: VNode[] = [];
       if (mode === "ready") {
         actions.push(h("button", { type: "button", class: "pwa-update-notice__button pwa-update-notice__button--primary", onClick: () => void apply() }, messages.update));
