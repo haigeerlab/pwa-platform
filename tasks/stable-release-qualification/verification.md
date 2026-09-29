@@ -392,3 +392,9 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 | 关闭 Wi-Fi 后冷启动应用，应用壳正常显示、无白屏；随后恢复 Wi-Fi | 通过 | 通过 |
 
 结论：桌面 Edge 154 的 Vue／React 原生安装、独立窗口与离线冷启动有人工观察记录（E3）。未在该安装窗口执行真实 v1→v2 更新；Edge 的更新、缓存与恢复路径以同日本机 Edge 完整 `test:browser` 自动化为准（见下节）。
+
+### 本机 Edge 完整 `test:browser`（2026-09-30）
+
+在 `main` @ `e9e95d9`（0.2.4 发布后）的独立干净 worktree 中执行 `pnpm build` 后以 `PWA_BROWSER_CHANNEL=msedge pnpm test:browser` 运行，harness 打印 `chromium 154.0.4258.37 (configured channel)`，即本机 Microsoft Edge 154.0.4258.37。全部包逐个运行到底（`--no-bail`）：**276 通过，1 失败，0 跳过**。
+
+唯一失败为 entry-resilience `locale.spec.ts:67`（英文入口恢复页文案），失败点在测试开始前的 `browser.newContext` 30 秒超时，用例体未执行；运行时本机同时在跑 Safari／Firefox WebDriver 会话。随后单独对 entry-resilience 包以 Edge 连续运行 3 次，均为 **20/20 通过**，判定为启动期偶发，不是 Edge 行为差异。结论：桌面 Edge 154 的完整浏览器套件在本机真实浏览器上通过（E2，不阻塞，ADR-0044）。
