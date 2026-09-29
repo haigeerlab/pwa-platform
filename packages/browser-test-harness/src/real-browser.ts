@@ -1,6 +1,7 @@
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import type { APIResponse, Browser, BrowserContext, Page, Response } from "@playwright/test";
 import {
   describeBrowser,
+  isBrowserErrorPage,
   playwrightEngineName,
   requestedCapabilities,
   serializePageScript,
@@ -92,8 +93,110 @@ class RealLocator {
     });
   }
 
+  async getAttribute(name: string): Promise<string | null> {
+    return this.page.evaluate(
+      ({ selector, attribute }) => document.querySelector(selector)?.getAttribute(attribute) ?? null,
+      { selector: this.selector, attribute: name },
+    );
+  }
+
   async count(): Promise<number> {
     return this.page.evaluate((selector: string) => document.querySelectorAll(selector).length, this.selector);
+  }
+}
+
+/** What the browser's Navigation Timing entry says about the document a `goto` loaded. */
+type NavigationEvidence = { readonly status: number; readonly protocol: string; readonly url: string };
+
+/**
+ * The `Response` subset a navigation exposes over WebDriver, read from the page's own Navigation Timing entry (WebDriver
+ * has no network events): the status, and whether a service worker answered. No headers and no body: asking for them
+ * throws the "Not supported" error.
+ */
+/** Thrown by `RealResponse.status()` when the browser does not report the navigation's status (Safari 18.6). */
+export class NavigationStatusUnavailableError extends Error {
+  constructor() {
+    super("The browser reported no response status for this navigation");
+    this.name = "NavigationStatusUnavailableError";
+  }
+}
+
+export class RealResponse {
+  constructor(
+    private readonly kind: RealBrowserKind,
+    private readonly evidence: NavigationEvidence,
+  ) {}
+
+  status(): number {
+    if (this.evidence.status === 0) throw new NavigationStatusUnavailableError();
+    return this.evidence.status;
+  }
+
+  ok(): boolean {
+    return this.status() >= 200 && this.status() <= 299;
+  }
+
+  url(): string {
+    return this.evidence.url;
+  }
+
+  /**
+   * True when the response carries no network timing (empty protocol), as for a response a worker built, read from a
+   * cache or, in Firefox, relayed with `respondWith(fetch(...))`. `workerStart` is no evidence: Safari sets it whenever
+   * a worker was merely consulted. Limit: Safari 18.6 reports a relayed response like a plain network one, so there
+   * a relaying worker reads as `false` (Playwright reports `true`).
+   */
+  fromServiceWorker(): boolean {
+    return this.evidence.protocol === "";
+  }
+
+  toPlaywright(): Response {
+    return refuseUnimplemented(this.kind, "response", this) as unknown as Response;
+  }
+}
+
+/** The `APIResponse` subset the specs use, from a Node-side request. */
+class RealApiResponse {
+  constructor(
+    private readonly response: globalThis.Response,
+    private readonly bytes: Buffer,
+  ) {}
+
+  status(): number {
+    return this.response.status;
+  }
+
+  ok(): boolean {
+    return this.response.ok;
+  }
+
+  /** Lower-cased names, like Playwright's; repeated headers are joined with a comma. */
+  headers(): Record<string, string> {
+    return Object.fromEntries(this.response.headers.entries());
+  }
+
+  async body(): Promise<Buffer> {
+    return this.bytes;
+  }
+
+  async text(): Promise<string> {
+    return this.bytes.toString("utf8");
+  }
+
+  async json(): Promise<unknown> {
+    return JSON.parse(await this.text());
+  }
+}
+
+/**
+ * `page.request`: requests made from Node, straight to the server, so a page's service worker never sees them, exactly
+ * like Playwright's `APIRequestContext`. Only `get` with `headers` is supported. Unlike Playwright's, it does not share
+ * the browser's cookies (WebDriver session cookies are not read).
+ */
+export class RealApiRequestContext {
+  async get(url: string, options: { readonly headers?: Record<string, string> } = {}): Promise<APIResponse> {
+    const response = await fetch(url, { headers: options.headers ?? {} });
+    return new RealApiResponse(response, Buffer.from(await response.arrayBuffer())) as unknown as APIResponse;
   }
 }
 
@@ -109,21 +212,59 @@ class RealPage {
     private readonly owner: RealContext,
   ) {}
 
-  private async focus(): Promise<void> {
-    if (this.closed) throw new Error("Target page has been closed");
-    await this.session.switchTo(this.handle);
+  /** Runs `step` with this tab as the session's current window, one step at a time across all pages of the session. */
+  private inWindow<T>(step: () => Promise<T>): Promise<T> {
+    if (this.closed) return Promise.reject(new Error("Target page has been closed"));
+    return this.session.inWindow(this.handle, step);
   }
+
+  /** Node-side requests that bypass the page's service worker (see `RealApiRequestContext`). */
+  readonly request: RealApiRequestContext = new RealApiRequestContext();
 
   context(): BrowserContext {
     return this.owner as unknown as BrowserContext;
   }
 
-  /** Navigates and resolves once the document has loaded; options such as `waitUntil` are ignored. Returns `null`: WebDriver exposes no HTTP response. */
-  async goto(url: string): Promise<null> {
-    await this.focus();
-    await this.session.navigate(url);
-    this.lastUrl = await this.session.url();
-    return null;
+  /**
+   * Navigates and resolves once the document has loaded; options such as `waitUntil` are ignored. The response has
+   * `status()`, `ok()`, `url()` and `fromServiceWorker()` only, taken from the loaded document's Navigation Timing entry.
+   */
+  async goto(url: string): Promise<Response> {
+    this.lastUrl = await this.inWindow(async () => {
+      await this.session.navigate(url);
+      return this.session.url();
+    });
+    const evidence = await this.evaluate(() => {
+      const entry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+      return {
+        status: entry?.responseStatus ?? 0,
+        protocol: entry?.nextHopProtocol ?? "unknown",
+        url: location.href,
+      };
+    });
+    // Playwright rejects a navigation that fails to load; Safari's driver reports success and shows its error page
+    // (whose URL only the page itself reports: Get Current URL still names the failed address).
+    if (isBrowserErrorPage(evidence.url)) throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser showed its error page)`);
+    return new RealResponse(this.kind, evidence).toPlaywright();
+  }
+
+  async title(): Promise<string> {
+    return this.evaluate(() => document.title);
+  }
+
+  /** Adds a classic `<script src>` to the page and resolves once it has loaded; only the `url` option is supported. */
+  async addScriptTag(options: { readonly url: string }): Promise<void> {
+    await this.evaluate(
+      (url) =>
+        new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.src = url;
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error(`Failed to load script ${url}`));
+          document.head.append(script);
+        }),
+      options.url,
+    );
   }
 
   /** Synchronous like Playwright's: the URL after the last goto, reload or evaluate on this page. */
@@ -132,16 +273,16 @@ class RealPage {
   }
 
   async reload(): Promise<null> {
-    await this.focus();
-    await this.session.reload();
-    this.lastUrl = await this.session.url();
+    if (this.closed) throw new Error("Target page has been closed");
+    await this.session.reload(this.handle);
+    this.lastUrl = await this.inWindow(() => this.session.url());
     return null;
   }
 
   /** Runs a function (called with `arg`) or an expression in the page; the result must be JSON-serializable. */
   async evaluate<R, A = undefined>(target: string | ((arg: A) => R | Promise<R>), arg?: A): Promise<R> {
-    await this.focus();
-    return (await this.session.evaluate(serializePageScript(target as string | ((arg: never) => unknown), arg), (href) => {
+    if (this.closed) throw new Error("Target page has been closed");
+    return (await this.session.evaluate(this.handle, serializePageScript(target as string | ((arg: never) => unknown), arg), (href) => {
       this.lastUrl = href;
     })) as R;
   }
@@ -172,16 +313,17 @@ class RealPage {
   }
 
   async bringToFront(): Promise<void> {
-    await this.focus();
+    await this.inWindow(async () => undefined);
   }
 
   async close(): Promise<void> {
     if (this.closed) return;
-    await this.focus();
-    this.closed = true;
-    const remaining = await this.session.closeWindow();
-    const next = remaining[0];
-    if (next !== undefined) await this.session.switchTo(next);
+    await this.inWindow(async () => {
+      this.closed = true;
+      const remaining = await this.session.closeWindow();
+      const next = remaining[0];
+      if (next !== undefined) await this.session.switchTo(next);
+    });
     this.owner.forget(this);
   }
 

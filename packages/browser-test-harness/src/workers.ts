@@ -175,7 +175,7 @@ export async function requestFromPage(page: Page, url: string, options: WaitOpti
           headers: { [header]: value },
           signal: AbortSignal.timeout(limit),
         });
-        let workerStart = 0;
+        let fromWorker = 0;
         if (onRealBrowser) {
           // The entry is added once the body has finished; wait for the one this request created.
           await response.arrayBuffer();
@@ -183,10 +183,12 @@ export async function requestFromPage(page: Page, url: string, options: WaitOpti
             await new Promise((resolve) => setTimeout(resolve, 25));
           }
           const timing = performance.getEntriesByName(requested).at(-1) as PerformanceResourceTiming | undefined;
-          // Safari sets `workerStart`; Firefox leaves it 0 but reports no network protocol for a response the worker made.
-          workerStart = timing !== undefined && (timing.workerStart > 0 || timing.nextHopProtocol === "") ? 1 : 0;
+          // No network protocol means the response carries no network timing: a worker built it, read a cache or (in
+          // Firefox) relayed a fetch. `workerStart` is no evidence: Safari sets it whenever a worker was merely
+          // consulted. Safari reports a relayed response like a plain network one, so it reads as `false` there.
+          fromWorker = timing !== undefined && timing.nextHopProtocol === "" ? 1 : 0;
         }
-        return { ok: true as const, status: response.status, workerStart };
+        return { ok: true as const, status: response.status, fromWorker };
       } catch (error) {
         const timedOut = error instanceof DOMException && error.name === "TimeoutError";
         return { ok: false as const, timedOut, message: error instanceof Error ? error.message : String(error) };
@@ -200,7 +202,7 @@ export async function requestFromPage(page: Page, url: string, options: WaitOpti
     return { outcome: "network-error", message: result.message };
   }
   if (responseEvent === undefined) {
-    return { outcome: "response", status: result.status, fromServiceWorker: result.workerStart > 0 };
+    return { outcome: "response", status: result.status, fromServiceWorker: result.fromWorker > 0 };
   }
   const response = await responseEvent;
   return { outcome: "response", status: result.status, fromServiceWorker: response.fromServiceWorker() };

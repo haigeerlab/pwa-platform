@@ -42,6 +42,11 @@ export function describeBrowser(kind: RealBrowserKind, capabilities: Readonly<Re
     : { version, label: `Firefox ${version} (geckodriver)` };
 }
 
+/** Safari WebDriver does not fail a navigation that cannot load: it lands on this built-in error page instead. */
+export function isBrowserErrorPage(url: string): boolean {
+  return url.startsWith("safari-resource:");
+}
+
 /** Failure reported by the driver or by a script run in the page. */
 export class WebDriverError extends Error {
   constructor(
@@ -63,33 +68,79 @@ export function serializePageScript(target: string | ((arg: never) => unknown), 
     : { source: target.toString(), isFunction: true, arg: arg === undefined ? null : arg };
 }
 
+/** How long one Execute Async Script command waits for a page script before handing the session back to the caller. */
+export const EVALUATE_SLICE_MS = 100;
+
 /**
- * Body of the Execute Async Script command. It evaluates the source in the page, awaits the result and reports
- * `{ok, value, href}` or `{ok: false, message, href}` (href: the page URL afterwards) through the callback, so a thrown error keeps its message.
+ * Body of the Execute Async Script command. The first call (`request.poll === null`) starts the script in the page;
+ * every call then waits up to `request.waitMs` for it and reports `{ok, value, href}`, `{ok: false, message, href}` or
+ * `{pending: id, href}` (href: the page URL afterwards) through the callback, so a thrown error keeps its message.
+ * A pending script is collected by a later call with `poll: id`. WebDriver runs one command at a time per session, so
+ * a script that waits on something the test does next (a request held open, a second page.evaluate) would otherwise
+ * deadlock the session; Playwright's evaluate calls overlap freely and the specs rely on it.
  */
 export const EVALUATE_SCRIPT = `
-const script = arguments[0];
+const request = arguments[0];
 const done = arguments[arguments.length - 1];
-Promise.resolve()
-  .then(() => {
-    const value = (0, eval)("(" + script.source + ")");
-    return script.isFunction ? value(script.arg) : value;
-  })
-  .then(
-    (value) => done(value === undefined ? { ok: true, undefined: true, href: location.href } : { ok: true, value, href: location.href }),
-    (error) => done({ ok: false, href: location.href, message: error && error.message ? String(error.message) : String(error) }),
-  );
+// Firefox gives every driver script a fresh \`globalThis\`; expandos on \`window\` are what survive between calls.
+const root = typeof window !== "undefined" ? window : globalThis;
+const store = root.__pwaEvaluations || (root.__pwaEvaluations = { next: 1, running: {} });
+let id = request.poll;
+if (id === null) {
+  id = store.next++;
+  store.running[id] = Promise.resolve()
+    .then(() => {
+      const value = (0, eval)("(" + request.source + ")");
+      return request.isFunction ? value(request.arg) : value;
+    })
+    .then(
+      (value) => (value === undefined ? { ok: true, undefined: true } : { ok: true, value }),
+      (error) => ({ ok: false, message: error && error.message ? String(error.message) : String(error) }),
+    );
+}
+const running = store.running[id];
+if (running === undefined) {
+  done({ ok: false, href: location.href, message: "Execution context was destroyed" });
+} else {
+  let timer;
+  Promise.race([running, new Promise((resolve) => { timer = setTimeout(() => resolve(null), request.waitMs); })]).then((outcome) => {
+    clearTimeout(timer);
+    if (outcome === null) return done({ pending: id, href: location.href });
+    delete store.running[id];
+    done({ ...outcome, href: location.href });
+  });
+}
 `;
 
 type EvaluateOutcome =
   | { readonly ok: true; readonly value?: unknown; readonly undefined?: true; readonly href: string }
   | { readonly ok: false; readonly message: string; readonly href: string };
 
+type EvaluateReply = EvaluateOutcome | { readonly pending: number; readonly href: string };
+
 /** Unwraps what `EVALUATE_SCRIPT` reported, throwing the page-side error. */
 export function unwrapEvaluation(outcome: EvaluateOutcome): unknown {
   if (!outcome.ok) throw new Error(outcome.message);
   return outcome.undefined === true ? undefined : outcome.value;
 }
+
+/**
+ * Starts a reload from inside the page and returns the current document's `performance.timeOrigin`, which differs
+ * for every document. The WebDriver Refresh command cannot be used: Firefox performs it as a force-reload that
+ * bypasses the service worker, so the reloaded page is uncontrolled, unlike Playwright's and a user's plain reload.
+ */
+export function startReload(): number {
+  setTimeout(() => location.reload(), 0);
+  return performance.timeOrigin;
+}
+
+/** True once a document other than the one whose `timeOrigin` is `origin` has finished loading. */
+export function reloadFinished(origin: number): boolean {
+  return performance.timeOrigin !== origin && document.readyState === "complete";
+}
+
+const RELOAD_TIMEOUT = 30_000;
+const RELOAD_POLL = 50;
 
 const READY_TIMEOUT = 15_000;
 
@@ -152,6 +203,7 @@ export class WebDriverSession {
   /** Capabilities the driver returned for this session (browser name and version among them). */
   readonly capabilities: Readonly<Record<string, unknown>>;
   private current: string;
+  private queue: Promise<unknown> = Promise.resolve();
 
   private constructor(
     private readonly baseUrl: string,
@@ -214,21 +266,53 @@ export class WebDriverSession {
     return (await this.command("GET", "/url")) as string;
   }
 
-  async reload(): Promise<void> {
-    await this.command("POST", "/refresh", {});
+  /** Reloads with a plain (service worker aware) reload and resolves once the new document has loaded. */
+  async reload(handle: string): Promise<void> {
+    const ignore = (): void => undefined;
+    const origin = (await this.evaluate(handle, serializePageScript(startReload, undefined), ignore)) as number;
+    const deadline = Date.now() + RELOAD_TIMEOUT;
+    for (;;) {
+      try {
+        if (await this.evaluate(handle, serializePageScript(reloadFinished, origin), ignore)) return;
+      } catch {
+        // The document is being replaced; the driver may refuse scripts until the new one exists.
+      }
+      if (Date.now() >= deadline) throw new Error(`page.reload: Timeout ${RELOAD_TIMEOUT}ms exceeded.`);
+      await new Promise((resolve) => setTimeout(resolve, RELOAD_POLL));
+    }
   }
 
   /**
-   * Runs a function or expression in the current window and returns its (JSON) result; page-side errors throw.
-   * `onHref` receives the page URL as the script left it, which keeps a synchronous `page.url()` current.
+   * Runs `step` (one or more commands) with `handle` as the current window, after every earlier `inWindow` step has
+   * finished. Steps of different pages can therefore overlap in the caller without one switching windows under another.
    */
-  async evaluate(script: PageScript, onHref: (href: string) => void): Promise<unknown> {
-    const outcome = (await this.command("POST", "/execute/async", {
-      script: EVALUATE_SCRIPT,
-      args: [script],
-    })) as EvaluateOutcome;
-    onHref(outcome.href);
-    return unwrapEvaluation(outcome);
+  inWindow<T>(handle: string, step: () => Promise<T>): Promise<T> {
+    const run = this.queue.then(async () => {
+      await this.switchTo(handle);
+      return step();
+    });
+    this.queue = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * Runs a function or expression in window `handle` and returns its (JSON) result; page-side errors throw.
+   * The script runs in slices of `EVALUATE_SLICE_MS`, each its own `inWindow` step, so other steps can run while it
+   * waits. `onHref` receives the page URL as the script left it, which keeps a synchronous `page.url()` current.
+   */
+  async evaluate(handle: string, script: PageScript, onHref: (href: string) => void): Promise<unknown> {
+    let poll: number | null = null;
+    for (;;) {
+      const reply = (await this.inWindow(handle, () =>
+        this.command("POST", "/execute/async", {
+          script: EVALUATE_SCRIPT,
+          args: [{ ...script, poll, waitMs: EVALUATE_SLICE_MS }],
+        }),
+      )) as EvaluateReply;
+      onHref(reply.href);
+      if (!("pending" in reply)) return unwrapEvaluation(reply);
+      poll = reply.pending;
+    }
   }
 
   async quit(): Promise<void> {
