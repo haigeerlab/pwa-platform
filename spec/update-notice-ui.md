@@ -93,7 +93,7 @@ React/Vue 的 Cloudflare `drill` 预览槽显式挂载已发布的可选组件�
 
 源于稳定版资格验证中 Android Vue WebAPK 的发现：页面已从网络拿到新代码、新 worker 仍在等待时，默认提示仍称"有可用更新"并在接管后要求刷新。
 
-1. 稳定等待后，组件对当前文档 URL 发一次 `no-store` 请求，比较入口模块脚本；判定返回前不显示卡片。失败、非 2xx、无模块脚本、5 秒超时均按旧页面处理。
+1. 稳定等待后，组件对当前文档 URL（加查询参数 `__pwa-page-currency=1`，使平台 worker 不以预缓存应答）发一次 `no-store` 请求，比较入口模块脚本；判定返回前不显示卡片。失败、非 2xx、无模块脚本、5 秒超时均按旧页面处理。
 2. 已是新代码：显示 `currentTitle`/`currentBody`（`zh-CN`：新版已可离线使用；`en`：An update is ready for offline use）；点击"更新"或其他标签页接管后卡片消失，不显示"刷新页面"，`reloadPage` 不被调用。
 3. `currentTitle`/`currentBody` 为可选键；宿主未提供但覆盖了 `readyTitle`/`readyBody` 时沿用宿主覆盖。
 4. `ui-browser-tests` 覆盖两侧的"已是新代码"、其他标签页接管与判定失败退回；既有旧页面场景通过路由让判定返回不同入口脚本后持续通过。

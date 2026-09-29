@@ -75,6 +75,13 @@ describe("requests the worker never handles", () => {
     // The query string is part of the key, so a variant of a precached URL is not precached itself.
     expect(decide(`${ORIGIN}/app/assets/logo.svg?v=2`)).toEqual({ kind: "passthrough", reason: "not-precached" });
   });
+
+  it("answers a fetch of a precached document from the precache unless its query misses the manifest (ADR-0046)", () => {
+    // The default update notice re-requests the current document to learn whether this page already runs the new
+    // code. Without its marker query, a page whose own URL is precached would get the old worker's copy back.
+    expect(decide(`${ORIGIN}/app/index.html`)).toEqual({ kind: "precache", manifestUrl: "/app/index.html" });
+    expect(decide(`${ORIGIN}/app/index.html?__pwa-page-currency=1`)).toEqual({ kind: "passthrough", reason: "not-precached" });
+  });
 });
 
 describe("precache hits", () => {
