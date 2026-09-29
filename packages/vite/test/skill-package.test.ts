@@ -729,3 +729,43 @@ describe("AO8 gate 2 classification gate", () => {
     expect(text()).toContain("Q9");
   });
 });
+
+// ---- Checkpoint A read-through fixes --------------------------------------------------------------------------------------
+
+describe("checkpoint A read-through fixes", () => {
+  const read = (name: string) => readFileSync(join(referencesDir, name), "utf8");
+
+  it("SKILL.md gives the gate order, marks gate 2 as conditional, gate 5 as optional and gate 6 as a loop", () => {
+    const text = readFileSync(skillFile, "utf8");
+    const section = sectionOf(text, "## 流程");
+    expect(section.length).toBeGreaterThan(0);
+    expect(section).toMatch(/A\s*→\s*0\s*→\s*1\s*→\s*2\s*→\s*3\s*→\s*4\s*→\s*5\s*→\s*6/);
+    for (const word of ["Q9", "可选", "循环"]) expect(section, word).toContain(word);
+    expect(text.indexOf("## 流程")).toBeLessThan(text.indexOf("## 关卡索引"));
+  });
+
+  it("gate 1 config file handles Q6 = no: no manifest and the policy stops offering install", () => {
+    const text = read("gate-1-config-file.md");
+    expect(text).toContain("Q6");
+    expect(text).toContain("install: null");
+    expect(text).toContain("install: { enabled: false }");
+  });
+
+  it("gate 3 has the person declare the domain first and records it in the state file", () => {
+    const gate3 = read("gate-3-server.md");
+    const before = gate3.slice(0, gate3.indexOf("```bash"));
+    expect(before).toContain("声明");
+    expect(before).toContain("状态文件");
+    expect(sectionOf(gate3, "## 先确认域名"), "no record, no request").toMatch(/没有这条记录.*不发任何请求/);
+    expect(read("state-file.md")).toContain("域名");
+  });
+
+  it("gate 3 no longer talks to maintainers about tests", () => {
+    expect(read("gate-3-server.md")).not.toContain("测试把");
+  });
+
+  it("the English glossary translates the conflict classes, the stop point and 'cannot confirm'", () => {
+    const text = read("glossary-en.md");
+    for (const term of ["必须移除", "需要评估", "仅提示", "停下点", "无法确认"]) expect(text, term).toContain(term);
+  });
+});

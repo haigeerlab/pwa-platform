@@ -38,6 +38,11 @@ Keep diagnostic codes, package names, field names and commands **exactly as they
 | 浏览器验证 | browser verification |
 | 发布门禁 | release gate |
 | 排障 | troubleshooting |
+| 必须移除 | must remove |
+| 需要评估 | needs assessment |
+| 仅提示 | hint only |
+| 停下点 | stop point |
+| 无法确认 | cannot confirm |
 
 ## Report sentence shape
 
