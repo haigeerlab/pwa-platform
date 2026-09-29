@@ -458,3 +458,7 @@ type PwaOfflinePageMessages = {
 3. 未支持的图片 MIME 构建通过但有 `vite.manifest-icon-unverified` 警告。
 4. 中文浏览器夹具使用真实 192／512 图标，回归测试固定文件固有尺寸；Android Chrome 能显示原生安装确认并完成 WebAPK 安装。
 5. `pnpm --filter @pwa-platform/vite test`、`typecheck`、`test:browser` 与文档构建通过；不新增依赖。
+
+## ai-onboarding 增补（2026-09-29）
+
+`@pwa-platform/vite` 的发布内容新增 `skills/pwa-onboarding/SKILL.md`（[ai-onboarding](ai-onboarding.md)、[ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)）：一个只含 Markdown 的 AI 接入清单，不需要修改本模块的生产代码。`package.json` 的 `files` 由 `["dist"]` 改为 `["dist", "skills"]`；`exports`、插件工厂、虚拟模块、产物与构建流程均不变，也不新增公开入口。`metadata.version` 与本包版本相等，由 `packages/vite/test/skill-package.test.ts` 强制，升级版本时同步修改（见 [npm 包发布流程](../docs/operations/npm-package-release.md)）。已发布的 0.2.3 不含 skill，它随下一个包含 `skills/` 的版本发布。

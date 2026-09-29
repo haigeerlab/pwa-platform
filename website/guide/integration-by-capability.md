@@ -18,6 +18,8 @@
 install metadata。完整字段、根路径／子路径区别和稳定性要求见[身份与策略配置](/guide/configuration)。
 Vue 使用 `createPwa()`，React 使用 `PwaProvider`；两者都要在浏览器启动后显式调用 `register()`。
 
+想让 AI 助手按关卡带着做，见[用 AI 引导接入](/start/choose#ai-onboarding)。
+
 `vite dev` 只提供 `virtual:pwa-config`，不生成平台 worker 和预缓存。下面每条路径都要通过
 `vite build` 后用 HTTPS 站点或 `vite preview` 验证。
 

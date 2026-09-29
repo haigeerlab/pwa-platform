@@ -95,7 +95,8 @@ describe("package manifest", () => {
     });
     expect(manifest["typesVersions"]).toEqual({ "*": { virtual: ["dist/virtual.d.ts"] } });
     expect(manifest["private"]).toBeUndefined();
-    expect(manifest["files"]).toEqual(["dist"]);
+    // `skills` ships the AI onboarding skill (ADR-0045). It is listed in `files` but not in `exports`, so it cannot be imported.
+    expect(manifest["files"]).toEqual(["dist", "skills"]);
     // Nothing in this package runs on import: the plugin is created by calling pwa().
     expect(manifest["sideEffects"]).toBe(false);
   });

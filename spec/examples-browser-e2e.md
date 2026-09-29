@@ -367,3 +367,7 @@ drill 现场演示发现：示例的应用壳导航为 `network-first`，在线�
 | shared-origin-topology | follow | 示例为独立源拓扑。 |
 | push-module | follow | 示例不启用 Push。 |
 | public-read-cache | follow | 本模块不改变该基线的权威文档或验收结论。 |
+
+## ai-onboarding 增补（2026-09-29）
+
+[ai-onboarding](ai-onboarding.md) 在 `onboarding-smoke` 里增加一条检查（`onboarding-smoke/skill-not-in-bundle.spec.ts`）：对已经从打包 tarball 安装好的夹具项目，把发布包里真实的 `skills/pwa-onboarding/`（含哨兵行）复制到 `.claude/skills` 与 `.agents/skills` 后再做一次生产构建，断言产物里没有 skill 的路径痕迹与哨兵字符串，且逐文件 sha256 与基线构建完全一致；再把副本放进 `public/` 作为变异，断言检测器必须报出路径与内容——证明前两条断言确实可能失败。不修改既有示例应用，不新增依赖。

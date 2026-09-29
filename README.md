@@ -62,6 +62,7 @@ PwaIdentity + PwaPolicy + 宿主构建产物
 - `offline-write-extension`：`PwaPolicy v2` 显式开启、会话绑定的离线写入队列（[ADR-0027](docs/adr/0027-explicit-session-bound-offline-write-queue.md)）。
 - `pwa-entry-resilience`：当前 Origin 迁移或不可达时，使用业务应用提供的备用入口清单，让已安装用户确认后跳转（[接入说明](docs/guides/entry-recovery-integration.md)）。
 - `public-read-cache`：自正式包 `0.1.0` 起可通过 `PwaPolicy v3` 显式开启公共读取的运行时缓存（[ADR-0035](docs/adr/0035-explicit-public-read-runtime-cache.md)、[接入说明](docs/guides/public-read-cache.md)）。Nuxt 暂不支持开启。
+- `ai-onboarding`：`@pwa-platform/vite` 随包分发的一份 AI 接入清单（`skills/pwa-onboarding/SKILL.md`，只有一个 Markdown 文件），把接入中最容易出错的几件事交代给 AI 助手，规则本身指向文档站；开发期辅助，不进入生产构建。**尚未随已发布版本提供**（0.2.3 不含它；[规格](spec/ai-onboarding.md)、[使用说明](website/start/choose.md)）。
 
 **发布就绪**
 
