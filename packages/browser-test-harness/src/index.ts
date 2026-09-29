@@ -12,6 +12,8 @@ export { expectLifecycleSequence } from "./lifecycle.js";
 export { startFixtureServer } from "./server.js";
 export type { FixtureResponseRule, FixtureServer, FixtureServerOptions, HeaderRule, RequestRecord } from "./server.js";
 export { BROWSER_VERSION_ANNOTATION, test } from "./test.js";
+export { readRealBrowserKind, REAL_BROWSER_ENV, REAL_BROWSER_HEADED_ENV } from "./webdriver.js";
+export type { RealBrowserKind } from "./webdriver.js";
 export type { HarnessTestArgs, HarnessWorkerArgs } from "./test.js";
 export {
   readRegistration,

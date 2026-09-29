@@ -7,6 +7,7 @@ import {
   expectCacheControl,
   expectDeletedExactlyUnderPrefix,
   fixturePath,
+  readRealBrowserKind,
   registerWorker,
   snapshotCaches,
   test,
@@ -106,6 +107,8 @@ test.describe("exact deletion under the app prefix", () => {
 });
 
 test.describe("Cache-Control of real responses", () => {
+  test.skip(readRealBrowserKind(process.env) !== undefined, "WebDriver exposes no HTTP response headers, and page.request is Playwright-only");
+
   test.use({
     fixtureSite: {
       versions: { site: fixturePath("pages") },

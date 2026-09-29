@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { readRealBrowserKind } from "./webdriver.js";
 
 export type WorkerSlot = "installing" | "waiting" | "active";
 
@@ -156,33 +157,50 @@ export async function requestFromPage(page: Page, url: string, options: WaitOpti
   target.hash = "";
   requestCounter += 1;
   const marker = `${process.pid}-${requestCounter}`;
-  const responseEvent = page.waitForResponse(
-    (response) => response.request().headers()[REQUEST_MARKER_HEADER] === marker,
-    { timeout },
-  );
+  // A WebDriver session has no network events, so on a real browser the page itself reports whether a worker
+  // answered, through the Resource Timing entry of the request.
+  const real = readRealBrowserKind(process.env) !== undefined;
+  const responseEvent = real
+    ? undefined
+    : page.waitForResponse((response) => response.request().headers()[REQUEST_MARKER_HEADER] === marker, { timeout });
   // The response event never arrives for network errors; keep its eventual rejection handled.
-  responseEvent.catch(() => undefined);
+  responseEvent?.catch(() => undefined);
 
   const result = await page.evaluate(
-    async ({ requested, header, value, limit }) => {
+    async ({ requested, header, value, limit, real: onRealBrowser }) => {
       try {
+        const known = performance.getEntriesByName(requested).length;
         const response = await fetch(requested, {
           cache: "no-store",
           headers: { [header]: value },
           signal: AbortSignal.timeout(limit),
         });
-        return { ok: true as const, status: response.status };
+        let workerStart = 0;
+        if (onRealBrowser) {
+          // The entry is added once the body has finished; wait for the one this request created.
+          await response.arrayBuffer();
+          for (let attempt = 0; attempt < 40 && performance.getEntriesByName(requested).length <= known; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 25));
+          }
+          const timing = performance.getEntriesByName(requested).at(-1) as PerformanceResourceTiming | undefined;
+          // Safari sets `workerStart`; Firefox leaves it 0 but reports no network protocol for a response the worker made.
+          workerStart = timing !== undefined && (timing.workerStart > 0 || timing.nextHopProtocol === "") ? 1 : 0;
+        }
+        return { ok: true as const, status: response.status, workerStart };
       } catch (error) {
         const timedOut = error instanceof DOMException && error.name === "TimeoutError";
         return { ok: false as const, timedOut, message: error instanceof Error ? error.message : String(error) };
       }
     },
-    { requested: target.href, header: REQUEST_MARKER_HEADER, value: marker, limit: timeout },
+    { requested: target.href, header: REQUEST_MARKER_HEADER, value: marker, limit: timeout, real },
   );
 
   if (!result.ok) {
     if (result.timedOut) throw new Error(`Request to ${target.href} did not finish within ${timeout} ms`);
     return { outcome: "network-error", message: result.message };
+  }
+  if (responseEvent === undefined) {
+    return { outcome: "response", status: result.status, fromServiceWorker: result.workerStart > 0 };
   }
   const response = await responseEvent;
   return { outcome: "response", status: result.status, fromServiceWorker: response.fromServiceWorker() };

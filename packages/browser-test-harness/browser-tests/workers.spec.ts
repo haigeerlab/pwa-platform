@@ -147,10 +147,11 @@ test.describe("requests", () => {
     });
   });
 
-  test("offline requests report a network error and never reach the server", async ({ page, context, fixtureServer }) => {
+  test("offline requests report a network error and never reach the server", async ({ page, fixtureServer }) => {
     await page.goto(fixtureServer.url("/"));
     fixtureServer.clearRequests();
-    await context.setOffline(true);
+    // Server-side fault (ADR-0047): works in every browser, including real Safari and Firefox sessions.
+    fixtureServer.goOffline();
 
     const result = await requestFromPage(page, "/index.html");
 
