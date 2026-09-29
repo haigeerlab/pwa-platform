@@ -1,7 +1,7 @@
 # Todo：ai-onboarding
 
 任务定义与依赖见 [plan.md](plan.md)。本清单只记录完成状态；勾选随对应任务的提交一起更新。
-AO1–AO15 与检查点 A 已勾。检查点 B 与 AO16 未勾：AC5、AC6、AC8 只有部分证据、文档交付核验还需要补 `Documentation outcome` 表，见 `verification.md`。
+全部已勾。检查点 B 是在接受 AC5、AC6、AC8 只有部分证据（关卡 3–6 没有真实部署验证、没有版本不一致的场景）为已知限制的前提下勾选的，见 `verification.md`。
 
 - [x] AO1 规格评审通过、ADR-0045 与本计划
 - [x] AO2 调研 Codex 的 skill 约定
@@ -18,6 +18,6 @@ AO1–AO15 与检查点 A 已勾。检查点 B 与 AO16 未勾：AC5、AC6、AC8
 - [x] AO12 构建不含 skill 的检查
 - [x] AO13 场景夹具与评分表
 - [x] AO14 场景评估执行
-- [ ] 检查点 B
+- [x] 检查点 B
 - [x] AO15 文档同步与旧 skill 废弃标记
-- [ ] AO16 门禁与独立评审
+- [x] AO16 门禁与独立评审

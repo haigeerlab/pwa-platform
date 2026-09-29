@@ -424,3 +424,6 @@ AI 的行为不确定，不能只靠代码测试。用夹具项目和评分表�
 | shared-origin-topology | follow | 采访关卡询问同源多应用并引用其登记表说明，不改该模块。 |
 | push-module | follow | 不涉及。 |
 | public-read-cache | follow | 准入条件是公共缓存人工确认闸门的依据，只引用不改。 |
+| capability-comparison | follow | 不涉及。 |
+| update-notice-ui | follow | skill 只引用默认更新提示的接入写法，不改该模块的文档与验收结论。 |
+| production-readiness-documentation | follow | 《选择接入包》与《按功能接入》两个页面增加 skill 的入口（2026-09-29），但该模块的规格、审核报告与验证记录不变，审核结论与矩阵不变。 |

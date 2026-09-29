@@ -367,3 +367,11 @@ drill 现场演示发现：示例的应用壳导航为 `network-first`，在线�
 | shared-origin-topology | follow | 示例为独立源拓扑。 |
 | push-module | follow | 示例不启用 Push。 |
 | public-read-cache | follow | 本模块不改变该基线的权威文档或验收结论。 |
+
+## ai-onboarding 增补（2026-09-29）
+
+[ai-onboarding](ai-onboarding.md) 在本包下新增两组不进入任何发布包的测试，均不修改既有示例应用，也不新增依赖：
+
+- **onboarding-smoke 增加 DT8**（`onboarding-smoke/skill-not-in-bundle.spec.ts`）：对已经从打包 tarball 安装好的夹具项目，把发布包里真实的 `skills/pwa-onboarding/`（含哨兵行）复制到 `.claude/skills` 与 `.agents/skills` 后再做一次生产构建，断言产物里没有 skill 的路径痕迹与哨兵字符串，且逐文件 sha256 与基线构建完全一致；再把副本放进 `public/` 作为变异，断言检测器必须报出路径与内容——证明前两条断言确实可能失败。`build-fixture.ts` 因此参数化（模板、包清单、依赖、是否跳过构建），默认值保持原有 React 夹具不变。
+- **`onboarding-scenarios/`**：六个场景夹具项目（干净 Vite + Vue、含 `vite-plugin-pwa`、含自写 `sw.js`、不受支持的 Vite 4、停在关卡 1 的半成品、英文选择）、评分表 `RUBRIC.md` 与记录模板 `RECORD-TEMPLATE.md`。夹具不是工作区成员，ESLint 忽略。测试守夹具形状，并把 skill 关卡 1 里的配置片段在干净 Vue 夹具上逐字取出，`tsc --noEmit` 与生产构建都通过；缺图标时构建失败并含 `vite.manifest-icon`。`vite-plugin-pwa` 与 Vite 4 不在离线 pnpm store 中，这两个夹具只作静态夹具，不安装、不构建。AI 按 skill 实际工作的场景评估是人工执行，结果记录在 `tasks/ai-onboarding/verification.md`，不是 CI 门禁。
+- 根脚本 `pnpm test:onboarding-scenarios` 运行第二组；`pnpm test:onboarding-smoke` 运行第一组。

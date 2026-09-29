@@ -152,4 +152,12 @@
 | AC9 要求清单不依赖具体服务器，不提供其配置也能完成 | DT5（S1–S4、S9 对真实校验器与响应准入逐组合核对）、DT6；全部场景中 AI 没有索取服务器配置 | 中 |
 | AC10 选英文时对话与产出为英文，两处 `locale` 为 `en` | DT7；SE6 六次：对话英文，`PwaUpdateNotice locale="en"` 与 `offlinePage: { locale: "en" }` 均在文件里 | 强 |
 
-结论：AC5、AC6、AC8 只有文字与测试层面的证据，已作为已知限制记录（关卡 3–6 没有真实部署地址上的验证，也没有版本不一致的场景）。因此**检查点 B 暂不勾选**，等你决定是接受这三项为已知限制，还是补场景。
+结论：AC5、AC6、AC8 只有文字与测试层面的证据，已作为已知限制记录（关卡 3–6 没有真实部署地址上的验证，也没有版本不一致的场景）。检查点 B 在接受这三项为已知限制的前提下通过（2026-09-29，按“按推荐继续”）。
+
+## 入图后的门禁补跑（2026-09-29）
+
+合并 PR #88 分支的 `f8474e6`（`e2db57b`，无冲突）后：
+
+- **`verify-artifacts`：** 3 通过、0 警告、0 失败（能力图存在并通过严格解析；`spec/` 与能力图一致；根目录无 `SPEC*.md`）。
+- **文档交付核验：** 起初 `invalid`——规格的“文档影响”表缺 `capability-comparison`、`production-readiness-documentation`、`update-notice-ui` 三项决定，计划里也没有 `Documentation outcome` 表，且 `update` 类条目的 Planned artifact 必须等于基线登记的权威文档。补齐后为 `ready`、无待办：三项决定均为 `follow`（`production-readiness-documentation` 曾被我误判为 `update`：我改的两个接入页不在它的权威文档里，已更正）；六个 `update`/`create` 条目都声明 `delivered`，其中 `spec/vite-adapter.md`、`spec/examples-browser-e2e.md` 的增补和根 `README.md` 的 `ai-onboarding` 条目是这一步才补写的。`ready` 只表示交付项已声明，不代表文档内容或代码已经验证。
+- 随之补写的文档：`spec/vite-adapter.md`、`spec/examples-browser-e2e.md` 的“ai-onboarding 增补”，根 `README.md` 的开发状态条目。

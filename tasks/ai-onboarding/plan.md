@@ -262,7 +262,7 @@
 
 **实现记录（AO15）：** 改了 7 个文件：`website/start/choose.md` 新增“用 AI 引导接入”（锚点 `#ai-onboarding`），给出 macOS／Linux 与 PowerShell 两种复制命令、两个安装目录与两种调用写法、不要放进 `public/`、`src/`、`dist/`、文档站只有中文而对话可用英文，以及 skill 的边界；`integration-by-capability.md` 与 `packages/vite/README.md`（英文）指向它；旧 `pwa-vite5-vue-integration` 顶部加“已被取代”并保留原文；`npm-package-release.md` 候选门禁加第 10 条（升级版本时同步 `metadata.version`）；`CHANGELOG.md` 的 Unreleased 记一条。**文档明确写了已发布的 0.2.3 不含这份 skill**（它随下一个含 `skills/` 的版本提供），避免读者按文档安装后找不到。8 个文档测试先红后绿，变异均变红；其中“不要放进站点目录”与更新日志两条最初断言偏弱（变异存活），已收紧。`docs:build` 通过。`spec/examples-browser-e2e.md` 的 onboarding-smoke 增补不在本任务范围内改动，留给 AO16 核对。
 
-### AO16：门禁与独立评审（大部分完成：见本任务的提交；`verify-artifacts` 待合入能力图后补跑）
+### AO16：门禁与独立评审（完成：见本任务的提交）
 
 **范围：** 完整门禁与独立评审，结果写入 `tasks/ai-onboarding/verification.md`。
 
@@ -317,9 +317,20 @@
 
 | Concern | Planned artifact | Rationale |
 |---|---|---|
-| decisions | `docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md` | skill 的位置、打包方式与否决的备选 |
-| developer-entry | `website/start/choose.md`、`website/guide/integration-by-capability.md`、`packages/vite/README.md` | skill 的入口、复制安装命令与使用方式 |
-| package-distribution | `scripts/check-package-distribution.mjs`、`docs/operations/npm-package-release.md` | 发布内容含 `skills/` 目录，校验脚本核对 |
-| vite-adapter | `spec/vite-adapter.md` 增补 | 包内新增 `skills/`，`exports` 与运行时不变 |
-| examples-browser-e2e | `spec/examples-browser-e2e.md` 增补 | onboarding-smoke 增加 DT8 |
-| capability-map | 由 Proposal 晋级流程完成 | 本计划不直接修改能力图 |
+| developer-entry | `README.md` | 根 README 的开发状态增加 `ai-onboarding` 一条；同时更新 `website/start/choose.md`、`website/guide/integration-by-capability.md`、`packages/vite/README.md` 作为 skill 的入口、复制安装命令与使用方式。 |
+| capability-map | `spec/CAPABILITY-MAP.md` | 模块行由 spec-guard `add-module` 写入 PR #88 分支；本计划不再直接修改能力图。 |
+| decisions | `docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md` | skill 的位置、打包方式与否决的备选。 |
+| package-distribution | `spec/package-distribution.md`、`docs/adr/0028-npm-prerelease-distribution.md`、`docs/operations/npm-package-release.md`、`tasks/package-distribution/plan.md`、`tasks/package-distribution/release-2026-09-20.md` | 发布内容含 `skills/`：实际改动 `scripts/check-package-distribution.mjs` 与 `docs/operations/npm-package-release.md`，其余权威文档不变。 |
+| vite-adapter | `spec/vite-adapter.md`、`docs/adr/0015-vite-plugin-build-pipeline.md`、`docs/adr/0022-vite-injects-manifest-link.md`、`docs/adr/0040-validate-manifest-icons-during-vite-build.md` | 包内新增 `skills/`，`exports` 与运行时不变：实际改动 `spec/vite-adapter.md` 的增补一节。 |
+| examples-browser-e2e | `spec/examples-browser-e2e.md`、`docs/guides/update-prompt.md`、`tasks/examples-browser-e2e/verification.md` | onboarding-smoke 增加 DT8 并新增场景夹具：实际改动 `spec/examples-browser-e2e.md` 的增补一节。 |
+
+## Documentation outcome
+
+| Concern | Outcome | Evidence | Rationale |
+|---|---|---|---|
+| developer-entry | delivered | `README.md`、`website/start/choose.md`、`packages/vite/README.md` | 根 README 增加 `ai-onboarding` 条目；《选择接入包》新增“用 AI 引导接入”，英文 README 新增 Onboarding skill 一节，给出两种安装目录、两种调用与边界；AO15。 |
+| capability-map | delivered | `spec/CAPABILITY-MAP.md` | 模块行已由 spec-guard `add-module` 写入 PR #88 分支（`c2aced5`）。 |
+| decisions | delivered | `docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md` | skill 的位置、打包方式与否决的备选已记录，并随实现同步过。 |
+| package-distribution | delivered | `scripts/check-package-distribution.mjs`、`docs/operations/npm-package-release.md` | 只有 `@pwa-platform/vite` 的 `files` 含 `skills`；发布流程加“升级版本时同步 `metadata.version`”一条；AO4、AO15。 |
+| vite-adapter | delivered | `spec/vite-adapter.md` | 增补“ai-onboarding 增补（2026-09-29）”：`files` 含 `skills`，`exports` 与运行时不变，版本相等由测试强制。 |
+| examples-browser-e2e | delivered | `spec/examples-browser-e2e.md` | 增补 DT8（onboarding-smoke 的哨兵与哈希核对）和 `onboarding-scenarios` 夹具与评分表。 |
