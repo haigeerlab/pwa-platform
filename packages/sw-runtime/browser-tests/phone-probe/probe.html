@@ -1,42 +1,239 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>runtime cache probe</title>
-<style>body{font:14px/1.4 monospace;margin:8px}button{font-size:18px;padding:10px;margin:4px 0;width:100%}pre{white-space:pre-wrap;word-break:break-all}.p{color:#0a0}.f{color:#c00;font-weight:bold}</style></head><body>
-<div id="st">init…</div><button id="run">Run all scenarios</button><button id="dump">Dump caches</button><pre id="out"></pre>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>runtime cache probe</title>
+<style>
+  body { font: 14px/1.4 monospace; margin: 8px }
+  button { font-size: 18px; padding: 10px; margin: 4px 0; width: 100% }
+  pre { white-space: pre-wrap; word-break: break-all }
+  .p { color: #0a0 } .f { color: #c00; font-weight: bold } .n { color: #06c }
+</style>
+</head>
+<body>
+<div id="st">init…</div>
+<button id="online">1. Online checks</button>
+<button id="offline">2. Offline checks (starts by itself when Airplane mode goes ON; tap only if it does not)</button>
+<button id="dump">Dump caches</button>
+<pre id="out"></pre>
 <script>
-const out=document.getElementById("out"),st=document.getElementById("st");let pass=0,fail=0;
-const RID=Math.random().toString(36).slice(2,6);const log=(m,c)=>{m="["+RID+"] "+m;const s=document.createElement("div");if(c)s.className=c;s.textContent=m;out.appendChild(s);navigator.sendBeacon("/__ctl?log="+encodeURIComponent(m))};
-const ctl=q=>fetch("/__ctl?"+q,{cache:"no-store"}).then(r=>r.text());
-const check=(n,ok,d)=>{ok?pass++:fail++;log((ok?"PASS ":"FAIL ")+n+(d?" — "+d:""),ok?"p":"f")};
-const J=async(u,h)=>{try{const r=await fetch(u,{cache:"no-store",headers:h||{}});return{ok:true,body:await r.json()}}catch(e){return{ok:false,err:String(e)}}};
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-async function entries(){const o={};for(const k of await caches.keys()){o[k]=(await (await caches.open(k)).keys()).map(r=>new URL(r.url).pathname)}return o}
-const cached=async(frag,p)=>Object.entries(await entries()).some(([n,u])=>n.includes(frag)&&u.some(x=>x.endsWith(p)));
-async function poll(f,ms=4000){const t=Date.now();while(Date.now()-t<ms){if(await f())return true;await sleep(150)}return false}
-async function boot(){
- if(!("serviceWorker" in navigator)){st.textContent="NO serviceWorker";return}
- await navigator.serviceWorker.register("/app/sw.js",{scope:"/app/"});await navigator.serviceWorker.ready;
- st.textContent=navigator.serviceWorker.controller?"controlled ✔ "+navigator.userAgent:"NOT controlled — reload once";log("boot controlled="+!!navigator.serviceWorker.controller+" UA="+navigator.userAgent)}
-async function frame(u){return new Promise(res=>{const f=document.createElement("iframe");f.style.display="none";f.onload=()=>{if(f.contentWindow.location.href==="about:blank")return;let t="";try{t=f.contentDocument.body.innerText.trim()}catch(e){t="ERR "+e}res(t);f.remove()};f.src=u;document.body.appendChild(f)})}
-document.getElementById("dump").onclick=async()=>log(JSON.stringify(await entries()));
-document.getElementById("run").onclick=async()=>{pass=fail=0;out.textContent="";
- if(!navigator.serviceWorker.controller){log("not controlled, reload first","f");return}
- if(window.__busy)return;window.__busy=1;await ctl("offline=0&reset=1&rid="+RID);const C="/app/api/catalog/",I=C+"items.json";
- const a=await J(I);check("NF online read",a.ok&&a.body.n>0,JSON.stringify(a));
- check("NF wrote runtime-data",await poll(()=>cached("runtime-data","items.json")));
- await ctl("offline=1");const b=await J(I);check("NF offline returns cached body",b.ok&&b.body.n===a.body.n,JSON.stringify(b));
- await ctl("offline=0");const c=await J(I);check("NF back online is fresh",c.ok&&c.body.n>a.body.n,JSON.stringify(c));
- await sleep(500);await ctl("offline=1");const d=await J(I);check("NF cache refreshed to latest",d.ok&&d.body.n===c.body.n,JSON.stringify(d));await ctl("offline=0");
- for(const[n,u,h]of[["Cache-Control: no-store",C+"reject-no-store.json"],["Cache-Control: private",C+"reject-private.json"],["Vary: Cookie",C+"reject-vary-cookie.json"],["wrong MIME",C+"reject-wrong-mime.json"],["body > maxEntryBytes",C+"reject-too-big.json"],["Authorization header",C+"reject-auth.json",{Authorization:"Bearer x"}],["Set-Cookie + private",C+"cookie-private.json"]]){
-  const on=await J(u,h);await sleep(400);await ctl("offline=1");const off=await J(u,h);await ctl("offline=0");
-  check("REJECT "+n+" (online ok, offline error, not cached)",on.ok&&!off.ok&&!(await cached("runtime-data",u.split("/").pop())),"online="+on.ok+" offline="+off.ok)}
- const cp=C+"cookie-public.json";await J(cp);await poll(()=>cached("runtime-data","cookie-public.json"));await ctl("offline=1");const co=await J(cp);await ctl("offline=0");
- check("Set-Cookie without private IS cached (known behavior)",co.ok,JSON.stringify(co));
- const R="/app/api/reviews/list.json";const r1=await J(R);await poll(()=>cached("runtime-data","list.json"));const r2=await J(R);
- check("SWR 2nd read is stale (same as 1st)",r1.ok&&r2.ok&&r2.body.n===r1.body.n,JSON.stringify([r1.body,r2.body]));
- check("SWR later read shows background update",await poll(async()=>{const x=await J(R);return x.ok&&x.body.n>r1.body.n},5000));
- const D="/app/dashboard/";const t1=await frame(D);check("NAV online dashboard",/dashboard v1/.test(t1),t1);
- check("NAV wrote runtime-pages",await poll(()=>cached("runtime-pages","/app/dashboard/")));
- await ctl("offline=1");const t2=await frame(D);check("NAV offline renders cached dashboard",/dashboard v1/.test(t2),t2);
- const t3=await frame("/app/dashboard/never-visited");check("NAV offline unvisited -> offline fallback",/offline fallback/.test(t3),t3);await ctl("offline=0");
- const e=await entries();log("CACHES "+JSON.stringify(e));log("RESULT pass="+pass+" fail="+fail,fail?"f":"p");st.textContent="RESULT pass="+pass+" fail="+fail};
-if(location.search.includes('cleanup=1')){(async()=>{for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();for(const k of await caches.keys())await caches.delete(k);navigator.sendBeacon('/__ctl?log=CLEANED');st.textContent='CLEANED'})()}else boot().then(()=>{if(location.search.includes('auto=1')&&navigator.serviceWorker.controller)setTimeout(()=>document.getElementById('run').click(),1500)});
-</script></body></html>
+// Manual probe for the public-read runtime cache (see README.md next to this file). Two phases, so "offline" can be
+// a real device network cut (airplane mode) instead of a server-side reset, which a tunnel turns into a 502 response.
+const out = document.getElementById("out");
+const st = document.getElementById("st");
+const RID = Math.random().toString(36).slice(2, 6);
+const C = "/app/api/catalog/";
+const ITEMS = C + "items.json";
+const REVIEWS = "/app/api/reviews/list.json";
+const DASH = "/app/dashboard/";
+const REJECTS = [
+  ["Cache-Control: no-store", C + "reject-no-store.json"],
+  ["Cache-Control: private", C + "reject-private.json"],
+  ["Vary: Cookie", C + "reject-vary-cookie.json"],
+  ["wrong MIME", C + "reject-wrong-mime.json"],
+  ["body > maxEntryBytes", C + "reject-too-big.json"],
+  ["Authorization header", C + "reject-auth.json", { Authorization: "Bearer x" }],
+  ["Set-Cookie + private", C + "cookie-private.json"],
+];
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let pass = 0;
+let fail = 0;
+
+// Results are shown on screen and reported to the server log; while the device is offline they are buffered.
+const pending = [];
+let flushing = false;
+async function flush() {
+  if (flushing) return;
+  flushing = true;
+  while (pending.length > 0) {
+    try {
+      await fetch("/__ctl?log=" + encodeURIComponent(pending[0]), { cache: "no-store" });
+      pending.shift();
+    } catch {
+      break;
+    }
+  }
+  flushing = false;
+}
+window.addEventListener("online", flush);
+function log(message, cls) {
+  const line = `[${RID}] ${message}`;
+  const div = document.createElement("div");
+  if (cls) div.className = cls;
+  div.textContent = message;
+  out.appendChild(div);
+  pending.push(line);
+  flush();
+}
+function check(name, ok, detail) {
+  if (ok) pass++; else fail++;
+  log(`${ok ? "PASS" : "FAIL"} ${name}${detail ? " — " + detail : ""}`, ok ? "p" : "f");
+}
+const ctl = (query) => fetch("/__ctl?" + query, { cache: "no-store" }).then((r) => r.text());
+
+// Distinguishes a network failure (fetch throws) from a response, including a non-200 one.
+async function get(url, headers) {
+  let response;
+  try {
+    response = await fetch(url, { cache: "no-store", headers: headers ?? {} });
+  } catch (error) {
+    return { kind: "network-error", error: String(error) };
+  }
+  const text = await response.text();
+  let body = null;
+  try { body = JSON.parse(text); } catch { /* not JSON */ }
+  return { kind: "response", status: response.status, ok: response.ok && body !== null, body, text: text.slice(0, 60) };
+}
+async function entries() {
+  const result = {};
+  for (const name of await caches.keys()) {
+    result[name] = (await (await caches.open(name)).keys()).map((request) => new URL(request.url).pathname);
+  }
+  return result;
+}
+async function cached(fragment, suffix) {
+  return Object.entries(await entries()).some(([name, urls]) => name.includes(fragment) && urls.some((url) => url.endsWith(suffix)));
+}
+async function poll(fn, ms = 4000) {
+  const start = Date.now();
+  while (Date.now() - start < ms) {
+    if (await fn()) return true;
+    await sleep(150);
+  }
+  return false;
+}
+// A navigation request through an iframe; the initial about:blank load is ignored.
+function frameText(url, timeoutMs = 15000) {
+  const started = Date.now();
+  return new Promise((resolve) => {
+    const frame = document.createElement("iframe");
+    frame.style.display = "none";
+    let loads = 0;
+    let lastHref = "";
+    const finish = (text) => {
+      clearTimeout(timer);
+      frame.remove();
+      resolve(`${text} (${Date.now() - started}ms)`);
+    };
+    // Never hang: a navigation that neither loads a page nor fails is reported with what was observed.
+    const timer = setTimeout(() => finish(`TIMEOUT after ${timeoutMs}ms loads=${loads} lastHref=${lastHref}`), timeoutMs);
+    frame.onload = () => {
+      loads++;
+      try {
+        lastHref = frame.contentWindow.location.href;
+        if (lastHref === "about:blank") return;
+        finish(frame.contentDocument.body.innerText.trim());
+      } catch (error) {
+        // A browser error page is cross-origin and unreadable: report it instead of hanging.
+        finish("ERR " + error);
+      }
+    };
+    document.body.appendChild(frame);
+    frame.src = url;
+  });
+}
+const netError = (result) => result.kind === "network-error";
+const describe = (result) => (result.kind === "network-error" ? "network error" : `HTTP ${result.status} ${result.text}`);
+
+async function boot() {
+  if (!("serviceWorker" in navigator)) { st.textContent = "NO serviceWorker"; return; }
+  await navigator.serviceWorker.register("/app/sw.js", { scope: "/app/" });
+  await navigator.serviceWorker.ready;
+  const controlled = Boolean(navigator.serviceWorker.controller);
+  st.textContent = controlled ? "controlled ✔ — run phase 1" : "NOT controlled — reload once";
+  log(`boot controlled=${controlled} onLine=${navigator.onLine} UA=${navigator.userAgent}`, "n");
+}
+
+async function onlinePhase() {
+  if (!navigator.serviceWorker.controller) { log("not controlled, reload first", "f"); return; }
+  pass = fail = 0;
+  out.textContent = "";
+  await ctl("reset=1");
+  const a = await get(ITEMS);
+  check("ONLINE NF read", a.ok && a.body.n > 0, JSON.stringify(a.body));
+  check("ONLINE NF wrote runtime-data", await poll(() => cached("runtime-data", "items.json")));
+  await sleep(300);
+  const b = await get(ITEMS);
+  check("ONLINE NF second read is fresh", b.ok && b.body.n > a.body.n, JSON.stringify(b.body));
+  sessionStorage.setItem("lastN", String(b.body?.n ?? ""));
+  for (const [name, url, headers] of REJECTS) {
+    const r = await get(url, headers);
+    await sleep(400);
+    check(`ONLINE REJECT ${name}: served and not cached`, r.ok && !(await cached("runtime-data", url.split("/").pop())), describe(r));
+  }
+  const cookiePublic = C + "cookie-public.json";
+  const cp = await get(cookiePublic);
+  check("ONLINE Set-Cookie without private is served", cp.ok, describe(cp));
+  check("ONLINE Set-Cookie without private IS cached (known behavior)", await poll(() => cached("runtime-data", "cookie-public.json")));
+  const r1 = await get(REVIEWS);
+  await poll(() => cached("runtime-data", "list.json"));
+  const r2 = await get(REVIEWS);
+  check("ONLINE SWR 2nd read is stale (same as 1st)", r1.ok && r2.ok && r2.body.n === r1.body.n, JSON.stringify([r1.body, r2.body]));
+  check("ONLINE SWR later read shows background update", await poll(async () => { const x = await get(REVIEWS); return x.ok && x.body.n > r1.body.n; }, 5000));
+  const page = await frameText(DASH);
+  check("ONLINE NAV dashboard", /dashboard v1/.test(page), page);
+  check("ONLINE NAV wrote runtime-pages", await poll(() => cached("runtime-pages", "/app/dashboard/")));
+  log(`PHASE1 pass=${pass} fail=${fail}`, fail ? "f" : "p");
+  st.textContent = `PHASE1 pass=${pass} fail=${fail} — now turn Airplane mode ON (phase 2 starts by itself)`;
+  // The fixture's runtime cache expires entries after 60 s, so phase 2 must start right when the device goes offline.
+  armedAt = Date.now();
+}
+
+let armedAt = 0;
+window.addEventListener("offline", () => {
+  if (armedAt === 0) return;
+  log(`offline event, ${Date.now() - armedAt}ms after phase 1`, "n");
+  armedAt = 0;
+  offlinePhase();
+});
+
+async function offlinePhase() {
+  if (!navigator.serviceWorker.controller) { log("not controlled, reload first", "f"); return; }
+  pass = fail = 0;
+  log(`PHASE2 start onLine=${navigator.onLine}`, "n");
+  check("OFFLINE device reports offline (airplane mode on)", navigator.onLine === false, `onLine=${navigator.onLine}`);
+  const lastN = Number(sessionStorage.getItem("lastN"));
+  const a = await get(ITEMS);
+  check("OFFLINE NF returns cached body", a.ok && a.body.n === lastN, `${describe(a)} expected n=${lastN} got ${JSON.stringify(a.body)}`);
+  for (const [name, url, headers] of REJECTS) {
+    const r = await get(url, headers);
+    check(`OFFLINE REJECT ${name}: network error (not served from cache)`, netError(r), describe(r));
+  }
+  const cp = await get(C + "cookie-public.json");
+  check("OFFLINE Set-Cookie without private served from cache", cp.ok, describe(cp));
+  const sw = await get(REVIEWS);
+  check("OFFLINE SWR list served from cache", sw.ok, describe(sw));
+  const cachedPage = await frameText(DASH, 90000);
+  check("OFFLINE NAV cached dashboard renders", /dashboard v1/.test(cachedPage), cachedPage);
+  const unvisited = await frameText("/app/dashboard/never-visited", 90000);
+  check("OFFLINE NAV unvisited path -> offline fallback", /offline fallback/.test(unvisited), unvisited);
+  log(`PHASE2 pass=${pass} fail=${fail}`, fail ? "f" : "p");
+  st.textContent = `PHASE2 pass=${pass} fail=${fail} — turn Airplane mode OFF to upload the results`;
+}
+
+document.getElementById("online").onclick = onlinePhase;
+document.getElementById("offline").onclick = offlinePhase;
+document.getElementById("dump").onclick = async () => log("CACHES " + JSON.stringify(await entries()));
+
+if (location.search.includes("cleanup=1")) {
+  (async () => {
+    for (const registration of await navigator.serviceWorker.getRegistrations()) await registration.unregister();
+    for (const name of await caches.keys()) await caches.delete(name);
+    st.textContent = "CLEANED";
+    log("CLEANED");
+  })();
+} else {
+  boot().then(() => {
+    const auto = location.search.includes("auto=1");
+    if (auto && !navigator.serviceWorker.controller && !sessionStorage.getItem("reloaded")) {
+      sessionStorage.setItem("reloaded", "1");
+      location.reload();
+      return;
+    }
+    if (auto && navigator.serviceWorker.controller) setTimeout(onlinePhase, 1500);
+  });
+}
+</script>
+</body>
+</html>
