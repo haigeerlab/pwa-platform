@@ -6,11 +6,11 @@
 
 | # | 建议 | 对应 | 严重度 | 投入 |
 |---|---|---|---|---|
-| 1 | 合并 [#60](https://github.com/haigeerlab/pwa-platform/pull/60)，再把 R9 与 N1 一起随下一个补丁版本发布；发布前 R9 在所有状态表里都注明“源码已修，未发布” | N1、N5 | P2 | XS |
-| 2 | 把 `requiredReleaseChecks` / `verifyReleaseGateCoverage` 接进 `release-tools` 的生产发布门禁，让“空报告”或缺检查项在生产预设下失败；这是上一轮 #13 原定的验收标准 | R4 | P2 | S |
-| 3 | 改正 `CHANGELOG.md:19`：写明部署方若自加 `Service-Worker-Allowed` 放宽过 scope，升级到 0.2.0 后会构建失败，并给出迁移路径（新身份 + 迁移计划） | N4 | P3 | XS |
-| 4 | 同步 `decide.ts:34`、`:71` 的注释，与 `:125` 的导航分支一致 | N6 | P3 | XS |
-| 5 | 网站补 5 处：入口探测固定 5 秒超时（G1）；带 `Authorization` 的导航同样不写缓存（G3）；排查页写明对原生 `update()` 报 `InvalidStateError` 时改用 `checkForUpdate()`（C-7）；`IDENTITY.origin` 的用途与本地验收填法；`integration-by-capability.md:9` 总览表写明 `updateMode` 在所有路径必填（C-10） | 05、04 | 低～中 | S |
+| 1 | 合并 [#60](https://github.com/haigeerlab/pwa-platform/pull/60)（已合并），再把 R9 与 N1 一起随下一个补丁版本发布；发布前 R9 在所有状态表里都注明“源码已修，未发布” | N1、N5 | P2 | XS |
+| 2 | 参考发布门禁 `release-verifier` 改为直接取用 `requiredReleaseChecks`，不再自带一份清单。（原写“接进门禁，让空报告失败”：复核发现门禁本来就检查覆盖率、缺 baseline 时也会失败，#13 的验收标准早已满足）→ [#62](https://github.com/haigeerlab/pwa-platform/pull/62) | R4 | P3 | XS |
+| 3 | 改正 `CHANGELOG.md:19`：写明部署方若自加 `Service-Worker-Allowed` 放宽过 scope，升级到 0.2.0 后会构建失败，并给出迁移路径（新身份 + 迁移计划）→ [#63](https://github.com/haigeerlab/pwa-platform/pull/63) | N4 | P3 | XS |
+| 4 | 同步 `decide.ts:71` 的注释，与 `:125` 的导航分支一致 → [#63](https://github.com/haigeerlab/pwa-platform/pull/63) | N6 | P3 | XS |
+| 5 | 网站补 5 处：入口探测固定 5 秒超时（G1）；带 `Authorization` 的导航同样不写缓存（G3）；排查页写明对原生 `update()` 报 `InvalidStateError` 时改用 `checkForUpdate()`（C-7）；`IDENTITY.origin` 的用途与本地验收填法；`integration-by-capability.md:9` 总览表写明 `updateMode` 在所有路径必填（C-10）→ [#63](https://github.com/haigeerlab/pwa-platform/pull/63) | 05、04 | 低～中 | S |
 
 ## 第二批：需要一次小决策或浏览器探针
 
