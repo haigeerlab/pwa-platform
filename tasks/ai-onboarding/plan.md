@@ -53,7 +53,7 @@
 
 **范围估计：** 小，1 个文件。依赖：AO1。与 AO2 并行。
 
-### AO4：骨架与打包（TDD）
+### AO4：骨架与打包（TDD，完成：见本任务的提交）
 
 **范围：** `packages/vite/skills/pwa-onboarding/SKILL.md`（front matter 与关卡索引，先是骨架）、`packages/vite/package.json`（`files`）、`scripts/check-package-distribution.mjs`（允许并核对该目录）、对应测试。
 
@@ -66,6 +66,13 @@
 - DT6：目录下只有 `.md`；不含把文件写入 `public/`、`src/`、`dist/` 的指令。
 - 变异：把 `skills` 从 `files` 删除、把它加进 `exports`、放入一个 `.js` 文件，测试都应变红。
 - 供应链清单与锁文件不变。
+
+**实施记录（2026-09-29）：**
+- 执行器完成 21 个用例并做了 7 项变异检查；主会话验收时**亲自复跑**并另做了 6 项变异（`files` 去掉 `skills`、版本改错、放入 `.js`；发布校验脚本的三种违规），全部变红，还原后逐字节一致。
+- 验收发现一个**间歇性失败**：`npm pack --dry-run` 单跑约 1–2 秒，但 25 个测试文件并行时超过 vitest 默认 5 秒，3 次里失败 1 次。已给该用例 60 秒超时，修复后连跑 6 次全绿。
+- 已有的 `import-safety.test.ts` 把 `files` 钉死为 `["dist"]`，任务书的允许清单漏了它；由主会话改为 `["dist", "skills"]` 并注明依据 ADR-0045。
+- DT6 只覆盖围栏代码块里的写入命令，正文行内代码的写法不在范围，见规格。
+- Codex 一侧的人工检查（`codex exec`，会使用项目所有者的账号）**尚未执行**，等批准。
 
 **范围估计：** 中，5–6 个文件。依赖：AO1、AO2。
 

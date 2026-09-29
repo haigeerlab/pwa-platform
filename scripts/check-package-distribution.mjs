@@ -20,6 +20,13 @@ for (const name of ordered) {
   if (!pkg.files?.includes('dist') || !existsSync(join(directory, 'README.md')) || readFileSync(join(directory, 'LICENSE'), 'utf8') !== license) {
     throw new Error(`Incomplete package files: ${name}`);
   }
+  const shipsSkills = pkg.files.includes('skills');
+  if (name === 'vite' ? !shipsSkills || !existsSync(join(directory, 'skills', 'pwa-onboarding', 'SKILL.md')) : shipsSkills) {
+    throw new Error(`Unexpected skills packaging: ${name}`);
+  }
+  if (JSON.stringify(pkg.exports ?? {}).includes('skills')) {
+    throw new Error(`Skills must not be exported: ${name}`);
+  }
   for (const [dependency, range] of Object.entries(pkg.dependencies ?? {})) {
     if (dependency.startsWith('@pwa-platform/')) {
       if (!expected.has(dependency) || !published.has(dependency) || range !== 'workspace:*') {
