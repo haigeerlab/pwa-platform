@@ -26,6 +26,7 @@
 - **front matter**：只有 `name`、`description`、`metadata.version`；`name` 为 `pwa-onboarding`；`metadata.version` 与包版本相等，由测试强制，升级版本时同步修改（见 [npm 包发布流程](../docs/operations/npm-package-release.md)）。
 - **只含 Markdown**，且没有把文件写入 `public/`、`src/`、`dist/` 的命令。
 - **体积**：`SKILL.md` ≤ 6144 字节，整个目录 ≤ 8192 字节，不含 `references/`。
+- **文档链接**：清单引用的每篇文档都带文档站链接（`https://pwa-platform-docs.pages.dev/<路径>`），且 `website/<路径>.md` 存在（内容测试）。文档不随包发布；文档站须在含 `skills/` 的 `vite` 版本发布前从同一 `website/` 内容部署，见 [npm 包发布流程](../docs/operations/npm-package-release.md)第 11 条。
 - **不进入生产构建**：装有清单的项目做生产构建，产物不含清单文件与内容，且与未装时逐文件哈希相同（`onboarding-smoke`）。
 
 ## 测试
@@ -48,6 +49,7 @@
 | AC2 | `metadata.version` 等于包版本 | 版本测试 |
 | AC3 | 生产构建产物不含清单，且与未装时哈希相同 | `onboarding-smoke` |
 | AC4 | 清单保留上面的关键规则，且不含已缩减掉的机制 | 内容测试 |
+| AC5 | 清单引用的每篇文档都有文档站链接，且对应页面在 `website/` 中存在；发布 `vite` 前线上文档站与发布提交一致 | 内容测试；发布流程第 11 条 |
 
 ## 缩减记录
 
@@ -58,6 +60,7 @@
 - 已发布的 0.2.3 不含清单，它随下一个含 `skills/` 的版本发布。
 - 清单只是文字指引，没有对 AI 行为的自动化评估；缩减前的两轮人工场景评估（Claude Sonnet 5.5，脚本化的"人"）针对的是旧的长版本，不适用于现在这一页。
 - Codex 一侧没有评估。
+- 文档只在线提供：AI 需要能访问文档站；文档站只有最新版，用旧版本包的人看到的是新版文档。2026-09-29 讨论过把引用的 8 页随包发布（约 53 KB，且这些页面还链到其他页面与 GitHub 文件）和按 git tag 做版本化链接（仓库目前没有 tag），项目所有者选择在线文档加发布门禁。
 
 ## Documentation impact
 

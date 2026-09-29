@@ -14,6 +14,20 @@
 8. **暂存状态的三种报错都表示“已提交过”**（2026-09-28 补充，见 [0.2.3 发布记录](../../tasks/package-distribution/release-0.2.3.md)）：非交互 shell 中 `pnpm publish` 报 `ERR_PNPM_OTP_NON_INTERACTIVE` 时版本可能已进入暂存；之后再发会得到 `409 ... previously staged`，批准后再发得到 `403 ... previously published`。遇到这三种情况都去 npm 批准或跳过该包，不要重发。发布须在交互终端中进行，以便完成 2FA。
 9. **批量提交时，批准顺序就是公开顺序**（同上）：为提速可先把各包提交进暂存、再统一批准，但这放弃了第 6 条的逐包等待。此时必须严格按下方依赖顺序批准，且在被依赖的包可下载之前不要批准依赖它的包；0.2.3 中 `vite`、`vue`、`react` 先于 `sw-runtime` 公开，造成约 9 分钟 `npm install` 失败。
 10. **引导 skill 的版本要跟着包走**（[ADR-0045](../adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)）：升级 `@pwa-platform/vite` 的版本号时，同一提交里修改 `packages/vite/skills/pwa-onboarding/SKILL.md` 的 `metadata.version`，使两者相等；忘记时 `pnpm test` 里 `packages/vite` 的 skill 版本测试会变红。`pnpm check:publish` 还会核对只有 `@pwa-platform/vite` 的 `files` 含 `skills`、其余包与所有 `exports` 都不暴露它。
+11. **文档站先于 `@pwa-platform/vite` 上线**（2026-09-29，[ai-onboarding](../../spec/ai-onboarding.md)）：清单只带文档站链接、不带文档副本，而文档站不随合并自动部署（见[文档站构建与部署](documentation-site.md)）。发布 `vite` 之前逐项核对，任一不满足就先按文档站流程从本次发布提交建立新的 `docs/v…` 版本分支并部署，不发布 `vite`：
+    - 当前文档站生产分支与本次发布提交的 `website/` 没有差异；
+    - `SKILL.md` 里的每个文档站链接返回 200；
+    - 线上《选择接入包》含"用 AI 引导接入"一节（`id="ai-onboarding"`）。
+
+    ```bash
+    # DOCS_BRANCH 为文档站当前生产分支，如 docs/v2026.09.27-2
+    git diff --stat "origin/$DOCS_BRANCH" HEAD -- website/
+    grep -oE 'https://pwa-platform-docs\.pages\.dev/[a-z/-]+' packages/vite/skills/pwa-onboarding/SKILL.md | sort -u \
+      | while read -r url; do echo "$(curl -s -o /dev/null -w '%{http_code}' "$url") $url"; done
+    curl -s https://pwa-platform-docs.pages.dev/start/choose | grep -c 'id="ai-onboarding"'
+    ```
+
+    第一条输出为空、第二条全是 200、第三条不为 0 才算通过，结果写进本次发布记录。
 
 ## 顺序
 
