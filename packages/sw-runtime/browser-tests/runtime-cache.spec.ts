@@ -8,6 +8,7 @@ import {
   cacheNames,
   createCaches,
   expect,
+  readRealBrowserKind,
   snapshotCaches,
   test,
   waitForControllerChange,
@@ -236,28 +237,29 @@ test.describe("dynamic navigation (navigation-public-dynamic, runtime-pages)", (
     await installAndControl(page, fixtureServer);
 
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
-    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await expect.poll(() => page.locator("[data-dashboard]").textContent()).toBe("dashboard v1");
     // NetworkFirst can return the network response before Workbox finishes the cache write under event.waitUntil.
     await expect.poll(async () => hasCachedEntry(await cacheContents(page), "runtime-pages", RUNTIME_DASHBOARD_URL)).toBe(true);
 
     fixtureServer.goOffline();
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
-    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await expect.poll(() => page.locator("[data-dashboard]").textContent()).toBe("dashboard v1");
 
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_UNVISITED_URL));
-    await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
+    await expect.poll(() => page.locator("[data-offline]").textContent()).toBe("offline fallback");
   });
 
   test("a navigation carrying Authorization is served from the network and never written to the pages cache", async ({
     page,
     fixtureServer,
   }) => {
+    test.skip(readRealBrowserKind(process.env) !== undefined, "WebDriver cannot add a request header to a navigation (page.setExtraHTTPHeaders)");
     fixtureServer.deploy("v3");
     await installAndControl(page, fixtureServer);
 
     await page.setExtraHTTPHeaders({ authorization: "Bearer navigation-probe" });
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
-    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await expect.poll(() => page.locator("[data-dashboard]").textContent()).toBe("dashboard v1");
     expect(hasCachedEntry(await cacheContents(page), "runtime-pages", RUNTIME_DASHBOARD_URL)).toBe(false);
   });
 });
