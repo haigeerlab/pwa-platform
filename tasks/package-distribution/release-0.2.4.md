@@ -56,7 +56,7 @@
 1. **文档站先于 `vite` 上线（第 11 条）**：当前线上为 `docs/v2026.09.27-2`，缺《服务器与 CDN 配置》《默认值与时间约定》，也没有"用 AI 引导接入"一节。须从本次发布合并提交建立新的 `docs/v…` 版本分支并部署，三项检查（`website/` 无差异、`SKILL.md` 链接全部 200、`id="ai-onboarding"` 存在）结果记入本页。
 2. **按依赖顺序批准暂存版本（第 7–9 条）**：`contracts` → `core`／`engine-workbox`／`build-verifier` → `sw-runtime` → `client-runtime` → `vite` → `entry-resilience`／`vue`／`react`；被依赖的包可下载之前不批准依赖它的包。
 3. 发布须在交互终端进行（2FA）；`409 previously staged`／`403 previously published`／`ERR_PNPM_OTP_NON_INTERACTIVE` 均表示已提交过，去批准或跳过，不要重发。
-4. **`audit` 的开发依赖漏洞**：`undici` 7.29.0 只经根目录 `wrangler` 引入，不进入任何公开包。项目所有者决定：发布前按[依赖变更流程](../../docs/operations/dependency-changes.md)升级（另开 PR，合并后需重跑门禁），或记录为已知项照常发布。决定待填。
+4. **`audit` 的开发依赖漏洞**：`undici` 7.29.0 只经根目录 `wrangler` 引入，不进入任何公开包。项目所有者决定：发布前按[依赖变更流程](../../docs/operations/dependency-changes.md)升级（另开 PR，合并后需重跑门禁），或记录为已知项照常发布。**决定（2026-09-29，项目所有者）：记录为已知项，照常发布 0.2.4**；依赖升级另行处理，不阻塞本次发布。
 
 ## 发布
 
