@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 const packageDir = join(dirname(fileURLToPath(import.meta.url)), "..");
 const packagesDir = join(packageDir, "..");
+const repoRoot = join(packagesDir, "..");
 const skillDir = join(packageDir, "skills", "pwa-onboarding");
 const skillFile = join(skillDir, "SKILL.md");
 const otherPublicPackages = ["contracts", "core", "engine-workbox", "build-verifier", "sw-runtime", "client-runtime", "entry-resilience", "vue", "react"];
@@ -200,6 +201,19 @@ describe("the checklist keeps the few rules that matter", () => {
 
   it("names every conflict the person must resolve before the platform can own the worker", () => {
     for (const evidence of ["vite-plugin-pwa", "virtual:pwa-register", "sw.js", "manifest"]) expect(text(), evidence).toContain(evidence);
+  });
+
+  it("links every cited document to a docs-site page that exists, so an assistant in a business repository can open it", () => {
+    const docsSite = "https://pwa-platform-docs.pages.dev/";
+    const titles = new Set([...text().matchAll(/《([^》]+)》/g)].map((match) => match[1]));
+    const links = new Map([...text().matchAll(/\[《([^》]+)》\]\((\S+?)\)/g)].map((match) => [match[1], match[2]]));
+    expect(titles.size).toBeGreaterThan(0);
+    for (const title of titles) {
+      const url = links.get(title);
+      expect(url, title).toMatch(new RegExp(`^${docsSite.replaceAll(".", "\\.")}[a-z-]+/[a-z-]+$`));
+      const page = join(repoRoot, "website", `${url!.slice(docsSite.length)}.md`);
+      expect(existsSync(page), `${title} -> ${page}`).toBe(true);
+    }
   });
 
   it("no longer carries the machinery that was cut: state file, glossary, numbered gates", () => {

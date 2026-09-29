@@ -7,7 +7,17 @@ metadata:
 
 # PWA 接入清单
 
-这是一份短清单，不是文档的副本。规则和代码以文档站为准（《选择接入包》《身份、安装信息与策略》《Vue 接入》《React 接入》《上线前检查》《部署与发布》《常见问题》）：遇到细节就去读，不要凭记忆写。调用：Claude Code 输入 `/pwa-onboarding`，Codex 输入 `$pwa-onboarding`。
+这是一份短清单，不是文档的副本。规则和代码以文档站 <https://pwa-platform-docs.pages.dev/> 为准，遇到细节就去读，不要凭记忆写；打不开就停下告诉人，不要猜：
+
+- [《选择接入包》](https://pwa-platform-docs.pages.dev/start/choose)
+- [《身份、安装信息与策略》](https://pwa-platform-docs.pages.dev/guide/configuration)
+- [《Vue 接入》](https://pwa-platform-docs.pages.dev/start/vue)、[《React 接入》](https://pwa-platform-docs.pages.dev/start/react)
+- [《公共读取缓存》](https://pwa-platform-docs.pages.dev/guide/public-read-cache)
+- [《上线前检查》](https://pwa-platform-docs.pages.dev/start/checklist)
+- [《部署与发布》](https://pwa-platform-docs.pages.dev/operations/release)
+- [《常见问题》](https://pwa-platform-docs.pages.dev/guide/troubleshooting)
+
+调用：Claude Code 输入 `/pwa-onboarding`，Codex 输入 `$pwa-onboarding`。
 
 ## 规矩
 
