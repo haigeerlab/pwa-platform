@@ -67,7 +67,9 @@ export default defineConfig({
         items: [
           { text: "包与公开入口", link: "/reference/packages" },
           { text: "兼容范围", link: "/reference/compatibility" },
+          { text: "默认值与时间约定", link: "/reference/conventions" },
           { text: "跨平台测试证据", link: "/reference/platform-test-matrix" },
+          { text: "服务器与 CDN 配置", link: "/operations/hosting" },
           { text: "部署与发布", link: "/operations/release" },
         ],
       },

@@ -1,6 +1,6 @@
 # 自绘更新提示
 
-本页给出完整、可复制的 React／Vue 自绘更新提示参考实现：判断当前页面是否已是新代码、状态流程和无障碍标注。更新的触发条件、为什么需要两步以及多标签页行为见[安装与更新](/guide/updates)；只想用平台提供的默认组件时，也看那一页即可。
+本页给出可复制的 React／Vue 自绘更新提示参考实现（两端共用同一个页面新旧判断函数，各自包含完整的状态机与渲染）：判断当前页面是否已是新代码、状态流程和无障碍标注。更新的触发条件、为什么需要两步以及多标签页行为见[安装与更新](/guide/updates)；只想用平台提供的默认组件时，也看那一页即可。
 
 平台负责发现新版本、让新 worker 等待、在用户确认后完成接管；界面由宿主决定（[ADR-0005](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0005-update-prompt-and-recovery-worker.md)、[ADR-0013](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0013-client-facade-and-page-side-lifecycle-events.md)）。仓库内可运行的完整示例见 React [`app.tsx`](https://github.com/haigeerlab/pwa-platform/blob/main/packages/examples-browser-e2e/apps/react/src/app.tsx) 与 Vue [`app.ts`](https://github.com/haigeerlab/pwa-platform/blob/main/packages/examples-browser-e2e/apps/vue/src/app.ts)。
 
@@ -32,23 +32,13 @@
 - **其他标签页也要处理接管。** 任一同 scope 页面确认后，每个受控页面都会各自收到 `update-applied`。`updateWaiting` 只会被它清为 `false`，所以“从 `true` 变为 `false`”即表示接管已发生；本页若是旧代码应显示 Reload。
 - **不要自行调用 `skipWaiting` 或直接操作 `navigator.serviceWorker`。** 只通过绑定提供的状态与方法。
 
-## React
+## 共用：判断页面是否已是新代码
 
-```tsx
-// main.tsx：开启定时检查。updateCheck 按字段比较，每次渲染传新对象也不会重建 facade。
-<PwaProvider config={{ ...config }} updateCheck={{ intervalMs: 1_800_000 }}>
-  <App />
-</PwaProvider>
-```
+与框架无关，保存为 `page-currency.ts`，React 与 Vue 实现都从这里导入。
 
-```tsx
-import { usePwa } from "@pwa-platform/react";
-import { useEffect, useRef, useState } from "react";
-
-type Phase = "idle" | "updating" | "reload" | "error";
-
+```ts
 // 当前文档的入口脚本是否与服务器此刻给出的应用壳一致；任何不确定都按 "stale"。
-async function detectPageCurrency(signal: AbortSignal): Promise<"current" | "stale"> {
+export async function detectPageCurrency(signal: AbortSignal): Promise<"current" | "stale"> {
   const own = document.querySelector<HTMLScriptElement>('script[type="module"][src]');
   if (own === null) return "stale";
   const request = new AbortController(); // 调用方放弃或 5 秒超时，二者任一即中止
@@ -56,7 +46,7 @@ async function detectPageCurrency(signal: AbortSignal): Promise<"current" | "sta
   const timer = setTimeout(stop, 5_000);
   signal.addEventListener("abort", stop, { once: true });
   try {
-    const response = await fetch("/app/", { cache: "no-store", signal: request.signal });
+    const response = await fetch("/app/" /* 换成自己应用壳的导航地址 */, { cache: "no-store", signal: request.signal });
     if (!response.ok) return "stale";
     const shell = new DOMParser().parseFromString(await response.text(), "text/html");
     const src = shell.querySelector('script[type="module"][src]')?.getAttribute("src");
@@ -68,6 +58,27 @@ async function detectPageCurrency(signal: AbortSignal): Promise<"current" | "sta
     signal.removeEventListener("abort", stop);
   }
 }
+```
+
+## React
+
+```tsx
+// main.tsx：开启定时检查。updateCheck 按字段比较，每次渲染传新对象也不会重建 facade。
+import config from "virtual:pwa-config"; // 构建插件提供的配置
+import { PwaProvider } from "@pwa-platform/react";
+import { App } from "./app"; // 应用根组件，其中渲染 <UpdateBanner />
+
+<PwaProvider config={{ ...config }} updateCheck={{ intervalMs: 1_800_000 }}>
+  <App />
+</PwaProvider>
+```
+
+```tsx
+import { usePwa } from "@pwa-platform/react";
+import { useEffect, useRef, useState } from "react";
+import { detectPageCurrency } from "./page-currency";
+
+type Phase = "idle" | "updating" | "reload" | "error";
 
 export function UpdateBanner() {
   const pwa = usePwa();
@@ -138,31 +149,61 @@ export function UpdateBanner() {
 
 ```ts
 // main.ts
-app.use(createPwa({ config, updateCheck: { intervalMs: 1_800_000 } }));
+import config from "virtual:pwa-config"; // 构建插件提供的配置
+import { createPwa } from "@pwa-platform/vue";
+import { createApp } from "vue";
+import App from "./App.vue"; // 根组件中渲染 <UpdateBanner />
+
+createApp(App).use(createPwa({ config, updateCheck: { intervalMs: 1_800_000 } })).mount("#app");
 ```
 
-```ts
+```vue
+<!-- UpdateBanner.vue -->
+<script setup lang="ts">
 import { usePwa } from "@pwa-platform/vue";
 import { ref, watch } from "vue";
+import { detectPageCurrency } from "./page-currency";
 
-// 在组件 setup() 中：
 const pwa = usePwa();
+const state = pwa.state; // 顶层 ref，模板中才会自动解包
 const phase = ref<"idle" | "updating" | "reload" | "error">("idle");
 const dismissed = ref(false);
-const currency = ref<"current" | "stale" | null>(null); // 用上文同一个 detectPageCurrency 填充
+const currency = ref<"current" | "stale" | null>(null);
 
 watch(
-  () => pwa.state.value.updateWaiting,
+  () => state.value.updateWaiting,
   (isWaiting, wasWaiting) => {
     if (!wasWaiting && isWaiting) {
       phase.value = "idle";
       dismissed.value = false;
-      currency.value = null; // 随后延迟 100 ms 调用 detectPageCurrency，周期结束则中止
+      currency.value = null;
     } else if (wasWaiting && !isWaiting) {
-      phase.value = currency.value === "current" ? "idle" : "reload"; // 新代码页面无需刷新
+      // 本页或其他标签页的确认已生效；页面已是新代码时无需刷新
+      phase.value = currency.value === "current" ? "idle" : "reload";
       dismissed.value = false;
     }
   },
+);
+
+// 每个等待周期检查一次；短暂延迟并在周期结束时中止（immediate 覆盖页面加载时已在等待的情况）。
+watch(
+  () => [state.value.updateWaiting, currency.value] as const,
+  ([isWaiting, current], _previous, onCleanup) => {
+    if (!isWaiting || current !== null) return;
+    const controller = new AbortController();
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void detectPageCurrency(controller.signal).then((r) => {
+        if (!cancelled) currency.value = r;
+      });
+    }, 100);
+    onCleanup(() => {
+      cancelled = true;
+      clearTimeout(timer);
+      controller.abort();
+    });
+  },
+  { immediate: true },
 );
 
 function confirm(): void {
@@ -172,7 +213,28 @@ function confirm(): void {
     () => { phase.value = "error"; },
   );
 }
-// 模板按 phase、currency 与 pwa.state.value.updateWaiting && !dismissed 渲染，与上面的 React 分支相同；完整实现见 Vue 示例。
+
+function reload(): void {
+  location.reload();
+}
+</script>
+
+<template>
+  <div v-if="phase === 'reload'" role="status">
+    Reload to use the new version <button @click="reload">Reload</button>
+  </div>
+  <div v-else-if="phase === 'error'" role="status">
+    Update failed <button @click="confirm">Retry</button>
+  </div>
+  <div v-else-if="phase === 'updating'" role="status">
+    <button disabled>Updating…</button>
+  </div>
+  <div v-else-if="state.updateWaiting && !dismissed && currency !== null" role="status">
+    {{ currency === "current" ? "An update is ready for offline use" : "A new version is available" }}
+    <button @click="confirm">Update</button>
+    <button @click="dismissed = true">Later</button>
+  </div>
+</template>
 ```
 
 ## 已知边界
@@ -181,3 +243,4 @@ function confirm(): void {
 
 - **接管超时路径没有浏览器证据。** `Update failed`／Retry 只经代码审阅，真实浏览器中难以稳定制造新 worker 不接管的情况；页面新旧判断的请求失败与无法解析分支同样只经代码审阅；请求挂起后的 5 秒超时已有 E2E。
 - **示例写死了应用壳地址 `/app/`。** 接入时改成自己应用壳的导航地址。
+- **自绘的 `dismissed` 不持久，也没有 30 分钟提醒。** 它只是组件内存中的一个布尔值，刷新页面即重置；默认的 `PwaUpdateNotice` 会在“稍后”30 分钟后若仍有等待版本再次提醒，自绘实现需要自己加计时器。

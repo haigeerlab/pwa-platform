@@ -4,7 +4,7 @@
 
 ## 独立 origin：默认方案
 
-一个 origin 和 scope 对应一个 PWA 身份，是最直接的部署方式。部署时确保 Vite <code>base</code>、身份中的 <code>origin</code> 与 <code>scope</code>、manifest 和 worker 的实际 URL 相符。worker 应从 HTTPS 同源地址提供；发布时核查 HTML、worker 和指纹资产的缓存头。
+一个 origin 和 scope 对应一个 PWA 身份，是最直接的部署方式。部署时确保 Vite <code>base</code>、身份中的 <code>origin</code> 与 <code>scope</code>、manifest 和 worker 的实际 URL 相符。worker 应从 HTTPS 同源地址提供；发布时核查 HTML、worker 和指纹资产的缓存头。完整的头部规则、Nginx 与 Cloudflare 示例见[服务器与 CDN 配置](/operations/hosting)。
 
 ## 线上响应头
 
@@ -13,14 +13,24 @@
 | 资源 | 必须包含 | 不得包含 |
 | --- | --- | --- |
 | Service Worker 脚本、manifest、公开 HTML | `no-cache` | `immutable` |
-| 带指纹的静态资源 | `immutable` 和发布配置指定的长 `max-age` | `no-cache`、`no-store` |
+| 带指纹的静态资源 | `immutable` 和发布配置指定的长 `max-age`，且 `max-age` 必须为正数（`max-age=0` 不通过） | `no-cache`、`no-store` |
 | 私有 HTML 与数据 | `private`、`no-store` | `public`、`immutable` |
 
-私有 HTML 按私有响应检查，不因它是 HTML 而套用公开 HTML 规则。记录实际访问 URL、响应头和检查时间；不要把令牌、响应体或用户数据写入发布记录。
+除上表列出的指令外，响应可以带其他指令，检查不会因此失败；检查的是跟随重定向之后的最终响应。私有 HTML 按私有响应对待，不因它是 HTML 而套用公开 HTML 规则，但**它不在机器检查范围内**，需要人工核对。记录实际访问 URL、响应头和检查时间；不要把令牌、响应体或用户数据写入发布记录。
+
+### 平台提供的机器检查
+
+<code>@pwa-platform/build-verifier</code> 提供六项检查，名称固定为 `artifacts`（计划引用的文件都已发布）、`response-headers`（worker、manifest 与指纹资源的缓存头）、`html-headers`（公开 HTML 的缓存头）、`identity-baseline`（生产身份与存档基线一致）、`release-retention`（旧指纹资源仍可获取）和 `release-order`（共享 origin 的子应用发布前，根应用已排除其 scope）。它们是纯判断函数，**输入由你的发布系统采集**：
+
+- `release-retention` 需要你提供发布历史记录（每个历史版本的计划与发布时间）和线上当前可获取的路径清单；
+- `release-order` 只适用于共享 origin 的子应用，要求根应用的线上计划已经先排除子 scope（根先、子后）；
+- 省略某项输入即跳过该项检查，所以门禁要同时核对必需检查是否全部执行。
+
+调用方式与示例见[服务器与 CDN 配置](/operations/hosting#自检)。
 
 ## 发布门禁
 
-业务发布方要保存本次提交的 CI 或经批准的本地替代记录、目标浏览器与原生安装证据、线上产物和响应头检查结果、身份基线比较、历史资源可用性及恢复演练记录。机器检查须同时证明**必需检查全部执行**且**检查结果通过**；一次 Vite 构建不能代替线上事实采集。首次发布或生产身份迁移须保留基线缺失或不匹配的诊断，并经平台负责人按发布流程批准，不能省略检查来取得绿色报告。
+业务发布方要保存本次提交的 CI 或经批准的本地替代记录、目标浏览器与原生安装证据、线上产物和响应头检查结果、身份基线比较、历史资源可用性及恢复演练记录。机器检查须同时证明**必需检查全部执行**且**检查结果通过**；一次 Vite 构建不能代替线上事实采集。首次发布或生产身份迁移须保留基线缺失或不匹配的诊断，并经你们团队中负责生产身份基线的审批人按发布流程批准，不能省略检查来取得绿色报告。
 
 ## 同源多应用
 
@@ -53,6 +63,6 @@
 
 ## 回滚与恢复
 
-普通回滚要确保旧版 HTML、脚本和资产仍能获取。若线上 worker 自身异常，按恢复流程把恢复 worker 部署到**原 worker URL**，核查它只清理该应用的专属缓存，并从网络重新加载页面。不要通过改变生产身份字段来临时“绕过”事故。
+普通回滚要确保旧版 HTML、脚本和资产仍能获取。若线上 worker 自身异常，按恢复流程把构建输出根目录下的 `pwa-recovery-worker.js` 部署到**原 worker URL**（内容覆盖 `serviceWorkerUrl` 指向的文件，响应头要求与原 worker 相同，见[服务器与 CDN 配置](/operations/hosting#回滚与紧急下线)），核查它只清理该应用的专属缓存，并从网络重新加载页面。不要通过改变生产身份字段来临时“绕过”事故。
 
-本页给出业务接入必须核对的发布条件。拥有源仓库访问权限的发布团队还应使用内部的[发布与事故手册](https://github.com/haigeerlab/pwa-platform/blob/main/docs/operations/release-and-incident-runbook.md)和[身份发布基线](https://github.com/haigeerlab/pwa-platform/blob/main/docs/operations/identity-release-baseline.md)记录完整证据。
+本页给出业务接入必须核对的发布条件。若你是本平台仓库的维护者，还应使用内部的[发布与事故手册](https://github.com/haigeerlab/pwa-platform/blob/main/docs/operations/release-and-incident-runbook.md)和[身份发布基线](https://github.com/haigeerlab/pwa-platform/blob/main/docs/operations/identity-release-baseline.md)记录完整证据。

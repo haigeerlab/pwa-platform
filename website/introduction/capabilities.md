@@ -16,8 +16,8 @@
 - 离线打开不意味着所有路由或 API 都可离线访问。
 - 平台不缓存登录态、支付数据或个性化响应，也不自动下载媒体。
 - 更新接管不等于正在运行的页面代码被替换；旧页面仍需由应用决定何时刷新。
-- 平台不会自动注册 worker。应用启动后要主动调用 <code>register()</code>。
-- 受限离线写、Web Push、入口灾备和 Nuxt 适配虽然在仓库中有实现与指南，目前尚未作为 npm 公开包交付。
+- 平台不会自动注册 worker。应用启动后要主动调用 <code>register()</code>；接入示例只在生产构建（<code>import.meta.env.PROD</code>）中注册，所以 <code>vite dev</code> 里没有 worker。
+- 受限离线写、Web Push 和 Nuxt 适配虽然在仓库中有实现与指南，目前仍是工作区私有，尚未作为 npm 公开包交付。入口灾备（<code>@pwa-platform/entry-resilience@0.2.3</code>）已经公开，是可选包，不安装也不影响其他能力。
 
 ## 当前发布范围
 

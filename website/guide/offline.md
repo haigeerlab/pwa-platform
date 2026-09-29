@@ -6,21 +6,26 @@
 
 策略里的 <code>asset</code> 规则控制哪些构建资源进入预缓存；<code>navigation-public-static</code> 规则控制公共导航。两者需要配合：仅写导航规则，不会让 HTML 或 JS 自动进入预缓存。最小规则见[身份与策略配置](/guide/configuration)。
 
-配置示例中的 <code>pathPrefix: "/"</code> 会匹配该 scope 内的所有导航。未开启 v3 公共动态页面缓存时，worker 会原样返回在线响应，**不会把网络返回的页面写入运行时缓存**；断网时依次尝试该 URL、去掉查询参数的路径及该路径的 <code>index.html</code>（仅限已预缓存的文件），最后显示通用离线页。因此私有路由也可能显示离线页，但不会从运行时缓存取出先前的个性化响应。若要用 v3 缓存动态 HTML，只能为经过评审的公共页面写明确的 <code>navigation-public-dynamic</code> 路径规则，不能将带登录态或权限差异的页面纳入其中。
+**预缓存内容**：只有被 <code>asset</code> 规则匹配到的构建文件，加上开启回退时的离线页，才会进入预缓存；worker 自身、manifest 和 <code>.map</code> 文件不会进入。安装是整体的：只要有一个预缓存 URL 取回失败，整个新 worker 就安装失败，旧版本继续服务。某条 <code>asset</code> 规则没有匹配到任何构建文件时，构建给出 <code>compile.asset-rule-unmatched</code> 警告（不阻断），通常是路径写错或产物路径变了。带 <code>Range</code> 头的请求不走预缓存，直接交给网络，因为预缓存保存的是完整响应。
+
+配置示例中的 <code>pathPrefix: "/"</code> 会匹配该 scope 内的所有导航。未开启 v3 公共动态页面缓存时，worker 会原样返回在线响应，**不会把网络返回的页面写入运行时缓存**；断网时的候选只有：该 URL 本身、去掉查询参数的同一路径、该路径下的 <code>index.html</code>（仅限已预缓存的文件），最后是离线页。平台**没有**应用壳通配回退，不会退回根 <code>index.html</code>，所以未单独预缓存的 history 路由断网直接打开会落到离线页（或没开离线页时的浏览器网络错误页）。服务器返回的 4xx／5xx 响应原样交给页面，不进入这条回退。因此私有路由也可能显示离线页，但不会从运行时缓存取出先前的个性化响应。若要用 v3 缓存动态 HTML，只能为经过评审的公共页面写明确的 <code>navigation-public-dynamic</code> 路径规则，不能将带登录态或权限差异的页面纳入其中。
 
 ## 默认离线页
 
-在策略中开启回退，声明离线页的资产规则，然后在 Vite 插件上写 <code>offlinePage: {}</code>：
+在策略中开启回退，然后在 Vite 插件上写 <code>offlinePage: {}</code>。为离线页单独写一条 <code>asset</code> 规则是可选的：编译器会自动把离线页加入预缓存，真正的要求是该路径的文件存在于构建产物中，且没有被拒绝规则覆盖（否则分别以 <code>compile.offline-fallback-not-built</code>、<code>compile.offline-fallback-denied</code> 失败）：
 
 ~~~ts
 offlineFallback: { enabled: true, path: "/offline.html" },
 resources: [
   // 其他资源规则……
-  { pathPrefix: "/offline.html", resourceClass: "asset", cache: "cache-first" },
+  // 离线页无需单独的 asset 规则
 ],
 ~~~
 
 ~~~ts
+import { pwa } from "@pwa-platform/vite";
+
+// 在 vite.config.ts 中；IDENTITY、INSTALL、POLICY 见配置指南中的完整配置
 pwa({
   identity: IDENTITY,
   policy: POLICY,
@@ -29,6 +34,8 @@ pwa({
   offlinePage: { locale: "zh-CN" },
 })
 ~~~
+
+完整的 <code>IDENTITY</code>／<code>INSTALL</code>／<code>POLICY</code> 与 <code>vite.config.ts</code> 见[配置指南](/guide/configuration#在-vite-config-ts-中接入)。
 
 生成页会显示应用名，支持亮暗主题。也可以由应用自行提供 <code>public/offline.html</code>，此时不要同时开启生成选项，否则构建会报告路径冲突。以下情况构建会直接失败：
 
@@ -39,22 +46,25 @@ pwa({
 | <code>vite.offline-page-locale-invalid</code> | <code>locale</code> 不是 <code>zh-CN</code> 或 <code>en</code> |
 | <code>vite.offline-page-message-invalid</code> | <code>messages</code> 有未知键、空串、非字符串，或超过 200 个字符 |
 | <code>vite.offline-page-css-invalid</code> | <code>css</code> 不是字符串，或含 <code>&lt;/style</code>（不区分大小写） |
+| <code>compile.offline-fallback-not-built</code> | 开启了 <code>offlineFallback</code>，但构建产物里没有该路径的文件：写 <code>offlinePage</code> 或提供 <code>public/offline.html</code> |
+| <code>compile.offline-fallback-denied</code> | 离线页路径被某条拒绝规则覆盖 |
 
 离线页只在导航请求失败（网络错误）或超时时展示；只要服务器确实返回了响应，无论状态码是 200 还是 4xx／5xx，worker 都会原样返回该响应，不会替换成离线页。不要把离线页当作“服务器故障页”。
 
 语言在**构建时固定**，默认 <code>zh-CN</code>，不会按浏览器语言切换；<code>messages</code> 可逐项覆盖内置的 <code>documentTitle</code>、<code>heading</code>、<code>body</code>、<code>retry</code> 四个键，应用名称取自 <code>install.name</code>。<code>css</code> 只能**追加**为第二个 `<style>`，不能替换默认样式；可覆盖的变量为 <code>--pwa-offline-bg</code>、<code>-fg</code>、<code>-muted</code>、<code>-accent</code>、<code>-accent-fg</code>、<code>-radius</code>、<code>-max-width</code>、<code>-font</code>，class 为 <code>pwa-offline</code>、<code>pwa-offline__app</code>、<code>pwa-offline__heading</code>、<code>pwa-offline__body</code>、<code>pwa-offline__retry</code>；表上没有的都不是契约。离线页是独立静态文档，CSS 支持 <code>[data-theme]</code> 选择器写法，但没有任何脚本会去设置它，实际只跟随系统的亮暗偏好。
 
-页面自带一段固定脚本：点击“重试”按钮刷新；收到浏览器 <code>online</code> 事件时、以及页面可见时每 10 秒，用不经过平台缓存的同源 <code>HEAD</code> 请求探测当前应用的公开 worker 脚本，只有返回 2xx 才自动刷新（探测不访问业务接口或第三方域名）。严格 CSP 下需要把构建日志打印的默认样式、宿主 `css`、脚本三段内联内容的哈希分别放行 `style-src`／`script-src`，并让 `connect-src` 允许 `'self'` 以支持同源探测；平台升级或修改 `css` 后需要重新取值。
+页面自带一段固定脚本：点击“重试”按钮刷新；收到浏览器 <code>online</code> 事件时、以及页面可见时每 10 秒，用不经过平台缓存的同源 <code>HEAD</code> 请求探测当前控制页面的 worker 脚本（没有 controller 时不探测；每次探测 3 秒后中止），只有返回 2xx 才自动刷新（探测不访问业务接口或第三方域名）。严格 CSP 下需要把构建日志打印的默认样式、宿主 `css`、脚本三段内联内容的哈希分别放行 `style-src`／`script-src`，并让 `connect-src` 允许 `'self'` 以支持同源探测；平台升级或修改 `css` 后需要重新取值。
 
 ## 弱网超时
 
 可在 v1、v2 或 v3 策略中设置 <code>networkTimeoutSeconds</code>，取值为 1–30 秒，默认关闭。导航超时且有可用回退时，worker 会先返回回退；没有回退时继续等待网络。此设置不会给业务代码直接发出的 API 请求加超时。
 
-写成 0、31 或小数等非法整数秒时，构建失败并给出诊断码 `schema.invalid-value`，路径 `/networkTimeoutSeconds`；写成字符串等错误类型时为 `schema.invalid-type`。
+写成 0、31 或小数等非法整数秒时，构建失败并给出诊断码 `schema.invalid-value`，路径 `/policy/networkTimeoutSeconds`；写成字符串等错误类型时为 `schema.invalid-type`。
 
 生产应用只要使用 <code>network-first</code> 导航，就应显式决定这个值。iPhone 真机物理断网对照中，未配置时约 60 秒才从白屏回退，配置 5 秒后约 5 秒显示缓存或离线页；这不是所有 Safari 版本的固定时长，但证明不能依赖浏览器自行超时。建议从 5 秒开始，再按真实用户网络和首屏目标调整，并在支持的手机上做物理断网冷启动。
 
 ~~~ts
+// 写在 POLICY 中，与 resources 同级
 networkTimeoutSeconds: 5,
 ~~~
 
