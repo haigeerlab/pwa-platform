@@ -69,7 +69,7 @@
 ## 2026-09-30 桌面三浏览器补证（R7，ADR-0047）
 
 - [x] R7.1 harness：W3C WebDriver 客户端与 `PWA_REAL_BROWSER` fixture、`test:browser:real` 脚本，harness 自身用例在 Safari／Firefox 通过
-- [ ] R7.2 sw-runtime、client-runtime、examples-browser-e2e 的 `browser-tests` 在真实 Safari／Firefox 运行（行 1、3–9、5a、5e、6–8）
+- [x] R7.2 sw-runtime、client-runtime、examples-browser-e2e 的 `browser-tests` 在真实 Safari／Firefox 运行（行 1、3–9、5a、5e、6–8）
 - [ ] R7.3 vite `browser-tests`：`setOffline` 改服务器断网后在两款真实浏览器运行（行 2b、4、4a、4c、4d、11、12）
 - [ ] R7.4 entry-resilience：入口恢复页、中英文、主题在两款真实浏览器运行（行 10、10a、10b、12）
 - [ ] R7.5 更新提示 UI：`page.route` 改服务器响应规则后在两款真实浏览器运行（行 5b、5c、5d）

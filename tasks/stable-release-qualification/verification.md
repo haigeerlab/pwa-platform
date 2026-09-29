@@ -398,3 +398,29 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 在 `main` @ `e9e95d9`（0.2.4 发布后）的独立干净 worktree 中执行 `pnpm build` 后以 `PWA_BROWSER_CHANNEL=msedge pnpm test:browser` 运行，harness 打印 `chromium 154.0.4258.37 (configured channel)`，即本机 Microsoft Edge 154.0.4258.37。全部包逐个运行到底（`--no-bail`）：**276 通过，1 失败，0 跳过**。
 
 唯一失败为 entry-resilience `locale.spec.ts:67`（英文入口恢复页文案），失败点在测试开始前的 `browser.newContext` 30 秒超时，用例体未执行；运行时本机同时在跑 Safari／Firefox WebDriver 会话。随后单独对 entry-resilience 包以 Edge 连续运行 3 次，均为 **20/20 通过**，判定为启动期偶发，不是 Edge 行为差异。结论：桌面 Edge 154 的完整浏览器套件在本机真实浏览器上通过（E2，不阻塞，ADR-0044）。
+
+## R7.2 真实 Safari／Firefox：sw-runtime、client-runtime、examples-browser-e2e（2026-09-30）
+
+按 ADR-0047 经 W3C WebDriver 驱动本机系统浏览器：macOS 15.7.3 上的 Safari 18.6（`safaridriver`）与 Firefox 157.0（`geckodriver` 0.37.1，headless）。代码为分支 `claude/safari-testing-229f9f` @ `6be3312`，产品代码（各包 `src`）相对 `main` 未改动，只改测试与 harness。执行代理各跑两遍，维护会话再独立复跑一遍，三次结果一致：
+
+| 包 | Chrome 154（阻塞门禁） | Firefox 157 | Safari 18.6 |
+|---|---|---|---|
+| sw-runtime | 69 通过 | 62 通过／7 跳过 | 62 通过／7 跳过 |
+| client-runtime | 22 通过 | 21 通过／1 跳过 | 22 通过 |
+| examples-browser-e2e | 63 + 26（UI）通过 | 61 通过／2 跳过 | 61 通过／2 跳过 |
+
+同次复跑的全仓 `pnpm test:browser`（Chrome 154.0.8037.59）全部通过。
+
+**跳过（均写明原因）：** sw-runtime 推送 ×3（CDP 推送投递）、配额 ×2（CDP `Storage.overrideQuotaForOrigin`）、worker 控制台捕获 ×1、带 `Authorization` 的导航 ×1（WebDriver 不能给导航加请求头）；client-runtime 在 Firefox 跳过 ADR-0043 已记录的 `register()` 不排在挂起更新之后的用例；examples-browser-e2e 为 Chromium 专有的 `beforeinstallprompt` ×2。
+
+**真实浏览器上无法取证、以 `unverifiable-on-real-browser` 标注记录（不计为通过）：** Safari 18.6 不暴露导航的 HTTP 状态（Navigation Timing 无 `responseStatus`）；Safari 与 Firefox 无法区分“worker 转发的网络响应”和“直接网络响应”，因此 `fromServiceWorker: true` 只在响应完全不经网络时可证。涉及 examples-browser-e2e `offline.spec.ts` 的排除路径与被拒导航两例。
+
+**观察到的浏览器差异（非产品缺陷）：**
+
+- Safari 的自动化窗口从不在前台，页面 `visibilityState` 恒为 `hidden`，SDK 因此正确跳过定时更新检查；自动更新检查用例在真实浏览器上先把页面设为可见（与既有“隐藏时跳过”用例相同的覆盖方式）。定时检查以真实 60 秒间隔验证（产品拒绝更短间隔），不使用假时钟。
+- Safari 与 Firefox 都会在受控页面加载约 1 秒后自行重新请求 `sw.js`。
+- Firefox 的 WebDriver Refresh 为强制重载、绕过 Service Worker，因此真实浏览器上的重载改为页面内 `location.reload()`。
+- Safari 对不可达地址的导航落到 `safari-resource:/ErrorPage.html`，而不是报错。
+- 已中止运行遗留的 `Safari --automation` 进程会让下一轮所有 worker 安装失败；每轮运行前后结束该进程后不再复现。
+
+**偶发：** client-runtime `registration.spec.ts:79` 在 Safari 上的 `< 1000 ms` 墙钟断言曾一次为 1526 ms（含 WebDriver 往返），重复 10 次均通过。
