@@ -26,7 +26,7 @@
 - **front matter**：只有 `name`、`description`、`metadata.version`；`name` 为 `pwa-onboarding`；`metadata.version` 与包版本相等，由测试强制，升级版本时同步修改（见 [npm 包发布流程](../docs/operations/npm-package-release.md)）。
 - **只含 Markdown**，且没有把文件写入 `public/`、`src/`、`dist/` 的命令。
 - **体积**：`SKILL.md` ≤ 6144 字节，整个目录 ≤ 8192 字节，不含 `references/`。
-- **文档链接**：清单引用的每篇文档都带文档站链接（`https://pwa-platform-docs.pages.dev/<路径>`），且 `website/<路径>.md` 存在（内容测试）。文档不随包发布；文档站须在含 `skills/` 的 `vite` 版本发布前从同一 `website/` 内容部署，见 [npm 包发布流程](../docs/operations/npm-package-release.md)第 11 条。
+- **文档链接与离线副本**：清单引用的每篇文档都带文档站链接（`https://pwa-platform-docs.pages.dev/<路径>`），且 `website/<路径>.md` 存在（内容测试）。这些页面同时作为离线副本随包发布在 `docs/<路径>.md`（`files` 含 `docs`，不进 `exports`，构建时由 `packages/vite/scripts/bundle-docs.mjs` 从 `SKILL.md` 的链接生成，不提交）；清单要求助手先读本地副本，缺失时才读在线链接，都读不到就停。站内链接指向未随包页面时改写为在线地址。见 [ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md) 的离线文档增补。文档站仍须在含 `skills/` 的 `vite` 版本发布前从同一 `website/` 内容部署（在线兜底），见 [npm 包发布流程](../docs/operations/npm-package-release.md)第 11 条。
 - **不进入生产构建**：装有清单的项目做生产构建，产物不含清单文件与内容，且与未装时逐文件哈希相同（`onboarding-smoke`）。
 
 ## 测试
@@ -49,7 +49,7 @@
 | AC2 | `metadata.version` 等于包版本 | 版本测试 |
 | AC3 | 生产构建产物不含清单，且与未装时哈希相同 | `onboarding-smoke` |
 | AC4 | 清单保留上面的关键规则，且不含已缩减掉的机制 | 内容测试 |
-| AC5 | 清单引用的每篇文档都有文档站链接，且对应页面在 `website/` 中存在；发布 `vite` 前线上文档站与发布提交一致 | 内容测试；发布流程第 11 条 |
+| AC5 | 清单引用的每篇文档都有文档站链接，且对应页面在 `website/` 中存在；每篇都随包发布离线副本 `docs/<路径>.md`（无站内相对链接、相对 `.md` 链接均可解析、总量 ≤ 200 KB、打包产物含 `docs/`）；发布 `vite` 前线上文档站与发布提交一致 | 内容测试；`bundle-docs.test.ts`；`check:publish`；发布流程第 11 条 |
 
 ## 缩减记录
 

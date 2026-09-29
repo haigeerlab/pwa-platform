@@ -53,6 +53,8 @@ pnpm add -D @pwa-platform/vite@0.2.3 @pwa-platform/contracts@0.2.3
 
 `@pwa-platform/vite` 随包带一份给 AI 编程助手用的接入清单（`skills/pwa-onboarding/SKILL.md`，一个 Markdown 文件，没有运行时代码）。它不复述文档，只把最容易出错的几件事交代给助手：先查能不能接、清理冲突前必须你确认、身份字段写之前逐项念给你、公共缓存规则必须逐个接口由你确认、部署和切换 worker 由你自己做。
 
+包里还带着清单引用的文档页的离线副本，放在 `node_modules/@pwa-platform/vite/docs/`，与已装包同版本，不联网（内网）也能读；助手先读本地副本，读不到才打开文档站链接。
+
 ::: warning 已发布的 0.2.3 不含这份清单
 它只在包含 <code>skills/</code> 目录的 <code>@pwa-platform/vite</code> 版本里提供。先确认目录存在：<code>node_modules/@pwa-platform/vite/skills/pwa-onboarding</code>。清单里的 <code>metadata.version</code> 与包版本一致，升级包后要重新复制。
 :::
