@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>runtime cache probe</title>
+<style>body{font:14px/1.4 monospace;margin:8px}button{font-size:18px;padding:10px;margin:4px 0;width:100%}pre{white-space:pre-wrap;word-break:break-all}.p{color:#0a0}.f{color:#c00;font-weight:bold}</style></head><body>
+<div id="st">init…</div><button id="run">Run all scenarios</button><button id="dump">Dump caches</button><pre id="out"></pre>
+<script>
+const out=document.getElementById("out"),st=document.getElementById("st");let pass=0,fail=0;
+const RID=Math.random().toString(36).slice(2,6);const log=(m,c)=>{m="["+RID+"] "+m;const s=document.createElement("div");if(c)s.className=c;s.textContent=m;out.appendChild(s);navigator.sendBeacon("/__ctl?log="+encodeURIComponent(m))};
+const ctl=q=>fetch("/__ctl?"+q,{cache:"no-store"}).then(r=>r.text());
+const check=(n,ok,d)=>{ok?pass++:fail++;log((ok?"PASS ":"FAIL ")+n+(d?" — "+d:""),ok?"p":"f")};
+const J=async(u,h)=>{try{const r=await fetch(u,{cache:"no-store",headers:h||{}});return{ok:true,body:await r.json()}}catch(e){return{ok:false,err:String(e)}}};
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function entries(){const o={};for(const k of await caches.keys()){o[k]=(await (await caches.open(k)).keys()).map(r=>new URL(r.url).pathname)}return o}
+const cached=async(frag,p)=>Object.entries(await entries()).some(([n,u])=>n.includes(frag)&&u.some(x=>x.endsWith(p)));
+async function poll(f,ms=4000){const t=Date.now();while(Date.now()-t<ms){if(await f())return true;await sleep(150)}return false}
+async function boot(){
+ if(!("serviceWorker" in navigator)){st.textContent="NO serviceWorker";return}
+ await navigator.serviceWorker.register("/app/sw.js",{scope:"/app/"});await navigator.serviceWorker.ready;
+ st.textContent=navigator.serviceWorker.controller?"controlled ✔ "+navigator.userAgent:"NOT controlled — reload once";log("boot controlled="+!!navigator.serviceWorker.controller+" UA="+navigator.userAgent)}
+async function frame(u){return new Promise(res=>{const f=document.createElement("iframe");f.style.display="none";f.onload=()=>{if(f.contentWindow.location.href==="about:blank")return;let t="";try{t=f.contentDocument.body.innerText.trim()}catch(e){t="ERR "+e}res(t);f.remove()};f.src=u;document.body.appendChild(f)})}
+document.getElementById("dump").onclick=async()=>log(JSON.stringify(await entries()));
+document.getElementById("run").onclick=async()=>{pass=fail=0;out.textContent="";
+ if(!navigator.serviceWorker.controller){log("not controlled, reload first","f");return}
+ if(window.__busy)return;window.__busy=1;await ctl("offline=0&reset=1&rid="+RID);const C="/app/api/catalog/",I=C+"items.json";
+ const a=await J(I);check("NF online read",a.ok&&a.body.n>0,JSON.stringify(a));
+ check("NF wrote runtime-data",await poll(()=>cached("runtime-data","items.json")));
+ await ctl("offline=1");const b=await J(I);check("NF offline returns cached body",b.ok&&b.body.n===a.body.n,JSON.stringify(b));
+ await ctl("offline=0");const c=await J(I);check("NF back online is fresh",c.ok&&c.body.n>a.body.n,JSON.stringify(c));
+ await sleep(500);await ctl("offline=1");const d=await J(I);check("NF cache refreshed to latest",d.ok&&d.body.n===c.body.n,JSON.stringify(d));await ctl("offline=0");
+ for(const[n,u,h]of[["Cache-Control: no-store",C+"reject-no-store.json"],["Cache-Control: private",C+"reject-private.json"],["Vary: Cookie",C+"reject-vary-cookie.json"],["wrong MIME",C+"reject-wrong-mime.json"],["body > maxEntryBytes",C+"reject-too-big.json"],["Authorization header",C+"reject-auth.json",{Authorization:"Bearer x"}],["Set-Cookie + private",C+"cookie-private.json"]]){
+  const on=await J(u,h);await sleep(400);await ctl("offline=1");const off=await J(u,h);await ctl("offline=0");
+  check("REJECT "+n+" (online ok, offline error, not cached)",on.ok&&!off.ok&&!(await cached("runtime-data",u.split("/").pop())),"online="+on.ok+" offline="+off.ok)}
+ const cp=C+"cookie-public.json";await J(cp);await poll(()=>cached("runtime-data","cookie-public.json"));await ctl("offline=1");const co=await J(cp);await ctl("offline=0");
+ check("Set-Cookie without private IS cached (known behavior)",co.ok,JSON.stringify(co));
+ const R="/app/api/reviews/list.json";const r1=await J(R);await poll(()=>cached("runtime-data","list.json"));const r2=await J(R);
+ check("SWR 2nd read is stale (same as 1st)",r1.ok&&r2.ok&&r2.body.n===r1.body.n,JSON.stringify([r1.body,r2.body]));
+ check("SWR later read shows background update",await poll(async()=>{const x=await J(R);return x.ok&&x.body.n>r1.body.n},5000));
+ const D="/app/dashboard/";const t1=await frame(D);check("NAV online dashboard",/dashboard v1/.test(t1),t1);
+ check("NAV wrote runtime-pages",await poll(()=>cached("runtime-pages","/app/dashboard/")));
+ await ctl("offline=1");const t2=await frame(D);check("NAV offline renders cached dashboard",/dashboard v1/.test(t2),t2);
+ const t3=await frame("/app/dashboard/never-visited");check("NAV offline unvisited -> offline fallback",/offline fallback/.test(t3),t3);await ctl("offline=0");
+ const e=await entries();log("CACHES "+JSON.stringify(e));log("RESULT pass="+pass+" fail="+fail,fail?"f":"p");st.textContent="RESULT pass="+pass+" fail="+fail};
+if(location.search.includes('cleanup=1')){(async()=>{for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();for(const k of await caches.keys())await caches.delete(k);navigator.sendBeacon('/__ctl?log=CLEANED');st.textContent='CLEANED'})()}else boot().then(()=>{if(location.search.includes('auto=1')&&navigator.serviceWorker.controller)setTimeout(()=>document.getElementById('run').click(),1500)});
+</script></body></html>
