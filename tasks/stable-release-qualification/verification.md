@@ -352,3 +352,30 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 - **经过开启 Cloudflare One/WARP 的 Mac 转发会破坏 TLS。** 该客户端以 “Gateway CA - Cloudflare Managed G1” 重签所有 HTTPS，手机不信任该 CA，放行的站点也会出现“此连接非私人连接”。改用只对被测主机返回代理的 PAC 可避开，但仍受上一条 HTTP/3 限制。
 - **同一台 Mac 也无法为手机提供自建 DNS。** WARP 占用本机 `127.0.2.2/3:53`，`0.0.0.0:53` 不可绑定；项目所有者以 `sudo` 在局域网地址 `:53` 启动转发后，Mac 本机查询正常，但 iPhone 的 DNS 查询未到达该服务（推测被 WARP 拦截），手机整体无法解析，两路探测均超时。
 - 结论：iPhone 的 `unconfirmed-outage`、离线不误报与过期三项需在**不经过 WARP 的网络设备**（另一台 DNS 主机或路由器域名屏蔽）上补测。Android 上同一判定已在 0.1.x 轮次通过（React WebAPK，主入口约 5 秒超时 → `unconfirmed-outage`）；判定逻辑为同一份平台代码，但 iOS 网络行为不同（断网请求挂起、`onLine` 不可靠、HTTP/3），不以推断代替证据。
+
+### 2026-09-29 补测：iPhone React 入口恢复第 4b、5、6 步（R3 iPhone 部分通过）
+
+按 [iphone-entry-recovery-remaining-drill.md](iphone-entry-recovery-remaining-drill.md) 执行。设备、应用与交入方式同上一节：iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`），React／Vue drill 仍为上一节的 0.2.1 构建（本轮未重新部署）；经 `ios_webkit_debug_proxy`（USB）调用示例页 `__entryUpdate` / `__entryCheck`，每份清单交入前先用 `parseEntryManifest` 自查。网络开关、从主屏幕重新打开与点击按钮由项目所有者执行。
+
+**屏蔽方式**：iPhone 所连 Wi-Fi 的路由器（华为 HG8145X6-10）家长控制模板，网址黑名单只含 React drill 主机名，模板只绑定 iPhone 的 Wi-Fi 私有地址。生效判据在 iPhone 页面内实测：React drill `/app/__pwa-entry-probe` 请求挂起，8 秒后被中止；Vue drill（no-cors）123 ms 可达；无关站点可达。第一次绑定误选了离线的另一台设备，屏蔽未生效；改绑 iPhone 后才生效。演练后已删除绑定、黑名单与全天时段，关闭网址过滤。
+
+实际执行顺序为 4b → 6 → 5 → 收尾，所以序号与操作单不同：6 用 3102，5 用 3103。
+
+| 步骤 | 序号 | 结果 | 耗时 | 诊断码 | 判定 |
+|---|---|---|---|---|---|
+| 4b-1 屏蔽前在线交入 `normal`（`entries` 含 Vue drill） | 3101 | `none` | 95 ms | — | 通过 |
+| 4b-2 屏蔽生效后从主屏幕重新打开 | — | 应用壳从缓存启动；v2、registered、受控 | — | — | 通过 |
+| 4b-3 `checkEntryRecovery({ returnPath })`（2026-09-29T03:04:31Z） | — | `available`／`unconfirmed-outage` | 5068 ms（主入口 5 秒超时后探测备用入口） | 无 | 通过 |
+| 4b-4 打开恢复页 | — | 显示 “The usual address may be unreachable (unconfirmed)”、有效期 2026-10-06 02:21 UTC，只有一个 “Go to drill.pwa-platform-vue-demo.pages.dev” 按钮；超过 10 秒未自动跳转；点击后到达 Vue drill `/app/?pwa-return=%2Fapp%2F%3Ffrom%3Ddrill-4b`，返回路径与传入一致 | — | — | 通过 |
+| 6-1 交入短有效期 `migrating`（`expiresAt` 2026-09-29T03:10:45Z） | 3102 | `available`／`migrating`（不探测） | 8 ms | — | 通过 |
+| 6-2 过期后检查（03:10:53Z） | — | `none`，无恢复页地址；恢复页显示 “No alternative entry is available right now”，没有按钮 | — | `entry.expired` | 通过 |
+| 5-1 解除屏蔽后在线交入 `normal`（`entries` 含 Vue drill） | 3103 | `none` | 42 ms | — | 通过 |
+| 5-2 开飞行模式、关 Wi-Fi，划掉后从主屏幕重新打开 | — | 应用壳从缓存启动；`onLine=false`，v2、registered、受控；页面启动时自检显示 `kind: none` | — | — | 通过 |
+| 5-3 `checkEntryRecovery()` | — | `none`，无恢复页地址 | 24 ms | 无 | 通过 |
+| 收尾：恢复联网后交入 `normal` 空清单 | 3104 | `none` | 8 ms | `entry.no-entries` | 通过 |
+
+说明：
+
+- 第 5 步在 24 ms 内返回，没有出现操作单预计的“断网请求挂起、约 10 秒后返回”。本轮只记录这个现象，没有区分是 `onLine=false` 提前返回，还是两次探测都立即失败。
+- 路由器家长控制拦截表现为请求**挂起**，没有像操作单预期的那样 DNS 解析失败。平台按 5 秒探测超时处理，这正是 `unconfirmed-outage` 分支要覆盖的情形。
+- 加上上一节已通过的第 1、2、3、4a、8 步，iPhone 单 Origin 故障演练的全部步骤均已通过。
