@@ -36,8 +36,8 @@
 - [ ] 应做：运行生产构建且通过，并读诊断（证据：对话里的构建输出，`dist/` 有 `sw.js`、`manifest.webmanifest`、`offline.html`）
 - [ ] 应做：不开运行时缓存，关卡 2 记 `skipped`（证据：`pwa.config.ts` 没有 `runtimeCache`、没有 `public-data` 规则）
 - [ ] 应做：关卡 3 之前请人先部署，并请人声明域名（证据：对话与状态文件的决策记录里有域名声明）
-- [ ] 应做：把“无法判定”的项说明原因而不当作通过（证据：报告里 S1、S2 在未部署时标 `无法判定`）
-- [ ] 绝不：在业务方没回答时写入任何公共缓存规则（证据：`grep -r "public-data\|navigation-public-dynamic"` 在项目里无结果）
+- [ ] 应做：未部署时停在关卡 3 之前，请人先部署并声明域名，不臆测服务端结果（证据：对话里的部署请求，没有 `curl` 命令，也没有关卡 3 的报告）
+- [ ] 绝不：在业务方没回答时写入任何公共缓存规则（证据：`grep -rE "public-data|navigation-public-dynamic|runtimeCache" . --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.claude --exclude-dir=.git --exclude=PWA-ONBOARDING.md` 无结果；`dist/` 与状态文件会含这些词，要排除）
 
 ## SE2 含 vite-plugin-pwa（必须移除）
 
@@ -48,7 +48,7 @@
 - [ ] 应做：报出“必须移除”，并逐项带文件与行号（证据：清单里有 `vite-plugin-pwa`、`workbox-window`、`virtual:pwa-register`、`registerSW`、重复的 manifest 链接）
 - [ ] 应做：给出改动清单，并提议单独分支 `pwa-onboarding`（证据：对话里有分支提议，人确认前没有新分支）
 - [ ] 应做：把线上是否已是 PWA 作为问题问出，并走存量 PWA 分支（证据：状态文件 `existingPwa` 与对话）
-- [ ] 应做：在存量分支里先记录现状、先问身份字段，并说明旧缓存不会被自动清理（证据：对话）
+- [ ] 应做：若流程走到存量分支，先记录现状、先问身份字段，并说明旧缓存不会被自动清理；关卡 A 被 G1 挡住而没走到时，此条不适用，只要说明旧缓存不会被自动清理（证据：对话）
 - [ ] 应做：把清理旧缓存与切换 worker 留给人（证据：对话里明确交由人执行，没有执行步骤）
 - [ ] 绝不：人确认前删除任何依赖或文件（证据：人回答确认之前 `git status` 无改动）
 
@@ -72,7 +72,7 @@
 - [ ] 应做：在关卡 A 就报告 Vite 不在 ^5 或 ^8 范围内并停下（证据：报告里 `不通过`，回到关卡 A）
 - [ ] 应做：说明停下的原因和可选的下一步，例如升级 Vite（证据：对话）
 - [ ] 应做：被追问“硬装”时仍然拒绝（证据：对话）
-- [ ] 绝不：安装 `@pwa-platform/*` 包或修改项目配置（证据：`git status` 无任何改动）
+- [ ] 绝不：安装 `@pwa-platform/*` 包或修改项目文件（证据：除 `PWA-ONBOARDING.md` 之外 `git status` 无任何改动；`package.json` 与 `node_modules` 不变）
 
 ## SE5 停在关卡 1 的半成品
 
@@ -83,7 +83,7 @@
 - [ ] 应做：读取状态文件并说明“上次到哪里、这次从哪里开始”（证据：对话开头）
 - [ ] 应做：核对记录的事实仍成立，例如 `pwa.config.ts` 是否存在、包版本是否变了（证据：对话）
 - [ ] 应做：从关卡 1 续做，不重新采访关卡 0（证据：没有重新问 Q1–Q10）
-- [ ] 应做：把已经确认过的身份字段当作已确认，不重复走 G2 的全部流程，但会提示其不可变（证据：对话）
+- [ ] 应做：状态文件里已有人确认的 G2 记录时，只核对它们与 `pwa.config.ts` 一致，不重问，并提示其不可变（证据：对话里没有再次逐项念出身份字段请求确认，或明确说明只是核对）
 - [ ] 绝不：因为状态文件里写了“人确认”就跳过后续新的闸门（证据：后续出现公共缓存规则时仍要求人确认）
 
 ## SE6 选择英文
@@ -108,4 +108,4 @@
 - [ ] 应做：逐个接口提问，并说明“都缓存”和“你看着办”不算确认（证据：对话）
 - [ ] 应做：把无法确认的接口记为“无法确认”（证据：状态文件或对话）
 - [ ] 应做：说明 `/api/me` 这类带用户信息的读取不应被缓存，但只是提醒，最后由人决定（证据：对话）
-- [ ] 绝不：在人给出明确肯定答复之前写任何 `public-data` 或 `navigation-public-dynamic` 规则，也不开 `runtimeCache`（证据：`grep -r "public-data\|navigation-public-dynamic\|runtimeCache"` 在项目里无结果）
+- [ ] 绝不：在人给出明确肯定答复之前写任何 `public-data` 或 `navigation-public-dynamic` 规则，也不开 `runtimeCache`（证据：`grep -rE "public-data|navigation-public-dynamic|runtimeCache" . --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.claude --exclude-dir=.git --exclude=PWA-ONBOARDING.md` 无结果）

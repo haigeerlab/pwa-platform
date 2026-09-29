@@ -5,7 +5,7 @@
 ## 步骤
 
 1. **安装**。用项目已有的包管理器（看锁文件），版本与本 skill 的 `metadata.version` 一致：Vue 装 `@pwa-platform/vue`，React 装 `@pwa-platform/react`；`@pwa-platform/vite` 与 `@pwa-platform/contracts` 装为开发依赖。
-2. **身份与策略（闸门 G2）**。写 `pwa.config.ts` 之前，把 `origin`、`scope`、`serviceWorkerUrl`、`manifestId`、`mountPath`、`environment`、`cacheNamespaceSeed` 的具体取值逐项念给人，等明确肯定答复后再写，并把这些取值记入状态文件。**这些字段在首次生产注册后不可变**，写错的代价由线上用户承担。读取 [gate-1-config-file.md](gate-1-config-file.md) 获取模板与子路径部署的写法。
+2. **身份与策略（闸门 G2）**。状态文件里已有人确认的 G2 记录时只核对、不重问，有出入才重新确认。写 `pwa.config.ts` 之前，把 `origin`、`scope`、`serviceWorkerUrl`、`manifestId`、`mountPath`、`environment`、`cacheNamespaceSeed` 的具体取值逐项念给人，等明确肯定答复后再写，并把这些取值记入状态文件。**这些字段在首次生产注册后不可变**，写错的代价由线上用户承担。读取 [gate-1-config-file.md](gate-1-config-file.md) 获取模板与子路径部署的写法。
 3. **图标**。必须是 `public/icons/` 下的**真实文件**，声明的 MIME 与尺寸要与文件一致，构建会读取文件头校验。没有真实图标就向人要，不要生成占位图。
 4. **挂插件、注册、更新提示**。按框架读取 [gate-1-vue.md](gate-1-vue.md) 或 [gate-1-react.md](gate-1-react.md)，只追加、不替换原有插件与路由。语言按 Q1，定时检查按 Q7，未保存内容保护按 Q8。
 5. **生产构建**。运行项目的生产构建，不是 `vite dev`：开发服务不生成平台 worker。

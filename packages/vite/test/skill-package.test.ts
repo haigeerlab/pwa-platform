@@ -769,3 +769,41 @@ describe("checkpoint A read-through fixes", () => {
     for (const term of ["必须移除", "需要评估", "仅提示", "停下点", "无法确认"]) expect(text, term).toContain(term);
   });
 });
+
+// ---- AO14 round 1 fixes ---------------------------------------------------------------------------------------------------
+
+describe("AO14 round 1: skill gaps found by the scenario evaluation", () => {
+  const read = (name: string) => readFileSync(join(referencesDir, name), "utf8");
+
+  it("gate 1 config file says every environment is its own identity, how a non-production one is declared, and that only production goes through G2", () => {
+    const text = read("gate-1-config-file.md");
+    const section = sectionOf(text, "## 多个环境");
+    expect(section.length).toBeGreaterThan(0);
+    for (const word of ["独立身份", "preview", "vite preview", "cacheNamespaceSeed", "不复用生产", "生产身份", "G2", "website/guide/configuration.md"]) expect(section, word).toContain(word);
+    expect(section, "must not let a production build read a non-production identity").toMatch(/生产构建[^\n]*不[^\n]*非生产/);
+  });
+
+  it("gate 0 sends the Q5 answer to that section", () => {
+    expect(read("gate-0-interview.md")).toMatch(/Q5[^\n]*gate-1-config-file\.md|Q5[^\n]*多个环境/);
+  });
+
+  it("gate A writes nothing when feasibility fails", () => {
+    const text = read("gate-a-feasibility.md");
+    const section = sectionOf(text, "## 停止条件");
+    expect(section).toMatch(/可行性[^\n]*(什么都不写|不建分支|不写状态文件)/);
+    expect(section).toContain("不写状态文件");
+    expect(section).toContain("不建分支");
+  });
+
+  it("SKILL.md says the AI does not commit unless the person asks", () => {
+    const rules = sectionOf(readFileSync(skillFile, "utf8"), "## 通用规则");
+    expect(rules).toMatch(/不代为提交|不自行提交/);
+    expect(rules).toContain("明确要求");
+  });
+
+  it("resuming does not repeat G2 for fields the state file records as confirmed, and gate 1 says the same", () => {
+    const resume = sectionOf(read("state-file.md"), "## 续做");
+    expect(resume).toMatch(/G2[^\n]*(只核对|不重问|不重复)/);
+    expect(read("gate-1-configure.md")).toMatch(/已有[^\n]*G2[^\n]*(只核对|不重问|不重复)/);
+  });
+});

@@ -62,6 +62,16 @@ export const POLICY: PwaPolicy = {
 
 `INSTALL` 整段不写，身份之外的安装入口改为：插件选项里 `install: null`（不生成 manifest），策略里 `install: { enabled: false }`。它不会自动关闭 worker 或缓存策略，离线页与更新提示照常工作。
 
+## 多个环境
+
+每个环境都是**独立身份**：不同 `environment` 各有互不影响的缓存命名空间（依据 `website/guide/configuration.md` 的"本地验收用什么 environment"，不复述其全部内容）。所以 `pwa.config.ts` 里的 `IDENTITY` 是**生产身份**，只有它要过 G2。
+
+采访 Q5 回答了不止生产环境时：
+
+- 每个非生产环境（例如本地 `vite preview` 验收用的 `"preview"`）单独写一份身份，`environment` 与 `cacheNamespaceSeed` 都取自己的值，`origin` 用该环境的真实地址（本机可用 `http://localhost:4173`）。**不复用生产的取值。**
+- 向人问清这些环境的名字和地址，取值写进状态文件的"决策记录"；它们不是首次生产注册前的身份，不用走 G2，但仍要人给出，不要自己编。
+- 用哪份身份由构建入口决定，例如按 Vite 的 mode。**生产构建不能读到非生产身份，非生产构建也不能拿到生产身份。**
+
 ## 部署在子路径（例如 `/app/`）
 
 浏览器看到的 URL 都要带前缀：Vite `base`、`manifestId`、`scope`、`mountPath`、`serviceWorkerUrl`、`manifestUrl`、`startUrl` 和图标的 `src`。**策略里的 `pathPrefix` 与 `offlineFallback.path` 仍然相对挂载点，不要再写 `/app`**。`serviceWorkerUrl` 必须直接位于 `scope` 目录下，否则构建报 `identity.scope-outside-worker-directory`。

@@ -57,3 +57,30 @@ test.describe("rubric", () => {
     for (const field of ["日期", "模型", "skill 版本", "夹具", "场景", "第几次运行", "结论", "违反的“绝不做”项", "备注"]) expect(template, field).toContain(field);
   });
 });
+
+test.describe("rubric fixes from the first evaluation round", () => {
+  test("every grep that looks for cache rules skips dist/, node_modules and the state file", () => {
+    const greps = rubric.split("\n").filter((line) => line.includes("grep -r"));
+    expect(greps.length).toBeGreaterThan(0);
+    for (const line of greps) {
+      expect(line, line).toContain("--exclude-dir=dist");
+      expect(line, line).toContain("--exclude=PWA-ONBOARDING.md");
+    }
+  });
+
+  test("SE1 no longer asks for a gate 3 report that its script can never reach", () => {
+    expect(scenario("SE1")).not.toContain("S1、S2 在未部署时标");
+    expect(scenario("SE1")).toContain("停在关卡 3 之前");
+  });
+
+  test("SE4 separates project files from the onboarding state file", () => {
+    const text = scenario("SE4");
+    const never = text.split("\n").find((line) => line.startsWith("- [ ] 绝不：安装")) ?? "";
+    expect(never, "the no-change check must exempt the state file").toContain("除 `PWA-ONBOARDING.md` 之外");
+  });
+
+  test("SE2 and SE5 make the identity and G2 items conditional on how far the run got", () => {
+    expect(scenario("SE2")).toMatch(/若流程走到[^\n]*身份字段|走到存量分支/);
+    expect(scenario("SE5")).toContain("只核对");
+  });
+});
