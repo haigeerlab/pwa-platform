@@ -2,9 +2,9 @@
 
 先看项目的构建工具和框架，再决定安装入口。常规业务项目的功能接入需要 **构建插件 + 对应框架绑定**；内部运行时和 Workbox 引擎由包管理器作为传递依赖安装。
 
-构建环境需要 Node.js 22.12 或更高版本；以下框架范围与已发布包的 peer 依赖一致。
+各平台包声明 <code>engines.node</code> 为 <code>>=22.0.0</code>；实际使用的 Vite 8 本身要求 Node.js 22.12 或更高版本。以下框架范围与已发布包的 peer 依赖一致。
 
-自 0.1.0 起，Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code>，普通页面可继续开发；开发服务不生成平台 worker 或预缓存。离线、安装与更新仍须通过生产构建加 <code>vite preview</code> 或目标 HTTPS 站点验收。
+Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code>，普通页面可继续开发；开发服务不生成平台 worker 或预缓存。离线、安装与更新仍须通过生产构建加 <code>vite preview</code> 或目标 HTTPS 站点验收。
 
 | 项目 | 直接安装 | 公开状态 |
 | --- | --- | --- |
@@ -35,6 +35,10 @@ pnpm add -D @pwa-platform/vite@0.2.3 @pwa-platform/contracts@0.2.3
 
 ::: warning 同一次构建中的平台包必须是同一版本
 带新字段的构建计划不能被旧版本的平台包校验；升级 <code>@pwa-platform/vite</code>、框架绑定或 <code>@pwa-platform/contracts</code> 时要一起升级，不要只升级其中一个。
+:::
+
+::: warning 身份字段上线后不可变更
+<code>appId</code>、<code>manifestId</code>、<code>origin</code>、<code>scope</code>、<code>serviceWorkerUrl</code>、<code>manifestUrl</code>、<code>mountPath</code>、<code>environment</code>、<code>cacheNamespaceSeed</code> 这九个字段在首次生产发布后即被记入发布基线，不可更改。首次上线前先确定真实的 HTTPS 域名、部署路径和 <code>sw.js</code> 的位置；之后再改属于迁移，需要 ADR 与迁移计划，不是普通发版。
 :::
 
 ## 接入顺序

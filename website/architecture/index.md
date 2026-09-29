@@ -6,18 +6,27 @@
 业务应用（界面和业务逻辑）
   │  PwaIdentity + PwaInstallMetadata + PwaPolicy
   ▼
-宿主绑定（Vue / React）── 页面侧生命周期
-  │
-  ├── 构建适配器（Vite）
-  │     ├── contracts：类型、schema、诊断
-  │     ├── core：编译 PwaPlan
-  │     └── build-verifier：核对最终产物
-  │
-  └── 运行时
-        ├── client-runtime：注册、安装、更新、登出
-        └── sw-runtime：请求判断、离线与恢复
-              └── engine-workbox：缓存执行细节
+页面侧（运行时依赖链，箭头表示“依赖”）
+  Vue / React 绑定 ──▶ client-runtime ──▶ sw-runtime ──▶ engine-workbox
+                                                          （封装 Workbox）
+
+构建侧
+  Vite 适配器 ──▶ core             编译 PwaPlan
+              ├─▶ build-verifier   核对最终产物
+              ├─▶ client-runtime · sw-runtime · engine-workbox
+              │                    （把运行时代码与配置注入产物）
+              └─▶ contracts
+
+可选
+  entry-resilience ──▶ vite
+
+底层
+  contracts：类型、schema、诊断。上面每个包都直接或间接依赖它，它不依赖任何平台包（仅依赖 zod）。
 ~~~
+
+Vue / React 绑定只依赖 <code>client-runtime</code>；<code>client-runtime</code> 依赖 <code>sw-runtime</code>（共享消息格式），<code>sw-runtime</code> 依赖 <code>engine-workbox</code>。Vite 适配器直接依赖 <code>core</code>、<code>build-verifier</code>、<code>client-runtime</code>、<code>sw-runtime</code>、<code>engine-workbox</code> 和 <code>contracts</code>，但不依赖任何框架绑定。
+
+平台 worker 自己**从不调用 <code>skipWaiting()</code> 或 <code>clients.claim()</code>**：新版本安装后进入等待，只有页面确认（<code>applyUpdate()</code> 发出的消息）之后才接管。只有恢复 worker 例外，它是事故处置手段，见[运行时生命周期](/architecture/lifecycle#异常恢复)。
 
 ## 从声明到产物
 

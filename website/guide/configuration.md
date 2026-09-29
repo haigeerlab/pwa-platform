@@ -53,7 +53,45 @@ export const POLICY: PwaPolicy = {
 };
 ~~~
 
-把四个图标文件放在 Vite 的 <code>public/icons/</code>。文件不能只是改了名称的占位图：生产构建会检查主图标是否存在，并读取 PNG／JPEG／WebP 文件头核对声明 MIME 与实际尺寸；失败时按 <code>vite.manifest-icon-*</code> 提示中的配置索引、URL、声明值和实测值修正。其他图片格式会给出未验证警告，maskable 安全区仍需视觉检查。安装元数据也支持描述、截图和快捷方式；截图与快捷方式图标必须真实存在于发布产物中。
+上例的 <code>schemaVersion: 1</code> 不含 <code>offlineWrites</code>。升到 <code>schemaVersion: 2</code> 或 <code>3</code>（例如启用[公共读取缓存](/guide/public-read-cache)）后，策略必须带上 <code>offlineWrites</code> 字段。它对应的离线写入能力尚未发布，请原样保留下面这种全零的禁用形式：
+
+~~~ts
+offlineWrites: { enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [] },
+~~~
+
+<code>enabled: false</code> 时只要有任何一项非零或 <code>targets</code> 非空，就会以 <code>offline-write.disabled-configuration</code> 失败；不要自行填入目标路径。
+
+## 在 vite.config.ts 中接入
+
+下面是配合上面 <code>pwa.config.ts</code> 的最小完整 <code>vite.config.ts</code>（部署在域名根路径）。其他页面里的 <code>pwa({ ... })</code> 片段都基于这份配置，不再重复声明 <code>IDENTITY</code>、<code>INSTALL</code>、<code>POLICY</code>：
+
+~~~ts
+// vite.config.ts
+import { pwa } from "@pwa-platform/vite";
+import { defineConfig } from "vite";
+import { IDENTITY, INSTALL, POLICY } from "./pwa.config";
+
+export default defineConfig({
+  base: "/", // 必须位于 IDENTITY.scope 内；/app/ 部署时改为 "/app/"
+  plugins: [
+    // 已有的框架插件（如 @vitejs/plugin-vue）继续保留
+    pwa({
+      identity: IDENTITY,
+      policy: POLICY,
+      install: INSTALL, // 不启用平台安装元数据时写 null
+      topology: { kind: "standalone-origin" },
+    }),
+  ],
+});
+~~~
+
+<code>offlinePage</code> 是可选项，见[离线体验](/guide/offline#默认离线页)。
+
+::: warning 开启 <code>offlineFallback</code> 就必须真有这个文件
+<code>POLICY.offlineFallback</code> 写成 <code>{ enabled: true, path: "/offline.html" }</code> 时，构建产物里必须存在该路径的文件：要么在插件上写 <code>offlinePage: {}</code> 让平台生成，要么自己提供 <code>public/offline.html</code>（两者不能同时占用同一路径）。都没有会以 <code>compile.offline-fallback-not-built</code> 失败；该路径被拒绝规则覆盖则以 <code>compile.offline-fallback-denied</code> 失败。示例里给 <code>/offline.html</code> 写 <code>asset</code> 规则是可选的，编译器会自动预缓存离线页。
+:::
+
+把四个图标文件放在 Vite 的 <code>public/icons/</code>。文件不能只是改了名称的占位图：生产构建会检查主图标是否存在，并读取 PNG／JPEG／WebP 文件头核对声明 MIME 与实际尺寸；失败时按 <code>vite.manifest-icon-*</code> 提示中的配置索引、URL、声明值和实测值修正。<code>icons</code> 必须包含 192x192 与 512x512 两种尺寸，且每种尺寸都要同时有 <code>purpose: "any"</code> 与 <code>"maskable"</code> 的条目，缺任何一个都以 <code>install.missing-icon-variant</code> 失败。其他图片格式（<code>vite.manifest-icon-unverified</code>）会给出未验证警告，maskable 安全区仍需视觉检查。安装元数据也支持描述、截图和快捷方式；截图与快捷方式图标必须真实存在于发布产物中。
 
 插件会在构建时为每个 HTML 入口注入 manifest 链接，应用无需再写 <code>&lt;link rel="manifest"&gt;</code>。已有链接时，只保留一个，并将其 <code>href</code> 写为与 <code>IDENTITY.manifestUrl</code> 完全相同的根路径，或同一 <code>IDENTITY.origin</code> 下该路径的完整 URL；相对路径、不同地址和重复链接都会让构建失败。页面含 <code>&lt;base&gt;</code> 也会被拒绝，接入现有项目时先检查 <code>index.html</code> 及其他 HTML 入口。
 
@@ -104,12 +142,16 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 | <code>vite.manifest-icon-missing</code> | manifest 主 <code>icons</code> 引用的文件不在本次 Vite 构建产物或 <code>base</code> 下 |
 | <code>vite.manifest-icon-invalid</code> | 主图标 PNG／JPEG／WebP 的文件头损坏，或无法按声明的 <code>type</code> 解析 |
 | <code>vite.manifest-icon-type-mismatch</code> | 声明的 <code>type</code> 与文件签名不一致 |
+| <code>vite.manifest-icon-size-invalid</code> | 声明的 <code>sizes</code> 不是以空格分隔的 <code>宽x高</code> 像素值（如 <code>192x192</code>），例如写成 <code>any</code> 或留空 |
 | <code>vite.manifest-icon-size-mismatch</code> | 文件固有尺寸与声明的 <code>sizes</code> 不一致 |
+| <code>install.missing-icon-variant</code> | <code>icons</code> 缺少 192x192 或 512x512 的 <code>any</code> 或 <code>maskable</code> 变体 |
+| <code>install.start-url-outside-scope</code> | <code>startUrl</code> 不在 <code>IDENTITY.scope</code> 内 |
+| <code>compile.install-metadata-missing</code> | <code>POLICY.install.enabled</code> 为真，但插件的 <code>install</code> 是 <code>null</code> |
 | <code>verify.manifest-asset-missing</code> | 截图或快捷方式图标引用的文件不在构建产物中 |
 
-主图标相关的四个 <code>vite.manifest-icon-*</code> 错误是通用规则的例外：为了方便定位 Android 安装资格问题，它们会显示公开的图标 URL、声明的 MIME／尺寸与文件实测值（但不输出图片字节）。
+主图标相关的五个 <code>vite.manifest-icon-*</code> 错误（<code>missing</code>、<code>invalid</code>、<code>type-mismatch</code>、<code>size-invalid</code>、<code>size-mismatch</code>）是通用规则的例外：为了方便定位 Android 安装资格问题，它们会显示公开的图标 URL、声明的 MIME／尺寸与文件实测值（但不输出图片字节）。
 
-以下是来自 Chrome 产品行为、只提示不阻断构建的警告，数值可能随 Chrome 版本调整：截图宽高不在 320–3840 像素之间、长边超过短边 2.3 倍、同一 <code>formFactor</code> 截图宽高比不一致、<code>wide</code> 超过 8 张或 <code>narrow</code> 超过 5 张、没有 <code>wide</code> 截图（桌面端不显示）、<code>description</code> 超过 324 个 UTF-16 码元。Android 从 Chrome 109 起忽略 <code>wide</code> 截图，因此建议桌面用 <code>wide</code>、手机用 <code>narrow</code> 各准备一套。字段取舍的完整原因见 [ADR-0037](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0037-install-metadata-manifest-members.md)。
+另有两类只提示的警告：主图标使用了构建检查不解析的图片格式时的 <code>vite.manifest-icon-unverified</code>，以及 <code>themeColor</code>、<code>backgroundColor</code> 不是十六进制颜色时的 <code>install.invalid-color</code>。以下是来自 Chrome 产品行为、同样不阻断构建的警告，数值可能随 Chrome 版本调整：截图宽高不在 320–3840 像素之间、长边超过短边 2.3 倍、同一 <code>formFactor</code> 截图宽高比不一致、<code>wide</code> 超过 8 张或 <code>narrow</code> 超过 5 张、没有 <code>wide</code> 截图（桌面端不显示）、<code>description</code> 超过 324 个 UTF-16 码元。Android 从 Chrome 109 起忽略 <code>wide</code> 截图，因此建议桌面用 <code>wide</code>、手机用 <code>narrow</code> 各准备一套。字段取舍的完整原因见 [ADR-0037](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0037-install-metadata-manifest-members.md)。
 
 ## 只使用离线与更新，不启用平台安装提示
 
@@ -127,11 +169,25 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 ## `cacheNamespaceSeed` 是什么
 
-<code>cacheNamespaceSeed</code> 是缓存命名空间前缀里的身份修订段，与 <code>appId</code>、<code>environment</code> 共同决定 Cache Storage 里所有缓存名称的前缀。正常发版不需要改它。只有当 <code>scope</code>、worker URL、manifest ID 或其他生产不可变字段发生了身份迁移（需要专门的架构决策和迁移计划）时，才把它改成这个应用在该环境下**从未用过**的新值（ADR-0009）。改动后旧缓存不会被自动删除，而是仍留在旧前缀下，需要按迁移计划显式清理；复用旧种子会让新身份读到旧 revision 遗留的缓存。
+<code>cacheNamespaceSeed</code> 是缓存命名空间前缀里的身份修订段，与 <code>appId</code>、<code>environment</code> 共同决定 Cache Storage 里所有缓存名称的前缀。正常发版不需要改它。实际的缓存名是 <code>pwa:&lt;appId&gt;:&lt;environment&gt;:&lt;seed&gt;:precache</code>、<code>pwa:&lt;appId&gt;:&lt;environment&gt;:&lt;seed&gt;:runtime-pages</code> 和 <code>pwa:&lt;appId&gt;:&lt;environment&gt;:&lt;seed&gt;:runtime-data-&lt;digest&gt;</code>（各段经 URL 编码；后两个仅在 v3 运行时缓存中使用，<code>digest</code> 由缓存上限与可执行规则算出，见[公共读取缓存](/guide/public-read-cache)）。只有当 <code>scope</code>、worker URL、manifest ID 或其他生产不可变字段发生了身份迁移（需要专门的架构决策和迁移计划）时，才把它改成这个应用在该环境下**从未用过**的新值（ADR-0009）。改动后旧缓存不会被自动删除，而是仍留在旧前缀下，需要按迁移计划显式清理；复用旧种子会让新身份读到旧 revision 遗留的缓存。
 
 ## 本地验收用什么 <code>environment</code>
 
 <code>PwaIdentity.environment</code> 的约定是“每个环境都是独立身份”：不同 <code>environment</code> 的应用各自拥有互不影响的缓存命名空间。用 <code>vite preview</code> 在本地做验收时，建议给本地验收单独声明一个 <code>environment</code>（例如 <code>"preview"</code>），而不是直接复用生产身份；这样本地验收产生的缓存不会与生产环境的缓存共用前缀，清理或反复重跑也不会影响线上数据。
+
+## 构建期身份校验
+
+以下字段间的约束在构建（或创建插件）时检查，违反即失败：
+
+| 约束 | 诊断码 |
+| --- | --- |
+| <code>scope</code> 必须是规范路径且以 <code>/</code> 结尾（浏览器按字符串前缀匹配 scope，<code>/app</code> 会连带控制 <code>/apple</code>） | <code>path.invalid</code> |
+| <code>mountPath</code> 必须位于 <code>scope</code> 内 | <code>identity.scope-excludes-mount-path</code> |
+| <code>serviceWorkerUrl</code> 必须位于 <code>scope</code> 下 | <code>identity.service-worker-outside-scope</code> |
+| <code>manifestUrl</code> 必须位于 <code>scope</code> 下 | <code>identity.manifest-outside-scope</code> |
+| <code>environment</code> 只能匹配 <code>[a-z][a-z0-9-]*</code>（小写字母开头，仅含小写字母、数字和连字符） | <code>identity.invalid-environment</code> |
+| Vite <code>base</code> 必须位于 <code>scope</code> 内 | <code>compile.public-path-outside-scope</code> |
+| <code>scope</code> 必须等于 <code>serviceWorkerUrl</code> 所在目录 | <code>identity.scope-outside-worker-directory</code> |
 
 ## 生产身份要保持稳定
 
@@ -147,14 +203,28 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 | <code>IDENTITY.manifestUrl</code> | <code>"/manifest.webmanifest"</code> | <code>"/app/manifest.webmanifest"</code> |
 | <code>INSTALL.startUrl</code> | <code>"/"</code> | <code>"/app/"</code> |
 | <code>INSTALL.icons[].src</code> | <code>"/icons/192.png"</code> 等 | <code>"/app/icons/192.png"</code> 等 |
-
-<code>serviceWorkerUrl</code> 必须直接位于 <code>scope</code> 目录下：<code>scope: "/app/"</code> 搭配 <code>/app/assets/sw.js</code> 会以 <code>identity.scope-outside-worker-directory</code> 构建失败，因为浏览器默认只允许 worker 控制它所在目录及以下的路径，平台也不支持用 <code>Service-Worker-Allowed</code> 响应头放宽。
 | <code>POLICY.offlineFallback.path</code> | <code>"/offline.html"</code> | 仍为 <code>"/offline.html"</code> |
 | <code>POLICY.resources[].pathPrefix</code> | <code>"/assets"</code> 等 | 仍为 <code>"/assets"</code> 等 |
 
 例如策略中的 <code>/offline.html</code> 会解析为 <code>/app/offline.html</code>。不要在策略路径前重复写 <code>/app</code>，否则会变成 <code>/app/app/offline.html</code>。把图标放在项目的 <code>public/icons/</code>，构建后确认站点确实能从 <code>/app/icons/</code> 返回这些文件。若增加截图或快捷方式，也要将它们的 URL 改为部署路径内的真实文件或页面。
 
+<code>serviceWorkerUrl</code> 必须直接位于 <code>scope</code> 目录下：<code>scope: "/app/"</code> 搭配 <code>/app/assets/sw.js</code> 会以 <code>identity.scope-outside-worker-directory</code> 构建失败，因为浏览器默认只允许 worker 控制它所在目录及以下的路径，平台也不支持用 <code>Service-Worker-Allowed</code> 响应头放宽。
+
 若同一域名下同时部署根应用与 `/m/` 子应用，还需要共享登记表和根 worker 排除规则，按[同源多应用部署示例](/operations/release#root-mobile-paths)配置并发布。
+
+## 资源规则的写法约束
+
+<code>resourceClass</code> 只能取 <code>asset</code>、<code>navigation-public-static</code>、<code>navigation-public-dynamic</code>、<code>public-data</code>、<code>session-data</code>、<code>mutation</code>、<code>stream</code>、<code>unclassified</code>。前四类可以缓存；后四类（<code>session-data</code>、<code>mutation</code>、<code>stream</code>、<code>unclassified</code>）是拒绝类，只接受 <code>cache: "none"</code>，写其他值会以 <code>policy.unsafe-cache-strategy</code> 失败。
+
+<code>pathPrefix</code> 的写法与匹配：
+
+- 必须是规范路径：以 <code>/</code> 开头，除根路径 <code>"/"</code> 外不能以 <code>/</code> 结尾，不能含 <code>*</code>（无通配符），否则 <code>path.invalid</code>。
+- 按完整路径段匹配、忽略查询串：<code>/assets</code> 匹配 <code>/assets/app.js</code>，不匹配 <code>/assets-old</code>。
+- 同一前缀（URL 解码后）不能出现两次，否则 <code>compile.duplicate-path-prefix</code>。
+- 拒绝类前缀之内不能再放允许缓存的规则，例如已有 <code>{ pathPrefix: "/api", resourceClass: "session-data", cache: "none" }</code> 时，再写 <code>/api/catalog</code> 的 <code>public-data</code> 规则会以 <code>compile.allow-under-deny</code> 失败；需要公开的接口应放在另一个不在拒绝前缀下的路径。
+- 多条规则重叠时，拒绝规则优先，其次是更长的前缀。
+
+导航规则（<code>navigation-public-static</code>、<code>navigation-public-dynamic</code>）上写 <code>cache</code> 不会改变导航行为：只要没被拒绝，所有导航都是 network-first，回退顺序见[离线体验](/guide/offline)。
 
 ## 策略只声明意图
 

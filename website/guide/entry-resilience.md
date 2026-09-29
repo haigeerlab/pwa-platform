@@ -2,7 +2,11 @@
 
 已安装的 PWA 被绑死在注册时的协议、主机和端口上。当这个地址要迁移、或者整体不可达时，已安装用户点开桌面图标仍然去老地址，而浏览器的同源隔离决定了 Service Worker、缓存、IndexedDB、Cookie 和安装身份都带不到新地址。
 
-`@pwa-platform/entry-resilience@0.2.3` 不试图绕过同源隔离。它做的是：**提前**在旧地址上存一份备用入口清单，出事时在旧应用壳里显示提示，让用户**自己点一下**跳到新地址，再在新地址重新登录。明确不做的事：不自动跳转，不静默重定向，不在 URL 里带令牌或个人数据，不跨地址复制任何浏览器状态。安装与信息见[入口与恢复能力对照](/guide/integration-by-capability#路径六-配置两种恢复能力)；本页是它的完整接入说明。
+`@pwa-platform/entry-resilience@0.2.3` 不试图绕过同源隔离。它做的是：**提前**在旧地址上存一份备用入口清单，出事时在旧应用壳里显示提示，让用户**自己点一下**跳到新地址，再在新地址重新登录。明确不做的事：不自动跳转，不静默重定向，不在 URL 里带令牌或个人数据，不跨地址复制任何浏览器状态。入口与恢复能力对照见[入口与恢复能力对照](/guide/integration-by-capability#路径六-配置两种恢复能力)；本页是它的完整接入说明。
+
+::: tip 与恢复 worker 不是一回事
+本页的“恢复”指**地址迁移或不可达时，引导用户去备用入口**。线上 Service Worker 本身出问题、需要紧急下线时用的是另一套机制——恢复 worker（kill switch），见[服务器与 CDN 配置](/operations/hosting)和[回滚与恢复](/operations/release#回滚与恢复)。
+:::
 
 ## 信任模型（ADR-0033）
 
@@ -21,7 +25,10 @@
 import { pwaEntryResilience } from "@pwa-platform/entry-resilience/vite";
 import { pwa } from "@pwa-platform/vite";
 
-const identity = /* 与 pwa() 使用同一个对象 */;
+const identity = /* 占位：与 pwa() 使用同一个对象 */;
+const policy = /* 占位：你的 PwaPolicy，须含恢复页规则，见下 */;
+const install = /* 占位：你的安装元数据 */;
+const topology = /* 占位：你的拓扑声明 */;
 
 plugins: [
   pwaEntryResilience({ identity, maxValidityDays: 30 }),
@@ -29,7 +36,21 @@ plugins: [
 ]
 ```
 
-同一个 `identity` 对象必须传给两个插件；策略还要为恢复页加一条资源规则，路径为 mount 相对的 `/pwa-entry.html`。
+同一个 `identity` 对象必须传给两个插件；策略还要为恢复页加一条资源规则，路径为 mount 相对的 `/pwa-entry.html`。恢复页的脚本带指纹，落在构建输出的 `/assets` 下，也要有 `asset` 规则覆盖：
+
+```ts
+// PwaPolicy.resources 中（路径相对 mountPath）
+{ pathPrefix: "/pwa-entry.html", resourceClass: "asset", cache: "cache-first" },
+{ pathPrefix: "/assets", resourceClass: "asset", cache: "cache-first" },
+```
+
+构建结束时，插件会检查 `pwa-entry.html` 及其脚本的静态导入链是否都在预缓存清单里；缺任何一项，构建以 `entry.recovery-page-not-precached` 失败。
+
+构建集成的其余要求（都只在 `vite build` 时检查）：
+
+- Vite 的 `base` 必须与 `identity.mountPath` 完全相同，否则报 `entry.base-mismatch`。
+- 同一份 Vite 配置里必须有 `pwa()` 插件，否则报 `entry.platform-plugin-missing`。
+- 插件只在构建时生效（`apply: "build"`），`vite dev` 不生成恢复页。
 
 ### 第二步：应用侧取数并交入
 
@@ -39,16 +60,16 @@ plugins: [
 import { updateEntryManifest, checkEntryRecovery } from "@pwa-platform/entry-resilience/client";
 
 // 在线时：用业务现成的封装取数并解密，把明文对象交给平台
-const data = await api.getEntryManifest();
+const data = await api.getEntryManifest(); // 占位：换成你自己的请求与解密
 await updateEntryManifest(data); // { accepted: true, sequence } 或 { accepted: false, diagnostics }
 
-// 需要展示时：只读本地存的那份，不发网络请求
+// 需要展示时：读本地存的清单；status 为 normal 且有入口时会发出探测请求
 const result = await checkEntryRecovery({ returnPath: location.pathname });
 if (result.kind === "available") {
   // result.status: migrating | incident | unconfirmed-outage
   // result.reason.message：清单里写的说明文案
   // result.recoveryPageUrl：平台恢复页链接（同源相对地址）
-  showBanner(result.reason.message, result.recoveryPageUrl);
+  showBanner(result.reason.message, result.recoveryPageUrl); // 占位：你自己的提示界面
 }
 ```
 
@@ -63,6 +84,7 @@ if (result.kind === "available") {
   "sequence": 7, // 非负整数，必须严格递增
   "expiresAt": "2026-10-23T00:00:00Z", // 不接受毫秒
   "status": "migrating", // normal | migrating | incident
+  // code：planned-migration | incident | none；message 可选，不超过 200 个字符，不含控制字符
   "reason": { "code": "planned-migration", "message": "服务已迁移到新地址" },
   "entries": [{ "origin": "https://new.example.com", "startPath": "/app/" }], // 最多 5 条
   "appId": "yourapp", // 可选，给了就必须与身份一致
@@ -70,15 +92,29 @@ if (result.kind === "available") {
 }
 ```
 
-`status` 为 `normal` 且 `entries` 为空，表示一切正常、不展示任何入口——这应当是平时的默认下发内容，让客户端提前存好。只有 `normal` 状态下平台才会探测主入口，探测不通才以 `unconfirmed-outage` 展示；`migrating` 与 `incident` 不探测、直接展示。
+`status` 为 `normal` 且 `entries` 为空，表示一切正常、不展示任何入口——这应当是平时的默认下发内容，让客户端提前存好：
 
-探测的具体做法：主入口请求挂载路径下一个不会被缓存的地址（`<mountPath>__pwa-entry-probe?<随机数>`），收到任何响应（包括 404）都算可达；备用入口以 `no-cors` 请求 `origin + startPath`，请求完成即算可达。每次请求最多等待 **5 秒**，超时按不可达处理，这个时长是固定的，不能配置。主入口不通后，平台会逐个探测全部备用入口（串行），所以最坏情况下一次检查要等 5 ×（1 + 入口数）秒，5 个入口约 30 秒；只展示确认可达的入口。`origin` 必须是 HTTPS，`startPath` 以 `/` 开头且不含 `..` 段，`expiresAt` 必须是不带毫秒的 `YYYY-MM-DDTHH:mm:ssZ`。
+```jsonc
+{
+  "sequence": 6,
+  "expiresAt": "2026-10-23T00:00:00Z",
+  "status": "normal",
+  "reason": { "code": "none" },
+  "entries": []
+}
+```
+
+`expiresAt` 必须晚于交入的那一刻，且距现在不超过构建配置里的 `maxValidityDays`（整数 1 到 90，默认 30），分别对应 `entry.expired` 与 `entry.validity-period-too-long`。已存的清单过期后，`checkEntryRecovery()` 返回 `kind: "none"` 并带 `entry.expired`；这个检查在每次读取时都重做，不依赖写入时的判断。
+
+只有 `normal` 状态下平台才会探测主入口，探测不通才以 `unconfirmed-outage` 展示；`migrating` 与 `incident` 不探测、直接展示。
+
+探测的具体做法：主入口请求挂载路径下一个不会被缓存的地址（`<mountPath>__pwa-entry-probe?<随机数>`），收到任何响应（包括 404）都算可达；备用入口以 `no-cors` 请求 `origin + startPath`，请求完成即算可达。每次请求最多等待 **5 秒**，超时按不可达处理，这个时长是固定的，不能配置。主入口不通后，平台会逐个探测全部备用入口（串行），所以最坏情况下一次检查要等 5 ×（1 + 入口数）秒，5 个入口约 30 秒；只展示确认可达的入口。`origin` 必须是 HTTPS（本机回环地址 `localhost`、`127.0.0.1`、`[::1]` 允许 `http`），并且已规范化：不带末尾斜杠、路径、查询或片段。`startPath` 以 `/` 开头，不超过 512 个字符，不含 `//`、反斜杠、控制字符和 `..` 段，并且做一次百分号解码后会再检查一遍这些规则。`expiresAt` 必须是不带毫秒的 `YYYY-MM-DDTHH:mm:ssZ`。
 
 ## 自定义样式（可选）
 
 恢复页自带一套默认样式，作为内联 `<style>` 随页面到达，断网时照常生效，不需要额外请求。可覆盖的变量：`--pwa-entry-bg`、`-fg`、`-muted`、`-accent`、`-accent-fg`（各有亮/暗默认值），以及与主题无关的 `-radius`、`-max-width`、`-font`。表上没有的一律不是契约。根容器铺满整个视口，改宽度只应覆盖 `--pwa-entry-max-width`，不要覆盖根容器的 `margin`/`max-width`。
 
-`css` 选项的文本原样追加在默认样式**之后**，作为第二段内联 `<style>`：`pwaEntryResilience({ identity, maxValidityDays: 30, css: HOST_CSS })`。
+`css` 选项的文本原样追加在默认样式**之后**，作为第二段内联 `<style>`：`pwaEntryResilience({ identity, maxValidityDays: 30, css: HOST_CSS })`（`HOST_CSS` 是占位，换成你的样式文本）。
 
 暗色有两条独立路径，**必须各写一次**：系统偏好暗色（`@media (prefers-color-scheme: dark) { .pwa-entry:not([data-theme="light"]) { ... } }`）与应用显式要求暗色（`.pwa-entry[data-theme="dark"] { ... }`）。只写不带媒体查询的 `.pwa-entry` 选择器特异度低于平台默认规则，会被完全覆盖而不报错。
 
@@ -96,7 +132,7 @@ setPwaTheme("dark"); // 或 "light"；"system" 删除该键，回到跟随系统
 
 ## 语言与文案（可选）
 
-文案默认中文，语言在构建时固定，可选 `zh-CN`（默认）或 `en`，`messages` 可逐项覆盖：`documentTitle`、`loading`、`empty`、`headlineMigrating`、`headlineIncident`、`headlineUnconfirmedOutage`、`expiry`、`go`。`expiry` 必须恰好包含一次 `{expiresAt}`，`go` 必须恰好包含一次 `{host}`，否则构建失败；每项不超过 200 个字符，只按纯文本显示。清单里业务自己写的 `reason.message` 原样显示，平台不翻译。
+文案默认中文，语言在构建时固定，可选 `zh-CN`（默认）或 `en`，`messages` 可逐项覆盖：`documentTitle`、`loading`、`empty`、`headlineMigrating`、`headlineIncident`、`headlineUnconfirmedOutage`、`expiry`、`go`；每项必须是非空字符串，出现未知键会导致构建失败（`entry.message-invalid`）。`expiry` 必须恰好包含一次 `{expiresAt}`，`go` 必须恰好包含一次 `{host}`，否则构建失败；每项不超过 200 个字符，只按纯文本显示。清单里业务自己写的 `reason.message` 原样显示，平台不翻译。
 
 ## 常见诊断码
 
@@ -105,8 +141,22 @@ setPwaTheme("dark"); // 或 "light"；"system" 删除该键，回到跟随系统
 | `entry.locale-invalid` | 构建期 | `pwaEntryResilience` 的 `locale` 选项不是 `zh-CN` 或 `en` |
 | `entry.message-invalid` | 构建期 | `messages` 里 `expiry` 缺少或多次出现 `{expiresAt}`、`go` 缺少或多次出现 `{host}`，或某项超过 200 个字符 |
 | `entry.sequence-not-greater` | 运行时（`updateEntryManifest()`） | 交入的清单 `sequence` 不大于客户端已存记录，会被拒绝；同一序号发两份不同内容，客户端不会展示任何入口。序号必须严格递增 |
+| `entry.expired` | 运行时 | 写入时 `expiresAt` 已过；读取时已存清单过期，`checkEntryRecovery()` 返回 `kind: "none"` |
+| `entry.validity-period-too-long` | 运行时（`updateEntryManifest()`） | `expiresAt` 距现在超过 `maxValidityDays` |
+| `entry.no-entries` | 运行时（`checkEntryRecovery()`） | 已存清单没有任何入口，不展示 |
+| `entry.storage-unavailable` | 运行时 | 读取本地存储（IndexedDB）失败 |
+| `entry.storage-write-failed` | 运行时（`updateEntryManifest()`） | 写入本地存储失败，清单未被接受 |
+| `entry.runtime-unavailable` | 运行时 | 时钟或当前 Origin 等运行环境不可用 |
+| `entry.return-path-dropped` | 运行时（`checkEntryRecovery()`） | 传入的 `returnPath` 不合法，已丢弃；恢复页链接不带返回路径 |
+| `entry.base-mismatch` | 构建期 | Vite `base` 与 `identity.mountPath` 不一致 |
+| `entry.platform-plugin-missing` | 构建期 | 同一配置里没有 `pwa()` 插件 |
+| `entry.recovery-page-not-precached` | 构建期 | 恢复页或其脚本没有进入预缓存，补齐资源规则 |
 
-其余构建期与清单字段校验码（例如清单形状、`origin`／`startPath`、有效期相关）见 `packages/entry-resilience/src/diagnostics.ts`；运行时的 <code>updateEntryManifest()</code>／<code>checkEntryRecovery()</code> 不抛异常，失败一律体现为 <code>diagnostics</code> 数组里的这些码。
+其余构建期与清单字段校验码（清单形状、`origin`／`startPath`、`reason`、`entries` 等）由 `ENTRY_DIAGNOSTIC_CODES` 导出（`@pwa-platform/entry-resilience`）；运行时的 <code>updateEntryManifest()</code>／<code>checkEntryRecovery()</code> 不抛异常，失败一律体现为 <code>diagnostics</code> 数组里的这些码。
+
+## 本地存储与返回路径
+
+清单存在浏览器 IndexedDB 中，库名为 `pwa-entry:<appId>:<environment>`（两段做 URL 编码）。`checkEntryRecovery({ returnPath })` 传入的返回路径必须：不超过 1024 个字符、以单个 `/` 开头、不含反斜杠和控制字符、不含 `..` 段（按 `/`、`?`、`#` 切分；百分号解码一次后再检查一遍），并且指向当前 Origin 且位于 scope 之内。不满足时整个路径被丢弃，恢复页链接不带 `?return=`，并在 `diagnostics` 里给出 `entry.return-path-dropped`。
 
 ## 下发前自查
 
@@ -115,9 +165,11 @@ setPwaTheme("dark"); // 或 "light"；"system" 删除该键，回到跟随系统
 ```ts
 import { parseEntryManifest } from "@pwa-platform/entry-resilience";
 
+const manifest = /* 占位：准备下发的清单对象 */;
+
 const result = parseEntryManifest(manifest, {
-  appId,
-  environment,
+  appId, // 占位：与身份一致
+  environment, // 占位：与身份一致
   maxValidityDays: 30, // 必须与构建配置一致，校验器不读构建配置
   now: Date.now(),
 });
