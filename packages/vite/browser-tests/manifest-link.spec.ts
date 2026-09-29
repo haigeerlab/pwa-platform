@@ -2,7 +2,7 @@
 // it (browser-tests/app/index.html). The two example apps under examples-browser-e2e keep their hand-written links
 // unchanged, so their passing tests are the compatibility half of this proof: injection only fires when a page has
 // nothing of its own to keep.
-import { expect, test } from "@pwa-platform/browser-test-harness";
+import { expect, readRealBrowserKind, test } from "@pwa-platform/browser-test-harness";
 import { FIXTURE_SITE, IDENTITY, INSTALL, MANIFEST_URL, SHELL_URL } from "./fixture-site.js";
 
 test.use({ fixtureSite: FIXTURE_SITE });
@@ -39,6 +39,7 @@ test.describe("the manifest link the plugin injects", () => {
   });
 
   test("Chrome itself resolves the linked manifest via CDP, with no parse errors", async ({ page, context, fixtureServer }) => {
+    test.skip(readRealBrowserKind(process.env) !== undefined, "Page.getAppManifest is a DevTools protocol command; Safari and Firefox expose no parsed manifest over WebDriver");
     await page.goto(fixtureServer.url(SHELL_URL));
 
     // Confirms Chrome's own manifest fetcher — not just this test's HTTP client — follows the injected link and

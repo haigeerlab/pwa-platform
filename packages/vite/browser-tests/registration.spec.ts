@@ -51,6 +51,6 @@ test.describe("a site the plugin built", () => {
 
     // Requested through the worker, so a miss would fall through to the network rather than fail — the assertion
     // that matters is offline, in offline.spec.ts.
-    await expect(page.locator("#shell")).toBeVisible();
+    await expect.poll(() => page.locator("#shell").isVisible()).toBe(true);
   });
 });

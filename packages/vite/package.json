@@ -29,6 +29,7 @@
     "build": "tsc --project tsconfig.build.json && node -e \"require('node:fs').copyFileSync('src/virtual.d.ts', 'dist/virtual.d.ts')\" && node scripts/bundle-docs.mjs",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "test:browser:real": "playwright test --config playwright.real.config.ts",
     "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.browser.json && tsc --noEmit --project tsconfig.app.json"
   },
   "peerDependencies": {
