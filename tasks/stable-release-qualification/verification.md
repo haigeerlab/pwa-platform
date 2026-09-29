@@ -424,3 +424,24 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 - 已中止运行遗留的 `Safari --automation` 进程会让下一轮所有 worker 安装失败；每轮运行前后结束该进程后不再复现。
 
 **偶发：** client-runtime `registration.spec.ts:79` 在 Safari 上的 `< 1000 ms` 墙钟断言曾一次为 1526 ms（含 WebDriver 往返），重复 10 次均通过。
+
+## R7.3 真实 Safari／Firefox：vite 离线页、恢复、主题、多应用隔离（2026-09-30）
+
+环境同 R7.2，代码 @ `0ea2a12`。vite `browser-tests` 共 35 项；执行代理各跑两遍，维护会话独立复跑一遍，结果一致：Chrome 154 **35 通过**；Firefox 157 **33 通过／2 跳过**；Safari 18.6（系统外观：浅色）**31 通过／4 跳过**。适配层改动后，R7.2 三个包在两款浏览器上的回归结果与 R7.2 记录完全一致。
+
+| 矩阵行 | Safari 18.6 | Firefox 157 | 说明 |
+|---|---|---|---|
+| 2b manifest 快捷方式 | 通过 | 通过 | 页面自行拉取所链接的 manifest，逐字段比对 shortcuts 等扩展成员，并确认图标 200；浏览器是否无错解析不可见（CDP 用例跳过） |
+| 3／4 离线壳与离线页 | 通过 | 通过 | 服务器端断网 |
+| 4a 联网自动恢复 | 通过 | 通过 | 主证据为“浏览器不发 online 事件时由网络探针恢复”；“联网即自动重载”用例在真实浏览器上同时派发合成 `online` 事件，只验证页面监听器 |
+| 4c 离线页中英文 | 通过 | 通过 | 中文默认与英文覆盖文案 |
+| 4d 离线页亮／暗 | 仅浅色通过，深色 2 项待 R7.7 | 两种都通过 | Firefox 经 `layout.css.prefers-color-scheme.content-override` 强制并以 `matchMedia` 核实；Safari 无法模拟，只跑与系统外观一致的一半 |
+| 11 同源多应用隔离 | 8/8 通过 | 8/8 通过 | 无跳过 |
+| 12 对比度／焦点／窄屏 | 浅色通过（320px） | 通过（窄屏只达 500px） | Firefox 窗口最小外宽 500px，320px 无横向溢出未验证，已标注 |
+
+**差异与限制：**
+
+- Safari 18.6 默认设置下 Tab 键跳过按钮、只落在文本输入框（系统“按 Tab 键高亮每个项目”未开启）；离线页的重试按钮以 Option+Tab 验证可聚焦，普通 Tab 未断言。这是 Safari 默认行为，不是产品缺陷。
+- Safari 自动化窗口不在前台，`visibilityState` 为 `hidden`，离线页据此暂停探针；恢复类用例在真实浏览器上先设为可见，与 R7.2 相同。
+- 严格 CSP 用例：真实浏览器上无法在页面脚本之前挂 `securitypolicyviolation` 监听，也读不到导航响应头，改为读取同一预缓存 URL 的 CSP 头，并验证页面在该策略下正常渲染、重试脚本可用；“零违规”一项标注为无法验证。
+- Firefox 的 `emulateMedia` 需要 geckodriver 以 `--allow-system-access` 启动（只作用于本次会话的临时配置文件）。
