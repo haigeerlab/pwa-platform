@@ -20,3 +20,5 @@ website/.vitepress/dist/
 # onboarding-smoke's hand-off from global-setup.ts to the spec's worker process (packages/examples-browser-e2e/onboarding-smoke/build-fixture.ts)
 .onboarding-fixture-pointer.json
 .agent/state.json
+# generated offline docs copy shipped in @pwa-platform/vite (packages/vite/scripts/bundle-docs.mjs); never committed
+packages/vite/docs/
