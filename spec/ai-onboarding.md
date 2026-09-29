@@ -254,7 +254,7 @@ gates:
 ---
 
 ## 决策记录
-- 2026-09-30 G2 身份字段：origin=https://example.com，scope=/，serviceWorkerUrl=/sw.js，environment=production（人确认）
+- 2026-09-30 G2 身份字段：origin=https://example.com，scope=/，serviceWorkerUrl=/sw.js，manifestId=/，mountPath=/，environment=production，cacheNamespaceSeed=r1（人确认）
 
 ## 证据
 - 关卡 1：vite build 通过，无诊断（2026-09-30）

@@ -889,3 +889,71 @@ describe("AO15 documentation names the skill, both install directories, both inv
     expect(unreleased, "must say it is not in the production bundle").toMatch(/does not contain it|not contain/);
   });
 });
+
+// ---- AO16: findings of the independent review ----------------------------------------------------------------------------
+
+describe("AO16 independent review findings", () => {
+  const read = (name: string) => readFileSync(join(referencesDir, name), "utf8");
+
+  it("M1: the AI never writes cache-deletion or unregister code, and the old registration is handled by the person", () => {
+    const text = read("gate-a-feasibility.md");
+    for (const word of ["caches.delete", "unregister", "不写", "《恢复演练》"]) expect(text, word).toContain(word);
+    expect(text).toMatch(/不写[^\n]*(caches\.delete|unregister)|(caches\.delete|unregister)[^\n]*不写/);
+  });
+
+  it("m1: recording the old behaviour comes before any deletion", () => {
+    const text = read("gate-a-feasibility.md");
+    expect(text).toMatch(/步骤 1[、,，]?\s*2[^\n]*(之前|先于)[^\n]*(G1|删除)/);
+  });
+
+  it("m2: Q3 has no default that can override what gate A found", () => {
+    const row = read("gate-0-interview.md").split("\n").find((line) => line.startsWith("| Q3")) ?? "";
+    expect(row).toContain("关卡 A");
+    expect(row).not.toMatch(/\|\s*否\s*\|/);
+  });
+
+  it("M2: the state file is memory, not a confirmation", () => {
+    const resume = sectionOf(read("state-file.md"), "## 续做");
+    for (const word of ["不是确认", "G3", "G4", "重新", "决策记录"]) expect(resume, word).toContain(word);
+    expect(resume).toMatch(/没有[^\n]*(决策记录|对应)[^\n]*(视为未完成|未完成)/);
+  });
+
+  it("M3: the example G2 record lists every immutable field and a resume re-asks any that is missing", () => {
+    const state = read("state-file.md");
+    const g2 = state.split("\n").find((line) => line.includes("G2 身份字段")) ?? "";
+    for (const field of ["origin", "scope", "serviceWorkerUrl", "manifestId", "mountPath", "environment", "cacheNamespaceSeed"]) expect(g2, field).toContain(field);
+    expect(read("state-file.md")).toMatch(/G2[^\n]*(缺|少)[^\n]*(重新|重问|再确认)/);
+  });
+
+  it("M4: gate 3 covers private HTML from the source table and no longer invents a Content-Type rule", () => {
+    const text = read("gate-3-server.md");
+    expect(text).toContain("私有 HTML");
+    expect(text).toMatch(/private[^\n]*no-store|no-store[^\n]*private/);
+    expect(text).not.toContain("manifest+json");
+  });
+
+  it("M5: internal or staging addresses are not written to the committed state file", () => {
+    const config = read("gate-1-config-file.md");
+    const section = sectionOf(config, "## 多个环境");
+    expect(section).toMatch(/内网|预发|非公开地址/);
+    expect(section).toMatch(/不写进状态文件|不要写进状态文件/);
+  });
+
+  it("m5: the gate 3 curl no longer prints the redirect target", () => {
+    const block = readFileSync(join(referencesDir, "gate-3-server.md"), "utf8").split("```bash")[1] ?? "";
+    expect(block).not.toMatch(/grep -iE '[^']*location/);
+    expect(read("gate-3-server.md")).toMatch(/不输出[^\n]*Location|Location[^\n]*不输出/);
+  });
+
+  it("m6: the no-requests rule is about probing, not installing, and pasted headers are redacted first", () => {
+    expect(readFileSync(skillFile, "utf8")).toMatch(/探测请求|检查请求/);
+    const t1 = read("gate-6-troubleshoot.md");
+    expect(t1).toMatch(/Set-Cookie[^\n]*Authorization|Authorization[^\n]*Set-Cookie/);
+    expect(t1).toMatch(/删掉|删除|脱敏/);
+  });
+
+  it("m3: the worker switch is recorded as G5 whatever happens to gate 5", () => {
+    const text = read("state-file.md");
+    expect(text).toMatch(/G5[^\n]*(无论|不论)[^\n]*关卡 5/);
+  });
+});

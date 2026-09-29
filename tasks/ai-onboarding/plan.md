@@ -262,7 +262,7 @@
 
 **实现记录（AO15）：** 改了 7 个文件：`website/start/choose.md` 新增“用 AI 引导接入”（锚点 `#ai-onboarding`），给出 macOS／Linux 与 PowerShell 两种复制命令、两个安装目录与两种调用写法、不要放进 `public/`、`src/`、`dist/`、文档站只有中文而对话可用英文，以及 skill 的边界；`integration-by-capability.md` 与 `packages/vite/README.md`（英文）指向它；旧 `pwa-vite5-vue-integration` 顶部加“已被取代”并保留原文；`npm-package-release.md` 候选门禁加第 10 条（升级版本时同步 `metadata.version`）；`CHANGELOG.md` 的 Unreleased 记一条。**文档明确写了已发布的 0.2.3 不含这份 skill**（它随下一个含 `skills/` 的版本提供），避免读者按文档安装后找不到。8 个文档测试先红后绿，变异均变红；其中“不要放进站点目录”与更新日志两条最初断言偏弱（变异存活），已收紧。`docs:build` 通过。`spec/examples-browser-e2e.md` 的 onboarding-smoke 增补不在本任务范围内改动，留给 AO16 核对。
 
-### AO16：门禁与独立评审
+### AO16：门禁与独立评审（大部分完成：见本任务的提交；`verify-artifacts` 待合入能力图后补跑）
 
 **范围：** 完整门禁与独立评审，结果写入 `tasks/ai-onboarding/verification.md`。
 
@@ -272,6 +272,8 @@
 - 独立评审（新上下文、只读）重点检查：存量迁移分支的停下点、闸门是否可能被绕过、规则是否复制而非引用、是否可能输出敏感信息。阻断项为 0。
 
 **范围估计：** 中。依赖：AO15。
+
+**实现记录（AO16）：** 自动门禁全绿；独立评审 BLOCKER 0、MAJOR 5、MINOR 6，已核实并处理 MAJOR 全部与 MINOR 中的 5 条，1 条（重复规则文字无测试）记为已知限制。详见 `tasks/ai-onboarding/verification.md` 的 AO16 一节。
 
 ## Task List
 

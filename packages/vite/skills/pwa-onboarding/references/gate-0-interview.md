@@ -14,7 +14,7 @@
 | --- | --- | --- | --- |
 | Q1 | 界面语言 | 中文，可选英文 | 三处各自设置：`PwaUpdateNotice` 的 `locale`（运行时，默认 `zh-CN`）、`offlinePage.locale`（构建时）、安装信息里 `name`、`description` 的书写语言（由业务在安装信息里写，不是开关）；同时决定你之后对话与报告的语言 |
 | Q2 | 框架、版本与构建（先自动探测再确认） | 探测结果 | Vite ^5 或 ^8，Vue ^3.4 或 React ^19.2，Node.js 22.12 及以上；不满足应已在关卡 A 停下 |
-| Q3 | 线上是否已经是 PWA | 否 | 是则走存量 PWA 分支（关卡 A），记入 `existingPwa` |
+| Q3 | 线上是否已经是 PWA | 沿用关卡 A 的探测结果（有 `VitePWA(`、自带 worker 等即为“是”），没有默认的“否” | 是则走存量 PWA 分支（关卡 A），记入 `existingPwa` |
 | Q4 | 最终 origin、`base`、同域是否还有别的应用、PC 与 H5 是否同域不同路径、服务器类型（nginx / CDN / Cloudflare / 不清楚） | 无（必须回答） | 决定 `mountPath`、`scope`、`serviceWorkerUrl`；同域多应用要共享 origin 登记表，`topology` 不再是 `standalone-origin`；服务器类型只用于关卡 3 的注意事项 |
 | Q5 | 有哪些环境（开发、测试、生产） | 无（必须回答） | 每个环境独立的 `environment` 与 `cacheNamespaceSeed`，不复用生产身份 |
 | Q6 | 是否需要安装能力（manifest、图标、安装提示） | 是 | 是则准备安装信息与真实图标；否则 `install: null` 且策略里 `install: { enabled: false }` |

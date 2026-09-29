@@ -22,13 +22,13 @@ BASE=https://你的域名
 # 循环变量不要叫 path：在 zsh 里它绑定 PATH，会让 curl 找不到。
 for target in "/" "/sw.js" "/manifest.webmanifest"; do
   echo "=== $target"
-  curl -sS -m 20 -D - -o /dev/null "$BASE$target" | tr -d '\r' | grep -iE '^(HTTP|location|content-type|cache-control|vary|age|x-cache)'
+  curl -sS -m 20 -D - -o /dev/null "$BASE$target" | tr -d '\r' | grep -iE '^(HTTP|content-type|cache-control|vary|age|x-cache)'
 done
 # 只判断有没有 Cookie，不输出值：
 curl -sS -m 20 -D - -o /dev/null "$BASE/" | tr -d '\r' | grep -ci '^set-cookie'
 ```
 
-不加 `-L`：要看的是这个地址本身的状态，重定向就是 S5 的发现。
+不加 `-L`：要看的是这个地址本身的状态，重定向就是 S5 的发现。只看状态码是不是 3xx，**不输出 `Location`**：它可能带单点登录的参数或内部主机名。
 
 ## 要求清单
 
@@ -37,7 +37,7 @@ curl -sS -m 20 -D - -o /dev/null "$BASE/" | tr -d '\r' | grep -ci '^set-cookie'
 | 编号 | 资源 | 必须含 | 不得含 | 不满足的后果 | 核对方法 |
 | --- | --- | --- | --- | --- | --- |
 | S1 | Service Worker 脚本（`serviceWorkerUrl`） | `no-cache` | `immutable` | 新版本被 CDN 或缓存卡住，用户长时间拿不到更新，**决定更新能否到达用户**；`Content-Type` 不是 JavaScript 则注册失败 | 看 `cache-control` 与 `content-type` |
-| S2 | manifest（`manifestUrl`） | `no-cache` | `immutable` | 名称、图标的变更长期不生效；`Content-Type` 应为 application/manifest+json | 看 `cache-control` 与 `content-type` |
+| S2 | manifest（`manifestUrl`） | `no-cache` | `immutable` | 名称、图标的变更长期不生效 | 看 `cache-control` |
 | S3 | 公开 HTML：`mountPath`、`startUrl`、离线页 | `no-cache` | `immutable` | 用户停在引用旧哈希资源的旧应用壳上，更新滞后或白屏 | 看 `cache-control` |
 | S4 | 带指纹的静态资源 | `immutable`、`max-age>0` | `no-cache`、`no-store` | 反复向服务器验证，浪费流量；不是壳缓存的必要条件 | 看 `cache-control` |
 | S5 | 入口与 worker 路径 | 直接返回 200，且是 HTTPS | 重定向 | 被重定向的响应不进缓存，worker 无法注册 | 状态码，不加 `-L` |
@@ -46,6 +46,8 @@ curl -sS -m 20 -D - -o /dev/null "$BASE/" | tr -d '\r' | grep -ci '^set-cookie'
 | S8 | 旧指纹资源 | 按发布窗口保留 | 部署时直接删除旧版 | 已打开的旧页面与回滚白屏 | 从外部通常判定不了，见下 |
 | S9 | 公共接口（仅在开运行时缓存时） | 状态 200、不重定向；`Content-Type` 为 application/json（动态页面为 text/html）；`Vary` 为空，或只含 `Accept`、`Accept-Encoding` | `private`、`no-store` | 整体不入缓存，页面表现照常，只有 worker 控制台一行警告 | 看 `cache-control`、`vary`、`content-type` |
 | S9-SWR | 公共接口，且使用 stale-while-revalidate | 同 S9 | `no-cache`、`must-revalidate`、`max-age=0`、`s-maxage=0` | 不入缓存 | 看 `cache-control` |
+
+**私有 HTML** 不套用 S3。需要登录的页面按《部署与发布》"线上响应头"表里的"私有 HTML 与数据"一行检查：含 `private`、`no-store`，不含 `public`、`immutable`；不要要求它 `no-cache`。拿不准哪些 HTML 是公开的，问人。
 
 **S1 单独强调**：它是更新提示能不能到达用户的关键。报告里把 S1 的结果单独列出来，不要淹在总数里。
 
