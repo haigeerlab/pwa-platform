@@ -115,7 +115,7 @@ packages/vite/skills/pwa-onboarding/
     glossary-en.md            英文术语表与报告标签
 ```
 
-- `SKILL.md` 的 front matter 只用两个通用字段和一个标准扩展位：`name: pwa-onboarding`（小写字母、数字、连字符，≤ 64 字符，与目录名一致）、`description`（≤ 1024 字符，不含 `<` `>`；中英关键词，如 PWA、Service Worker、离线、安装、更新提示、接入），以及 `metadata.version`（构建时写入所属包的版本号）。**版本不放顶层 `version`**：Codex 自带的 skill 校验器只允许 `name`、`description`、`license`、`allowed-tools`、`metadata` 五个顶层键。
+- `SKILL.md` 的 front matter 只用两个通用字段和一个标准扩展位：`name: pwa-onboarding`（小写字母、数字、连字符，≤ 64 字符，与目录名一致）、`description`（≤ 1024 字符，不含 `<` `>`；中英关键词，如 PWA、Service Worker、离线、安装、更新提示、接入），以及 `metadata.version`（随包版本号一起提交，由测试强制两者相等，不在构建时改写源文件（`files` 发布的就是包根目录的 `skills/` 源文件，构建时改写会弄脏工作区并使 git 中的文件与发布物不一致）；升级包版本时测试变红即提醒同步，发布流程文档写明这一步）。**版本不放顶层 `version`**：Codex 自带的 skill 校验器只允许 `name`、`description`、`license`、`allowed-tools`、`metadata` 五个顶层键。
 - **显式调用**：Claude Code 用 `/pwa-onboarding`，Codex 用 `$pwa-onboarding`（本机 codex-cli 0.157.1 自带文档写明 `$skill-name`）。文档与 skill 话术里两种写法都要给出，不能只写 `/`。
 - **引用文件不会被自动读取**：只有触发后才读 `SKILL.md` 正文，引用文件要在正文里逐个写明"进入哪个关卡时读哪个文件"，否则可能漏读。
 - **核实程度（AO2，2026-09-29）**：Codex 一侧的结论来自 `openai/codex` 主分支源码与本机 codex-cli 0.157.1 自带的 skill 文档；官方 skills 页面返回 403，**未读到**；"运行时忽略未知 front matter 字段"是从源码推断的，**未实跑**。
@@ -411,7 +411,7 @@ AI 的行为不确定，不能只靠代码测试。用夹具项目和评分表�
 | release-gate-contract | follow | 不涉及。 |
 | local-ci-record | follow | 不涉及。 |
 | release-orchestration-protocol | follow | 不涉及。 |
-| vite-adapter | update | 包内新增 skills/pwa-onboarding；构建时写入版本戳；exports 与运行时代码不变。 |
+| vite-adapter | update | 包内新增 skills/pwa-onboarding；metadata.version 随包版本提交并由测试强制相等；exports 与运行时代码不变。 |
 | client-runtime | follow | 不涉及。 |
 | vue-react-adapters | follow | 不涉及。 |
 | examples-browser-e2e | update | onboarding-smoke 增加哨兵字符串检查：装有 skill 的项目生产构建产物不含 skill，且产物哈希与未安装时相同。 |

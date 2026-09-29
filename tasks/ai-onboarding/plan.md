@@ -12,7 +12,7 @@
 
 ## 架构决定
 
-- **只增加文件，不改运行时。** 唯一触碰既有代码的地方是 `packages/vite/package.json` 的 `files`、构建脚本里的版本戳、`scripts/check-package-distribution.mjs` 和 `onboarding-smoke`。其余九个包不变。
+- **只增加文件，不改运行时。** 唯一触碰既有代码的地方是 `packages/vite/package.json` 的 `files`、`scripts/check-package-distribution.mjs` 和 `onboarding-smoke`。其余九个包不变。
 - **内容与测试同一个切片交付。** 每个关卡的引用文件和它对应的检查（链接、体积、语言、规则一致性、场景评分表）一起完成，不留"先写内容后补测试"。
 - **规则不复制。** 服务端要求清单只引用《部署与发布》与 `build-verifier` 的规则常量；DT5 用测试把它们绑住，规则一改测试就红。
 - **先调研再写死。** Codex 的 skill 发现与调用约定、第三方 Service Worker 的 scope 判定，先做只读调研并把结论写回规格，再动手写依赖它们的内容。
@@ -55,12 +55,13 @@
 
 ### AO4：骨架与打包（TDD）
 
-**范围：** `packages/vite/skills/pwa-onboarding/SKILL.md`（front matter 与关卡索引，先是骨架）、`packages/vite/package.json`（`files`）、构建脚本（写入版本戳）、`scripts/check-package-distribution.mjs`（允许并核对该目录）、对应测试。
+**范围：** `packages/vite/skills/pwa-onboarding/SKILL.md`（front matter 与关卡索引，先是骨架）、`packages/vite/package.json`（`files`）、`scripts/check-package-distribution.mjs`（允许并核对该目录）、对应测试。
 
 **验收：**
 - DT1：打包后的 `@pwa-platform/vite` 含 `skills/pwa-onboarding`，`exports` 不含它，其余九个包不变。
 - DT2：顶层键只有 `name`、`description`、`metadata`；`name` 为小写连字符、≤ 64 且等于目录名；`description` ≤ 1024 且不含 `<` `>`；`metadata.version` 等于包版本（AO2 得出的双端最小交集）。
 - **人工检查（需项目所有者批准，会使用其 Codex 账号）**：在一次性目录放一个测试 skill，用 `codex exec` 确认 `$name` 显式调用可用、`metadata` 与未知字段不导致报错；结果写入 `verification.md`。
+- 版本不在构建时写入：`metadata.version` 随包版本提交，DT2 强制相等；把包版本改成别的值而不改 skill 时 DT2 必须变红。
 - DT3：体积预算测试就位（`SKILL.md` ≤ 6 KB，引用 ≤ 8 KB，总量 ≤ 60 KB）。
 - DT6：目录下只有 `.md`；不含把文件写入 `public/`、`src/`、`dist/` 的指令。
 - 变异：把 `skills` 从 `files` 删除、把它加进 `exports`、放入一个 `.js` 文件，测试都应变红。
@@ -207,6 +208,7 @@
 - 安装目录随团队使用的 AI 而定：Claude Code 为 `.claude/skills/pwa-onboarding`，Codex 为 `.agents/skills/pwa-onboarding`，两个都用则各复制一份；调用写法两种都给（`/pwa-onboarding` 与 `$pwa-onboarding`）。
 - 文档站只有中文这一限制在英文相关说明中明示。
 - 旧 skill 保留可读，但顶部标明已被取代。
+- 发布流程文档写明：升级 `@pwa-platform/vite` 版本时同步修改 `skills/pwa-onboarding/SKILL.md` 的 `metadata.version`（DT2 会在忘记时变红）。
 
 **范围估计：** 中，5–6 个文件。依赖：检查点 B、AO2。
 
