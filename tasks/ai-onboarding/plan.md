@@ -198,7 +198,7 @@
 
 **通读记录：** 自 `SKILL.md` 按索引通读八个关卡与全部引用文件，无死链、无相互矛盾的规则；发现并修复 5 处遗漏：入口缺“流程”总览；Q6 为“否”时关卡 1 无人执行；关卡 3 的域名声明没有落点（改为先确认并写入状态文件，无记录不发请求）；英文术语表缺冲突类别、停下点、无法确认的译法；关卡 3 里有一句写给维护者的话。均先写红测试再改，5 处变异均变红（其中域名规则一条最初存活，已把断言从“词出现”改成“规则本身”）。DT1–DT7 全绿。
 
-### AO12：构建不含 skill 的检查 DT8（TDD）
+### AO12：构建不含 skill 的检查 DT8（完成：见本任务的提交）
 
 **范围：** `packages/examples-browser-e2e/onboarding-smoke`（夹具装入 skill 副本与哨兵字符串）、对应断言。
 
@@ -209,6 +209,8 @@
 - `pnpm test:onboarding-smoke` 通过。
 
 **范围估计：** 中，3–4 个文件。依赖：AO4。
+
+**实现记录（AO12）：** 新增 `onboarding-smoke/skill-not-in-bundle.spec.ts`，复用 build-fixture 已从打包 tarball 安装好的项目，因此被复制的就是发布包里真实的 `skills/pwa-onboarding/`（另有一条断言确认安装包确实带了它）。三次构建：基线；skill 副本（带哨兵行）放进 `.claude/skills` 与 `.agents/skills` 后构建，产物既无路径痕迹、哨兵也不在任何文件字节里，且逐文件 sha256 与基线完全一致；变异——副本放进 `public/`——必须被检测出路径与内容并且哈希不同。另外把正常副本改放 `public/skills` 做了一次手工变异，第二条断言随即变红，还原后与原文件一致。`pnpm test:onboarding-smoke` 连续两次 4/4 通过，examples-browser-e2e 类型检查与 lint 通过。`spec/examples-browser-e2e.md` 的增补归 AO15。
 
 ### AO13：场景夹具项目与评分表
 
