@@ -1,6 +1,6 @@
 # 实现计划：ai-onboarding
 
-> 状态：**已批准（项目所有者，2026-09-29）**，与规格一起通过评审。依赖规格 [spec/ai-onboarding.md](../../spec/ai-onboarding.md)（草稿 PR #88）。模块尚未进入能力图，本计划与规格一起在模块晋级时合入。AO1 于同日完成，AO2、AO3 已开始。
+> 状态：**已批准（项目所有者，2026-09-29）**，与规格一起通过评审。依赖规格 [spec/ai-onboarding.md](../../spec/ai-onboarding.md)（草稿 PR #88）。模块尚未进入能力图，本计划与规格一起在模块晋级时合入。AO1、AO2、AO3 于同日完成。
 
 ## 概览
 
@@ -31,7 +31,7 @@
 
 **范围估计：** 小，3 个文件。依赖：无。
 
-### AO2：调研 Codex 的 skill 发现与调用约定（只读）
+### AO2：调研 Codex 的 skill 发现与调用约定（只读，完成：见本任务的提交）
 
 **范围：** 只读调研，结论写回 `spec/ai-onboarding.md` 的"契约 1"与"开放问题"。不写代码。
 
@@ -42,7 +42,7 @@
 
 **范围估计：** 小，1 个文件。依赖：AO1。
 
-### AO3：调研常见第三方 Service Worker 的 scope 判定（只读）
+### AO3：调研常见第三方 Service Worker 的 scope 判定（只读，完成：见本任务的提交）
 
 **范围：** 只读调研，结论写回规格"契约 4"的冲突目录。
 
@@ -59,7 +59,8 @@
 
 **验收：**
 - DT1：打包后的 `@pwa-platform/vite` 含 `skills/pwa-onboarding`，`exports` 不含它，其余九个包不变。
-- DT2：front matter 合法，`version` 等于包版本，满足 AO2 得出的双端最小交集。
+- DT2：顶层键只有 `name`、`description`、`metadata`；`name` 为小写连字符、≤ 64 且等于目录名；`description` ≤ 1024 且不含 `<` `>`；`metadata.version` 等于包版本（AO2 得出的双端最小交集）。
+- **人工检查（需项目所有者批准，会使用其 Codex 账号）**：在一次性目录放一个测试 skill，用 `codex exec` 确认 `$name` 显式调用可用、`metadata` 与未知字段不导致报错；结果写入 `verification.md`。
 - DT3：体积预算测试就位（`SKILL.md` ≤ 6 KB，引用 ≤ 8 KB，总量 ≤ 60 KB）。
 - DT6：目录下只有 `.md`；不含把文件写入 `public/`、`src/`、`dist/` 的指令。
 - 变异：把 `skills` 从 `files` 删除、把它加进 `exports`、放入一个 `.js` 文件，测试都应变红。
@@ -87,6 +88,7 @@
 - 三类冲突目录完整，每项带可检测的证据模式；第三方 Service Worker 的规则来自 AO3。
 - 存量 PWA 分支按规格：先记录、身份字段先问清、旧缓存不自动清理的说明，并含**停下点**（清理旧缓存、切换 worker 只说明不代做）。
 - 迁入旧 skill 的专项经验（PurgeCSS 白名单、混淆插件顺序、确定性构建校验）。
+- 第三方 Service Worker 按规格"契约 4"的 scope 重叠规则判定（相等为冲突、嵌套为部分冲突、互不为前缀只报告、无法静态确定交给人），并含 SDK 证据模式表。
 - 场景评分表 SE2（含 `vite-plugin-pwa`）、SE3（自写 `sw.js`）、SE4（不支持的组合）写好，每条是"应做 / 绝不做"的可判定句子。
 
 **范围估计：** 中，2–3 个文件。依赖：AO3、AO5。
@@ -97,6 +99,7 @@
 
 **验收：**
 - 十道题的默认值与影响与规格一致；语言题决定两处 `locale`。
+- `SKILL.md` 正文对每个关卡逐个写明"进入该关卡时读取哪个引用文件"（引用文件不会被自动读取）。
 - 配置片段（`pwa()` 选项、身份、策略、`createPwa` / `PwaProvider`、`updateCheck`、`PwaUpdateNotice` 与 `reloadPage`）与已发布包的实际 API 一致，**由 AO13 的夹具实际编译验证**，不凭记忆。
 - 诊断码读取指引覆盖 `identity.*`、`install.*`、`vite.*`、`compile.*`、`verify.*`，并区分"可自动修"与"需要人决定"。
 - 身份字段写入前触发闸门 G2。
@@ -201,7 +204,7 @@
 
 **验收：**
 - 复制命令目标固定为 `.claude/skills/pwa-onboarding` 或 `.agents/skills/pwa-onboarding`，并说明不要放进 `public/`、`src/`、`dist/`。
-- Codex 一侧的安装与调用写法来自 AO2 的核实结果。
+- 安装目录随团队使用的 AI 而定：Claude Code 为 `.claude/skills/pwa-onboarding`，Codex 为 `.agents/skills/pwa-onboarding`，两个都用则各复制一份；调用写法两种都给（`/pwa-onboarding` 与 `$pwa-onboarding`）。
 - 文档站只有中文这一限制在英文相关说明中明示。
 - 旧 skill 保留可读，但顶部标明已被取代。
 

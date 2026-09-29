@@ -4,7 +4,7 @@
 
 已接受（2026-09-29，项目所有者评审通过 [spec/ai-onboarding.md](../../spec/ai-onboarding.md) 与 [tasks/ai-onboarding/plan.md](../../tasks/ai-onboarding/plan.md)；本 ADR 记录其中关于包边界与发布方式的决定）。来源 Proposal：[spec/proposals/ai-onboarding.md](../../spec/proposals/ai-onboarding.md)（评审 Issue #84，`accepted`）。
 
-本 ADR 只记录已经作出的决定。Codex 一侧的 skill 目录与调用约定尚未核实（计划任务 AO2），核实后以增补形式写入本 ADR。
+本 ADR 只记录已经作出的决定。Codex 一侧的 skill 目录与调用约定已由计划任务 AO2 核实，见文末"增补"。
 
 ## 背景
 
@@ -46,3 +46,14 @@
 - 文档站只有中文，英文模式下引用的参考文档仍是中文，由 AI 转述；界面语言由更新提示与离线页已有的 `locale`（`zh-CN`、`en`）承载。
 - 规格、计划与实现都在不合并的草稿分支上推进，与能力图行一起合入：`verify-artifacts` 在模块入图前会对规格报错，且当前模块 `cloudflare-test-deployment` 尚未完成，插入命令会拒绝。
 - 不新增依赖，供应链清单不变。
+
+## 增补：Codex 一侧的约定（2026-09-29，计划任务 AO2）
+
+核实方式：`openai/codex` 主分支源码，以及本机 codex-cli 0.157.1 自带的 skill 文档与校验脚本。官方 skills 页面返回 HTTP 403，**未读到**；"运行时忽略未知 front matter 字段"是从源码推断的，**未实跑**（AO4 计划做一次需批准的人工检查）。
+
+对上文"决定"的修正：
+
+- **安装目录随团队使用的 AI 而定，不是"二选一"。** Claude Code 读 `.claude/skills/pwa-onboarding`；Codex 读 `.agents/skills/pwa-onboarding`（从当前目录逐级向上扫到仓库根），**不读 `.claude/skills`**。两个 AI 都用的团队要复制两份。符号链接是否可行、Claude Code 是否读 `.agents/skills`，均未核实。
+- **`SKILL.md` 的版本写在 `metadata.version`，不写顶层 `version`。** Codex 自带的校验器只允许 `name`、`description`、`license`、`allowed-tools`、`metadata` 五个顶层键。`name` 为小写连字符、≤ 64 字符；`description` ≤ 1024 字符且不含 `<` `>`。
+- **显式调用语法不同**：Claude Code 用 `/pwa-onboarding`，Codex 用 `$pwa-onboarding`。
+- **引用文件不会被自动读取**，`SKILL.md` 正文必须逐个写明何时读哪个文件。

@@ -2,7 +2,7 @@
 
 > 状态：**已批准（项目所有者，2026-09-29）**。Proposal [`spec/proposals/ai-onboarding.md`](proposals/ai-onboarding.md) 已于同日评审通过（Issue #84，`proposal-stage:accepted`，假设 5–14 全部勾选）。模块尚未进入能力图：当前模块 `cloudflare-test-deployment` 还有 F2/F3/F4 未完成，插入命令会拒绝，`verify-artifacts` 在入图前也会对本规格报错，所以**本规格随能力图行一起合入**，实现在不合并的分支上推进。包边界决定见 [ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)。
 >
-> 规格阶段新出现的决定（Proposal 没有覆盖）已在"规格阶段的决定"一节列出：项目所有者于 2026-09-29 评审规格时通过。仍需调研的两项标注 **[待核对]**，由计划任务 AO2、AO3 核实后写回。
+> 规格阶段新出现的决定（Proposal 没有覆盖）已在"规格阶段的决定"一节列出：项目所有者于 2026-09-29 评审规格时通过。AO2、AO3 两项调研已于 2026-09-29 完成并写回；调研没能核实的部分标注**未核实**，集中列在"开放问题"。
 
 ## 目标
 
@@ -61,7 +61,7 @@
 4. **要求清单的维护**：v1 手写，配 DT5 一致性测试；是否改为构建时生成，等发现漂移再评估。
 5. **存量 PWA 迁移分支的深度**：识别、记录、说明，并可写入安全的配置；**在清理旧缓存与切换 worker 处停下**，转人工执行。
 6. **关卡 5**：v1 只给指引，不代为采集响应头。
-7. **第三方 Service Worker**：默认规则为不同 scope 只报告、同 scope 交给人判断；判定细则见"待核对"。
+7. **第三方 Service Worker**：按 scope 是否**重叠**判定（相等，或互为路径前缀），而不是"是否相同"；细则见"契约 4"。（2026-09-29 调研后订正：原写法"不同 scope 只报告"对嵌套 scope 不成立，见下。）
 8. **场景评估**：v1 人工执行并留存记录，不进 CI 门禁。
 9. **`header-preflight` 的衔接**：关卡 3 何时改为运行该命令，由它自己的规格与发版时间决定。
 
@@ -115,12 +115,15 @@ packages/vite/skills/pwa-onboarding/
     glossary-en.md            英文术语表与报告标签
 ```
 
-- `SKILL.md` 的 front matter 含 `name: pwa-onboarding`、`description`（中英关键词，如 PWA、Service Worker、离线、安装、更新提示、接入）与 `version`（构建时写入所属包的版本号）。Claude Code 里可用 `/pwa-onboarding` 显式调用；Codex 的调用约定 **[待核对]**。
+- `SKILL.md` 的 front matter 只用两个通用字段和一个标准扩展位：`name: pwa-onboarding`（小写字母、数字、连字符，≤ 64 字符，与目录名一致）、`description`（≤ 1024 字符，不含 `<` `>`；中英关键词，如 PWA、Service Worker、离线、安装、更新提示、接入），以及 `metadata.version`（构建时写入所属包的版本号）。**版本不放顶层 `version`**：Codex 自带的 skill 校验器只允许 `name`、`description`、`license`、`allowed-tools`、`metadata` 五个顶层键。
+- **显式调用**：Claude Code 用 `/pwa-onboarding`，Codex 用 `$pwa-onboarding`（本机 codex-cli 0.157.1 自带文档写明 `$skill-name`）。文档与 skill 话术里两种写法都要给出，不能只写 `/`。
+- **引用文件不会被自动读取**：只有触发后才读 `SKILL.md` 正文，引用文件要在正文里逐个写明"进入哪个关卡时读哪个文件"，否则可能漏读。
+- **核实程度（AO2，2026-09-29）**：Codex 一侧的结论来自 `openai/codex` 主分支源码与本机 codex-cli 0.157.1 自带的 skill 文档；官方 skills 页面返回 403，**未读到**；"运行时忽略未知 front matter 字段"是从源码推断的，**未实跑**。
 - 只含 Markdown 文本，**不含任何可执行脚本**。
 - `package.json` 的 `files` 增加 `skills`；`exports` **不列出**它，因此无法被 `import` 引用。
 - **体积预算**（见"规格阶段的决定" 2）：`SKILL.md` ≤ 6 KB；每个引用文件 ≤ 8 KB；总量 ≤ 60 KB。AI 按关卡**按需读取**引用文件，不一次全读。
-- **安装**：文档给出复制命令，目标固定为 `.claude/skills/pwa-onboarding` 或 `.agents/skills/pwa-onboarding`，并提供跨平台写法。复制命令本身**无法强制**目标目录；因此 skill 启动时自检自身所在路径，若位于 `public/`、`src/`、`dist/` 之下则停止并说明；泄漏由"产物不含 skill"的构建检查兜底。
-- **版本自检**：skill 启动时读取 `node_modules/@pwa-platform/vite/package.json` 的版本，与自身 `version` 比较；不一致则警告并给出重新复制的命令，由人决定是否继续。
+- **安装**：文档给出复制命令，并提供跨平台写法。**目标目录取决于团队用哪个 AI**：Claude Code 读 `.claude/skills/pwa-onboarding`；Codex 读 `.agents/skills/pwa-onboarding`（从当前目录逐级向上扫到仓库根），**不读 `.claude/skills`**。两个 AI 都用的团队要复制两份；符号链接是否可行未核实；Claude Code 是否读 `.agents/skills` 未核实，按不读处理。复制命令本身**无法强制**目标目录；因此 skill 启动时自检自身所在路径，若位于 `public/`、`src/`、`dist/` 之下则停止并说明；泄漏由"产物不含 skill"的构建检查兜底。
+- **版本自检**：skill 启动时读取 `node_modules/@pwa-platform/vite/package.json` 的版本，与自身 `metadata.version` 比较；不一致则警告并给出重新复制的命令，由人决定是否继续。
 
 ### 2. 关卡
 
@@ -165,8 +168,41 @@ packages/vite/skills/pwa-onboarding/
 | 类别 | 检测对象 | 处理 |
 | --- | --- | --- |
 | **必须移除**（同一职责冲突） | 依赖：`vite-plugin-pwa`、`@vite-pwa/*`、直接使用的 `workbox-*`（如 `workbox-window`、`workbox-build`）、`sw-precache`、`sw-toolbox`；源码：`virtual:pwa-register`、`registerSW`、`navigator.serviceWorker.register`、`self.__WB_MANIFEST`；文件：项目自带的 `sw.js` / `sw.ts`、`public/manifest.*`；HTML：重复的 `<link rel="manifest">` | 给出改动清单，人确认后在单独分支执行；同一 scope 只能有一个注册 |
-| **需要评估**（不一定删） | 其他厂商的 Service Worker（如推送 SDK 的 worker），尤其是**同一 scope** 的；自建的版本轮询或更新提示 | 默认规则：**不同 scope 只报告，同 scope 交给人判断**；判定细则见"待核对" |
+| **需要评估**（不一定删） | 其他厂商的 Service Worker（如推送 SDK 的 worker），尤其是**同一 scope** 的；自建的版本轮询或更新提示 | 按下面"第三方 Service Worker 的判定"的 scope 关系处理：相等为冲突，嵌套为部分冲突，互不为前缀只报告，无法静态确定则交给人 |
 | **仅提示** | HTML 里的 `<base>`（插件会拒绝）；相对路径的 `base`；构建后混淆插件的顺序与随机种子；PurgeCSS 白名单需加 `/^pwa-update-notice/`；产物根目录里文件名随构建变化的运行时配置脚本；对同一源码连续构建两次比较同名 JS/CSS 产物的哈希（确定性构建），并在改变进入预缓存的代码后确认 worker 随之变化（迁自现有 Vite 5 + Vue 3.4 专项 skill） | 提醒并指向仓库文档的对应处理 |
+
+**第三方 Service Worker 的判定**（AO3，2026-09-29 调研；读取日期同）：
+
+浏览器规则：一个页面由**最具体（最长前缀）的匹配 scope** 的注册控制（MDN《Using Service Workers》）；`register()` 不传 `scope` 时默认为脚本所在目录，且默认不能比脚本路径更宽，`Service-Worker-Allowed` 响应头可放宽这个上限；同一 scope 再次注册会更新或替换已有注册。据此，判定按 scope **是否重叠**，而不是是否相同：
+
+| scope 关系（平台为 P，第三方为 S） | 判定 | 处理 |
+| --- | --- | --- |
+| S 与 P 相等 | 冲突（后注册的替换先注册的） | 交给人 |
+| S 是 P 的子路径 | 部分冲突：S 下的页面归第三方 worker，平台的缓存、离线、更新在该子树静默失效 | 报告被覆盖的子树，交给人 |
+| P 是 S 的子路径 | 部分冲突：平台接管第三方 worker 的子树 | 报告，交给人 |
+| 互不为前缀 | 不重叠 | 只报告存在 |
+| 无法静态确定 | — | 无法判定，交给人 |
+
+静态判定步骤（只读文件，不运行项目）：
+
+1. 找注册点：`serviceWorker.register(` 的脚本 URL 与第二参数的 `scope`；`package.json` 与锁文件里的 SDK 依赖；SDK 初始化调用；`public/`、`static/`、产物根目录里的 worker 文件（含业务自有的 `sw.js`）。每条命中记录文件与行号。
+2. 确定每个 worker 的 scope S：显式给出 `scope`（或 SDK 的对应选项）则取该值；否则取脚本所在目录。相对路径、`base`、`basePath`、`publicPath` 要先按框架配置换算成站点绝对路径。
+3. 与平台 scope P 比较（两者都规范成以 `/` 结尾），按上表判定。
+4. 输出每条记录：SDK、证据文件与行号、S、结论、依据（"显式配置"或"默认推断"）。
+
+只能标"无法判定，交给人"的情形：scope 或脚本 URL 来自变量、环境变量或运行时拼接；站点有 `basePath`、部署在子路径或经反向代理改写；worker 由构建工具生成且路径在构建配置里；只依赖了 SDK 而 worker 文件在 SDK 后台、CDN 或部署侧；需要看 `Service-Worker-Allowed` 响应头（仓库里看不到）；通过标签管理器注入；无末尾斜杠的 scope（按字符串前缀还是路径段匹配**未核实**，保守处理）；依赖的默认 scope 在下表中为"未核实"。
+
+| SDK | 默认 worker 文件 | 默认 scope | 可配置项 | 静态证据 |
+| --- | --- | --- | --- | --- |
+| Firebase Cloud Messaging | `firebase-messaging-sw.js`（根目录） | 依 GitHub issue 报错推断为 `/firebase-cloud-messaging-push-scope`（次级出处，官方页未写；该路径不对应真实页面） | `getToken` 的 `serviceWorkerRegistration`（官方原文未取到） | 依赖 `firebase`（`firebase/messaging`）；`getMessaging`、`getToken`、`onBackgroundMessage`；该文件名 |
+| OneSignal | `OneSignalSDKWorker.js`（根目录，内容为 `importScripts`） | `/` | `serviceWorkerPath`、`serviceWorkerParam.scope` | `OneSignalSDK.page.js`；`OneSignal.init({ appId })`；该文件名与两个选项名 |
+| Braze | `service-worker.js`（根目录） | 脚本所在目录（来自搜索摘要，与另一处摘要不完全一致，**未核实**） | `serviceWorkerLocation`；`manageServiceWorkerExternally: true` | 包 `@braze/web-sdk`；`braze.initialize(`；两个选项名 |
+| Pusher Beams | `service-worker.js`（根目录，`importScripts`） | **未核实** | 传入 `serviceWorkerRegistration` 则 SDK 不再自行注册 | 包 `@pusher/push-notifications-web`；`PusherPushNotifications.Client`；`js.pusher.com/beams/service-worker.js` |
+| CleverTap | `clevertap_sw.js`（必须在根目录） | **未核实** | `serviceWorkerPath` | `clevertap.notifications.push(`；`clevertap_sw.js`；`sw_webpush.js` |
+| MoEngage | `serviceworker.js`（根目录） | 脚本所在位置及其下目录 | `swPath`、`swScope` | `moe({ … })`；`swPath`、`swScope`；`serviceworker.js` |
+| Airship | `push-worker.js`（根目录） | **未核实** | `workerUrl` 改脚本位置；scope 能否单独配置未核实 | 全局 `UA`；`sdk.create()`、`sdk.register()`；`workerUrl`；`push-worker.js` |
+
+出处（均于 2026-09-29 读取；部分结论只见于搜索摘要，已在对应格中标注）：MDN `Using_Service_Workers` 与 `ServiceWorkerContainer/register`；`firebase.google.com/docs/cloud-messaging/js/client`；`documentation.onesignal.com/docs/onesignal-service-worker`；`braze.com/docs/developer_guide/sdk_integration`；`pusher.com/docs/beams/getting-started/web/sdk-integration/`；`developer.clevertap.com/docs/web-push`；`moengage.com/docs/developer-guide/web-sdk/web-push/configure-and-integrate-web-push`；`airship.com/docs/developer/sdk-integration/web/getting-started/`。推送订阅归属于注册而不是页面路由，scope 不重叠也不保证两个 SDK 的推送互不影响（推断，**未核实**）。
 
 **存量 PWA 迁移分支**（Q3 为"是"）：
 
@@ -282,7 +318,7 @@ pnpm test:onboarding-smoke
 pnpm build && pnpm test && pnpm typecheck && pnpm lint
 ```
 
-业务方安装 skill 的复制命令由文档给出（macOS / Linux 使用 `cp -R`，并提供跨平台写法），目标为 `.claude/skills/pwa-onboarding` 或 `.agents/skills/pwa-onboarding`。
+业务方安装 skill 的复制命令由文档给出（macOS / Linux 使用 `cp -R`，并提供跨平台写法），目标随团队使用的 AI 而定：Claude Code 为 `.claude/skills/pwa-onboarding`，Codex 为 `.agents/skills/pwa-onboarding`，两者都用则各复制一份。
 
 ## 测试策略
 
@@ -293,7 +329,7 @@ skill 由两部分组成，测试方式不同：
 | 编号 | 检查 |
 | --- | --- |
 | DT1 | 包内容：打包后的 `@pwa-platform/vite` 含 `skills/pwa-onboarding`，`exports` 不含它；其余九个包不变 |
-| DT2 | `SKILL.md` front matter 合法（`name`、`description`、`version`），`version` 等于所属包版本 |
+| DT2 | `SKILL.md` front matter 合法：顶层键只有 `name`、`description`、`metadata`；`name` 为小写连字符、≤ 64 且等于目录名；`description` ≤ 1024 且不含 `<` `>`；`metadata.version` 等于所属包版本 |
 | DT3 | 体积预算：`SKILL.md` 与各引用文件、总量不超过预算 |
 | DT4 | 所有引用文件存在，内部链接可解析；没有孤立文件 |
 | DT5 | 要求清单一致性：`gate-3-server.md` 的规则与 `build-verifier` 导出的规则常量一致 |
@@ -340,10 +376,12 @@ AI 的行为不确定，不能只靠代码测试。用夹具项目和评分表�
 
 ## 开放问题
 
-规格阶段原有 10 个开放问题，其中 8 个已按推荐决定（见"规格阶段的决定"），第 10 个（`header-preflight` 衔接）并入决定 9。仍需在计划阶段调研的：
+规格阶段原有 10 个开放问题，8 个已按推荐决定，第 10 个并入决定 9；另两项经 AO2、AO3 调研已回答。剩下的是调研**没能核实**的部分：
 
-1. **[待核对] Codex 如何发现与显式调用 skill**：本规格只在 Claude Code 上给出 `/pwa-onboarding`；Codex 一侧的目录约定与调用方式需要在计划的第一批任务里核对官方文档后再写入，不凭记忆写。
-2. **[待核对] 第三方 Service Worker 的判定细则**：如何从业务源码与依赖判断某个 SDK 注册的 worker 落在哪个 scope、与平台 scope 是否重叠。默认规则已定（不同 scope 只报告、同 scope 交给人），细则需要对常见 SDK 的注册方式做调研，调研结果写进冲突目录。
+1. **Codex 官方 skills 页面未读到（HTTP 403）。** description 长度上限、初始 skill 列表的字符预算、同名 skill 的处理，仍需人工对照官方页面核对。"运行时忽略未知 front matter 字段"与 `$pwa-onboarding` 的显式调用**未实跑**：计划在 AO4 增加一次人工检查（在一次性目录放一个测试 skill，用 `codex exec` 确认）；这会使用项目所有者的 Codex 账号，执行前需要批准。
+2. **W3C 规范中"最长匹配"算法原文未取到**，目前只有 MDN 出处；scope 是否按路径段边界匹配（`/app` 与 `/application/`）也未核实，冲突目录对无末尾斜杠的 scope 保守处理。
+3. **第三方 SDK 的未核实项**：FCM 的官方默认 scope（现只有 issue 出处）及 `serviceWorkerRegistration` 的官方描述；Braze scope 覆盖的选项名；Pusher Beams、CleverTap、Airship 的默认 scope 字面值；OneSignal、MoEngage、CleverTap、Airship 的 npm 包名；CleverTap 的 `init` 调用。
+4. **Claude Code 是否读取 `.agents/skills`** 未核实，按不读处理。
 
 ## Documentation impact
 
