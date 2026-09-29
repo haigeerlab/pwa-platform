@@ -84,13 +84,20 @@ server {
         try_files $uri =404;
     }
 
-    # 带指纹的资源：永久缓存。缺失的哈希文件返回 404，不要回退到 index.html。
-    location /assets/ {
-        add_header Cache-Control "public, max-age=31536000, immutable" always;
+    # 带指纹的资源：永久缓存。^~ 让它优先于下面的正则 location。
+    # 这里故意不加 always：缺失文件的 404 不能带一年的缓存头，否则 CDN 会把 404 缓存一年。
+    location ^~ /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
         try_files $uri =404;
     }
 
-    # 入口 HTML、public/ 里的其他文件（favicon、图标等）和 SPA 回退：no-cache。
+    # public/ 里的其他静态文件（图标、截图、JSON 等）：no-cache；缺失时返回 404，不被 SPA 回退接住。
+    location ~* \.(?:js|mjs|css|png|jpe?g|gif|webp|avif|svg|ico|json|txt|xml|woff2?)$ {
+        add_header Cache-Control "no-cache" always;
+        try_files $uri =404;
+    }
+
+    # 入口 HTML 与 SPA 回退：no-cache。
     location / {
         add_header Cache-Control "no-cache" always;
         try_files $uri $uri/ /index.html;
@@ -100,18 +107,20 @@ server {
 
 要点：
 
-- **`add_header ... always`**：不加 <code>always</code> 时，Nginx 只对 200、201、204、206、301、302、303、304、307、308 这几个状态码添加响应头，404、500 等状态码上会丢头。
+- **`add_header ... always`**：不加 <code>always</code> 时，Nginx 只对 200、201、204、206、301、302、303、304、307、308 这几个状态码添加响应头。<code>no-cache</code> 类的规则加 <code>always</code>，让错误响应也不被缓存；**带指纹资源的长缓存规则不要加 <code>always</code>**，否则部署间隙里短暂缺失的文件会以一年缓存的 404 留在 CDN 上。
 - **`add_header` 不继承**：只要某个 <code>location</code> 里写了自己的 <code>add_header</code>，外层 <code>server</code> 里的 <code>add_header</code>（例如安全头）就不再对它生效，需要在每个 <code>location</code> 里重复，或用 <code>include</code> 引入同一份片段。
-- **SPA 回退只放在 `location /`**：<code>try_files $uri $uri/ /index.html</code> 只接住“不是文件”的导航路径；worker、manifest、离线页和 <code>/assets/</code> 都有自己的精确或更长前缀的 <code>location</code>，文件缺失时得到 404，而不是一个 200 的 HTML。把 404 变成 200 的 HTML 会掩盖缺失的资源，也会让预缓存安装“成功”地缓存下错误内容。
+- **SPA 回退只放在 `location /`，并用扩展名规则挡住静态文件**：<code>location /</code> 里的 <code>try_files $uri $uri/ /index.html</code> 会接住它下面**所有**缺失的路径，包括缺失的 <code>.js</code>、图标等文件。所以 worker、manifest、离线页、<code>/assets/</code> 有自己的精确或 <code>^~</code> 前缀 <code>location</code>，其余静态文件由扩展名正则 <code>location</code> 接住，缺失时都得到 404，而不是一个 200 的 HTML。把 404 变成 200 的 HTML 会掩盖缺失的资源，也会让预缓存安装“成功”地缓存下错误内容。
 - **`/assets/` 下不要放手写命名的文件**：放在 <code>public/assets/</code> 里的文件会被当成指纹资源缓存一年。
 
-::: warning 示例未经本仓库 CI 运行
-这份 Nginx 配置是按平台的响应头规则推导出来的，**本仓库的 CI 没有运行过它**（仓库自己的测试部署使用 Cloudflare Pages）。上线前请在你自己的环境里逐个资源用 <code>curl -I</code> 验证，见[自检](#自检)。
+::: tip 本地验证记录（2026-09-29）
+这份配置的 <code>/app/</code> 子路径版本（见下节）已在 nginx 1.31.6 上用平台 React 示例的生产构建验证：各类资源的 <code>Cache-Control</code> 与 <code>Content-Type</code> 用 <code>curl -I</code> 逐项核对；<code>verifyRelease</code> 的 <code>artifacts</code>、<code>response-headers</code>、<code>html-headers</code> 三项通过；缺失的 worker、图标和指纹资源返回 404，深层路由回退到 <code>index.html</code>，<code>/app</code> 301 到 <code>/app/</code>。使用的是自签名证书，因此**没有**在浏览器里验证 worker 注册。它不在本仓库 CI 中运行（仓库自己的测试部署使用 Cloudflare Pages）；上线前仍请在你自己的环境里按[自检](#自检)核对。
+
+示例假设外层 <code>http</code> 块像 Nginx 默认配置一样 <code>include mime.types</code>，<code>sw.js</code> 才会得到 <code>application/javascript</code>。
 :::
 
 ### 挂载在子路径 `/app/`
 
-应用挂载在 <code>/app/</code> 时，Vite <code>base</code>、身份的 <code>scope</code> 与 <code>serviceWorkerUrl</code>（<code>/app/sw.js</code>）都要按 <code>/app/</code> 配置，构建输出放在 <code>/var/www/site/app/</code>。Nginx 中把上面每个 <code>location</code> 的路径加上 <code>/app</code> 前缀（<code>location = /app/sw.js</code>、<code>location /app/assets/</code>、<code>location /app/</code>，回退改为 <code>/app/index.html</code>），根目录仍是 <code>/var/www/site</code>，并增加一条重定向：
+应用挂载在 <code>/app/</code> 时，Vite <code>base</code>、身份的 <code>scope</code> 与 <code>serviceWorkerUrl</code>（<code>/app/sw.js</code>）都要按 <code>/app/</code> 配置，构建输出放在 <code>/var/www/site/app/</code>。Nginx 中把上面每个 <code>location</code> 的路径加上 <code>/app</code> 前缀（<code>location = /app/sw.js</code>、<code>location ^~ /app/assets/</code>、扩展名正则改为 <code>~* ^/app/.+\.(?:js|…)$</code>、<code>location /app/</code>，回退改为 <code>/app/index.html</code>），根目录仍是 <code>/var/www/site</code>，并增加一条重定向：
 
 ```nginx
 location = /app { return 301 /app/; }
