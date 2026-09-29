@@ -34,7 +34,7 @@
   - [x] Android／iPhone 迁移清单、点击前不跳转、跨 Origin 返回路径和撤回
   - [x] Android 整机断网与入口故障不混淆
   - [x] Android 当前 Origin 单独失效、备用 Origin 仍可达的真机场景（Chrome 按 URL 延迟注入）
-  - [ ] iPhone 当前 Origin 单独失效、备用 Origin 仍可达的真机场景
+  - [x] iPhone 当前 Origin 单独失效、备用 Origin 仍可达的真机场景（2026-09-29，路由器按设备屏蔽单域名）
   - [ ] 真实 DNS／证书故障、非法／过期清单和中文 UI 的移动端矩阵
 - [x] T6 核对 `/` 与 `/m/`、缓存拒绝、恢复 worker、CSP 与可选 UI 个性化，修复并复测缺陷
   - [x] 桌面 Chrome N/N-1 自动化覆盖 scope 隔离、缓存拒绝和恢复路径
@@ -56,9 +56,9 @@
   - [x] iPhone Vue／React Safari 完成真实 v1→v2 双标签提示、单点接管与逐标签显式刷新
   - [x] Mac Safari 18.6 Vue／React 安装窗口完成真实 v1→v2 双窗口提示、单点接管与逐窗口显式刷新
   - [x] Android React WebAPK 完成旧 v1 DOM 保持、真实 v2 waiting、确认接管与显式刷新重新取证
-- [ ] R3 补齐 Android／iPhone 入口恢复的单 Origin 故障分支（iPhone 余下第 4b、5、6 步的操作单见 [iphone-entry-recovery-remaining-drill.md](iphone-entry-recovery-remaining-drill.md)）
+- [x] R3 补齐 Android／iPhone 入口恢复的单 Origin 故障分支（iPhone 第 4b、5、6 步按 [iphone-entry-recovery-remaining-drill.md](iphone-entry-recovery-remaining-drill.md) 于 2026-09-29 补测通过）
   - [x] Android React WebAPK 完成当前 Origin 超时、备用 Origin 可达、预缓存恢复页、用户确认跳转与撤回
-  - [ ] iPhone 完成同等单 Origin 故障分支（2026-09-28：基线、计划迁移、序号与形状、`migrating` 下不可达展示与收尾通过；`unconfirmed-outage`、离线不误报与过期待在不经 WARP 的网络上补测，见 verification.md）；2026-09-27 Safari 本地 URL 覆盖未穿透 Service Worker，重建 Web Inspector 后远程求值通道仍无响应，本轮不计通过
+  - [x] iPhone 完成同等单 Origin 故障分支（2026-09-28 通过第 1、2、3、4a、8 步；2026-09-29 经路由器单域名屏蔽补测 4b `unconfirmed-outage`、5 整机离线不误报、6 过期，均通过，见 verification.md）
 - [x] R4 复核交叉边界并关闭仓库内可验证缺口
 - [x] R5 形成 Apple 发布通道 Spec／ADR 并经项目所有者评审
   - [x] 形成“0.1.x 暂不新增 Apple 通道、macOS／iPhone 分开记录”的 Spec／ADR-0041 草案

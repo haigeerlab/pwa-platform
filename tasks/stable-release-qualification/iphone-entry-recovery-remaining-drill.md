@@ -1,5 +1,7 @@
 # iPhone 入口恢复演练：补测第 4b、5、6 步
 
+> **状态：2026-09-29 已执行，三步均通过。** 结果见 [verification.md](verification.md)“2026-09-29 补测”一节。实际使用路由器家长控制按设备屏蔽，执行顺序为 4b → 6 → 5，所以 6 用序号 3102，5 用 3103。
+
 2026-09-28 的 iPhone React 单 Origin 演练（[verification.md](verification.md)“iPhone React 入口恢复单 Origin 故障演练（R3，部分完成）”）完成了第 1、2、3、4a、8 步，余下三步因为拿不到可靠的“只有当前 Origin 不可达”环境而未执行。本单只覆盖这三步；步骤编号与判定标准以[入口恢复演练](../../docs/operations/entry-recovery-drill.md)为准，本单只补 iPhone 上的具体做法。
 
 ## 先准备：不经过 WARP 的单域名屏蔽
