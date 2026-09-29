@@ -67,5 +67,5 @@ metadata:
 | 2 | 公共/私有接口分类 | 待交付 |
 | 3 | 服务端核对 | 进入关卡 3 时读取 [references/gate-3-server.md](references/gate-3-server.md) |
 | 4 | 浏览器验证 | 进入关卡 4 时读取 [references/gate-4-browser.md](references/gate-4-browser.md) |
-| 5 | 发布门禁（可选） | 待交付 |
-| 6 | 上线后排障 | 待交付 |
+| 5 | 发布门禁（可选） | 进入关卡 5 时读取 [references/gate-5-release.md](references/gate-5-release.md) |
+| 6 | 上线后排障 | 上线后出现症状时读取 [references/gate-6-troubleshoot.md](references/gate-6-troubleshoot.md) |

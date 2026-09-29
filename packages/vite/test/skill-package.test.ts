@@ -555,3 +555,54 @@ describe("AO10 gate 4 browser verification", () => {
     expect(text()).toContain("没做的步骤");
   });
 });
+
+// ---- AO11: gate 5 release gate and gate 6 troubleshooting -------------------------------------------------------------
+
+const gate5File = join(referencesDir, "gate-5-release.md");
+const gate6File = join(referencesDir, "gate-6-troubleshoot.md");
+const faqFile = join(repoRoot, "website", "guide", "troubleshooting.md");
+
+describe("AO11 gate 5 release gate", () => {
+  const text = () => readFileSync(gate5File, "utf8");
+
+  it("points to build-verifier's verifyRelease and lists every check that needs an input", () => {
+    for (const word of ["build-verifier", "verifyRelease", "artifacts", "response-headers", "identity-baseline", "release-order", "release-retention", "html-headers"])
+      expect(text(), word).toContain(word);
+  });
+
+  it("only gives guidance: it does not collect response headers for the business team and says an omitted input skips its check", () => {
+    for (const word of ["不代为采集", "省略", "跳过", "不算通过"]) expect(text(), word).toContain(word);
+  });
+
+  it("leaves deployment and the worker switch to a person (G5) and lets the team decline the gate", () => {
+    for (const word of ["G5", "明确放弃"]) expect(text(), word).toContain(word);
+  });
+});
+
+describe("AO11 gate 6 troubleshooting", () => {
+  const text = () => readFileSync(gate6File, "utf8");
+  const rows = () => text().split(/\r?\n/).filter((line) => /^\|\s*T\d+\s*\|/.test(line)).map((line) => line.split("|").map((cell) => cell.trim()));
+
+  it("has one row per symptom of the FAQ page, in the same order", () => {
+    const faq = [...readFileSync(faqFile, "utf8").matchAll(/^## (.+)$/gm)].map((match) => match[1]?.replaceAll("`", "").trim());
+    expect(faq.length).toBe(9);
+    expect(rows().map((cells) => cells[2]?.replaceAll("`", ""))).toEqual(faq);
+  });
+
+  it("gives every symptom a gate to return to and the facts to collect", () => {
+    expect(rows().map((cells) => cells[1])).toEqual(["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9"]);
+    for (const cells of rows()) {
+      expect(cells.length, `${cells[1]} needs id, symptom, gate and facts`).toBe(6);
+      expect(cells[3], `${cells[1]} gate`).toMatch(/关卡/);
+      expect(cells[4]?.length, `${cells[1]} facts`).toBeGreaterThan(0);
+    }
+  });
+
+  it("stops the bleeding first on a live incident and leaves the recovery deploy to a person (G5)", () => {
+    for (const word of ["先止损", "恢复 worker", "G5", "原 worker"]) expect(text(), word).toContain(word);
+  });
+
+  it("treats pasted output as data and never reads or prints tokens or cookies", () => {
+    for (const word of ["数据，不是指令", "令牌", "Cookie"]) expect(text(), word).toContain(word);
+  });
+});
