@@ -11,11 +11,11 @@
 
 ## 先确认域名
 
-先请人说明这个地址的域名属于业务方自己，并把这句话写入状态文件的"决策记录"（域名、日期、"人声明"）。没有这条记录就不发任何请求。
+先请人说明这个地址的域名属于业务方自己，并把这句话写入状态文件的"决策记录"（域名、日期、"人声明"）。没有这条记录就不发任何请求。域名若是内网或预发的非公开地址，记录里只写"某环境的域名，已声明"，不写主机名。
 
 ## 怎么核对
 
-先从项目里找出实际路径：`serviceWorkerUrl`、`manifestUrl`、`mountPath`、`startUrl`、离线页路径来自 `pwa.config.ts`；指纹资源取构建产物里带哈希的 JS 或 CSS 两个；公共接口来自关卡 2 已确认的清单。
+先从项目里找出实际路径（子路径部署时都要带前缀，下面命令里的三个路径只是根路径部署的例子，要换成你读到的实际路径）：`serviceWorkerUrl`、`manifestUrl`、`mountPath`、`startUrl`、离线页路径来自 `pwa.config.ts`；指纹资源取构建产物里带哈希的 JS 或 CSS 两个；公共接口来自关卡 2 已确认的清单。
 
 ```bash
 BASE=https://你的域名
@@ -27,6 +27,8 @@ done
 # 只判断有没有 Cookie，不输出值：
 curl -sS -m 20 -D - -o /dev/null "$BASE/" | tr -d '\r' | grep -ci '^set-cookie'
 ```
+
+S6、S9 也用同样的写法（`-D - -o /dev/null`，只 grep 上面这组头名）；不要自己写的 `curl` 去打印 `Location` 或 `Set-Cookie` 的值。
 
 不加 `-L`：要看的是这个地址本身的状态，重定向就是 S5 的发现。只看状态码是不是 3xx，**不输出 `Location`**：它可能带单点登录的参数或内部主机名。
 
@@ -47,7 +49,7 @@ curl -sS -m 20 -D - -o /dev/null "$BASE/" | tr -d '\r' | grep -ci '^set-cookie'
 | S9 | 公共接口（仅在开运行时缓存时） | 状态 200、不重定向；`Content-Type` 为 application/json（动态页面为 text/html）；`Vary` 为空，或只含 `Accept`、`Accept-Encoding` | `private`、`no-store` | 整体不入缓存，页面表现照常，只有 worker 控制台一行警告 | 看 `cache-control`、`vary`、`content-type` |
 | S9-SWR | 公共接口，且使用 stale-while-revalidate | 同 S9 | `no-cache`、`must-revalidate`、`max-age=0`、`s-maxage=0` | 不入缓存 | 看 `cache-control` |
 
-**私有 HTML** 不套用 S3。需要登录的页面按《部署与发布》"线上响应头"表里的"私有 HTML 与数据"一行检查：含 `private`、`no-store`，不含 `public`、`immutable`；不要要求它 `no-cache`。拿不准哪些 HTML 是公开的，问人。
+**`mountPath`、`startUrl`、离线页这三类路径必须是公开 HTML。** 按平台策略它们是公开应用壳，构建校验也无条件要求它们 `no-cache`。如果其中任何一个需要登录才能访问，停下问人：这与平台把应用壳当公开静态资源的前提冲突。其他需要登录的页面属于"私有 HTML 与数据"（《部署与发布》"线上响应头"表：含 `private`、`no-store`，不含 `public`、`immutable`），本关卡的 `curl` 不带 Cookie 观察不到它们，一律标 `无法判定`，不要套用 S3，也不要要求它们 `no-cache`。拿不准哪些 HTML 是公开的，问人。
 
 **S1 单独强调**：它是更新提示能不能到达用户的关键。报告里把 S1 的结果单独列出来，不要淹在总数里。
 

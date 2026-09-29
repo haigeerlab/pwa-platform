@@ -18,7 +18,7 @@ gates:
 ## 决策记录
 
 - 2026-09-30 关卡 0：语言 zh-CN，默认档；线上还不是 PWA；生产 origin https://app.example.com，根路径部署，环境 development / production
-- 2026-09-30 G2 身份字段：origin=https://app.example.com，scope=/，serviceWorkerUrl=/sw.js，manifestId=/，environment=production，cacheNamespaceSeed=r1（人确认）
+- 2026-09-30 G2 身份字段：origin=https://app.example.com，scope=/，serviceWorkerUrl=/sw.js，appId=businessapp，manifestId=/，manifestUrl=/manifest.webmanifest，mountPath=/，environment=production，cacheNamespaceSeed=r1（人确认）
 
 ## 证据
 

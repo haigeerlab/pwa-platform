@@ -224,7 +224,7 @@ packages/vite/skills/pwa-onboarding/
 | 闸门 | 触发 | 确认的内容 |
 | --- | --- | --- |
 | G1 删除依赖或文件 | 关卡 A 的改动清单 | 逐项列出将删除或修改的文件与依赖 |
-| G2 身份字段 | 关卡 1，写入首次生产注册前的 `PwaIdentity` | origin、scope、worker 地址、manifest ID、`environment`、`cacheNamespaceSeed` 的具体取值 |
+| G2 身份字段 | 关卡 1，写入首次生产注册前的 `PwaIdentity` | 身份基线的九项：`appId`、`origin`、`scope`、`serviceWorkerUrl`、`manifestId`、`manifestUrl`、`mountPath`、`environment`、`cacheNamespaceSeed` 的具体取值（与 `build-verifier` 的 `BASELINE_FIELDS` 一致，由测试核对） |
 | G3 公共缓存规则 | 关卡 2 | 每个接口前缀与其"公共"判断，逐个确认 |
 | G4 真机验证 | 关卡 4 | 哪台设备、什么浏览器与版本、哪几步通过 |
 | G5 生产部署与 worker 切换 | 关卡 5 与 6 | 由人自行执行；skill 只记录"已执行"的陈述 |

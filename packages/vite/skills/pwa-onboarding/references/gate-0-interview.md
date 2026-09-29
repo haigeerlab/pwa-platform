@@ -25,7 +25,7 @@
 
 ## 产出
 
-写入 `PWA-ONBOARDING.md`：`language`、`profile`、`existingPwa`，以及 Q4、Q5 的具体答案（写"决策记录"，不含密钥）。关卡 0 置为 `done`。
+写入 `PWA-ONBOARDING.md`：`language`、`profile`、`existingPwa`，以及 Q4、Q5 的具体答案（写"决策记录"，不含密钥；只写环境名和公开地址，内网、预发等非公开地址不写进状态文件）。关卡 0 置为 `done`。
 
 ## 通过标准
 

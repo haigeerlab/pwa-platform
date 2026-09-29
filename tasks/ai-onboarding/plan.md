@@ -273,7 +273,7 @@
 
 **范围估计：** 中。依赖：AO15。
 
-**实现记录（AO16）：** 自动门禁全绿；独立评审 BLOCKER 0、MAJOR 5、MINOR 6，已核实并处理 MAJOR 全部与 MINOR 中的 5 条，1 条（重复规则文字无测试）记为已知限制。详见 `tasks/ai-onboarding/verification.md` 的 AO16 一节。
+**实现记录（AO16）：** 自动门禁全绿；独立评审 BLOCKER 0、MAJOR 5、MINOR 6，已核实并处理 MAJOR 全部与 MINOR 中的 5 条，1 条（重复规则文字无测试）记为已知限制。随后第二次独立评审（复核修订）又发现 N1–N9（含 4 处重要问题：身份基线有九项而不是七项、`skipped` 可被伪造、私有 HTML 与 `html-headers` 冲突、内网地址仍会进状态文件），已全部处理。详见 `tasks/ai-onboarding/verification.md` 的 AO16 一节。
 
 ## Task List
 

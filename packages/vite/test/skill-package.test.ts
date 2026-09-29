@@ -957,3 +957,68 @@ describe("AO16 independent review findings", () => {
     expect(text).toMatch(/G5[^\n]*(无论|不论)[^\n]*关卡 5/);
   });
 });
+
+// ---- AO16: findings of the second, fresh-context review ---------------------------------------------------------------
+
+describe("AO16 second review findings", () => {
+  const read = (name: string) => readFileSync(join(referencesDir, name), "utf8");
+
+  it("N1: G2 covers every field of the identity baseline, in the gate text, the resume rule and the example", async () => {
+    const { BASELINE_FIELDS } = await import("@pwa-platform/build-verifier");
+    const step = read("gate-1-configure.md").split("\n").find((line) => line.startsWith("2. **身份与策略")) ?? "";
+    const example = read("state-file.md").split("\n").find((line) => line.includes("G2 身份字段")) ?? "";
+    for (const field of BASELINE_FIELDS) {
+      expect(step, `gate-1-configure.md step 2 lacks ${field}`).toContain(field);
+      expect(example, `state-file.md example lacks ${field}`).toContain(field);
+    }
+    expect(read("state-file.md")).toContain("九项");
+  });
+
+  it("N2: only gates 2 and 5 may be skipped; any other skipped gate counts as not done", () => {
+    const text = read("state-file.md");
+    expect(text).toMatch(/只有关卡 2[^\n]*关卡 5[^\n]*`skipped`|`skipped`[^\n]*只有关卡 2[^\n]*5/);
+    expect(text).toMatch(/其他[^\n]*`skipped`[^\n]*(未完成|不算)/);
+  });
+
+  it("N3: gate 3 says the S3 paths must be public HTML and that login-gated pages cannot be observed without cookies", () => {
+    const text = read("gate-3-server.md");
+    expect(text).toMatch(/mountPath[^\n]*必须[^\n]*(公开|不带 Cookie)/);
+    expect(text).toMatch(/需要登录[^\n]*(停下|问人)/);
+    expect(text).toMatch(/私有[^\n]*无法判定|无法判定[^\n]*私有/);
+  });
+
+  it("N4: internal addresses are excluded in gate 0 and gate 3 as well, not only in gate 1", () => {
+    for (const name of ["gate-0-interview.md", "gate-3-server.md"]) expect(read(name), name).toMatch(/内网|预发|非公开地址/);
+  });
+
+  it("N5: every gate maps to a record that makes it done, and the example carries them", () => {
+    const text = read("state-file.md");
+    expect(text).toMatch(/决策记录或证据/);
+    expect(text).toMatch(/关卡 A：/);
+    expect(text).toMatch(/关卡 0：/);
+  });
+
+  it("N6: gate 1 re-asks any identity field missing from the record", () => {
+    expect(read("gate-1-configure.md")).toMatch(/缺少[^\n]*(重新|再)[^\n]*确认|缺的[^\n]*(重新|再)[^\n]*确认/);
+  });
+
+  it("N7: resume rules say what happens with an empty or skipped gate 2, gate 6 and a rule the person now rejects", () => {
+    const resume = sectionOf(read("state-file.md"), "## 续做");
+    expect(resume).toMatch(/关卡 2[^\n]*`skipped`[^\n]*(无需|不用)/);
+    expect(resume).toMatch(/关卡 6[^\n]*不[^\n]*G4|G4[^\n]*关卡 6/);
+    expect(resume).toMatch(/不认可[^\n]*(关卡 2|G1)/);
+  });
+
+  it("N8: the curl example uses the configured paths and every check keeps to header names only", () => {
+    const text = read("gate-3-server.md");
+    expect(text).toMatch(/实际路径[^\n]*(前缀|子路径)/);
+    expect(text).toMatch(/S6[^\n]*S9[^\n]*(同样|同一)|自己写的?\s*`curl`/);
+  });
+
+  it("N9: gates 4 and 6 name the person as the actor and keep the probe qualifier", () => {
+    const b = read("gate-4-browser.md");
+    expect(b.split("\n").find((line) => line.startsWith("| B4")) ?? "").toContain("由人");
+    expect(b.split("\n").find((line) => line.startsWith("| B8")) ?? "").toContain("由人");
+    expect(read("gate-6-troubleshoot.md")).toMatch(/探测请求/);
+  });
+});
