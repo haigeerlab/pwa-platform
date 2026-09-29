@@ -335,7 +335,7 @@ skill 由两部分组成，测试方式不同：
 | DT2 | `SKILL.md` front matter 合法：顶层键只有 `name`、`description`、`metadata`；`name` 为小写连字符、≤ 64 且等于目录名；`description` ≤ 1024 且不含 `<` `>`；`metadata.version` 等于所属包版本 |
 | DT3 | 体积预算：`SKILL.md` 与各引用文件、总量不超过预算 |
 | DT4 | 所有引用文件存在，内部链接可解析；没有孤立文件 |
-| DT5 | 要求清单一致性：`gate-3-server.md` 的规则与 `build-verifier` 导出的规则常量一致 |
+| DT5 | 要求清单一致性：`gate-3-server.md` 的 S1–S4 与 S9 / S9-SWR 由行为判定，而非常量比对——对固定指令集的全部组合，清单声明的“必须含 / 不得含”预测的结论必须等于真实的 `build-verifier`（`verifyResponseHeaders` / `verifyHtmlHeaders`）与运行时缓存响应准入（`admitRuntimeResponse`）的结论；测试分别在 `build-verifier` 与 `sw-runtime` 两个包内 |
 | DT6 | 不含可执行内容：目录下只有 `.md`；**围栏代码块内**不含把文件写入 `public/`、`src/`、`dist/` 的命令（`cp`、`mv`、`rsync`、`ln`、`tee`、`install` 与重定向）。正文里行内代码写的写入命令不在此测试的范围，由场景评估与独立评审兜底 |
 | DT7 | 语言对等：每个报告标签在 `glossary-en.md` 都有英文译法 |
 | DT8 | **不进入生产构建**：在 onboarding-smoke 夹具里，对装有 skill 副本的项目做生产构建，`dist/` 不含 skill 文件与哨兵字符串，且产物哈希与未装时相同 |

@@ -65,7 +65,7 @@ metadata:
 | 0 | 采访 | 进入关卡 0 时读取 [references/gate-0-interview.md](references/gate-0-interview.md) |
 | 1 | 配置并检查 | 进入关卡 1 时读取 [references/gate-1-configure.md](references/gate-1-configure.md)，它再指向配置文件与 Vue / React 片段 |
 | 2 | 公共/私有接口分类 | 待交付 |
-| 3 | 服务端核对 | 待交付 |
+| 3 | 服务端核对 | 进入关卡 3 时读取 [references/gate-3-server.md](references/gate-3-server.md) |
 | 4 | 浏览器验证 | 待交付 |
 | 5 | 发布门禁（可选） | 待交付 |
 | 6 | 上线后排障 | 待交付 |

@@ -471,3 +471,47 @@ describe("AO7 snippets stay identical to the official onboarding docs", () => {
     expect(react).toContain("updateCheck={{ intervalMs: 1_800_000 }}");
   });
 });
+
+// ---- AO9: gate 3 server requirements ------------------------------------------------------------------------------
+
+const gate3File = join(referencesDir, "gate-3-server.md");
+
+describe("AO9 gate 3 server requirements", () => {
+  const text = () => readFileSync(gate3File, "utf8");
+
+  it("lists S1-S9 with the stale-while-revalidate addition, each with a consequence and a check", () => {
+    const rows = new Map<string, string[]>();
+    for (const line of text().split(/\r?\n/)) {
+      const cells = line.split("|").map((cell) => cell.trim());
+      const id = /^(S\d+(?:-[A-Z]+)?)$/.exec(cells[1] ?? "")?.[1];
+      if (id) rows.set(id, cells.slice(2, -1));
+    }
+    expect([...rows.keys()].sort()).toEqual(["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9", "S9-SWR"]);
+    for (const [id, cells] of rows) {
+      expect(cells.length, `${id} needs resource, must-include, must-not-include, consequence and check`).toBe(5);
+      expect(cells[3]?.length, `${id} has no consequence`).toBeGreaterThan(0);
+      expect(cells[4]?.length, `${id} has no check`).toBeGreaterThan(0);
+    }
+  });
+
+  it("says the source of the rules and that it does not add rules of its own", () => {
+    for (const word of ["部署与发布", "build-verifier", "不另立规则"]) expect(text(), word).toContain(word);
+  });
+
+  it("explains the three ways an item is undetermined and never counts it as a pass", () => {
+    for (const word of ["路径尚不存在", "历史部署", "随时间变化", "无法判定"]) expect(text(), word).toContain(word);
+    expect(text()).toContain("不算通过");
+  });
+
+  it("checks read-only with curl, without keeping bodies or cookies, and only for the business team's own domain", () => {
+    for (const word of ["curl", "-o /dev/null", "只读", "声明属于业务方"]) expect(text(), word).toContain(word);
+  });
+
+  it("contains no nginx or CDN configuration samples (server-agnostic requirements only)", () => {
+    for (const block of codeBlocks(text())) {
+      expect(block.text, "a fenced block looks like server configuration").not.toMatch(
+        /\b(add_header|proxy_pass|try_files|location\s+[=~^/]|server\s*\{|expires\s+\d|Header\s+set|_headers)\b/i,
+      );
+    }
+  });
+});
