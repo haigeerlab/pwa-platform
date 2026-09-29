@@ -8,14 +8,16 @@
 | 只要可安装的原生壳 | identity、install、空缓存策略（仍须写 `updateMode: "prompt"`，所有策略都必填）、页面注册 | 离线打开、版本更新提示、公共 API 缓存 |
 | 增加用户确认更新 | 预缓存应用壳、`updateMode: "prompt"`、更新 UI | 自动刷新、未保存内容保护、后台周期同步 |
 | 增加应用壳离线 | 静态资源规则、导航规则、首次在线访问 | 任意业务路由和用户数据离线可用 |
-| 增加离线页 | `offlineFallback`、离线页资源规则、`offlinePage` | 把离线页变成完整业务页面 |
+| 增加离线页 | `offlineFallback`、离线页文件（`offlinePage` 或 `public/offline.html`） | 把离线页变成完整业务页面 |
 | 增加公共读取缓存 | PwaPolicy v3、明确的公共路径和容量／时效上限 | 私有接口、写入、流媒体或未分类请求缓存 |
 | 增加故障恢复 | 恢复 worker 发布流程；可选入口恢复包 | 自动跳转、跨 Origin 登录态迁移 |
 
 ## 所有路径共用的基础
 
 先按[选择接入包](/start/choose)安装 0.2.3，再在 `pwa.config.ts` 中声明生产部署的真实 identity 与
-install metadata。完整字段、根路径／子路径区别和稳定性要求见[身份与策略配置](/guide/configuration)。
+install metadata。完整字段、根路径／子路径区别和稳定性要求见[身份与策略配置](/guide/configuration)；
+下文片段里的 `IDENTITY`、`INSTALL`、`POLICY` 都来自那里的完整配置，`pwa()` 片段基于其中的
+`vite.config.ts`，不再重复声明。
 Vue 使用 `createPwa()`，React 使用 `PwaProvider`；两者都要在浏览器启动后显式调用 `register()`。
 
 想让 AI 助手按关卡带着做，见[用 AI 引导接入](/start/choose#ai-onboarding)。
@@ -41,6 +43,9 @@ export const POLICY: PwaPolicy = {
 ```
 
 ```ts
+import { pwa } from "@pwa-platform/vite";
+
+// 在 vite.config.ts 的 plugins 中；IDENTITY、INSTALL 见配置指南
 pwa({
   identity: IDENTITY,
   install: INSTALL,
@@ -79,6 +84,8 @@ updateMode: "prompt",
 updateCheck: { intervalMs: 1_800_000 }
 ```
 
+`intervalMs` 须为 60000 到 2147483647 之间的整数，默认不开；页面隐藏时暂停，`register()` 成功后满一个完整间隔才做第一次检查。详见[安装与更新](/guide/updates)。
+
 这是页面可见时调用 `registration.update()` 的定时器，不是 Periodic Background Sync。新 worker 安装后
 仍然等待；只有用户操作触发 `applyUpdate()` 才接管。接管不会刷新当前页面，业务必须在保存表单后决定
 何时调用 `location.reload()`。
@@ -91,6 +98,13 @@ updateCheck: { intervalMs: 1_800_000 }
 <script setup lang="ts">
 import { PwaUpdateNotice } from "@pwa-platform/vue/ui";
 import "@pwa-platform/vue/update-notice.css";
+
+// 业务自行提供：文案对象（可选，逐项覆盖内置文案）和“确认后刷新”的回调（例如先保存表单）
+const updateMessages = { /* 只写要覆盖的键；不需要覆盖时删除 :messages 属性 */ };
+const confirmThenReload = (): void => {
+  // 业务自行提供：保存未提交内容，然后
+  location.reload();
+};
 </script>
 
 <template>
@@ -146,7 +160,9 @@ resources: [
 
 ## 路径四：增加离线页与弱网回退
 
-在路径三基础上同时完成三处配置：策略打开 fallback、离线页本身加入资产规则、Vite 插件生成页面。
+在路径三基础上完成两处配置：策略打开 fallback、离线页文件存在（Vite 插件生成，或自备 `public/offline.html`）。
+离线页的 `asset` 规则是可选的，编译器会自动预缓存离线页；真正的要求是文件存在且没有被拒绝规则覆盖
+（`compile.offline-fallback-not-built`、`compile.offline-fallback-denied`）。
 
 ```ts
 offlineFallback: { enabled: true, path: "/offline.html" },
@@ -154,12 +170,14 @@ networkTimeoutSeconds: 5,
 resources: [
   { pathPrefix: "/", resourceClass: "navigation-public-static", cache: "network-first" },
   { pathPrefix: "/index.html", resourceClass: "asset", cache: "cache-first" },
-  { pathPrefix: "/offline.html", resourceClass: "asset", cache: "cache-first" },
   { pathPrefix: "/assets", resourceClass: "asset", cache: "cache-first" },
 ],
 ```
 
 ```ts
+import { pwa } from "@pwa-platform/vite";
+
+// 在 vite.config.ts 的 plugins 中；IDENTITY、INSTALL 见配置指南
 pwa({
   identity: IDENTITY,
   policy: POLICY,
@@ -194,11 +212,11 @@ export const POLICY: PwaPolicy = {
   install: { enabled: true },
   offlineFallback: { enabled: true, path: "/offline.html" },
   updateMode: "prompt",
+  // v2／v3 必填；离线写入能力尚未发布，保持全零的禁用形式
   offlineWrites: { enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [] },
   resources: [
     { pathPrefix: "/", resourceClass: "navigation-public-static", cache: "network-first" },
     { pathPrefix: "/index.html", resourceClass: "asset", cache: "cache-first" },
-    { pathPrefix: "/offline.html", resourceClass: "asset", cache: "cache-first" },
     { pathPrefix: "/assets", resourceClass: "asset", cache: "cache-first" },
     { pathPrefix: "/api/catalog", resourceClass: "public-data", cache: "network-first" },
   ],
@@ -210,6 +228,9 @@ export const POLICY: PwaPolicy = {
   },
 };
 ```
+
+`maxAgeSeconds` 从平台写入缓存时起算，而不是响应自身的 `max-age`；任何规则或上限变化都会换一个新的数据缓存，
+旧缓存在新 worker 激活时删除、数据不迁移。
 
 上线前必须用真实响应验证状态码、Content-Type、`Cache-Control`、`Vary`、大小和是否携带
 `Authorization`。完整准入规则、SWR 限制和验收步骤只在[公共读取缓存](/guide/public-read-cache)维护；
@@ -224,14 +245,19 @@ export const POLICY: PwaPolicy = {
 | 恢复 worker | 当前 worker 或缓存规则异常 | 预先保留构建产物；事故时部署到原 worker URL，清理本应用缓存后回到网络 |
 | 入口恢复页 | 原 Origin 迁移或不可达 | 安装 `entry-resilience`、预缓存恢复页、业务后端提供清单、用户确认后跳到新 Origin |
 
+用户登出、共享设备上需要清除公共读取缓存时，见[公共读取缓存](/guide/public-read-cache#登出与共享设备)：平台不检测登出，
+应用须自己调用 `logout()`。
+
 恢复 worker 由 `@pwa-platform/vite` 随构建生成，不是页面中的开关。发布团队必须按
 [部署与发布](/operations/release#回滚与恢复)保存并演练，不能靠修改 scope 或 worker URL 绕过事故。
 
 入口恢复需要额外安装 `@pwa-platform/entry-resilience@0.2.3`：
 
 ```ts
+import { pwa } from "@pwa-platform/vite";
 import { pwaEntryResilience } from "@pwa-platform/entry-resilience/vite";
 
+// identity、policy、install、topology 即上文的 IDENTITY、POLICY、INSTALL 与 topology
 plugins: [
   pwa({ identity, policy, install, topology }),
   pwaEntryResilience({ identity, maxValidityDays: 30, locale: "zh-CN" }),
@@ -248,8 +274,12 @@ import {
   updateEntryManifest,
 } from "@pwa-platform/entry-resilience/client";
 
+// 业务自行提供：api.getEntryManifest() 取回并解密清单；currentTheme 为 "light" | "dark" | "system"
 await updateEntryManifest(await api.getEntryManifest());
 const result = await checkEntryRecovery({ returnPath: location.pathname });
+if (result.kind === "available") {
+  // result.recoveryPageUrl 是同源恢复页链接；由业务展示入口，用户点击后才跳转
+}
 setPwaTheme(currentTheme);
 ```
 

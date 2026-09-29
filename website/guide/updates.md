@@ -13,15 +13,17 @@
 
 | 方法 | 用途 |
 | --- | --- |
-| <code>register()</code> | 应用启动后主动注册 worker；失败时拒绝 Promise，修复后可重试 |
-| <code>promptInstall()</code> | 在用户操作中显示一次性提示；返回 <code>accepted</code>、<code>dismissed</code> 或 <code>unavailable</code> |
-| <code>applyUpdate()</code> | 用户确认后让等待中的 worker 接管；成功返回 <code>true</code>，没有等待版本返回 <code>false</code>，接管失败时拒绝 Promise |
+| <code>register()</code> | 应用启动后主动注册 worker；失败时拒绝 Promise，修复后可重试。回访时若浏览器已为同一 scope 和同一 worker 脚本持有已激活的注册，会立即完成并触发 <code>registered</code>；此时后台的脚本请求失败**不会**使 <code>register()</code> 拒绝，需要用 <code>checkForUpdate()</code> 发现（[ADR-0043](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0043-registered-from-existing-active-registration.md)） |
+| <code>promptInstall()</code> | 在用户操作中显示一次性提示；返回 <code>accepted</code>、<code>dismissed</code> 或 <code>unavailable</code>；浏览器拒绝显示（例如不在用户操作中调用）时 Promise 拒绝，需要 <code>try/catch</code> |
+| <code>applyUpdate()</code> | 用户确认后让等待中的 worker 接管；成功返回 <code>true</code>，没有等待版本返回 <code>false</code>；最多等待 10 秒接管，超时或确认消息发不出去时拒绝 Promise |
 | <code>checkForUpdate()</code> | 主动检查；返回 <code>update-available</code>、<code>up-to-date</code> 或 <code>unavailable</code>，仍以 <code>updateWaiting</code> 决定是否提示接管 |
-| <code>logout()</code> | 执行平台管理的登出清理与注销 |
+| <code>logout()</code> | 清理运行时缓存与离线写队列，然后注销本应用的 worker |
 
 Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端行为序列由测试保证一致。
 
 业务登出时，先结束自己的会话，再调用 <code>await pwa.logout()</code>。它只清理平台管理的状态并注销本应用的 worker，不会替应用退出后端会话或删除自建缓存。检查返回的布尔值：<code>true</code> 表示注销成功；<code>false</code> 可能是没有注册、当前页尚未受控，或清理／注销未完成，不能当作平台清理成功。若预期已有注册却返回 <code>false</code>，先按[浏览器核验](/start/checklist#首次接入的浏览器核验)检查控制状态。其他已打开的标签页仍可能受旧 worker 控制，直到关闭。
+
+<code>logout()</code> 清理的只是平台 worker 管理的运行时缓存和离线写队列，随后注销 worker；**不会**清除预缓存、浏览器 HTTP 缓存、Cookie 或应用自己的存储。返回 <code>false</code> 而不注销的情形包括：当前页未受控，或 worker 在 10 秒内没有确认清理完成。它不会重置 <code>registered</code> 与 <code>updateWaiting</code>；需要这些状态时由业务自己记录登出结果。
 
 同一页面下次重新登录后，若需要恢复安装、离线和更新能力，请再次调用 <code>pwa.register()</code>。Vue 示例中的 <code>onMounted</code> 与 React 示例中的 <code>Registrar</code> 只负责组件挂载时注册，不会因登录状态变化而自动重注册。
 
@@ -52,9 +54,22 @@ Vue 的状态装在 <code>Ref</code> 中，React 的状态是快照值；两端�
 
 长期不刷新的页面可显式开启 <code>updateCheck: { intervalMs: 1_800_000 }</code>；默认不开定时检查，最小间隔为 60 秒。框架中的最小写法见[Vue 接入](/start/vue)和[React 接入](/start/react)；上线前应按本页的交互流程处理失败、稍后提醒、未保存内容及多标签页。完整可复制的自绘 React／Vue 实现（含新旧代码判断、状态机与无障碍标注）见[自绘更新提示](/guide/update-prompt-custom)。
 
+### 定时检查的行为
+
+- **默认关闭，没有默认间隔。** 只有传入 `updateCheck: { intervalMs }` 才开启；`intervalMs` 必须是 60000 到 2147483647 之间的整数，否则创建绑定时抛错（Vue 的 `app.use(createPwa(...))`、React 的 `PwaProvider` 挂载时；错误信息不回显所传的值）。不能与外部注入的 `client` 同时使用，两者同传会直接抛错。
+- **`register()` 成功后才开始。** 第一次检查在一个完整间隔之后，不会立即检查。
+- **链式定时，不重叠。** 上一次检查结束后才重新计时，所以实际周期是间隔加上检查耗时。
+- **页面在后台时跳过。** 到点时标签页不可见，这一次被跳过并记为“欠着”；页面重新可见时立即补查。若自上次检查开始已过去一个完整间隔，重新可见时也会立即检查。
+- **不响应 `online`／焦点事件。** 网络恢复或页面获得焦点本身不会触发检查。
+- **失败静默。** 自动检查的失败不抛错、不触发事件，下一轮照常进行；需要看到失败时手动调用 `checkForUpdate()`。
+- **`logout()` 会停止它，** 下一次 `register()` 重新开始。
+- **各标签页各自轮询，** 没有跨标签页协调。
+- **与手动检查共用同一次请求。** 手动 `checkForUpdate()` 与自动检查同时进行时，只发起一次浏览器 `update()`。
+- **服务器负载。** 每次检查都会绕过 HTTP 缓存请求 `serviceWorkerUrl`；最小间隔 60 秒时，每个可见标签页每小时最多约 60 次。服务端与 CDN 侧的建议见[服务器与 CDN 配置](/operations/hosting)，默认值与时序汇总见[约定与默认值](/reference/conventions)。
+
 ## 多标签页
 
-无需任何配置。平台不使用 <code>BroadcastChannel</code> 或其他跨标签消息通道，每个同 scope 标签页都各自监听浏览器原生的 <code>controllerchange</code> 事件。一个标签页确认更新、完成 worker 接管后，其余标签页会各自观察到同一次 <code>controllerchange</code>，从而各自清除自己的更新提示；**没有任何标签页会因此被自动刷新**。这意味着其他标签页里仍在运行的是旧版本前端代码，只是已经交给新 worker 控制——业务要自行决定是否、以及何时提示这些标签页刷新。
+无需任何配置。平台不使用 <code>BroadcastChannel</code> 或其他跨标签消息通道，每个同 scope 标签页都各自监听浏览器原生的 <code>controllerchange</code> 事件。一个标签页确认更新、完成 worker 接管后，其余标签页会各自观察到同一次 <code>controllerchange</code>；其中此前**已经宣告过更新等待**（`update-waiting`）的标签页会触发 `update-applied` 并清除自己的更新提示，没有宣告过的标签页不会触发；**没有任何标签页会因此被自动刷新**。这意味着其他标签页里仍在运行的是旧版本前端代码，只是已经交给新 worker 控制——业务要自行决定是否、以及何时提示这些标签页刷新。
 
 ## 可选的默认更新提示
 
@@ -78,6 +93,8 @@ import "@pwa-platform/vue/update-notice.css";
 React 应用把组件放在 `PwaProvider` 内：
 
 ```tsx
+import config from "virtual:pwa-config"; // 构建插件提供的配置，接入方式见 React 接入页
+import { PwaProvider } from "@pwa-platform/react";
 import { PwaUpdateNotice } from "@pwa-platform/react/ui";
 import "@pwa-platform/react/update-notice.css";
 
@@ -90,11 +107,11 @@ import "@pwa-platform/react/update-notice.css";
 </PwaProvider>
 ```
 
-挂载组件就是显示开关；不挂载时，原有 `usePwa()` 和自定义界面照常可用。默认是右下角非模态卡片，另可选 `bottom-center`、`top-right`、`top-center`。移动端会留出边距并适配安全区。等待状态持续约 100 ms 后才显示卡片，恢复 worker 的短暂波动不会误报“更新已完成”。点击“稍后”只隐藏本页提示，30 分钟后若仍有等待版本则再次提醒；点击“更新”先完成 worker 接管，随后由用户**再次点击**“刷新页面”。更新失败可重试，多个标签页各自显示接管后的状态。
+挂载组件就是显示开关；不挂载时，原有 `usePwa()` 和自定义界面照常可用。默认是右下角非模态卡片，另可选 `bottom-center`、`top-right`、`top-center`。移动端会留出边距并适配安全区。等待状态持续约 100 ms 后才显示卡片，恢复 worker 的短暂波动不会误报“更新已完成”。点击“稍后”只隐藏本页提示，状态只保存在组件内存中，刷新页面、出现新的等待版本或 worker 接管后都会重置；30 分钟后若仍有等待版本则再次提醒，这个提醒只有默认的 `PwaUpdateNotice` 具备，自绘提示需要自己实现；点击“更新”先完成 worker 接管，随后由用户**再次点击**“刷新页面”。更新失败可重试，多个标签页各自显示接管后的状态。
 
-`colors` 可直接设置 `primaryButtonBackground`、`primaryButtonText`、`surface`、`text`、`mutedText`、`border`；仅影响当前提示，并优先于祖先元素继承的色值。内置文案覆盖中文（`zh-CN`，默认）与英文（`en`）两种语言，通过 `locale` 选择；不传 `locale` 时行为与此前完全相同。`messages` 仍是逐项覆盖，叠加在所选 `locale` 的内置文案之上；不做浏览器语言自动探测，需要其他语言时用 `messages` 传入完整翻译。宿主也可通过 `--pwa-update-surface`、`--pwa-update-text`、`--pwa-update-muted`、`--pwa-update-border`、`--pwa-update-accent`、`--pwa-update-accent-text`、`--pwa-update-font`、`--pwa-update-radius`、`--pwa-update-shadow` 或 `--pwa-update-z-index` CSS 变量换肤。自定义按钮背景与文字色时，应保持文字清晰可读。业务有未保存的表单时，传入 `reloadPage` 回调，在回调里先确认是否可以离开页面；缺省才直接调用浏览器刷新。提示只消费既有更新状态，不替业务调用 `register()`；长期停留页面仍需自行启用 `updateCheck`。
+`colors` 可直接设置 `primaryButtonBackground`、`primaryButtonText`、`surface`、`text`、`mutedText`、`border`；仅影响当前提示，并优先于祖先元素继承的色值。内置文案覆盖中文（`zh-CN`，默认）与英文（`en`）两种语言，通过 `locale` 选择；不传 `locale` 时行为与此前完全相同。`messages` 仍是逐项覆盖，叠加在所选 `locale` 的内置文案之上，共 12 个键：`readyTitle`、`readyBody`、`update`、`later`、`updatingTitle`、`updatingBody`、`reloadTitle`、`reloadBody`、`reload`、`errorTitle`、`errorBody`、`retry`；两种内置文案也从 `ui` 入口导出为 `PWA_UPDATE_NOTICE_MESSAGES`（Vue 与 React 相同），可作为覆盖时的起点；不做浏览器语言自动探测，需要其他语言时用 `messages` 传入完整翻译。宿主也可通过 `--pwa-update-surface`、`--pwa-update-text`、`--pwa-update-muted`、`--pwa-update-border`、`--pwa-update-accent`、`--pwa-update-accent-text`、`--pwa-update-font`、`--pwa-update-radius`、`--pwa-update-shadow` 或 `--pwa-update-z-index` CSS 变量换肤。自定义按钮背景与文字色时，应保持文字清晰可读。业务有未保存的表单时，传入 `reloadPage` 回调，在回调里先确认是否可以离开页面；缺省才直接调用浏览器刷新。提示只消费既有更新状态，不替业务调用 `register()`；长期停留页面仍需自行启用 `updateCheck`。
 
-若业务构建使用 PurgeCSS 且只扫描业务源码，须把 `/^pwa-update-notice/` 加入 safelist，避免从依赖包导入的组件类名被删。首个 Vite 5 项目的真实构建仍需对此做产物和浏览器检查。
+若业务构建使用 PurgeCSS 且只扫描业务源码，须把 `/^pwa-update-notice/` 加入 safelist，避免从依赖包导入的组件类名被删。验收步骤：执行生产构建后，确认产物 CSS 中仍包含 `.pwa-update-notice` 相关样式，并在浏览器中触发一次等待更新，确认提示能正常渲染。
 
 ## 自绘更新提示的已知边界
 
@@ -104,6 +121,11 @@ import "@pwa-platform/react/update-notice.css";
 
 ## 安装提示的限制
 
-收到 <code>installEligible</code> 后，可以在用户点击安装按钮时调用 <code>promptInstall()</code>。保存的提示只能使用一次；调用后即使用户选择 <code>dismissed</code>，该状态也可能仍为 <code>true</code>。在浏览器再次提供新提示前，下一次调用返回 <code>unavailable</code>。
+收到 <code>installEligible</code> 后，可以在用户点击安装按钮时调用 <code>promptInstall()</code>。保存的提示只能使用一次：平台在调用浏览器的 <code>prompt()</code> **之前**就已消耗它，所以 <code>prompt()</code> 被拒绝（例如不在用户操作中调用）时 Promise 同样拒绝，且提示已不可重用，请用 <code>try/catch</code> 包住调用。调用后即使用户选择 <code>dismissed</code>，该状态也可能仍为 <code>true</code>。在浏览器再次提供新提示前，下一次调用返回 <code>unavailable</code>。
+
+- 只有构建计划包含安装元数据（`install` 配置）时，平台才会监听 `beforeinstallprompt`；否则它既不监听也不调用 `preventDefault()`，<code>installEligible</code> 永远不会变为 <code>true</code>，<code>promptInstall()</code> 只会返回 <code>unavailable</code>。
+- 启用安装元数据后，平台会对 `beforeinstallprompt` 调用 `preventDefault()`，浏览器自带的安装小提示条（mini-infobar）因此被抑制；安装入口完全由业务的按钮提供。
+- 收到 `appinstalled` 后，<code>installed</code> 变为 <code>true</code>，<code>installEligible</code> 变为 <code>false</code>。
+- iOS Safari 不会触发 `beforeinstallprompt`，<code>installEligible</code> 在那里不会出现；需要自行提供“添加到主屏幕”的手动引导。
 
 Vue／React 绑定不会因同页再次收到安装事件而把已为 <code>true</code> 的状态变成新的信号；入门示例首次点击后隐藏按钮，本页不会自动重新显示。需要后续重试的业务，应自行提供可见的再次尝试入口，并处理 <code>unavailable</code> 结果。不能把状态当成仍有可用提示的保证。不同浏览器提供的安装提示能力不同；基础网页体验不能依赖安装事件才能工作。当前的发布验收目标与证据边界见[兼容性](/reference/compatibility)。
