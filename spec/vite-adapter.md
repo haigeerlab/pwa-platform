@@ -461,9 +461,4 @@ type PwaOfflinePageMessages = {
 
 ## ai-onboarding 增补（2026-09-29）
 
-`@pwa-platform/vite` 的发布内容新增 `skills/pwa-onboarding/`（[ai-onboarding](ai-onboarding.md)、[ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)）：一份只含 Markdown 的 AI 接入引导，随包分发，不需要修改本模块的生产代码。`package.json` 的 `files` 由 `["dist"]` 改为 `["dist", "skills"]`；`exports`、插件工厂、虚拟模块、产物与构建流程均不变，也不新增公开入口或运行时代码。
-
-- **不进入生产构建**：skill 目录只在 `node_modules` 里，业务方把它复制到自己的 `.claude/skills` 或 `.agents/skills`；插件不读取它。这一点由 `examples-browser-e2e` 的 onboarding-smoke 用哨兵字符串和逐文件哈希核对。
-- **版本**：`skills/pwa-onboarding/SKILL.md` 的 `metadata.version` 与本包版本号相等，由 `packages/vite/test/skill-package.test.ts` 的测试强制，升级版本时同步修改（见 [npm 包发布流程](../docs/operations/npm-package-release.md)）。
-- **发布内容校验**：`scripts/check-package-distribution.mjs` 要求只有本包的 `files` 含 `skills`（并含 `skills/pwa-onboarding/SKILL.md`），其余包与所有 `exports` 都不暴露它。
-- 已发布的 0.2.3 不含 skill；它随下一个包含 `skills/` 的版本发布。
+`@pwa-platform/vite` 的发布内容新增 `skills/pwa-onboarding/SKILL.md`（[ai-onboarding](ai-onboarding.md)、[ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)）：一个只含 Markdown 的 AI 接入清单，不需要修改本模块的生产代码。`package.json` 的 `files` 由 `["dist"]` 改为 `["dist", "skills"]`；`exports`、插件工厂、虚拟模块、产物与构建流程均不变，也不新增公开入口。`metadata.version` 与本包版本相等，由 `packages/vite/test/skill-package.test.ts` 强制，升级版本时同步修改（见 [npm 包发布流程](../docs/operations/npm-package-release.md)）。已发布的 0.2.3 不含 skill，它随下一个包含 `skills/` 的版本发布。

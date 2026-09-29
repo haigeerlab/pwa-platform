@@ -57,3 +57,7 @@
 - **`SKILL.md` 的版本写在 `metadata.version`，不写顶层 `version`。** Codex 自带的校验器只允许 `name`、`description`、`license`、`allowed-tools`、`metadata` 五个顶层键。`name` 为小写连字符、≤ 64 字符；`description` ≤ 1024 字符且不含 `<` `>`。
 - **显式调用语法不同**：Claude Code 用 `/pwa-onboarding`，Codex 用 `$pwa-onboarding`。
 - **引用文件不会被自动读取**，`SKILL.md` 正文必须逐个写明何时读哪个文件。
+
+## 增补：缩减为一页清单（2026-09-29）
+
+本 ADR 的核心决定不变：清单放在 `@pwa-platform/vite` 的 `skills` 目录，进 `files` 不进 `exports`，不新增命令行入口，不进入生产构建。变的是清单本身：它由"八个关卡加引用文件的全链路引导"缩减为**一个约 3.6 KB 的 `SKILL.md`**，规则指向文档站，不复述。原因是实现之后回看，全链路引导对一个开源库过重，维护成本高、关卡 3–6 从未在真实部署上验证，且每轮评审都能找到新的文字漏洞。所以上面"决定"与"影响"里提到的关卡文件、状态文件、双语和一致性测试不再适用，以 [规格](../../spec/ai-onboarding.md) 的"缩减记录"为准。完整实现保留在 git 历史里。

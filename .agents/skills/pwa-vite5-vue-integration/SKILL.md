@@ -3,9 +3,6 @@ name: pwa-vite5-vue-integration
 description: 将现有 Vite 5 + Vue 3.4、vite-plugin-pwa 业务应用接入 PWA Platform。准备或执行宿主迁移、核对构建 CSS、worker 和更新流程时使用；不用于开发平台包。
 ---
 
-> **已被取代 / Superseded.** 新的接入引导是随 `@pwa-platform/vite` 发布的 `pwa-onboarding`（覆盖 Vite 5／8 与 Vue／React，含冲突检测、服务端核对和排障）。本文件保留原文供参考，本页里 Vite 5 + Vue 3.4 的专项经验已迁入新 skill 的冲突目录。新接入请用 `pwa-onboarding`；见 `website/start/choose.md` 的"用 AI 引导接入"。
-
-
 # Vite 5 + Vue 3.4 host integration
 
 This skill is for an AI working **inside the business application's repository**. It does not certify that application from the PWA Platform repository. If the platform repository is available, read `docs/guides/vite5-vue34-host-integration.md` before editing; this skill remains usable when copied alone.

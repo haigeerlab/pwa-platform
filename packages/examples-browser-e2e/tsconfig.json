@@ -18,7 +18,6 @@
     "ssr-tests/**/*.ts",
     "onboarding-smoke/*.ts",
     "onboarding-smoke/template/*.ts",
-    "onboarding-scenarios/*.ts",
     "playwright.config.ts",
     "playwright.network.config.ts",
     "playwright.ui.config.ts"

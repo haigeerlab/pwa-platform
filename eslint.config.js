@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/coverage/**", "**/node_modules/**", "**/browser-build/**", "build/cloudflare/**", "**/.nuxt/**", "**/.output/**", "website/.vitepress/cache/**", "packages/examples-browser-e2e/onboarding-scenarios/fixtures/**"],
+    ignores: ["**/dist/**", "**/coverage/**", "**/node_modules/**", "**/browser-build/**", "build/cloudflare/**", "**/.nuxt/**", "**/.output/**", "website/.vitepress/cache/**"],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
