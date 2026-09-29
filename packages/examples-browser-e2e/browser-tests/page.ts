@@ -1,8 +1,23 @@
 // Page-side helpers shared by the specs. Everything is observed through the examples' interface where the interface
 // shows it; worker state that no interface shows is read from `navigator.serviceWorker` directly.
 import { expect, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { SHELL_URL, WORKER_URL } from "../apps/shared/identity.js";
+
+/**
+ * ADR-0042 (2026-09-29): in Playwright's own WebKit build, `PushManager.getSubscription()` makes WebKit's network
+ * process reject an IPC message and exit (`NetworkConnectionToWebProcess::didReceiveInvalidMessage`); WebKit then
+ * reloads the page and Playwright loses it, so every later call hangs. A plain page calling the native method once
+ * reproduces it, without any platform code. The React example's push panel reads the subscription on mount, so on
+ * WebKit only, and before any page script runs, that method answers "no subscription" instead. Nothing these specs
+ * assert involves push; push is covered in Chromium. Real Safari and iPhone are unaffected (verification.md).
+ */
+export async function keepWebKitOffPushManager(context: BrowserContext, browserName: string): Promise<void> {
+  if (browserName !== "webkit") return;
+  await context.addInitScript(() => {
+    PushManager.prototype.getSubscription = () => Promise.resolve(null);
+  });
+}
 
 export async function waitForActivatedWorker(page: Page, timeout = 10_000): Promise<void> {
   await page.evaluate(async (limit) => {
