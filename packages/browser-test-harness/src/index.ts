@@ -8,7 +8,7 @@ export type { CacheSpec } from "./caches.js";
 export { contrastRatio } from "./contrast.js";
 export { fixturePath, MINIMAL_PAGE_MARKER } from "./fixtures.js";
 export { CHROME_PATH_ENV } from "./launch.js";
-export { expectFromServiceWorker, expectNavigationStatus, UNVERIFIABLE_ANNOTATION } from "./navigation.js";
+export { expectFromServiceWorker, expectNavigationStatus, recordUnverifiable, UNVERIFIABLE_ANNOTATION } from "./navigation.js";
 export { expectLifecycleSequence } from "./lifecycle.js";
 export { startFixtureServer } from "./server.js";
 export type { FixtureResponseRule, FixtureServer, FixtureServerOptions, HeaderRule, RequestRecord } from "./server.js";

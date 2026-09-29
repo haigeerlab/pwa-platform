@@ -42,6 +42,64 @@ export function describeBrowser(kind: RealBrowserKind, capabilities: Readonly<Re
     : { version, label: `Firefox ${version} (geckodriver)` };
 }
 
+/** Script run in Firefox's chrome context to force the colour scheme content sees (0 dark, 1 light). */
+export function firefoxColorSchemeScript(colorScheme: "light" | "dark"): string {
+  return `Services.prefs.setIntPref("layout.css.prefers-color-scheme.content-override", ${colorScheme === "dark" ? 0 : 1}); return true;`;
+}
+
+/** The outer window size that should give an inner (viewport) size of `target`, given the last outer and inner sizes. */
+export function correctedWindowSize(
+  target: { readonly width: number; readonly height: number },
+  outer: { readonly width: number; readonly height: number },
+  inner: { readonly width: number; readonly height: number },
+): { readonly width: number; readonly height: number } {
+  return {
+    width: Math.max(1, outer.width + (target.width - inner.width)),
+    height: Math.max(1, outer.height + (target.height - inner.height)),
+  };
+}
+
+const KEY_CODES: Readonly<Record<string, string>> = {
+  Backspace: "\uE003",
+  Tab: "\uE004",
+  Enter: "\uE007",
+  Shift: "\uE008",
+  Control: "\uE009",
+  Alt: "\uE00A",
+  Escape: "\uE00C",
+  Space: " ",
+  End: "\uE010",
+  Home: "\uE011",
+  ArrowLeft: "\uE012",
+  ArrowUp: "\uE013",
+  ArrowRight: "\uE014",
+  ArrowDown: "\uE015",
+  Delete: "\uE017",
+  Meta: "\uE03D",
+};
+
+const MODIFIERS = new Set(["Shift", "Control", "Alt", "Meta"]);
+
+/** W3C Perform Actions payload for a Playwright style key press such as `Tab`, `Shift+Tab`, `Enter` or `Space`. */
+export function keyActions(key: string): { readonly actions: readonly unknown[] } {
+  const parts = key === "+" ? [key] : key.split("+");
+  const codes = parts.map((part) => {
+    const code = KEY_CODES[part] ?? (part.length === 1 ? part : undefined);
+    if (code === undefined) throw new Error(`Unsupported key "${part}" in "${key}"`);
+    return code;
+  });
+  if (!parts.slice(0, -1).every((part) => MODIFIERS.has(part))) throw new Error(`Only modifiers may precede the key in "${key}"`);
+  const modifiers = codes.slice(0, -1);
+  const last = codes[codes.length - 1] as string;
+  const actions = [
+    ...modifiers.map((value) => ({ type: "keyDown", value })),
+    { type: "keyDown", value: last },
+    { type: "keyUp", value: last },
+    ...[...modifiers].reverse().map((value) => ({ type: "keyUp", value })),
+  ];
+  return { actions: [{ type: "key", id: "keyboard", actions }] };
+}
+
 /** Safari WebDriver does not fail a navigation that cannot load: it lands on this built-in error page instead. */
 export function isBrowserErrorPage(url: string): boolean {
   return url.startsWith("safari-resource:");
@@ -90,7 +148,7 @@ if (id === null) {
   id = store.next++;
   store.running[id] = Promise.resolve()
     .then(() => {
-      const value = (0, eval)("(" + request.source + ")");
+      const value = __pageSource();
       return request.isFunction ? value(request.arg) : value;
     })
     .then(
@@ -111,6 +169,15 @@ if (running === undefined) {
   });
 }
 `;
+
+/**
+ * The complete Execute Async Script body for a page script: `source` is compiled together with `EVALUATE_SCRIPT` by the
+ * driver instead of being handed to `eval` in the page, which a page whose CSP forbids `unsafe-eval` would refuse
+ * (the offline page's strict policy does). The newline keeps a trailing `//` comment of `source` from eating the bracket.
+ */
+export function evaluateScriptFor(source: string): string {
+  return `const __pageSource = () => (${source}\n);\n${EVALUATE_SCRIPT}`;
+}
 
 type EvaluateOutcome =
   | { readonly ok: true; readonly value?: unknown; readonly undefined?: true; readonly href: string }
@@ -165,7 +232,7 @@ export async function startDriver(kind: RealBrowserKind): Promise<DriverProcess>
   const [command, args] =
     kind === "safari"
       ? (["/usr/bin/safaridriver", ["-p", String(port)]] as const)
-      : (["geckodriver", ["--port", String(port)]] as const);
+      : (["geckodriver", ["--port", String(port), "--allow-system-access"]] as const);
   const child: ChildProcess = spawn(command, args, { stdio: "ignore" });
   const spawnError = new Promise<never>((_, reject) => {
     child.once("error", (error) => reject(new Error(`Cannot start ${command}: ${error.message}`)));
@@ -305,7 +372,7 @@ export class WebDriverSession {
     for (;;) {
       const reply = (await this.inWindow(handle, () =>
         this.command("POST", "/execute/async", {
-          script: EVALUATE_SCRIPT,
+          script: evaluateScriptFor(script.source),
           args: [{ ...script, poll, waitMs: EVALUATE_SLICE_MS }],
         }),
       )) as EvaluateReply;
@@ -313,6 +380,40 @@ export class WebDriverSession {
       if (!("pending" in reply)) return unwrapEvaluation(reply);
       poll = reply.pending;
     }
+  }
+
+  /** Presses a key (see `keyActions`) in window `handle`. */
+  async pressKey(handle: string, key: string): Promise<void> {
+    const payload = keyActions(key);
+    await this.inWindow(handle, async () => {
+      await this.command("POST", "/actions", payload);
+      await this.command("DELETE", "/actions");
+    });
+  }
+
+  /** The outer window size of window `handle`. */
+  windowRect(handle: string): Promise<{ readonly width: number; readonly height: number }> {
+    return this.inWindow(handle, async () => (await this.command("GET", "/window/rect")) as { width: number; height: number });
+  }
+
+  /** Sets the outer window size of window `handle` and returns the size the browser actually gave it. */
+  setWindowRect(handle: string, size: { readonly width: number; readonly height: number }): Promise<{ readonly width: number; readonly height: number }> {
+    return this.inWindow(handle, async () => (await this.command("POST", "/window/rect", size)) as { width: number; height: number });
+  }
+
+  /**
+   * Forces the colour scheme Firefox content sees, through geckodriver's chrome context (needs `--allow-system-access`,
+   * see `startDriver`). The preference applies to the whole browser instance, which is one session here.
+   */
+  async setFirefoxColorScheme(handle: string, colorScheme: "light" | "dark"): Promise<void> {
+    await this.inWindow(handle, async () => {
+      await this.command("POST", "/moz/context", { context: "chrome" });
+      try {
+        await this.command("POST", "/execute/sync", { script: firefoxColorSchemeScript(colorScheme), args: [] });
+      } finally {
+        await this.command("POST", "/moz/context", { context: "content" });
+      }
+    });
   }
 
   async quit(): Promise<void> {

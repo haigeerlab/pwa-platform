@@ -1,5 +1,7 @@
+import { test } from "@playwright/test";
 import type { APIResponse, Browser, BrowserContext, Page, Response } from "@playwright/test";
 import {
+  correctedWindowSize,
   describeBrowser,
   isBrowserErrorPage,
   playwrightEngineName,
@@ -14,6 +16,8 @@ import {
 
 const DEFAULT_WAIT_TIMEOUT = 30_000;
 const DEFAULT_POLLING = 50;
+/** How often `setViewportSize` re-measures and corrects the window for the browser's own chrome. */
+const VIEWPORT_ATTEMPTS = 3;
 
 /** Message prefix of every error a real-browser stand-in throws for a Playwright capability it does not implement. */
 export function unsupportedMessage(kind: RealBrowserKind, member: string): string {
@@ -49,48 +53,44 @@ function unsupportedStandIn(kind: RealBrowserKind, path: string): unknown {
   );
 }
 
-/** The `Locator` subset the specs use, each operation a script against `document.querySelector`. */
+/**
+ * The `Locator` subset the specs use, each operation a function run against `document.querySelector`. Every operation
+ * hands its own function to `page.evaluate`: nothing here goes through `eval`, which a page's strict CSP blocks.
+ */
 class RealLocator {
   constructor(
     private readonly page: RealPage,
     private readonly selector: string,
   ) {}
 
-  private run<T>(body: (element: Element | null, selector: string) => T): Promise<T> {
-    return this.page.evaluate(
-      ({ source, selector }) => {
-        const run = (0, eval)(`(${source})`) as (element: Element | null, selector: string) => unknown;
-        return run(document.querySelector(selector), selector);
-      },
-      { source: body.toString(), selector: this.selector },
-    ) as Promise<T>;
-  }
-
   async textContent(): Promise<string | null> {
-    return this.run((element) => (element === null ? null : element.textContent));
+    return this.page.evaluate((selector: string) => document.querySelector(selector)?.textContent ?? null, this.selector);
   }
 
   async innerText(): Promise<string> {
-    return this.run((element, selector) => {
+    return this.page.evaluate((selector: string) => {
+      const element = document.querySelector(selector);
       if (element === null) throw new Error(`No element matches ${selector}`);
       return (element as HTMLElement).innerText;
-    });
+    }, this.selector);
   }
 
   async isVisible(): Promise<boolean> {
-    return this.run((element) => {
+    return this.page.evaluate((selector: string) => {
+      const element = document.querySelector(selector);
       if (element === null) return false;
       const style = getComputedStyle(element);
       const box = element.getBoundingClientRect();
       return style.visibility !== "hidden" && style.display !== "none" && box.width > 0 && box.height > 0;
-    });
+    }, this.selector);
   }
 
   async click(): Promise<void> {
-    await this.run((element, selector) => {
+    await this.page.evaluate((selector: string) => {
+      const element = document.querySelector(selector);
       if (element === null) throw new Error(`No element matches ${selector}`);
       (element as HTMLElement).click();
-    });
+    }, this.selector);
   }
 
   async getAttribute(name: string): Promise<string | null> {
@@ -200,10 +200,13 @@ export class RealApiRequestContext {
   }
 }
 
+type Size = { readonly width: number; readonly height: number };
+
 /** The `Page` subset the specs use, on one tab of a WebDriver session. */
 class RealPage {
   private closed = false;
   private lastUrl = "about:blank";
+  private viewport: Size | null = null;
 
   constructor(
     private readonly kind: RealBrowserKind,
@@ -221,8 +224,70 @@ class RealPage {
   /** Node-side requests that bypass the page's service worker (see `RealApiRequestContext`). */
   readonly request: RealApiRequestContext = new RealApiRequestContext();
 
+  /** `keyboard.press` only (`Tab`, `Shift+Tab`, `Enter`, `Space`, arrows and single characters), as W3C key actions. */
+  get keyboard(): { press(key: string): Promise<void> } {
+    return refuseUnimplemented(this.kind, "page.keyboard", {
+      press: async (key: string): Promise<void> => {
+        if (this.closed) throw new Error("Target page has been closed");
+        await this.session.pressKey(this.handle, key);
+      },
+    });
+  }
+
   context(): BrowserContext {
     return this.owner as unknown as BrowserContext;
+  }
+
+  /**
+   * Only `{ colorScheme: "light" | "dark" }`. Firefox forces it through its content colour-scheme preference and the
+   * result is verified with `matchMedia`. Safari cannot emulate it: when the system appearance already is the requested
+   * scheme this does nothing, otherwise the running test is skipped with that reason (never a silent pass).
+   */
+  async emulateMedia(options: { readonly colorScheme?: "light" | "dark" | null } & Record<string, unknown> = {}): Promise<void> {
+    const given = Object.entries(options).filter(([, value]) => value !== undefined);
+    const scheme = options.colorScheme;
+    if (given.length !== 1 || given[0]?.[0] !== "colorScheme" || (scheme !== "light" && scheme !== "dark")) {
+      throw new Error(unsupportedMessage(this.kind, `page.emulateMedia(${JSON.stringify(options)})`));
+    }
+    const current = (): Promise<"light" | "dark"> =>
+      this.evaluate(() => (matchMedia("(prefers-color-scheme: dark)").matches ? ("dark" as const) : ("light" as const)));
+    if (this.kind === "firefox") {
+      await this.session.setFirefoxColorScheme(this.handle, scheme);
+      const deadline = Date.now() + 5_000;
+      while ((await current()) !== scheme) {
+        if (Date.now() >= deadline) throw new Error(`Firefox did not switch prefers-color-scheme to ${scheme}`);
+        await this.waitForTimeout(DEFAULT_POLLING);
+      }
+      return;
+    }
+    const actual = await current();
+    if (actual !== scheme) {
+      test.skip(true, `Safari cannot emulate prefers-color-scheme; system appearance is ${actual} — rerun with the other macOS appearance (R7.7)`);
+    }
+  }
+
+  /**
+   * Resizes the window until the page's `innerWidth` x `innerHeight` equal `size`, correcting for the browser's own
+   * chrome (at most three measure-and-adjust rounds). A browser with a minimum window size ends larger than asked:
+   * `viewportSize()` reports what was really achieved, never the request.
+   */
+  async setViewportSize(size: Size): Promise<void> {
+    const measure = (): Promise<Size> => this.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+    let outer = await this.session.windowRect(this.handle);
+    let inner = await measure();
+    for (let attempt = 0; attempt < VIEWPORT_ATTEMPTS && (inner.width !== size.width || inner.height !== size.height); attempt += 1) {
+      const next = await this.session.setWindowRect(this.handle, correctedWindowSize(size, outer, inner));
+      const unchanged = next.width === outer.width && next.height === outer.height;
+      outer = next;
+      inner = await measure();
+      if (unchanged) break;
+    }
+    this.viewport = inner;
+  }
+
+  /** The viewport measured by the last `setViewportSize`; `null` before one (unlike Playwright's, it is not measured on demand). */
+  viewportSize(): Size | null {
+    return this.viewport;
   }
 
   /**

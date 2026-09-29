@@ -1,10 +1,14 @@
 import { createServer } from "node:http";
+import type { Page } from "@playwright/test";
 import { describe, expect, it } from "vitest";
 import { NavigationStatusUnavailableError, RealApiRequestContext, RealBrowser, RealResponse, unsupportedMessage } from "../src/real-browser.js";
 import {
+  correctedWindowSize,
   describeBrowser,
+  firefoxColorSchemeScript,
+  keyActions,
   isBrowserErrorPage,
-  EVALUATE_SCRIPT,
+  evaluateScriptFor,
   playwrightEngineName,
   readRealBrowserKind,
   reloadFinished,
@@ -82,7 +86,7 @@ describe("EVALUATE_SCRIPT", () => {
   /** Runs the script body the way a driver does: `arguments` are the request and the completion callback. */
   function call(request: { source: string; isFunction: boolean; arg: unknown; poll: number | null; waitMs: number }): Promise<Reply> {
     Reflect.set(globalThis, "location", { href: "http://page/" });
-    const body = new Function(EVALUATE_SCRIPT) as (...args: unknown[]) => void;
+    const body = new Function(evaluateScriptFor(request.source)) as (...args: unknown[]) => void;
     return new Promise((resolve) => body(request, resolve));
   }
 
@@ -100,6 +104,20 @@ describe("EVALUATE_SCRIPT", () => {
     const id = (first as { pending: number }).pending;
     expect(await call({ ...slow, poll: id, waitMs: 500 })).toEqual({ ok: true, value: "late", href: "http://page/" });
     expect(await call({ ...slow, poll: id, waitMs: 10 })).toMatchObject({ ok: false, message: "Execution context was destroyed" });
+  });
+
+  it("never calls eval, which a page with a strict CSP refuses", async () => {
+    Reflect.set(globalThis, "location", { href: "http://page/" });
+    const script = serializePageScript((n: number) => n + 1, 1);
+    // The parameter shadows the global `eval` for the script body, as a CSP without 'unsafe-eval' would.
+    const body = new Function("eval", "args", `return (function () { ${evaluateScriptFor(script.source)} }).apply(null, args);`) as (
+      ...args: unknown[]
+    ) => void;
+    const refuse = (): never => {
+      throw new EvalError("Refused to evaluate a string as JavaScript");
+    };
+    const reply = await new Promise<Reply>((resolve) => body(refuse, [{ ...script, poll: null, waitMs: 50 }, resolve]));
+    expect(reply).toEqual({ ok: true, value: 2, href: "http://page/" });
   });
 
   it("keeps a thrown error's message", async () => {
@@ -251,5 +269,143 @@ describe("reload", () => {
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
+  });
+});
+
+describe("keyActions", () => {
+  const sequence = (key: string): unknown[] =>
+    ((keyActions(key).actions[0] as { actions: { type: string; value: string }[] }).actions).map((action) => `${action.type} ${JSON.stringify(action.value)}`);
+
+  it("presses and releases a named key or a single character", () => {
+    expect(sequence("Tab")).toEqual(['keyDown "\ue004"', 'keyUp "\ue004"']);
+    expect(sequence("Enter")).toEqual(['keyDown "\ue007"', 'keyUp "\ue007"']);
+    expect(sequence("Space")).toEqual(['keyDown " "', 'keyUp " "']);
+    expect(sequence("a")).toEqual(['keyDown "a"', 'keyUp "a"']);
+  });
+
+  it("holds modifiers around the key and releases them in reverse order", () => {
+    expect(sequence("Shift+Tab")).toEqual(['keyDown "\ue008"', 'keyDown "\ue004"', 'keyUp "\ue004"', 'keyUp "\ue008"']);
+    expect(sequence("Control+Shift+a")).toEqual([
+      'keyDown "\ue009"',
+      'keyDown "\ue008"',
+      'keyDown "a"',
+      'keyUp "a"',
+      'keyUp "\ue008"',
+      'keyUp "\ue009"',
+    ]);
+  });
+
+  it("rejects keys it does not know instead of typing their letters", () => {
+    expect(() => keyActions("F13")).toThrow('Unsupported key "F13"');
+    expect(() => keyActions("Tab+Enter")).toThrow("Only modifiers may precede");
+  });
+});
+
+describe("window size and colour scheme helpers", () => {
+  it("adds the difference between the wanted and the measured viewport to the outer size", () => {
+    expect(correctedWindowSize({ width: 320, height: 650 }, { width: 320, height: 650 }, { width: 320, height: 577 })).toEqual({ width: 320, height: 723 });
+    expect(correctedWindowSize({ width: 320, height: 650 }, { width: 500, height: 650 }, { width: 500, height: 577 })).toEqual({ width: 320, height: 723 });
+    expect(correctedWindowSize({ width: 1, height: 1 }, { width: 10, height: 10 }, { width: 900, height: 900 })).toEqual({ width: 1, height: 1 });
+  });
+
+  it("sets Firefox's content colour-scheme override to 0 for dark and 1 for light", () => {
+    expect(firefoxColorSchemeScript("dark")).toContain('"layout.css.prefers-color-scheme.content-override", 0');
+    expect(firefoxColorSchemeScript("light")).toContain('"layout.css.prefers-color-scheme.content-override", 1');
+  });
+});
+
+describe("page.setViewportSize, page.emulateMedia and page.keyboard on a driver", () => {
+  type Sent = { readonly path: string; readonly body: unknown };
+
+  /** A driver whose window has a fixed border and a minimum outer width; `matchMedia` reports `dark`. */
+  async function withDriver(
+    kind: "safari" | "firefox",
+    minOuterWidth: number,
+    run: (page: Page, sent: Sent[]) => Promise<void>,
+  ): Promise<void> {
+    const sent: Sent[] = [];
+    let outer = { width: 1000, height: 800 };
+    let dark = false;
+    const server = createServer((request, response) => {
+      let text = "";
+      request.on("data", (chunk: Buffer) => (text += chunk.toString()));
+      request.on("end", () => {
+        const body = text === "" ? undefined : (JSON.parse(text) as unknown);
+        const path = `${request.method} ${request.url}`;
+        sent.push({ path, body });
+        let value: unknown = null;
+        if (path === "POST /session") value = { sessionId: "s", capabilities: { browserVersion: "1" } };
+        else if (path === "GET /session/s/window") value = "handle";
+        else if (path === "GET /session/s/window/rect") value = outer;
+        else if (path === "POST /session/s/window/rect") {
+          const wanted = body as { width: number; height: number };
+          outer = { width: Math.max(minOuterWidth, wanted.width), height: wanted.height };
+          value = outer;
+        } else if (path === "POST /session/s/execute/sync") dark = true;
+        else if (path === "POST /session/s/execute/async") {
+          const source = (body as { args: { source: string }[] }).args[0]?.source ?? "";
+          const inner = { width: outer.width, height: outer.height - 73 };
+          value = { ok: true, value: source.includes("matchMedia") ? (dark ? "dark" : "light") : inner, href: "about:blank" };
+        }
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ value }));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const { port } = server.address() as { port: number };
+      const browser = new RealBrowser(kind, { baseUrl: `http://127.0.0.1:${port}`, stop: async () => undefined }, { version: "1", label: "x" }, {});
+      const session = await browser.openSession();
+      await run(session.page, sent);
+      await session.quit();
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  }
+
+  it("corrects the outer window for the browser's chrome and reports the measured viewport", async () => {
+    await withDriver("firefox", 0, async (page, sent) => {
+      await page.setViewportSize({ width: 320, height: 650 });
+      expect(page.viewportSize()).toEqual({ width: 320, height: 650 });
+      expect(sent.filter((entry) => entry.path === "POST /session/s/window/rect").map((entry) => entry.body)).toEqual([{ width: 320, height: 723 }]);
+    });
+  });
+
+  it("reports the achieved width, not the requested one, when the window has a minimum size", async () => {
+    await withDriver("firefox", 500, async (page) => {
+      await page.setViewportSize({ width: 320, height: 650 });
+      expect(page.viewportSize()).toEqual({ width: 500, height: 650 });
+    });
+  });
+
+  it("forces the colour scheme in Firefox's chrome context and returns to content", async () => {
+    await withDriver("firefox", 0, async (page, sent) => {
+      await page.emulateMedia({ colorScheme: "dark" });
+      const contexts = sent.filter((entry) => entry.path === "POST /session/s/moz/context").map((entry) => (entry.body as { context: string }).context);
+      expect(contexts).toEqual(["chrome", "content"]);
+    });
+  });
+
+  it("does nothing in Safari when the system appearance already is the requested scheme", async () => {
+    await withDriver("safari", 0, async (page, sent) => {
+      await page.emulateMedia({ colorScheme: "light" });
+      expect(sent.some((entry) => entry.path.includes("moz/context"))).toBe(false);
+    });
+  });
+
+  it("refuses every other emulateMedia option and the reset", async () => {
+    await withDriver("firefox", 0, async (page) => {
+      await expect(page.emulateMedia({ media: "print" })).rejects.toThrow(/Not supported on real browser \(PWA_REAL_BROWSER=firefox\): page\.emulateMedia/);
+      await expect(page.emulateMedia({ colorScheme: null })).rejects.toThrow(/Not supported on real browser/);
+      await expect(page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" })).rejects.toThrow(/Not supported on real browser/);
+    });
+  });
+
+  it("sends key presses as W3C actions and refuses other keyboard members", async () => {
+    await withDriver("safari", 0, async (page, sent) => {
+      await page.keyboard.press("Tab");
+      expect(sent.map((entry) => entry.path).filter((path) => path.includes("/actions"))).toEqual(["POST /session/s/actions", "DELETE /session/s/actions"]);
+      expect(() => page.keyboard.type("x")).toThrow("page.keyboard.type");
+    });
   });
 });

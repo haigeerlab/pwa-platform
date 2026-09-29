@@ -10,6 +10,11 @@ function record(description: string): void {
   test.info().annotations.push({ type: UNVERIFIABLE_ANNOTATION, description });
 }
 
+/** Records a check a real browser cannot make as an `UNVERIFIABLE_ANNOTATION` annotation on the running test. */
+export function recordUnverifiable(description: string): void {
+  record(description);
+}
+
 /**
  * `expect(response.status()).toBe(expected)` for a `page.goto` response. Safari 18.6 reports no navigation status
  * (no `responseStatus` in Navigation Timing, no WebDriver command), so there the check is recorded as an
