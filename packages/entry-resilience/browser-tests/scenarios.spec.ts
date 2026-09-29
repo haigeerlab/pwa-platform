@@ -9,9 +9,18 @@
 // operation finished" (examples-browser-e2e T9's B1 lesson, see plan.md task 7's own wording of it). The recovery
 // page's button is the sole exception: it does not exist until the page's own script renders it, so waiting for it
 // to appear is waiting for that render, not guessing that some unrelated async step has settled.
+//
+// Real Safari and Firefox (ADR-0047) run the same scenarios with these differences, each marked where it applies: the
+// network is cut at the fixture servers, never through `context.setOffline` (the resolver never reads
+// `navigator.onLine`, so the two are indistinguishable to the code under test); assertions poll instead of using
+// web-first locator matchers; the "no automatic navigation" check also watches a marker on the document, which a
+// WebDriver session can use where it has no `framenavigated` event; and checks a WebDriver session cannot make (a
+// script that runs before the page's own, navigation response headers) are recorded with `recordUnverifiable`.
 import { createHash } from "node:crypto";
 import {
   expect,
+  readRealBrowserKind,
+  recordUnverifiable,
   test,
   waitForController,
   waitForControllerChange,
@@ -23,6 +32,8 @@ import type { EntryUpdateResult } from "../src/client/index.js";
 import type { EntryRecoveryResult } from "../src/index.js";
 import { DEFAULT_RECOVERY_PAGE_STYLE } from "../src/vite/default-style.js";
 import { IDENTITY, SHELL_URL, WORKER_URL, startSites, type Sites } from "./sites.js";
+
+const REAL_BROWSER = readRealBrowserKind(process.env) !== undefined;
 
 let sites: Sites;
 
@@ -52,10 +63,28 @@ async function waitForActivatedWorker(page: Page, timeout = 10_000): Promise<voi
  *  page. */
 async function installAndControl(page: Page, primary: FixtureServer): Promise<void> {
   await page.goto(primary.url(SHELL_URL));
-  await expect(page.locator("#shell")).toBeVisible();
+  await expect.poll(() => page.locator("#shell").isVisible()).toBe(true);
   await waitForActivatedWorker(page);
   await page.reload();
   await waitForController(page, WORKER_URL);
+}
+
+/** Clicks `selector` and waits until the tab is on `origin`. `page.waitForURL` does not exist on a WebDriver session,
+ *  and the document is being replaced while polling, so a script refused meanwhile counts as "not there yet". */
+async function clickAndWaitForOrigin(page: Page, selector: string, origin: string): Promise<void> {
+  await page.locator(selector).click();
+  await expect
+    .poll(
+      async () => {
+        try {
+          return new URL(await page.evaluate(() => location.href)).origin;
+        } catch {
+          return null;
+        }
+      },
+      { timeout: 15_000, intervals: [100] },
+    )
+    .toBe(origin);
 }
 
 /** Calls the fixture app's `window.__entryCheck`, added in browser-tests/fixture-app/src/main.ts. */
@@ -161,24 +190,30 @@ test("planned migration: the recovery page shows the alternate host and navigate
 
   // Registered before `goto`, per the "no automatic navigation" rule (spec's "确认与导航只在平台恢复页上发生"):
   // only the main frame's navigations are counted, and the list is reset once `goto` itself has completed, so what
-  // remains is exactly "any navigation since the recovery page finished loading".
+  // remains is exactly "any navigation since the recovery page finished loading". A WebDriver session has no
+  // `framenavigated` event, so there the same claim is checked through a marker on the loaded document's window: any
+  // navigation, even to the same URL, builds a new window and the marker is gone.
   let navigations: string[] = [];
-  page.on("framenavigated", (frame) => {
-    if (frame === page.mainFrame()) navigations.push(frame.url());
-  });
+  if (!REAL_BROWSER) {
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame()) navigations.push(frame.url());
+    });
+  }
 
   await page.goto(recoveryUrl);
   navigations = [];
+  await page.evaluate(() => Reflect.set(window, "__recoveryPageDocument", true));
   const button = page.locator("button");
-  await expect(button).toBeVisible();
-  await expect(button).toContainText(new URL(sites.alternate.origin).host);
+  await expect.poll(() => button.isVisible()).toBe(true);
+  await expect.poll(() => button.textContent()).toContain(new URL(sites.alternate.origin).host);
 
   // No automatic navigation: waiting well past any plausible timer still leaves the page exactly where it was.
   await page.waitForTimeout(3_000);
   expect(navigations).toEqual([]);
+  expect(await page.evaluate(() => Reflect.get(window, "__recoveryPageDocument") === true)).toBe(true);
   expect(page.url()).toBe(recoveryUrl);
 
-  await Promise.all([page.waitForURL((url) => url.origin === sites.alternate.origin), button.click()]);
+  await clickAndWaitForOrigin(page, "button", sites.alternate.origin);
   const landed = new URL(page.url());
   expect(landed.origin).toBe(sites.alternate.origin);
   expect(landed.pathname).toBe(SHELL_URL);
@@ -187,7 +222,6 @@ test("planned migration: the recovery page shows the alternate host and navigate
 
 test("the recovery page opens from the precache while the origin is unreachable, query string and all (ADR-0034)", async ({
   page,
-  context,
 }) => {
   // The case this whole revision exists for. The application passes a `returnPath`, so the recovery page link
   // always carries `?return=…`; before ADR-0034 that query string made the navigation skip the precached recovery
@@ -202,20 +236,21 @@ test("the recovery page opens from the precache while the origin is unreachable,
   const recoveryUrl = sites.primary.url(result.recoveryPageUrl);
   expect(new URL(recoveryUrl).search).not.toBe("");
 
-  await context.setOffline(true);
+  // The origin under test is the primary one, so the primary server is what goes down.
+  sites.primary.goOffline();
   try {
     await page.goto(recoveryUrl);
     const button = page.locator("button");
-    await expect(button).toBeVisible();
-    await expect(button).toContainText(new URL(sites.alternate.origin).host);
+    await expect.poll(() => button.isVisible()).toBe(true);
+    await expect.poll(() => button.textContent()).toContain(new URL(sites.alternate.origin).host);
     // Not the offline fallback: that page is what this navigation used to reach.
-    await expect(page.locator("#offline")).toHaveCount(0);
+    await expect.poll(() => page.locator("#offline").count()).toBe(0);
   } finally {
-    await context.setOffline(false);
+    sites.primary.goOnline();
   }
 });
 
-test("a strict CSP accepts the recovery page's published style hash and same-origin script", async ({ page, context }) => {
+test("a strict CSP accepts the recovery page's published style hash and same-origin script", async ({ page }) => {
   const styleHash = createHash("sha256").update(`\n${DEFAULT_RECOVERY_PAGE_STYLE}`).digest("base64");
   const policy = [
     "default-src 'none'",
@@ -232,7 +267,14 @@ test("a strict CSP accepts the recovery page's published style hash and same-ori
       },
     },
   ]);
-  await page.addInitScript(collectCspViolations);
+  if (REAL_BROWSER) {
+    // WebDriver cannot run a script before the page's own, so a violation listener cannot be in place while the
+    // recovery page loads. The style and script are still exercised: the page must render, be styled by its hashed
+    // style block and its button (the published script's work) must be there under the policy.
+    recordUnverifiable("CSP violation events: no script can run before the page's own on a WebDriver session");
+  } else {
+    await page.addInitScript(collectCspViolations);
+  }
   await installAndControl(page, sites.primary);
 
   const update = await entryUpdate(page, manifestPayload(sites.alternate.origin, { status: "migrating", sequence: 2 }));
@@ -240,21 +282,32 @@ test("a strict CSP accepts the recovery page's published style hash and same-ori
   const result = await entryCheck(page, "/app/orders/42");
   if (result.kind !== "available") throw new Error("expected an available entry before going offline");
 
-  await context.setOffline(true);
+  sites.primary.goOffline();
   try {
     const response = await page.goto(sites.primary.url(result.recoveryPageUrl));
-    expect((await response?.allHeaders())?.["content-security-policy"]).toBe(policy);
+    if (REAL_BROWSER) {
+      // A WebDriver navigation exposes no response headers: read them from the same precached response by fetching it
+      // (the precache holds `/app/pwa-entry.html` at its own path, and `connect-src 'self'` allows the fetch).
+      recordUnverifiable("CSP header on the navigation response: read from a fetch of the same precached page instead");
+      const header = await page.evaluate(
+        async (url: string) => (await fetch(url)).headers.get("content-security-policy"),
+        sites.primary.url("/app/pwa-entry.html"),
+      );
+      expect(header).toBe(policy);
+    } else {
+      expect((await response?.allHeaders())?.["content-security-policy"]).toBe(policy);
+    }
     const button = page.locator(".pwa-entry__button");
-    await expect(button).toBeVisible();
-    expect(await page.locator(".pwa-entry").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(
-      "rgb(255, 255, 255)",
-    );
-    expect(await page.evaluate(readCspViolations)).toEqual([]);
+    await expect.poll(() => button.isVisible()).toBe(true);
+    expect(
+      await page.evaluate(() => getComputedStyle(document.querySelector(".pwa-entry") as Element).backgroundColor),
+    ).toBe("rgb(255, 255, 255)");
+    if (!REAL_BROWSER) expect(await page.evaluate(readCspViolations)).toEqual([]);
 
-    await context.setOffline(false);
-    await Promise.all([page.waitForURL((url) => url.origin === sites.alternate.origin), button.click()]);
+    sites.primary.goOnline();
+    await clickAndWaitForOrigin(page, ".pwa-entry__button", sites.alternate.origin);
   } finally {
-    await context.setOffline(false);
+    sites.primary.goOnline();
   }
 });
 
@@ -282,15 +335,15 @@ test("only the current origin fails: a reachable alternate stays available", asy
 
   await page.goto(sites.primary.url(result.recoveryPageUrl));
   const button = page.locator("button");
-  await expect(button).toContainText(new URL(sites.alternate.origin).host);
+  await expect.poll(() => button.textContent()).toContain(new URL(sites.alternate.origin).host);
   expect(new URL(page.url()).origin).toBe(sites.primary.origin);
 
-  await Promise.all([page.waitForURL((url) => url.origin === sites.alternate.origin), button.click()]);
-  await expect(page.locator("#alternate")).toBeVisible();
+  await clickAndWaitForOrigin(page, "button", sites.alternate.origin);
+  await expect.poll(() => page.locator("#alternate").isVisible()).toBe(true);
   expect(new URL(page.url()).searchParams.get("pwa-return")).toBe("/app/orders/42");
 });
 
-test("device offline: no entry is shown, and the recovery page offers nothing to click", async ({ page, context }) => {
+test("device offline: no entry is shown, and the recovery page offers nothing to click", async ({ page }) => {
   await installAndControl(page, sites.primary);
 
   // A "normal" manifest with a reachable-while-online alternate: only the online case is expected to show
@@ -300,19 +353,24 @@ test("device offline: no entry is shown, and the recovery page offers nothing to
   const update = await entryUpdate(page, manifestPayload(sites.alternate.origin, { status: "normal", sequence: 1 }));
   expect(update).toEqual({ accepted: true, sequence: 1 });
 
-  await context.setOffline(true);
+  // The device's whole network is gone: both origins go down together, so unlike the previous scenario nothing is
+  // left reachable and the resolver must not report an outage. Cutting the network at the servers leaves
+  // `navigator.onLine` untouched; the resolver never reads it (src/ has no `onLine`), it only sees its probes fail.
+  sites.primary.goOffline();
+  sites.alternate.goOffline();
   try {
     await page.reload();
-    await expect(page.locator("#shell")).toBeVisible();
+    await expect.poll(() => page.locator("#shell").isVisible()).toBe(true);
 
     const result = await entryCheck(page);
     expect(result).toEqual({ kind: "none", diagnostics: [] });
 
     await page.goto(sites.primary.url("/app/pwa-entry.html"));
-    await expect(page.getByText("当前没有可用的备用入口")).toBeVisible();
-    await expect(page.locator("button")).toHaveCount(0);
+    await expect.poll(() => page.locator("body").innerText()).toContain("当前没有可用的备用入口");
+    await expect.poll(() => page.locator("button").count()).toBe(0);
   } finally {
-    await context.setOffline(false);
+    sites.primary.goOnline();
+    sites.alternate.goOnline();
   }
 });
 

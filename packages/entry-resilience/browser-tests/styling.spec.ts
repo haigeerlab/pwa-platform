@@ -5,11 +5,27 @@
 // Helpers below (`waitForActivatedWorker`, `installAndControl`, `entryCheck`, `entryUpdate`, `manifestPayload`) are
 // deliberately duplicated from scenarios.spec.ts rather than imported from it, so each spec file stays runnable and
 // readable on its own — the same choice that file made relative to the now-removed standalone feasibility spec.
-import { contrastRatio, expect, test, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
+//
+// Real Safari and Firefox (ADR-0047) run the same specs with these differences, each marked where it applies: the
+// origin is taken down at the fixture server instead of through `context.setOffline`; assertions poll instead of using
+// web-first locator matchers; the colour scheme is emulated by the adapter (Firefox) or must already be the system's
+// (Safari: the test skips at runtime, R7.7 reruns it under the other appearance); a window a browser cannot shrink to
+// 320px is recorded with `recordUnverifiable`; and a script that must run before the page's own is not possible.
+import {
+  contrastRatio,
+  expect,
+  readRealBrowserKind,
+  recordUnverifiable,
+  test,
+  waitForController,
+  type FixtureServer,
+} from "@pwa-platform/browser-test-harness";
 import type { Page } from "@playwright/test";
 import type { EntryUpdateResult } from "../src/client/index.js";
 import type { EntryRecoveryResult } from "../src/index.js";
 import { IDENTITY, SHELL_URL, WORKER_URL, startSites, type Sites } from "./sites.js";
+
+const REAL_BROWSER = readRealBrowserKind(process.env) !== undefined;
 
 /** `pwa:theme:<appId>:<environment>` (src/internal/theme-key.ts), computed here rather than imported so the
  *  "invalid stored value" test below writes to it directly, bypassing `setPwaTheme`. */
@@ -32,7 +48,7 @@ async function waitForActivatedWorker(page: Page, timeout = 10_000): Promise<voi
 
 async function installAndControl(page: Page, primary: FixtureServer): Promise<void> {
   await page.goto(primary.url(SHELL_URL));
-  await expect(page.locator("#shell")).toBeVisible();
+  await expect.poll(() => page.locator("#shell").isVisible()).toBe(true);
   await waitForActivatedWorker(page);
   await page.reload();
   await waitForController(page, WORKER_URL);
@@ -84,7 +100,12 @@ async function recoveryPageUrl(page: Page, sites: Sites): Promise<string> {
 }
 
 function buttonBackground(page: Page): Promise<string> {
-  return page.locator("button").evaluate((element) => getComputedStyle(element).backgroundColor);
+  return page.evaluate(() => getComputedStyle(document.querySelector("button") as Element).backgroundColor);
+}
+
+/** Waits for the recovery page's button, which its own script renders. */
+async function expectButton(page: Page): Promise<void> {
+  await expect.poll(() => page.locator("button").isVisible()).toBe(true);
 }
 
 test.describe("default style", () => {
@@ -100,21 +121,19 @@ test.describe("default style", () => {
 
   test("the recovery page's button is styled (not the browser default) even while the origin is offline", async ({
     page,
-    context,
   }) => {
     const url = await recoveryPageUrl(page, sites);
     await page.emulateMedia({ colorScheme: "light" });
 
-    await context.setOffline(true);
+    sites.primary.goOffline();
     try {
       await page.goto(url);
-      const button = page.locator("button");
-      await expect(button).toBeVisible();
+      await expectButton(page);
       // The accent token's light value, not a browser's UA-stylesheet button colour (typically a grey/transparent
       // default) — proof the style travelled with the document itself and needed no extra request.
       expect(await buttonBackground(page)).toBe(LIGHT_ACCENT_RGB);
     } finally {
-      await context.setOffline(false);
+      sites.primary.goOnline();
     }
   });
 
@@ -124,8 +143,7 @@ test.describe("default style", () => {
       const url = await recoveryPageUrl(page, customSites);
       await page.emulateMedia({ colorScheme: "light" });
       await page.goto(url);
-      const button = page.locator("button");
-      await expect(button).toBeVisible();
+      await expectButton(page);
       expect(await buttonBackground(page)).toBe("rgb(200, 16, 46)"); // #c8102e
     } finally {
       await customSites.closeAll();
@@ -139,7 +157,7 @@ test.describe("default style", () => {
     const url = await recoveryPageUrl(page, sites);
     await page.emulateMedia({ colorScheme: "dark" });
     await page.goto(url);
-    await expect(page.locator("button")).toBeVisible();
+    await expectButton(page);
 
     const samples = await page.evaluate(() => {
       const width = window.innerWidth;
@@ -162,12 +180,18 @@ test.describe("default style", () => {
   test("light and dark themes keep readable contrast, keyboard focus and a narrow layout", async ({ page }) => {
     const url = await recoveryPageUrl(page, sites);
     await page.setViewportSize({ width: 320, height: 650 });
+    // A browser with a minimum window width (Firefox: 500px) ends wider; the overflow check below then holds for the
+    // width it really had, and the 320px claim itself is recorded as unverifiable rather than passed.
+    const achieved = page.viewportSize();
+    if (achieved !== null && achieved.width !== 320) {
+      recordUnverifiable(`320px narrow layout: this browser's smallest viewport is ${achieved.width}px wide`);
+    }
 
     for (const colorScheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme });
       await page.goto(url);
-      await expect(page.locator(".pwa-entry__expiry")).toBeVisible();
-      await expect(page.locator(".pwa-entry__button")).toBeVisible();
+      await expect.poll(() => page.locator(".pwa-entry__expiry").isVisible()).toBe(true);
+      await expect.poll(() => page.locator(".pwa-entry__button").isVisible()).toBe(true);
       const colors = await page.evaluate(() => {
         const root = document.querySelector(".pwa-entry") as HTMLElement;
         const muted = document.querySelector(".pwa-entry__expiry") as HTMLElement;
@@ -187,8 +211,18 @@ test.describe("default style", () => {
       expect(contrastRatio(colors.mutedText, colors.rootBackground)).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(colors.buttonText, colors.buttonBackground)).toBeGreaterThanOrEqual(4.5);
       expect(colors.documentWidth).toBeLessThanOrEqual(colors.viewportWidth);
-      await page.keyboard.press("Tab");
-      await expect(page.locator(".pwa-entry__button")).toBeFocused();
+      // Safari's default keyboard navigation skips buttons on a plain Tab (its "Press Tab to highlight each item"
+      // setting is off, observed on Safari 18.6); Option+Tab is its own way to reach every control, so that is what a
+      // Safari user without the setting presses, and the difference is recorded.
+      if (readRealBrowserKind(process.env) === "safari") {
+        recordUnverifiable("keyboard focus by plain Tab: Safari's default navigation skips buttons, Option+Tab used");
+        await page.keyboard.press("Alt+Tab");
+      } else {
+        await page.keyboard.press("Tab");
+      }
+      await expect
+        .poll(() => page.evaluate(() => document.activeElement === document.querySelector(".pwa-entry__button")))
+        .toBe(true);
     }
   });
 
@@ -213,7 +247,7 @@ test.describe("default style", () => {
 
       await page.emulateMedia({ colorScheme: "dark" });
       await page.goto(url);
-      await expect(page.locator("button")).toBeVisible();
+      await expectButton(page);
       expect(await buttonBackground(page)).toBe(hostDark);
 
       // The other dark path: the system is light and the application asked for dark.
@@ -221,7 +255,7 @@ test.describe("default style", () => {
       await setStoredTheme(page, "dark");
       await page.emulateMedia({ colorScheme: "light" });
       await page.goto(url);
-      await expect(page.locator("button")).toBeVisible();
+      await expectButton(page);
       expect(await buttonBackground(page)).toBe(hostDark);
     } finally {
       await customSites.closeAll();
@@ -248,7 +282,7 @@ test.describe("theme following", () => {
     await page.emulateMedia({ colorScheme: "light" });
     await setStoredTheme(page, "dark");
     await page.goto(url);
-    await expect(page.locator("button")).toBeVisible();
+    await expectButton(page);
     expect(await buttonBackground(page)).toBe(DARK_ACCENT_RGB);
 
     // Back to the shell to call setPwaTheme (only it exposes __setPwaTheme), then re-check the recovery page: with
@@ -256,7 +290,7 @@ test.describe("theme following", () => {
     await page.goto(sites.primary.url(SHELL_URL));
     await setStoredTheme(page, "system");
     await page.goto(url);
-    await expect(page.locator("button")).toBeVisible();
+    await expectButton(page);
     expect(await buttonBackground(page)).toBe(LIGHT_ACCENT_RGB);
   });
 
@@ -266,7 +300,7 @@ test.describe("theme following", () => {
     await page.emulateMedia({ colorScheme: "dark" });
     await setStoredTheme(page, "light");
     await page.goto(url);
-    await expect(page.locator("button")).toBeVisible();
+    await expectButton(page);
     expect(await buttonBackground(page)).toBe(LIGHT_ACCENT_RGB);
   });
 
@@ -283,11 +317,16 @@ test.describe("theme following", () => {
       localStorage.setItem(key, "purple");
     }, THEME_KEY);
     await page.goto(url);
-    await expect(page.locator("button")).toBeVisible();
+    await expectButton(page);
     expect(await buttonBackground(page)).toBe(DARK_ACCENT_RGB);
 
     // Unavailable storage: stub getItem to throw before the page's own script runs, proving the read never throws
     // and still renders (rather than being stuck on "loading" or failing to navigate at all).
+    if (REAL_BROWSER) {
+      // WebDriver cannot run a script before the page's own, and no other switch makes localStorage throw in Safari.
+      recordUnverifiable("unavailable localStorage: no script can run before the page's own on a WebDriver session");
+      return;
+    }
     await page.addInitScript(() => {
       Object.defineProperty(window, "localStorage", {
         get() {
@@ -296,7 +335,7 @@ test.describe("theme following", () => {
       });
     });
     await page.goto(url);
-    await expect(page.locator("button")).toBeVisible();
+    await expectButton(page);
     expect(await buttonBackground(page)).toBe(DARK_ACCENT_RGB);
   });
 });
