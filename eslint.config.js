@@ -30,4 +30,14 @@ export default tseslint.config(
       },
     },
   },
+  {
+    files: ["packages/sw-runtime/browser-tests/phone-probe/*.mjs"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        console: "readonly",
+        URL: "readonly",
+      },
+    },
+  },
 );

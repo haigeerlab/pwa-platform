@@ -45,6 +45,34 @@ GitHub 不可用（`gh auth status` 显示本仓库账号 `haigeermail` 的令�
 
 本模块不涉及安装流程，没有原生安装证据的要求。
 
+## 手机端补充验证（2026-09-29，提交 `8840133`）
+
+原矩阵中 Chrome Android 两行登记为"未执行"，上表保持原样不改写。本节补充的是**手动探针**得到的证据，不折算为矩阵中的"通过"，原因见"局限"。
+
+探针：[`packages/sw-runtime/browser-tests/phone-probe/`](../../packages/sw-runtime/browser-tests/phone-probe/README.md)。页面用 `browser-build/site-v3`（v3 策略，`maxEntryBytes` 300、`maxAgeSeconds` 60），一轮跑完 19 项场景，结果由页面回传到本机服务器日志。
+
+| 环境 | 版本 | 结果 |
+|---|---|---|
+| Xiaomi 14（23127PN0CC，Android 16，实体设备，USB 连接，`adb reverse`） | Chrome 153.0.8010.53（Android N） | 19 通过，0 失败 |
+| iOS 模拟器 iPhone 17 Pro（iOS 26.3，非实体设备） | Safari 26.3（WebKit） | 19 通过，0 失败 |
+| Chrome Android N-1 | — | **未执行**：没有第二台旧版本设备 |
+| 三星 Galaxy A24 | — | **未执行**：设备暂不可用 |
+| iPhone 实体设备 | — | **未执行**：需要 HTTPS 入口（临时隧道或部署），尚未安排 |
+
+19 项场景：`network-first` 在线读取并写入 `runtime-data`、断网命中缓存、恢复联网后取到新数据且缓存同步更新（5 项）；`no-store`、`private`、`Vary: Cookie`、错误 MIME、超过 `maxEntryBytes`、带 `Authorization`、`Set-Cookie` + `private` 均"在线正常、断网报网络错误、不入缓存"（7 项）；`Set-Cookie` 不带 `private` 会被缓存（1 项，既定行为）；SWR 第二次读是旧值、随后读到后台更新（2 项）；动态 HTML 在线写入 `runtime-pages`、断网渲染缓存页、未访问路径回退离线页（4 项）。
+
+**局限**（引用本节的结论时必须带上）：
+
+- 页面在本机 `localhost`，不是真实 HTTPS 部署；响应头由 `serve.mjs` 按 `runtime-cache.spec.ts` 的断言形状模拟，不是业务接口的真实响应。
+- "断网"是服务器重置连接，不是设备的飞行模式；`navigator.onLine` 不变。
+- 不覆盖重新发版后的 worker 更新、带 `Authorization` 的页面导航、配额耗尽，也不覆盖"已安装到主屏幕"形态；这些仍只有桌面自动化覆盖。
+- 动态 HTML 用 iframe 触发导航请求，不是顶层导航。
+- iOS 一行是模拟器，只证明 WebKit 引擎上的行为，不证明真实 iPhone 上的存储与后台回收行为。
+- 每项只跑了一轮，没有 `--repeat-each` 式的重复。
+- 第一次运行 15 通过 4 失败，原因是探针页自身缺陷（iframe 的 `onload` 先在空白页触发；两个页面实例同时递增服务器计数器），不是平台行为；修正探针后单轮 19/19。
+
+同日桌面复核：重建 `browser-test-harness` 的 `dist`（它是被忽略的构建产物，此前缺少 `cacheNames` 导出，导致 `runtime-cache.spec.ts` 无法加载）后，Chrome 153 上该文件 20 passed。
+
 ## 依赖变更
 
 `@pwa-platform/engine-workbox` 新增运行时依赖 `workbox-strategies@7.4.1`、`workbox-expiration@7.4.1`（项目所有者 2026-09-24 批准）。lockfile 相对 `main` 新增的包条目只有 `workbox-expiration@7.4.1` 与其传递依赖 `idb@7.1.1`，均为带 integrity 的普通 registry 条目，无安装脚本；`workbox-strategies@7.4.1` 原本就是 `workbox-precaching` 的传递依赖，只多了 importer 声明。不需要 `minimumReleaseAgeExclude`、`trustPolicyExclude` 或 `allowBuilds`。冻结安装在门禁两轮中均通过。详见计划 T6 实施记录。
@@ -64,7 +92,7 @@ GitHub 不可用（`gh auth status` 显示本仓库账号 `haigeermail` 的令�
 ## 未取得的证据
 
 - **CI**：GitHub 不可用，以本地门禁代替（ADR-0031）；恢复后须补跑。
-- **Chrome Android N 与 N-1**：无设备，未执行。
+- **Chrome Android N 与 N-1**：矩阵登记为未执行。2026-09-29 已用手动探针在 Xiaomi 14（Chrome 153，N）补充 19 项场景，见"手机端补充验证"；N-1 仍无设备。
 - **N-1 上的全仓浏览器测试**：只跑了本模块新增的测试。
 - **门禁第 1 次失败的根因**：未能确认，只观察到浏览器上下文创建超时；同一测试在其他所有运行中通过。
 - **生产或类生产部署**：本模块没有在 Cloudflare 测试站或任何宿主上部署验证。
