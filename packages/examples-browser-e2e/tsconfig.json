@@ -20,6 +20,7 @@
     "onboarding-smoke/template/*.ts",
     "playwright.config.ts",
     "playwright.network.config.ts",
-    "playwright.ui.config.ts"
+    "playwright.ui.config.ts",
+    "playwright.real.config.ts"
   ]
 }

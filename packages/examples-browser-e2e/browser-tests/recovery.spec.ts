@@ -227,7 +227,7 @@ for (const example of EXAMPLES) {
       fixtureServer.deploy("v1");
       await checkForUpdate(page);
       await waitForWorkerState(page, SHELL_URL, "waiting", { timeout: 15_000 });
-      await expect(page.locator("#apply-update")).toBeVisible();
+      await expect.poll(() => page.locator("#apply-update").isVisible()).toBe(true);
       await waitForControllerChange(page, async () => {
         await page.locator("#apply-update").click();
       });
@@ -236,8 +236,8 @@ for (const example of EXAMPLES) {
       fixtureServer.goOffline();
       try {
         await page.reload();
-        await expect(page.locator("#shell")).toBeVisible();
-        await expect(page.locator("#version")).toHaveText("v1");
+        await expect.poll(() => page.locator("#shell").isVisible()).toBe(true);
+        await expect.poll(() => page.locator("#version").textContent()).toBe("v1");
       } finally {
         fixtureServer.goOnline();
       }

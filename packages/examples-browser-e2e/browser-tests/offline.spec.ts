@@ -27,8 +27,8 @@ for (const example of EXAMPLES) {
       try {
         await page.reload();
         // Not just "the document loaded": the example rendered, which means its script came from the precache too.
-        await expect(page.locator("#shell")).toBeVisible();
-        await expect(page.locator("#version")).toHaveText("v1");
+        await expect.poll(() => page.locator("#shell").isVisible()).toBe(true);
+        await expect.poll(() => page.locator("#version").textContent()).toBe("v1");
       } finally {
         fixtureServer.goOnline();
       }
@@ -40,11 +40,11 @@ for (const example of EXAMPLES) {
       try {
         await page.goto(fixtureServer.url(UNCACHED_ROUTE));
         // The generated offline page (docs/guides/offline-page.md), not the example's own hand-written one.
-        await expect(page.locator(".pwa-offline__heading")).toHaveText("You're offline");
-        await expect(page.locator(".pwa-offline__app")).toHaveText(INSTALL.name);
+        await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("You're offline");
+        await expect.poll(() => page.locator(".pwa-offline__app").textContent()).toBe(INSTALL.name);
         // The acceptance matrix: apart from offlineFallback.path, no other route's cached content may be returned.
         // Serving the shell here would look friendlier and still be wrong.
-        await expect(page.locator("#shell")).toHaveCount(0);
+        await expect.poll(() => page.locator("#shell").count()).toBe(0);
       } finally {
         fixtureServer.goOnline();
       }
@@ -64,7 +64,7 @@ for (const example of EXAMPLES) {
         await page.goto(target, { timeout: TIMEOUT_UPPER_BOUND_MS });
         const elapsedMs = Date.now() - startedAt;
 
-        await expect(page.locator(".pwa-offline__heading")).toHaveText("You're offline");
+        await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("You're offline");
         expect(elapsedMs).toBeGreaterThanOrEqual(TIMEOUT_LOWER_BOUND_MS);
         expect(elapsedMs).toBeLessThanOrEqual(TIMEOUT_UPPER_BOUND_MS);
       } finally {
