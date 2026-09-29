@@ -21,6 +21,7 @@
     "playwright.config.ts",
     "playwright.network.config.ts",
     "playwright.ui.config.ts",
+    "playwright.ui.real.config.ts",
     "playwright.real.config.ts"
   ]
 }
