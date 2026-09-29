@@ -1,6 +1,6 @@
 # npm 发布记录：0.2.4
 
-> 状态：**候选已准备，尚未发布。** 发布、批准与读回由项目所有者在交互终端完成后补记本页"发布"与"发布后验证"两节。
+> 状态：十个 `0.2.4` 包已发布至 npm，`latest` 均指向 `0.2.4`（2026-09-29 16:20:39 UTC 全部可下载）。读回的 tarball integrity 全部一致，内容与审核的候选包一致；从 registry 安装的 Vite 5 + Vue 3.4 与 Vite 5 + React 19.2 项目类型检查与构建通过。批准顺序与依赖顺序不一致，造成约 4 分钟安装失败窗口，见"事件"。
 
 ## 范围与版本选择
 
@@ -68,8 +68,31 @@
 
 ## 发布
 
-待发布后填写。
+执行人：项目所有者（npm 身份 `jianian`，2FA 与暂存批准由本人完成）。发布源为 `main` @ `147fb27`（#99 合并提交）的全新克隆，本地分支 `main` 跟踪 `origin/main`、工作区干净，不使用 `--no-git-checks`；按依赖顺序对十包执行 `pnpm publish --access public --tag latest`，十包均进入暂存（输出 `Published package` 时 tarball 仍为 404）。发布前从该提交重新构建并打包：6 包与候选字节相同，`client-runtime`、`entry-resilience`、`sw-runtime`、`vite` 4 包仅 `package.json` 内部依赖的键序不同，其余文件逐字节一致。键序是 pnpm 改写 `workspace:` 依赖时的波动，每次打包涉及的包不固定（读回比对时为下表另外 4 包），不影响内容。
+
+| 包 | 公开（registry `time`，UTC） | SHA-256（前缀） | integrity 与下载一致 | 与审核候选比对 |
+|---|---|---|---|---|
+| contracts | 16:17:39 | `c2a51537` | ✅ | 相同 |
+| core | 16:19:41 | `8086c264` | ✅ | 相同 |
+| engine-workbox | 16:16:11 | `fee09d72` | ✅ | 相同 |
+| build-verifier | 16:15:35 | `96ed1751` | ✅ | 内容相同（`package.json` 键序不同） |
+| sw-runtime | 16:15:35 | `6c045e4a` | ✅ | 内容相同（`package.json` 键序不同） |
+| client-runtime | 16:16:49 | `350ca136` | ✅ | 内容相同（`package.json` 键序不同） |
+| vite | 16:15:59 | `060d0885` | ✅ | 内容相同（`package.json` 键序不同） |
+| entry-resilience | 16:17:53 | `54d116ff` | ✅ | 相同 |
+| vue | 16:15:44 | `d5ed9a6d` | ✅ | 相同 |
+| react | 16:16:26 | `8ebda15d` | ✅ | 相同 |
+
+## 事件
+
+- **公开顺序与依赖顺序不一致（约 4 分钟安装失败窗口）**：`build-verifier`、`sw-runtime`、`vue`、`vite` 于 16:15:35–16:15:59 最先公开，而底层依赖 `contracts`（16:17:39）与 `core`（16:19:41）最后公开；16:15 至 16:20:39（十包 tarball 全部可下载）之间，安装 `@pwa-platform/vue@0.2.4` 等会因依赖尚不可下载而失败。未重发，窗口随 `core` 同步结束自行关闭。这是继 0.2.3 之后第二次出现同类窗口：发布流程第 9 条的"按依赖顺序批准、被依赖的包可下载后再批准下一层"需要在批准时逐层核对，而不只是按顺序点击。
+- 发布命令最初由助手在会话中准备，自动权限分类器拒绝了助手直接执行发布，改由项目所有者在自己的终端执行同一组命令。
 
 ## 发布后验证
 
-待发布后填写：十包 `latest` 与 `dist.integrity` 读回、与候选 tarball 比对、从 registry 安装 Vite 5 + Vue 3.4 与 Vite 5 + React 19.2 独立项目，并确认 `@pwa-platform/vite@0.2.4` 包内含 `skills/pwa-onboarding/SKILL.md` 与 `docs/`。
+- 2026-09-29 16:20:39 UTC 读回：十包 `dist-tags.latest` 均为 `0.2.4`，`0.2.4` tarball 均返回 200，下载内容的 SHA-512 与 `dist.integrity` 一致；与审核候选比对见上表。`@pwa-platform/vite@0.2.4` 含 `skills/pwa-onboarding/SKILL.md` 与 `docs/`（11 页 + `README.md`，共 12 个文件）。
+- 从 registry 安装（不使用本地 tarball；锁文件中 8 个 `@pwa-platform/*@0.2.4` 的 integrity 与 registry 一致）：
+  - Vite 5.0.0 + Vue 3.4.0 + `@vitejs/plugin-vue` 5.0.0：`pnpm install`、`vue-tsc --noEmit`、`vite build` 均 exit 0。
+  - Vite 5.0.0 + React 19.2.0：`pnpm install`、`tsc --noEmit`、`vite build` 均 exit 0。
+  - 两个产物都含 `sw.js`、`pwa-recovery-worker.js`、`manifest.webmanifest`、`offline.html`；`node_modules/@pwa-platform/vite/` 下有 `docs/` 与 `skills/`。
+
