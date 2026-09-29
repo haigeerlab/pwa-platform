@@ -120,6 +120,19 @@ describe("EVALUATE_SCRIPT", () => {
     expect(reply).toEqual({ ok: true, value: 2, href: "http://page/" });
   });
 
+  it("hands the function an argument rebuilt by the page's own JSON, so plain-object checks in page code hold in Firefox", async () => {
+    // Firefox builds the driver's `arguments` in its own realm; the page's `JSON.parse` yields objects of the page's realm.
+    const pageRealm = Object.create(globalThis) as Record<string, unknown>;
+    pageRealm["JSON"] = { parse: (text: string) => ({ ...(JSON.parse(text) as object), builtBy: "page" }) };
+    Reflect.set(globalThis, "window", pageRealm);
+    try {
+      const script = serializePageScript((arg: { readonly n: number }) => arg, { n: 1 });
+      expect(await call({ ...script, poll: null, waitMs: 50 })).toEqual({ ok: true, value: { n: 1, builtBy: "page" }, href: "http://page/" });
+    } finally {
+      Reflect.deleteProperty(globalThis, "window");
+    }
+  });
+
   it("keeps a thrown error's message", async () => {
     const failing = serializePageScript(() => Promise.reject(new Error("boom")), undefined);
     expect(await call({ ...failing, poll: null, waitMs: 50 })).toMatchObject({ ok: false, message: "boom" });

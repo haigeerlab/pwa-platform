@@ -149,7 +149,10 @@ if (id === null) {
   store.running[id] = Promise.resolve()
     .then(() => {
       const value = __pageSource();
-      return request.isFunction ? value(request.arg) : value;
+      // Firefox builds \`request.arg\` in the driver's own realm, so page code that tests \`Object.getPrototypeOf(arg) ===
+      // Object.prototype\` (a plain-object check) would reject it. A JSON round trip through the page's own \`JSON\` rebuilds it there.
+      const arg = request.arg !== null && typeof request.arg === "object" ? root.JSON.parse(JSON.stringify(request.arg)) : request.arg;
+      return request.isFunction ? value(arg) : value;
     })
     .then(
       (value) => (value === undefined ? { ok: true, undefined: true } : { ok: true, value }),
