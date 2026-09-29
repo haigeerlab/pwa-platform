@@ -92,6 +92,13 @@ export const PWA_UPDATE_NOTICE_MESSAGES: Readonly<Record<PwaUpdateNoticeLocale, 
 const REMIND_AFTER_MS = 30 * 60_000;
 const STABLE_WAITING_MS = 100;
 const PAGE_CURRENCY_TIMEOUT_MS = 5_000;
+/**
+ * Added to the currency request's URL. The platform worker answers a non-navigation GET from the precache when its
+ * path plus query is a precache entry, and `cache: "no-store"` does not reach the worker. A document whose own URL is
+ * precached (e.g. `/app/index.html`) would therefore get the *old* worker's precached HTML back and an old page would
+ * read as current. No precache entry carries this parameter, so the request always goes to the network (ADR-0046).
+ */
+const PAGE_CURRENCY_QUERY = "__pwa-page-currency";
 
 type PageCurrency = "current" | "stale";
 
@@ -111,6 +118,7 @@ async function detectPageCurrency(signal: AbortSignal): Promise<PageCurrency> {
   try {
     const url = new URL(window.location.href);
     url.hash = "";
+    url.searchParams.set(PAGE_CURRENCY_QUERY, "1");
     const response = await fetch(url.href, { cache: "no-store", credentials: "same-origin", signal: request.signal });
     if (!response.ok) return "stale";
     const latest = new DOMParser().parseFromString(await response.text(), "text/html").querySelector('script[type="module"][src]');

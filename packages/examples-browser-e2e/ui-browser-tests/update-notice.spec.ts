@@ -176,6 +176,25 @@ for (const framework of ["vue", "react"] as const) {
     await expect(page.getByRole("button", { name: "Reload page" })).toHaveCount(0);
   });
 
+  test(`${framework}: the currency check carries its marker query so a precached document URL cannot answer it`, async ({ page }) => {
+    const requested: URL[] = [];
+    await page.unrouteAll();
+    await serveShell(page, "stale");
+    // Registered last, so it runs first (Playwright tries the newest route first) and then falls back to the shell.
+    await page.route(isShellFetch, async (route: Route) => {
+      if (route.request().resourceType() === "fetch") requested.push(new URL(route.request().url()));
+      return route.fallback();
+    });
+    await page.goto(`${origin}/?framework=${framework}&locale=en`);
+    await page.waitForFunction("typeof window.__fixture?.wait === 'function'");
+    await page.evaluate("window.__fixture.wait()");
+    await expect(page.getByRole("status")).toContainText("A new version is available");
+    expect(requested).toHaveLength(1);
+    // Kept alongside the page's own query, which the check must not drop.
+    expect(requested[0]!.searchParams.get("__pwa-page-currency")).toBe("1");
+    expect(requested[0]!.searchParams.get("framework")).toBe(framework);
+  });
+
   test(`${framework}: a failed currency check falls back to the ordinary prompt`, async ({ page }) => {
     await page.unrouteAll();
     await serveShell(page, "failure");
