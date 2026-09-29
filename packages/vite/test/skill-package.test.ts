@@ -181,3 +181,170 @@ describe("DT6 no executable content", () => {
     expect(findFencedWrites("- 不要放进 `public/`、`src/`、`dist/`。\ncp x public/y")).toEqual([]);
   });
 });
+
+// ---- AO5: shared rules, state file, English glossary --------------------------------------------------------------
+
+const stateFile = join(referencesDir, "state-file.md");
+const glossaryFile = join(referencesDir, "glossary-en.md");
+
+/** Removes fenced code blocks so that example links and commands inside them are not treated as real ones. */
+function withoutFences(markdown: string): string {
+  const kept: string[] = [];
+  let fence: string | undefined;
+  for (const line of markdown.split(/\r?\n/)) {
+    const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    if (marker) {
+      const char = marker.charAt(0);
+      if (fence === undefined) fence = char;
+      else if (char === fence) fence = undefined;
+      continue;
+    }
+    if (fence === undefined) kept.push(line);
+  }
+  return kept.join("\n");
+}
+
+/** Relative link targets (fragment removed) with the line each one is on. */
+function relativeLinks(markdown: string): Array<{ target: string; line: string }> {
+  const links: Array<{ target: string; line: string }> = [];
+  for (const line of withoutFences(markdown).split(/\r?\n/)) {
+    for (const match of line.matchAll(/\]\(([^)\s]+)\)/g)) {
+      const raw = match[1] ?? "";
+      if (/^[a-z][a-z0-9+.-]*:/i.test(raw) || raw.startsWith("#")) continue;
+      links.push({ target: raw.split("#")[0] ?? "", line });
+    }
+  }
+  return links;
+}
+
+function sectionOf(markdown: string, heading: string): string {
+  const lines = markdown.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === heading);
+  if (start === -1) throw new Error(`Missing section: ${heading}`);
+  const rest = lines.slice(start + 1);
+  const end = rest.findIndex((line) => /^## /.test(line));
+  return (end === -1 ? rest : rest.slice(0, end)).join("\n");
+}
+
+describe("DT4 references and links", () => {
+  const skillText = () => readFileSync(skillFile, "utf8");
+
+  it("resolves every relative link inside the skill directory", () => {
+    for (const file of listFiles(skillDir)) {
+      for (const { target } of relativeLinks(readFileSync(file, "utf8"))) {
+        const resolved = join(dirname(file), target);
+        expect(relative(skillDir, resolved).startsWith(".."), `${relative(skillDir, file)} -> ${target} leaves the skill`).toBe(false);
+        expect(existsSync(resolved), `${relative(skillDir, file)} -> ${target}`).toBe(true);
+      }
+    }
+  });
+
+  it("leaves no orphan reference file", () => {
+    const linked = new Set<string>();
+    for (const file of listFiles(skillDir)) {
+      for (const { target } of relativeLinks(readFileSync(file, "utf8"))) linked.add(join(dirname(file), target));
+    }
+    for (const file of listFiles(referencesDir)) expect(linked.has(file), `${relative(skillDir, file)} is not linked`).toBe(true);
+  });
+
+  it("says when to read each reference (references are never read automatically)", () => {
+    for (const { target, line } of relativeLinks(skillText())) {
+      if (target.startsWith("references/")) expect(line, `${target}: the line must say 读取`).toContain("读取");
+    }
+  });
+});
+
+describe("AO5 SKILL.md structure", () => {
+  it("has the start-up checks, rules, labels, confirmation gates and gate index", () => {
+    const text = readFileSync(skillFile, "utf8");
+    for (const heading of ["## 启动检查", "## 通用规则", "## 报告标签", "## 五个人工确认闸门", "## 关卡索引"]) {
+      expect(text, heading).toContain(`\n${heading}\n`);
+    }
+  });
+
+  it("names all five confirmation gates", () => {
+    const section = sectionOf(readFileSync(skillFile, "utf8"), "## 五个人工确认闸门");
+    for (const gate of ["G1", "G2", "G3", "G4", "G5"]) expect(section, gate).toContain(gate);
+  });
+
+  it("covers the four start-up checks: path, version, state file, language", () => {
+    const section = sectionOf(readFileSync(skillFile, "utf8"), "## 启动检查");
+    for (const word of ["路径自检", "版本自检", "状态文件", "语言"]) expect(section, word).toContain(word);
+    expect(section).toContain("metadata.version");
+  });
+});
+
+describe("DT7 language parity", () => {
+  const labels = () =>
+    sectionOf(readFileSync(skillFile, "utf8"), "## 报告标签")
+      .split(/\r?\n/)
+      .flatMap((line) => (/^- `([^`]+)`/.exec(line)?.[1] ? [/^- `([^`]+)`/.exec(line)?.[1] as string] : []));
+
+  it("declares the four outcome labels", () => {
+    const declared = labels();
+    for (const outcome of ["通过", "不通过", "警告", "无法判定"]) expect(declared, outcome).toContain(outcome);
+  });
+
+  it("has an English translation for every report label", () => {
+    expect(existsSync(glossaryFile), "references/glossary-en.md must exist").toBe(true);
+    const rows = new Map<string, string>();
+    for (const line of readFileSync(glossaryFile, "utf8").split(/\r?\n/)) {
+      const cells = /^\|\s*([^|]+?)\s*\|\s*([^|]+?)\s*\|/.exec(line);
+      if (cells && cells[1] !== "中文" && !/^-+$/.test(cells[1] ?? "")) rows.set(cells[1] ?? "", cells[2] ?? "");
+    }
+    for (const label of labels()) {
+      const english = rows.get(label);
+      expect(english, `no English translation for ${label}`).toBeDefined();
+      expect(english, `${label} -> ${english}`).toMatch(/^[A-Za-z][A-Za-z0-9 ,'/()-]*$/);
+    }
+  });
+});
+
+describe("AO5 state file reference", () => {
+  const allowedGateStates = ["pending", "in-progress", "done", "skipped", "blocked"];
+  const example = () => {
+    const text = readFileSync(stateFile, "utf8");
+    const block = /```markdown\r?\n([\s\S]*?)\r?\n```/.exec(text)?.[1];
+    if (!block) throw new Error("state-file.md must contain a ```markdown example");
+    return block;
+  };
+
+  // Front matter of the example: top-level `key: value`, and a `gates:` block of two-space-indented `key: value`.
+  function parseExample(block: string): { top: Record<string, string>; gates: Record<string, string> } {
+    const lines = block.split(/\r?\n/);
+    if (lines[0] !== "---") throw new Error("example must start with ---");
+    const end = lines.indexOf("---", 1);
+    if (end === -1) throw new Error("example front matter must end with ---");
+    const top: Record<string, string> = {};
+    const gates: Record<string, string> = {};
+    let inGates = false;
+    for (const line of lines.slice(1, end)) {
+      const nested = /^ {2}"?([A-Za-z0-9]+)"?:\s*(\S+)\s*$/.exec(line);
+      if (nested && inGates) {
+        gates[nested[1] ?? ""] = nested[2] ?? "";
+        continue;
+      }
+      const flat = /^([A-Za-z][A-Za-z0-9]*):\s*(.*)$/.exec(line);
+      if (!flat) throw new Error(`Unsupported line in example: ${line}`);
+      inGates = flat[1] === "gates";
+      if (!inGates) top[flat[1] ?? ""] = (flat[2] ?? "").trim();
+    }
+    return { top, gates };
+  }
+
+  it("ships a valid example: keys, language, profile and one state per gate", () => {
+    const { top, gates } = parseExample(example());
+    expect(Object.keys(top).sort()).toEqual(["existingPwa", "language", "packageVersion", "profile", "skillVersion"]);
+    expect(["zh-CN", "en"]).toContain(top["language"]);
+    expect(["shell-offline-update", "shell-offline-update-runtime-cache"]).toContain(top["profile"]);
+    expect(["true", "false"]).toContain(top["existingPwa"]);
+    // Integer-like keys ("0"-"6") always precede "A" in a JS object, so compare as a set rather than by order.
+    expect(Object.keys(gates).sort()).toEqual(["0", "1", "2", "3", "4", "5", "6", "A"]);
+    for (const [gate, state] of Object.entries(gates)) expect(allowedGateStates, `gate ${gate}`).toContain(state);
+  });
+
+  it("says what the state file must never contain", () => {
+    const text = readFileSync(stateFile, "utf8");
+    for (const word of ["令牌", "Cookie", "响应体", "服务器配置"]) expect(text, word).toContain(word);
+  });
+});
