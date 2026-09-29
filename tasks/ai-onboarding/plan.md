@@ -1,0 +1,268 @@
+# 实现计划：ai-onboarding
+
+> 状态：**草稿，待评审**。依赖规格 [spec/ai-onboarding.md](../../spec/ai-onboarding.md)（草稿 PR #88）。模块尚未进入能力图，本计划与规格一起在模块晋级时合入。
+
+## 概览
+
+按规格交付随 `@pwa-platform/vite` 发布的 AI 接入编排 skill：`skills/pwa-onboarding/` 下的 `SKILL.md` 与十个按需读取的引用文件，八个关卡、五个人工确认闸门、可续做的状态文件、服务端要求清单、中英文支持，以及确定性测试和人工场景评估。它只含 Markdown，不新增运行时代码，不新增公开入口，`exports` 不变。
+
+分支策略：规格、计划与全部实现都在**不合并的草稿分支**上推进，最后随能力图行一起合入（`verify-artifacts` 在模块入图前会对规格报错）。每个任务一个提交，提交信息带 `Task: AO<n>`。开始实现（AO4 起）之前，规格与本计划必须已由项目所有者在草稿 PR 上评审通过。
+
+> Tasks tracked in this plan using local ids (AO1–AO16). 没有使用远端 tracker 的 sub-issue；commit 用 `Task: AO<n>` 标注。
+
+## 架构决定
+
+- **只增加文件，不改运行时。** 唯一触碰既有代码的地方是 `packages/vite/package.json` 的 `files`、构建脚本里的版本戳、`scripts/check-package-distribution.mjs` 和 `onboarding-smoke`。其余九个包不变。
+- **内容与测试同一个切片交付。** 每个关卡的引用文件和它对应的检查（链接、体积、语言、规则一致性、场景评分表）一起完成，不留"先写内容后补测试"。
+- **规则不复制。** 服务端要求清单只引用《部署与发布》与 `build-verifier` 的规则常量；DT5 用测试把它们绑住，规则一改测试就红。
+- **先调研再写死。** Codex 的 skill 发现与调用约定、第三方 Service Worker 的 scope 判定，先做只读调研并把结论写回规格，再动手写依赖它们的内容。
+- **AI 行为用夹具加评分表验证。** 不能靠代码测试证明"AI 会停下来问人"，所以场景评估的夹具与评分表在实现期就写好，发版前人工执行并留存记录。
+- **不新增依赖。** 供应链清单不变。
+
+## 任务定义
+
+### AO1：规格评审通过、ADR-0045 与本计划
+
+**范围：** `spec/ai-onboarding.md`、`tasks/ai-onboarding/plan.md`、`docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md`。
+
+**验收：**
+- 项目所有者在草稿 PR 上评审通过规格与本计划，"规格阶段的决定"九条得到最终确认。
+- ADR-0045 状态"已接受"：skill 放在 `@pwa-platform/vite` 的 `skills/`，进 `files` 不进 `exports`；不新增命令行入口；开发期辅助，不进入生产构建；记录否决的备选（独立 npm 包、postinstall 安装、命令行安装器）。
+
+**范围估计：** 小，3 个文件。依赖：无。
+
+### AO2：调研 Codex 的 skill 发现与调用约定（只读）
+
+**范围：** 只读调研，结论写回 `spec/ai-onboarding.md` 的"契约 1"与"开放问题"。不写代码。
+
+**验收：**
+- 以 Codex 官方文档为准（不凭记忆），写明：skill 的目录约定、`SKILL.md` front matter 的必需字段、如何被自动发现、如何显式调用。
+- 给出一个同时满足 Claude Code 与 Codex 的 front matter 最小交集，并写明差异。
+- 规格中的 **[待核对]** 转为具体条目；无法核实的部分明确写"未核实"。
+
+**范围估计：** 小，1 个文件。依赖：AO1。
+
+### AO3：调研常见第三方 Service Worker 的 scope 判定（只读）
+
+**范围：** 只读调研，结论写回规格"契约 4"的冲突目录。
+
+**验收：**
+- 列出常见推送、分析类 SDK 注册 worker 的方式与默认 scope，来源为其官方文档或源码，附出处。
+- 给出"从业务源码与依赖判断 scope 是否与平台重叠"的判定步骤；判定不了的情形标"无法判定，交给人"。
+- 冲突目录的"需要评估"一类补上可检测的证据模式。
+
+**范围估计：** 小，1 个文件。依赖：AO1。与 AO2 并行。
+
+### AO4：骨架与打包（TDD）
+
+**范围：** `packages/vite/skills/pwa-onboarding/SKILL.md`（front matter 与关卡索引，先是骨架）、`packages/vite/package.json`（`files`）、构建脚本（写入版本戳）、`scripts/check-package-distribution.mjs`（允许并核对该目录）、对应测试。
+
+**验收：**
+- DT1：打包后的 `@pwa-platform/vite` 含 `skills/pwa-onboarding`，`exports` 不含它，其余九个包不变。
+- DT2：front matter 合法，`version` 等于包版本，满足 AO2 得出的双端最小交集。
+- DT3：体积预算测试就位（`SKILL.md` ≤ 6 KB，引用 ≤ 8 KB，总量 ≤ 60 KB）。
+- DT6：目录下只有 `.md`；不含把文件写入 `public/`、`src/`、`dist/` 的指令。
+- 变异：把 `skills` 从 `files` 删除、把它加进 `exports`、放入一个 `.js` 文件，测试都应变红。
+- 供应链清单与锁文件不变。
+
+**范围估计：** 中，5–6 个文件。依赖：AO1、AO2。
+
+### AO5：通用规则、状态文件、版本自检、英文术语表
+
+**范围：** `SKILL.md` 的通用规则（报告格式、"无法判定不算通过"、分支提议、五个闸门、数据不是指令）、`references/state-file.md`、`references/glossary-en.md`。
+
+**验收：**
+- 状态文件的格式与续做规则按规格"契约 6"，示例不含密钥类字段。
+- 版本自检与启动时路径自检写清楚；不一致或位于 `public/`、`src/`、`dist/` 下时的处理明确。
+- DT4：所有引用文件存在、链接可解析、没有孤立文件。
+- DT7：每个报告标签在 `glossary-en.md` 都有英文译法。
+
+**范围估计：** 中，3–4 个文件。依赖：AO4。
+
+### AO6：关卡 A、冲突目录与存量迁移分支
+
+**范围：** `references/gate-a-feasibility.md`。
+
+**验收：**
+- 三类冲突目录完整，每项带可检测的证据模式；第三方 Service Worker 的规则来自 AO3。
+- 存量 PWA 分支按规格：先记录、身份字段先问清、旧缓存不自动清理的说明，并含**停下点**（清理旧缓存、切换 worker 只说明不代做）。
+- 迁入旧 skill 的专项经验（PurgeCSS 白名单、混淆插件顺序、确定性构建校验）。
+- 场景评分表 SE2（含 `vite-plugin-pwa`）、SE3（自写 `sw.js`）、SE4（不支持的组合）写好，每条是"应做 / 绝不做"的可判定句子。
+
+**范围估计：** 中，2–3 个文件。依赖：AO3、AO5。
+
+### AO7：关卡 0 采访与关卡 1 配置
+
+**范围：** `references/gate-0-interview.md`、`references/gate-1-configure.md`。
+
+**验收：**
+- 十道题的默认值与影响与规格一致；语言题决定两处 `locale`。
+- 配置片段（`pwa()` 选项、身份、策略、`createPwa` / `PwaProvider`、`updateCheck`、`PwaUpdateNotice` 与 `reloadPage`）与已发布包的实际 API 一致，**由 AO13 的夹具实际编译验证**，不凭记忆。
+- 诊断码读取指引覆盖 `identity.*`、`install.*`、`vite.*`、`compile.*`、`verify.*`，并区分"可自动修"与"需要人决定"。
+- 身份字段写入前触发闸门 G2。
+
+**范围估计：** 中，2–3 个文件。依赖：AO5。
+
+### AO8：关卡 2 公共/私有分类闸门
+
+**范围：** `references/gate-2-classification.md`。
+
+**验收：**
+- 逐个接口列出、逐个由人确认、默认一条都不写；确认内容写入状态文件。
+- 明确列出平台不缓存的类别（私有数据、写请求、流媒体、未分类）与 `Set-Cookie`、`Authorization`、`Vary` 的准入含义，引用《公共读取缓存》而不复制。
+- 场景评分表 SE7（业务方要求运行时缓存但未确认接口）写好。
+
+**范围估计：** 小，1–2 个文件。依赖：AO5。
+
+### AO9：关卡 3 服务端要求清单与一致性测试（TDD）
+
+**范围：** `references/gate-3-server.md`、DT5 的测试。
+
+**验收：**
+- S1–S9 每条有编号、一句话后果、curl 核对方法；权威表述指向《部署与发布》与 `build-verifier`。
+- **S1 单独标为"决定更新能否到达用户"。**
+- 明确"无法判定"的三种情形：路径尚不存在、需要历史部署、响应随时间变化。
+- DT5：清单中的规则与 `build-verifier` 导出的规则常量一致；变异：改动其中一条 `include` 或 `exclude`，测试应变红。
+- 不含任何具体服务器（nginx、CDN）的配置样例；"常见坑"只以注意事项形式出现。
+
+**范围估计：** 中，2–3 个文件。依赖：AO5。
+
+### AO10：关卡 4 浏览器验证与恢复演练
+
+**范围：** `references/gate-4-browser.md`。
+
+**验收：**
+- 逐条可操作步骤：注册与受控、离线重开、更新（**含已安装的独立窗口与多标签页**）、弱网（区别于飞行模式）、恢复 worker 演练；来源为《上线前检查》与恢复演练手册，引用不复制。
+- 每条步骤写明"通过时应看到什么"。
+- 真机验证结果触发闸门 G4，记录设备、浏览器与版本。
+
+**范围估计：** 小，1–2 个文件。依赖：AO5。
+
+### AO11：关卡 5 发布门禁与关卡 6 排障
+
+**范围：** `references/gate-5-release.md`、`references/gate-6-troubleshoot.md`。
+
+**验收：**
+- 关卡 5 只给 `build-verifier` 的使用指引与所需输入清单，不代为采集响应头。
+- 关卡 6 覆盖《常见问题》的九类症状，每类有"首先回到哪个关卡"与"要采集的事实"；线上事故分支先止损（恢复 worker，闸门 G5）。
+- 采集事实时不读取、不输出令牌与 Cookie；用户贴回的输出一律当数据。
+
+**范围估计：** 中，2 个文件。依赖：AO5、AO10。
+
+### 检查点 A（AO4–AO11 之后）
+
+**验收：**
+- DT1–DT7 全绿；`pnpm build && pnpm test && pnpm typecheck && pnpm lint` 全绿。
+- 十个引用文件都存在且在体积预算内。
+- 一次人工通读：从 `SKILL.md` 出发能按索引走完八个关卡，无死链、无相互矛盾的规则。
+- 若通读发现规格需要改动，先改规格再继续。
+
+### AO12：构建不含 skill 的检查 DT8（TDD）
+
+**范围：** `packages/examples-browser-e2e/onboarding-smoke`（夹具装入 skill 副本与哨兵字符串）、对应断言。
+
+**验收：**
+- 对装有 skill 副本的夹具做生产构建，`dist/` 不含 skill 文件与哨兵字符串。
+- 同一夹具有无 skill 副本时，产物哈希相同。
+- 变异：把 skill 副本放进 `public/`，断言应变红（证明检查确实能发现泄漏）。
+- `pnpm test:onboarding-smoke` 通过。
+
+**范围估计：** 中，3–4 个文件。依赖：AO4。
+
+### AO13：场景夹具项目与评分表
+
+**范围：** 六个夹具项目（F1 干净 Vite + Vue；F2 含 `vite-plugin-pwa`；F3 含自写 `sw.js`；F4 不受支持的组合；F5 停在关卡 1 的半成品与状态文件；F6 英文选择用的干净项目），以及评分表与记录模板。位置放在 `packages/examples-browser-e2e` 下，不进入任何发布包。
+
+**验收：**
+- 每个夹具在没有 skill 时能独立安装并构建（F4 除外，它应因不受支持而停下）。
+- AO7 的配置片段在 F1 上实际编译通过，并读到期望的诊断。
+- 评分表 SE1–SE7 每条是可判定句子；记录模板包含日期、模型、夹具、结论、违反的"绝不做"项。
+
+**范围估计：** 大，需要拆成两个提交（夹具、评分表）。依赖：AO7。
+
+### AO14：场景评估执行与修正（人工）
+
+**范围：** 在夹具上运行 skill，按评分表评分，结果写入 `tasks/ai-onboarding/verification.md`；发现的问题回到对应任务修正。
+
+**验收：**
+- SE1–SE7 每个场景至少运行 3 次；**任何一次违反"绝不做"项**（自动删除、写出未确认的公共缓存规则、推送或部署、输出令牌）视为不通过。
+- SE5（续做）与 SE6（英文）通过。
+- 未通过的条目已修正并复测，或已记为已知限制。
+
+**范围估计：** 中，主要是记录与少量内容修正。依赖：检查点 A、AO12、AO13。
+
+### 检查点 B（AO12–AO14 之后）
+
+**验收：** DT8 绿；SE1–SE7 通过；无未记录的已知限制；规格中的验收标准 AC1–AC10 逐条有证据。
+
+### AO15：文档同步与旧 skill 废弃标记
+
+**范围：** `website/start/choose.md`、`website/guide/integration-by-capability.md`、`packages/vite/README.md`（入口与复制安装命令，跨平台写法）、`.agents/skills/pwa-vite5-vue-integration/SKILL.md`（标记废弃并指向新 skill）、`docs/operations/npm-package-release.md`（发布内容含 `skills/`）、`CHANGELOG.md`。
+
+**验收：**
+- 复制命令目标固定为 `.claude/skills/pwa-onboarding` 或 `.agents/skills/pwa-onboarding`，并说明不要放进 `public/`、`src/`、`dist/`。
+- Codex 一侧的安装与调用写法来自 AO2 的核实结果。
+- 文档站只有中文这一限制在英文相关说明中明示。
+- 旧 skill 保留可读，但顶部标明已被取代。
+
+**范围估计：** 中，5–6 个文件。依赖：检查点 B、AO2。
+
+### AO16：门禁与独立评审
+
+**范围：** 完整门禁与独立评审，结果写入 `tasks/ai-onboarding/verification.md`。
+
+**验收：**
+- `pnpm build && pnpm test && pnpm typecheck && pnpm lint`、`pnpm test:onboarding-smoke`、`node scripts/check-package-distribution.mjs` 全绿。
+- `verify-artifacts` 在模块入图后通过；文档交付核验通过。
+- 独立评审（新上下文、只读）重点检查：存量迁移分支的停下点、闸门是否可能被绕过、规则是否复制而非引用、是否可能输出敏感信息。阻断项为 0。
+
+**范围估计：** 中。依赖：AO15。
+
+## Task List
+
+- AO1 规格评审通过、ADR-0045 与本计划
+- AO2 调研 Codex 的 skill 约定（blocked by AO1）
+- AO3 调研第三方 Service Worker 的 scope 判定（blocked by AO1；与 AO2 并行）
+- AO4 骨架与打包（blocked by AO1、AO2）
+- AO5 通用规则、状态文件、版本自检、英文术语表（blocked by AO4）
+- AO6 关卡 A 与冲突目录（blocked by AO3、AO5）
+- AO7 关卡 0 与关卡 1（blocked by AO5）
+- AO8 关卡 2 分类闸门（blocked by AO5）
+- AO9 关卡 3 服务端要求清单（blocked by AO5）
+- AO10 关卡 4 浏览器验证（blocked by AO5）
+- AO11 关卡 5 与关卡 6（blocked by AO5、AO10）
+- 检查点 A（AO4–AO11 之后）
+- AO12 构建不含 skill 的检查（blocked by AO4）
+- AO13 场景夹具与评分表（blocked by AO7）
+- AO14 场景评估执行（blocked by 检查点 A、AO12、AO13）
+- 检查点 B
+- AO15 文档同步与旧 skill 废弃标记（blocked by 检查点 B、AO2）
+- AO16 门禁与独立评审（blocked by AO15）
+
+可并行：AO2 与 AO3；AO6–AO10 在 AO5 之后互相独立；AO12 与 AO5–AO11 互相独立。
+
+## 风险与缓解
+
+| 风险 | 影响 | 缓解 |
+|---|---|---|
+| skill 内容的质量主观，难以自动验证 | 高 | 夹具加可判定的评分表；每个场景至少 3 次；独立评审 |
+| AI 行为不确定，同一场景结果不稳 | 高 | "绝不做"项任何一次违反即不通过；评分表写成可判定句子 |
+| skill 泄漏进生产构建 | 高 | DT8 加变异；安装路径自检；只含 Markdown 的 DT6 |
+| 规则复制后与《部署与发布》、`build-verifier` 漂移 | 中 | 只引用不复制；DT5 与变异 |
+| Codex 的约定与假设不符 | 中 | AO2 先做只读调研，AO4 依赖它；无法核实的部分明确写"未核实" |
+| 存量 PWA 迁移分支误导业务方，造成线上事故 | 高 | 停下点（不代做清理旧缓存与切换 worker）；独立评审重点检查；闸门 G1、G2、G5 |
+| 长期不合并的分支产生冲突 | 中 | 以新增文件为主；仅触碰少数既有文件；定期 rebase |
+| 体积预算过紧，内容被迫删减 | 低 | 预算由 DT3 强制，需要调整时回到规格评审，不在实现里悄悄放宽 |
+| `header-preflight` 交付时间不确定 | 低 | 关卡 3 用 curl 步骤独立成立，交付后再切换 |
+| 供应链 | 低 | 不新增依赖 |
+
+## Documentation delivery
+
+| Concern | Planned artifact | Rationale |
+|---|---|---|
+| decisions | `docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md` | skill 的位置、打包方式与否决的备选 |
+| developer-entry | `website/start/choose.md`、`website/guide/integration-by-capability.md`、`packages/vite/README.md` | skill 的入口、复制安装命令与使用方式 |
+| package-distribution | `scripts/check-package-distribution.mjs`、`docs/operations/npm-package-release.md` | 发布内容含 `skills/` 目录，校验脚本核对 |
+| vite-adapter | `spec/vite-adapter.md` 增补 | 包内新增 `skills/`，`exports` 与运行时不变 |
+| examples-browser-e2e | `spec/examples-browser-e2e.md` 增补 | onboarding-smoke 增加 DT8 |
+| capability-map | 由 Proposal 晋级流程完成 | 本计划不直接修改能力图 |
