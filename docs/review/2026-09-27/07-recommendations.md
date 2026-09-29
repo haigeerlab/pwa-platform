@@ -19,7 +19,7 @@
 | 7 | ✅ 已完成（不阻断） | [#34](https://github.com/haigeerlab/pwa-platform/pull/34)、[#37](https://github.com/haigeerlab/pwa-platform/pull/37) | 改用服务器端断网，WebKit、Firefox 引擎冒烟不阻断门禁（ADR-0042） |
 | 8 | ✅ 已完成 | [#30](https://github.com/haigeerlab/pwa-platform/pull/30) |  |
 | 9 | ✅ 已完成 | [#31](https://github.com/haigeerlab/pwa-platform/pull/31) |  |
-| 10 | ◐ 部分完成 | [#25](https://github.com/haigeerlab/pwa-platform/pull/25) | iPhone 安装窗口内更新、Safari 双标签页已补齐；R9 根因、Android N-1、单源真实故障仍需真机 |
+| 10 | ◐ 部分完成 | [#25](https://github.com/haigeerlab/pwa-platform/pull/25) | iPhone 安装窗口内更新、Safari 双标签页已补齐；R9 平台侧根因已由 ADR-0043 修复（0.2.3），界面层现象未再复现、继续观察；单 Origin 故障已在 Android（2026-09-27）、iPhone（2026-09-29）完成；Android N-1 与真实 DNS／证书故障仍待真机 |
 | 11 | ✅ 已完成 | [#32](https://github.com/haigeerlab/pwa-platform/pull/32) |  |
 | 12 | ✅ 已完成 | [#33](https://github.com/haigeerlab/pwa-platform/pull/33) | 保留期检查的“可用资产”取自构建产物，不是服务器响应 |
 | 13 | ✅ 已完成（调整） | [#29](https://github.com/haigeerlab/pwa-platform/pull/29) | 改为 `requiredReleaseChecks(plan)`，与 ADR-0025 保持一致 |

@@ -55,7 +55,7 @@
 
 每条风险和建议的当前状态见 [06 风险清单](06-architecture-risks.md) 与 [07 改进建议](07-recommendations.md) 开头的“2026-09-28 状态”一节；证据等级的变化见[功能证据台账](../../operations/feature-evidence-ledger.md)。
 
-仍然开放的事项：Android N-1（第二台 Android 已取得，两机同为 Chrome N，待下一稳定版轮换）、单源真实故障证据，以及 R9 界面层复现的后续观察。
+仍然开放的事项：Android N-1（第二台 Android 已取得，两机同为 Chrome N，待下一稳定版轮换）、真实 DNS／证书故障下的入口恢复演练（单 Origin 故障已在 Android 2026-09-27、iPhone 2026-09-29 以模拟方式完成），以及 R9 界面层复现的后续观察。
 
 ## 方法与可信度
 

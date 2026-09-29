@@ -58,4 +58,4 @@
 | 第二批 | R15 自绘更新提示迁入网站、R9 余项（`checkForUpdate()` 在卡住的更新任务后等待）按所有者决定写入文档 [#65](https://github.com/haigeerlab/pwa-platform/pull/65)；N7 未能复现，改为失败时保留 trace 并由 CI 上传 [#66](https://github.com/haigeerlab/pwa-platform/pull/66)；R14 [#67](https://github.com/haigeerlab/pwa-platform/pull/67)、N3 [#68](https://github.com/haigeerlab/pwa-platform/pull/68)、N2 [#69](https://github.com/haigeerlab/pwa-platform/pull/69) 均先以真实浏览器探针证实再修复 |
 | 过程中新发现 | R14 的首版修复把等待上限设为 10 秒，示例应用 E2E 证明永不关闭的连接会让恢复激活等满上限，改为 3 秒；Chrome 自动请求 `/favicon.ico` 的偶发失败 [#70](https://github.com/haigeerlab/pwa-platform/pull/70)；N2 之后两个 flush 用例的引擎与时序假设 [#71](https://github.com/haigeerlab/pwa-platform/pull/71) |
 
-第三批（证据覆盖：Android N-1、iPhone 入口恢复余下三步、引擎冒烟扩面、Edge 冒烟、首份正式发布浏览器证据）尚未开始。
+第三批（证据覆盖）：iPhone 入口恢复余下三步已于 2026-09-29 补测通过；引擎冒烟已扩到 client-runtime 与 examples-browser-e2e（ADR-0042 增补）；Edge 冒烟已作为不阻塞的 CI 任务加入（ADR-0044）。Android N-1 与首份正式发布浏览器证据尚未取得。
