@@ -1,0 +1,16 @@
+{
+  "name": "f3-custom-sw",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "dependencies": {
+    "vue": "3.5.42"
+  },
+  "devDependencies": {
+    "vite": "8.3.0",
+    "@vitejs/plugin-vue": "6.0.9"
+  }
+}

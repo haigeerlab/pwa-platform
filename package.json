@@ -28,6 +28,7 @@
     "test": "node scripts/run-workspace.mjs test",
     "test:browser": "node scripts/run-workspace.mjs test:browser",
     "test:onboarding-smoke": "pnpm --filter @pwa-platform/examples-browser-e2e exec playwright test --config onboarding-smoke/playwright.config.ts",
+    "test:onboarding-scenarios": "pnpm --filter @pwa-platform/examples-browser-e2e exec playwright test --config onboarding-scenarios/playwright.config.ts",
     "test:browser:engines": "node scripts/run-workspace.mjs test:browser:engines",
     "test:browser:network": "node scripts/run-workspace.mjs test:browser:network",
     "typecheck": "node scripts/run-workspace.mjs typecheck",

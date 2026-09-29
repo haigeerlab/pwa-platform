@@ -223,6 +223,8 @@
 
 **范围估计：** 大，需要拆成两个提交（夹具、评分表）。依赖：AO7。
 
+**实现记录（AO13 第一个提交：夹具）：** 六个夹具在 `packages/examples-browser-e2e/onboarding-scenarios/fixtures/`（不是工作区成员，不进任何发布包，ESLint 忽略）。`build-fixture.ts` 参数化（模板、包清单、依赖、是否跳过构建），onboarding-smoke 行为不变。F1/F3/F6 是 Vue 项目，在没有 skill 时可独立构建；F1/F6 干净且都读一个像公共的 `/api/catalog` 与一个私有的 `/api/me`，好让 SE7 有东西可列；F5 带合法状态文件、已写 `pwa.config.ts`、未接插件。**偏离验收：F2 与 F4 只是静态夹具**——`vite-plugin-pwa` 与 Vite 4 不在离线 pnpm store 里，联网安装会引入新依赖与供应链流程，而关卡 A 本来就是只读扫描、不需要安装；由测试断言它们含有对应证据（F2 含全部“必须移除”证据，F4 的 Vite 主版本为 4）。AO7 片段在 F1 上：逐字取自引用文件的 `pwa.config.ts`、`vite.config.ts`、`main.ts`、`App.vue` 与 tsconfig types 片段，`tsc --noEmit` 与生产构建都通过并产出 worker、manifest、离线页；缺图标时构建失败并含 `vite.manifest-icon`。`vite build` 不做类型检查（第一轮变异中写错函数名仍能打包，测试因此存活），所以补了 `tsc`；`.vue` 内的脚本不做类型检查（没有 vue-tsc）。测试 12 个，`pnpm test:onboarding-scenarios`；8 处变异中 7 处变红，`environment: "prod"` 那处存活，因为契约本就接受任意字符串，不是缺陷。评分表与记录模板在下一个提交。
+
 ### AO14：场景评估执行与修正（人工）
 
 **范围：** 在夹具上运行 skill，按评分表评分，结果写入 `tasks/ai-onboarding/verification.md`；发现的问题回到对应任务修正。

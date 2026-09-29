@@ -45,7 +45,19 @@ const PINNED_DEV_DEPENDENCY_VERSIONS: Readonly<Record<string, string>> = {
   vite: "8.3.0",
 };
 
+/** What differs between fixtures: the project template, the published packages it needs, and its plain dependencies. */
+export type OnboardingFixtureOptions = {
+  readonly templateDir?: string;
+  readonly packageNames?: readonly string[];
+  readonly dependencies?: Readonly<Record<string, string>>;
+  readonly devDependencies?: Readonly<Record<string, string>>;
+  /** Install only; the caller runs the builds. */
+  readonly skipBuild?: boolean;
+};
+
 export type OnboardingFixture = {
+  /** The consumer project directory (`workDir/app`). */
+  readonly appDir: string;
   /** The consumer project's production build output; serve this to exercise the fixture in a browser. */
   readonly distDir: string;
   /** The temp directory holding the tarballs and the generated consumer project; remove with `cleanup()`. */
@@ -80,21 +92,26 @@ function packWorkspacePackage(name: string, destinationDir: string): void {
   run("pnpm", ["pack", "--pack-destination", destinationDir], join(ROOT, "packages", name));
 }
 
-export async function buildOnboardingFixture(): Promise<OnboardingFixture> {
+export async function buildOnboardingFixture(options: OnboardingFixtureOptions = {}): Promise<OnboardingFixture> {
+  const packageNames = options.packageNames ?? PACKAGE_NAMES;
   const workDir = await mkdtemp(join(tmpdir(), "pwa-onboarding-smoke-"));
   const tarballDir = join(workDir, "tarballs");
   const appDir = join(workDir, "app");
   await mkdir(tarballDir, { recursive: true });
 
   const tarballs: Record<string, string> = {};
-  for (const name of PACKAGE_NAMES) {
+  for (const name of packageNames) {
     const meta = await readPackageMetadata(name);
     packWorkspacePackage(name, tarballDir);
     tarballs[meta.name] = tarballFileName(meta.name, meta.version);
   }
 
-  await cp(TEMPLATE_DIR, appDir, { recursive: true });
-  await writeFile(join(appDir, "package.json"), `${JSON.stringify(consumerPackageJson(tarballs), null, 2)}\n`, "utf8");
+  await cp(options.templateDir ?? TEMPLATE_DIR, appDir, { recursive: true });
+  await writeFile(
+    join(appDir, "package.json"),
+    `${JSON.stringify(consumerPackageJson(tarballs, options.dependencies ?? PINNED_DEPENDENCY_VERSIONS, options.devDependencies ?? PINNED_DEV_DEPENDENCY_VERSIONS), null, 2)}\n`,
+    "utf8",
+  );
   await writeFile(join(appDir, "pnpm-workspace.yaml"), consumerWorkspaceYaml(tarballs, await readRootAllowBuilds()), "utf8");
 
   // Start from the root lockfile so pnpm prefers the versions it already resolved for the whole dependency closure,
@@ -106,9 +123,10 @@ export async function buildOnboardingFixture(): Promise<OnboardingFixture> {
   // No network: everything either comes from a local tarball above or must already be in the pnpm store the root
   // `pnpm install --frozen-lockfile` populated (react, react-dom, vite, and their own transitive dependencies).
   run("pnpm", ["install", "--offline", "--no-frozen-lockfile"], appDir);
-  run("pnpm", ["exec", "vite", "build"], appDir);
+  if (options.skipBuild !== true) run("pnpm", ["exec", "vite", "build"], appDir);
 
   return {
+    appDir,
     distDir: join(appDir, "dist"),
     workDir,
     async cleanup() {
@@ -117,8 +135,12 @@ export async function buildOnboardingFixture(): Promise<OnboardingFixture> {
   };
 }
 
-function consumerPackageJson(tarballs: Readonly<Record<string, string>>): unknown {
-  const dependencies: Record<string, string> = { ...PINNED_DEPENDENCY_VERSIONS };
+function consumerPackageJson(
+  tarballs: Readonly<Record<string, string>>,
+  plainDependencies: Readonly<Record<string, string>>,
+  plainDevDependencies: Readonly<Record<string, string>>,
+): unknown {
+  const dependencies: Record<string, string> = { ...plainDependencies };
   for (const [pkgName, fileName] of Object.entries(tarballs)) {
     dependencies[pkgName] = `file:../tarballs/${fileName}`;
   }
@@ -128,7 +150,7 @@ function consumerPackageJson(tarballs: Readonly<Record<string, string>>): unknow
     version: "0.0.0",
     type: "module",
     dependencies,
-    devDependencies: { ...PINNED_DEV_DEPENDENCY_VERSIONS },
+    devDependencies: { ...plainDevDependencies },
   };
 }
 
