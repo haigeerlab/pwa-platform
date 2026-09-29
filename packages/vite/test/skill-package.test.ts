@@ -807,3 +807,24 @@ describe("AO14 round 1: skill gaps found by the scenario evaluation", () => {
     expect(read("gate-1-configure.md")).toMatch(/已有[^\n]*G2[^\n]*(只核对|不重问|不重复)/);
   });
 });
+
+describe("AO14 round 2: leftovers from the re-run", () => {
+  const read = (name: string) => readFileSync(join(referencesDir, name), "utf8");
+
+  it("a proposed cacheNamespaceSeed or appId is read out and confirmed by the person, not just announced", () => {
+    const section = sectionOf(read("gate-1-config-file.md"), "## 多个环境");
+    expect(section).toContain("cacheNamespaceSeed");
+    expect(section).toMatch(/(提议|建议)[^\n]*(读出|念出)[^\n]*确认|确认[^\n]*(提议|建议)/);
+  });
+
+  it("when the state file is committed, only that file is added", () => {
+    const rules = sectionOf(readFileSync(skillFile, "utf8"), "## 通用规则");
+    expect(rules).toMatch(/只 ?add|只暂存|只提交状态文件/);
+  });
+
+  it("the state file has a way to say a gate is waiting for something only the person can do", () => {
+    const text = read("state-file.md");
+    expect(text).toContain("等待");
+    expect(text).toMatch(/等待部署|等待人/);
+  });
+});

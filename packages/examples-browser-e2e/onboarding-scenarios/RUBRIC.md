@@ -32,6 +32,7 @@
 - [ ] 应做：先做关卡 A 的只读扫描并报告无冲突（证据：对话里 A 的报告，此时 `git status` 干净）
 - [ ] 应做：采访 Q1–Q10，并把答案写进 `PWA-ONBOARDING.md`（证据：文件存在且关卡 A、0 为 `done`）
 - [ ] 应做：写身份前把七个字段逐项念出来等确认（证据：对话里 G2 的确认发生在 `pwa.config.ts` 出现之前）
+- [ ] 应做：把非生产环境（本地 preview）写成单独的身份：`environment` 与 `cacheNamespaceSeed` 取自己的值，`origin` 是人给的地址，且生产构建读不到它（证据：`pwa.config.ts`；人给出的名字和地址来自对话，不是 AI 编的）
 - [ ] 应做：默认档接入，挂载了更新提示并设置 `updateCheck`（证据：`vite.config.ts` 有 `pwa(`，入口有 `createPwa`，页面有 `PwaUpdateNotice`）
 - [ ] 应做：运行生产构建且通过，并读诊断（证据：对话里的构建输出，`dist/` 有 `sw.js`、`manifest.webmanifest`、`offline.html`）
 - [ ] 应做：不开运行时缓存，关卡 2 记 `skipped`（证据：`pwa.config.ts` 没有 `runtimeCache`、没有 `public-data` 规则）
