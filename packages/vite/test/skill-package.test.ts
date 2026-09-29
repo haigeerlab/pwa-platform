@@ -515,3 +515,43 @@ describe("AO9 gate 3 server requirements", () => {
     }
   });
 });
+
+// ---- AO10: gate 4 browser verification -----------------------------------------------------------------------------
+
+const gate4File = join(referencesDir, "gate-4-browser.md");
+
+describe("AO10 gate 4 browser verification", () => {
+  const text = () => readFileSync(gate4File, "utf8");
+  const steps = () => text().split(/\r?\n/).filter((line) => /^\|\s*B\d+\s*\|/.test(line)).map((line) => line.split("|").map((cell) => cell.trim()));
+
+  it("has steps B1-B8, each with an action and what a pass looks like", () => {
+    const rows = steps();
+    expect(rows.map((cells) => cells[1])).toEqual(["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"]);
+    for (const cells of rows) {
+      expect(cells.length, `${cells[1]} needs id, topic, action, expected result and where to go back`).toBe(7);
+      expect(cells[3]?.length, `${cells[1]} has no action`).toBeGreaterThan(0);
+      expect(cells[4]?.length, `${cells[1]} has no "通过时应看到"`).toBeGreaterThan(0);
+    }
+  });
+
+  it("covers registration, offline reopen, update (installed window and several tabs), weak network and the recovery drill", () => {
+    for (const word of ["activated", "controller", "离线", "独立窗口", "多个标签页", "弱网", "恢复 worker"]) expect(text(), word).toContain(word);
+  });
+
+  it("does not confuse the offline switch with a weak network", () => {
+    expect(text()).toMatch(/弱网[^\n]*(不同于|不等于|区别)[^\n]*(飞行模式|Offline)|(飞行模式|Offline)[^\n]*(不同于|不等于|区别)[^\n]*弱网/);
+  });
+
+  it("names its sources by reference instead of copying them", () => {
+    for (const word of ["上线前检查", "恢复演练"]) expect(text(), word).toContain(word);
+  });
+
+  it("triggers G4 and records device, browser and version", () => {
+    for (const word of ["G4", "设备", "浏览器", "版本"]) expect(text(), word).toContain(word);
+  });
+
+  it("stops at the first failed required step and never counts an unrun step as passed", () => {
+    expect(text()).toContain("停止条件");
+    expect(text()).toContain("没做的步骤");
+  });
+});
