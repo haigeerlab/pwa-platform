@@ -58,6 +58,14 @@
 3. 发布须在交互终端进行（2FA）；`409 previously staged`／`403 previously published`／`ERR_PNPM_OTP_NON_INTERACTIVE` 均表示已提交过，去批准或跳过，不要重发。
 4. **`audit` 的开发依赖漏洞**：`undici` 7.29.0 只经根目录 `wrangler` 引入，不进入任何公开包。项目所有者决定：发布前按[依赖变更流程](../../docs/operations/dependency-changes.md)升级（另开 PR，合并后需重跑门禁），或记录为已知项照常发布。**决定（2026-09-29，项目所有者）：记录为已知项，照常发布 0.2.4**；依赖升级另行处理，不阻塞本次发布。
 
+## 文档站发布（第 11 条）
+
+- 2026-09-29：`#99` 合并提交 `147fb27` 的 `main` CI（run 36594306515）结论 success；阻塞项 Node 22／24、Chrome 通过，不阻塞的 Edge、真实 FCM 通过。不阻塞的引擎冒烟失败 1 例：Firefox 上 `client-runtime` `served-from-cache.spec.ts:59` 的在线预热请求未成功；前一次 `main`（`4392fc3`）在 Firefox 上失败的是另一例（`sw-runtime` `runtime-cache.spec.ts:231`），两者都不涉及本次改动的代码，候选门禁本机运行时均通过，按 Firefox 偶发失败处理并另行跟进。
+- 从 `147fb27` 建立并推送 `docs/v2026.09.29`。上传前经 Pages API 只读核对：生产、预览自动部署关闭（`false`／`none`，总开关 `false`），当月四个 Pages 项目非跳过部署 136 次（Free 上限 500）；Pages Token 无读取账户套餐的权限，未重新确认套餐。产物 110 个文件、共约 3.3 MB，最大文件 316,725 字节，无 Functions 或 `_worker.js`。
+- Production branch 由 `docs/v2026.09.27-2` 改为 `docs/v2026.09.29`，改后复读确认未产生部署（生产部署仍为 `ba3e33e4`）。
+- 从该提交重新构建后以 Wrangler 手动上传一次：生产部署 ID `ff750f1b-1abb-432d-b8ee-b9128ed14fdd`，分支 `docs/v2026.09.29`，提交 `147fb27`。
+- 三项检查全部通过：`git diff --stat origin/docs/v2026.09.29 147fb27 -- website/` 为空；`SKILL.md` 的 11 个文档站链接均返回 200；线上《选择接入包》含 `id="ai-onboarding"`（计数 1）。
+
 ## 发布
 
 待发布后填写。
