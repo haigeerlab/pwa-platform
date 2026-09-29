@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/react",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "React 19 binding for PWA Platform.",
   "license": "MIT",
   "type": "module",
