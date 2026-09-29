@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
+import { readRealBrowserKind, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
 import { SHELL_URL, WORKER_URL } from "./fixture-site.js";
 
 /** Reads the facade the page script exposed, failing loudly when the bundle is missing or broken. */
@@ -128,9 +128,48 @@ export async function installAndControlWithUpdateCheck(
   await waitForActiveWorkerActivated(page);
   await page.reload();
   await waitForController(page, WORKER_URL);
-  await page.clock.install();
+  // WebDriver has no page.clock (ADR-0047): a real Safari or Firefox runs on real time, see `elapsePageTime`.
+  if (readRealBrowserKind(process.env) === undefined) {
+    await page.clock.install();
+  } else {
+    // A real Safari or Firefox re-fetches the worker script on its own about a second after a controlled page has
+    // loaded (observed without any update check configured), later than the reload above returns. Let that request land
+    // before the log is cleared, or a spec that counts worker requests would blame it on the facade's own timer. The
+    // log is emptied first: it still holds the script fetch of the first registration.
+    fixtureServer.clearRequests();
+    await waitForBrowserUpdateCheck(fixtureServer);
+    // Safari's automation window is never frontmost, so its page reports `hidden` and the facade rightly skips its
+    // checks. The specs mean a page the user is looking at; the same override `setPageVisibility` uses says so.
+    if ((await page.evaluate(() => document.visibilityState)) === "hidden") await setPageVisibility(page, "visible");
+  }
   await pageRegister(page);
   fixtureServer.clearRequests();
+}
+
+const BROWSER_UPDATE_CHECK_WAIT_MS = 5_000;
+
+async function waitForBrowserUpdateCheck(fixtureServer: FixtureServer): Promise<void> {
+  const deadline = Date.now() + BROWSER_UPDATE_CHECK_WAIT_MS;
+  while (!fixtureServer.requests().some(({ path }) => path === WORKER_URL) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+}
+
+/** Real time added on top of one check interval on a real browser, for the timer armed a moment before the wait began. */
+const REAL_TIME_SLACK_MS = 3_000;
+
+/**
+ * Lets `ms` of page time pass. Chrome fast-forwards its fake clock. A real Safari or Firefox has no fake clock
+ * (ADR-0047) and the facade rejects intervals under 60 s, so the wait is real: one interval plus slack, however many
+ * intervals `ms` spans. That is enough for every assertion that follows, which depends on at least one tick having
+ * happened, not on how many.
+ */
+export async function elapsePageTime(page: Page, ms: number, intervalMs: number): Promise<void> {
+  if (readRealBrowserKind(process.env) === undefined) {
+    await page.clock.runFor(ms);
+    return;
+  }
+  await new Promise((resolve) => setTimeout(resolve, Math.min(ms, intervalMs + REAL_TIME_SLACK_MS)));
 }
 
 /** Overrides `document.visibilityState` in the page and dispatches `visibilitychange`, as a real tab switch would. */

@@ -76,7 +76,7 @@ test.describe("update discovery", () => {
     // Taking over does not reload the page: the acceptance matrix forbids a forced refresh.
     expect(await documentMark(page)).toBe("kept");
     // The document still shows v1's markup, proving nothing navigated.
-    await expect(page.locator("[data-shell]")).toHaveText("app shell v1");
+    await expect.poll(() => page.locator("[data-shell]").textContent()).toBe("app shell v1");
   });
 
   test("reports false when there is no update to apply", async ({ page, fixtureServer }) => {

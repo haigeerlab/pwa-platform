@@ -22,6 +22,7 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "test:browser:engines": "playwright install webkit firefox && playwright test --config playwright.engines.config.ts",
+    "test:browser:real": "playwright test --config playwright.real.config.ts",
     "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.dom.json && tsc --noEmit --project tsconfig.browser.json"
   },
   "dependencies": {
