@@ -45,31 +45,37 @@ GitHub 不可用（`gh auth status` 显示本仓库账号 `haigeermail` 的令�
 
 本模块不涉及安装流程，没有原生安装证据的要求。
 
-## 手机端补充验证（2026-09-29，提交 `8840133`）
+## 手机端补充验证（2026-09-29，提交 `8840133` 之后）
 
 原矩阵中 Chrome Android 两行登记为"未执行"，上表保持原样不改写。本节补充的是**手动探针**得到的证据，不折算为矩阵中的"通过"，原因见"局限"。
 
-探针：[`packages/sw-runtime/browser-tests/phone-probe/`](../../packages/sw-runtime/browser-tests/phone-probe/README.md)。页面用 `browser-build/site-v3`（v3 策略，`maxEntryBytes` 300、`maxAgeSeconds` 60），一轮跑完 19 项场景，结果由页面回传到本机服务器日志。
+探针：[`packages/sw-runtime/browser-tests/phone-probe/`](../../packages/sw-runtime/browser-tests/phone-probe/README.md)。页面用 `browser-build/site-v3`（v3 策略，`maxEntryBytes` 300、`maxAgeSeconds` 60），结果由页面回传到本机服务器日志。探针有两个版本，检查项数不同，不可直接相加：
+
+- **单阶段版**（Xiaomi 14、iOS 模拟器）：一轮 19 项，"断网"由本机服务器重置连接模拟。
+- **两阶段版**（iPhone 实体设备）：阶段 1 在线 16 项，阶段 2 离线 13 项，共 29 项。"断网"是**设备的真实飞行模式**，页面收到 `offline` 事件后自动开始阶段 2（阶段 1 结束后 5.4 秒）；离线读取还要求"网络错误"而不是任意失败，并多一项"设备报告离线"。
 
 | 环境 | 版本 | 结果 |
 |---|---|---|
-| Xiaomi 14（23127PN0CC，Android 16，实体设备，USB 连接，`adb reverse`） | Chrome 153.0.8010.53（Android N） | 19 通过，0 失败 |
-| iOS 模拟器 iPhone 17 Pro（iOS 26.3，非实体设备） | Safari 26.3（WebKit） | 19 通过，0 失败 |
+| Xiaomi 14（23127PN0CC，Android 16，实体设备，USB 连接，`adb reverse`） | Chrome 153.0.8010.53（Android N） | 单阶段版 19 通过，0 失败 |
+| iOS 模拟器 iPhone 17 Pro（iOS 26.3，非实体设备） | Safari 26.3（WebKit） | 单阶段版 19 通过，0 失败；两阶段版阶段 1 稳定 15–16 项通过，阶段 2 见"模拟器的离线导航"，不作结论 |
+| **iPhone 实体设备**（Cloudflare 临时隧道的公网 HTTPS，本机服务；真实飞行模式） | Safari 27.0（UA 中的 iOS 18_7 是冻结值） | 两阶段版：阶段 1 16 通过，阶段 2 13 通过，共 29 通过，0 失败；离线读取缓存页 12 ms，离线未访问路径回退离线页 6 ms |
 | Chrome Android N-1 | — | **未执行**：没有第二台旧版本设备 |
 | 三星 Galaxy A24 | — | **未执行**：设备暂不可用 |
-| iPhone 实体设备 | — | **未执行**：需要 HTTPS 入口（临时隧道或部署），尚未安排 |
 
-19 项场景：`network-first` 在线读取并写入 `runtime-data`、断网命中缓存、恢复联网后取到新数据且缓存同步更新（5 项）；`no-store`、`private`、`Vary: Cookie`、错误 MIME、超过 `maxEntryBytes`、带 `Authorization`、`Set-Cookie` + `private` 均"在线正常、断网报网络错误、不入缓存"（7 项）；`Set-Cookie` 不带 `private` 会被缓存（1 项，既定行为）；SWR 第二次读是旧值、随后读到后台更新（2 项）；动态 HTML 在线写入 `runtime-pages`、断网渲染缓存页、未访问路径回退离线页（4 项）。
+覆盖的场景：`network-first` 在线读取并写入 `runtime-data`、断网命中缓存、恢复联网后取到新数据且缓存同步更新；`no-store`、`private`、`Vary: Cookie`、错误 MIME、超过 `maxEntryBytes`、带 `Authorization`、`Set-Cookie` + `private` 均"在线正常、断网报网络错误、不入缓存"；`Set-Cookie` 不带 `private` 会被缓存（既定行为）；SWR 第二次读是旧值、随后读到后台更新；动态 HTML 在线写入 `runtime-pages`、断网渲染缓存页、未访问路径回退离线页。
 
 **局限**（引用本节的结论时必须带上）：
 
-- 页面在本机 `localhost`，不是真实 HTTPS 部署；响应头由 `serve.mjs` 按 `runtime-cache.spec.ts` 的断言形状模拟，不是业务接口的真实响应。
-- "断网"是服务器重置连接，不是设备的飞行模式；`navigator.onLine` 不变。
+- 页面由本机服务器提供（Android 走 `localhost` + `adb reverse`，iPhone 走 Cloudflare 临时隧道），不是真实业务部署；响应头由 `serve.mjs` 按 `runtime-cache.spec.ts` 的断言形状模拟，不是业务接口的真实响应。
+- Xiaomi 与 iOS 模拟器的"断网"是服务器重置连接，`navigator.onLine` 不变；只有 iPhone 一行使用了设备飞行模式。飞行模式是立即失败的断网，**不覆盖"弱网／无响应"**（请求一直挂起），那是 `networkTimeoutSeconds` 要解决的场景，本次没有测。
 - 不覆盖重新发版后的 worker 更新、带 `Authorization` 的页面导航、配额耗尽，也不覆盖"已安装到主屏幕"形态；这些仍只有桌面自动化覆盖。
 - 动态 HTML 用 iframe 触发导航请求，不是顶层导航。
-- iOS 一行是模拟器，只证明 WebKit 引擎上的行为，不证明真实 iPhone 上的存储与后台回收行为。
-- 每项只跑了一轮，没有 `--repeat-each` 式的重复。
-- 第一次运行 15 通过 4 失败，原因是探针页自身缺陷（iframe 的 `onload` 先在空白页触发；两个页面实例同时递增服务器计数器），不是平台行为；修正探针后单轮 19/19。
+- 每项只跑了一轮，没有重复。测试站的运行时缓存 60 秒过期，两阶段之间必须在约 60 秒内切换到离线；超过则离线读取按设计失败，不是缺陷（一次模拟器运行因此出现假失败）。
+- 探针在开发过程中出过自身缺陷，均已修正且不影响上表结论：iframe 的 `onload` 先在空白页触发；两个页面实例同时递增服务器计数器；iframe 遇到浏览器错误页时读取 `contentWindow.location` 抛异常导致结果悬挂。
+
+**作废的一次 iPhone 运行**：第一次 iPhone 运行在隧道下仍用服务器重置连接模拟断网，14 通过 5 失败。原因是隧道边缘节点在源站拒绝连接时返回 502 页面，对 Service Worker 是一个 HTTP 响应而不是网络错误，按设计（服务器返回 4xx/5xx 一律透传）不会回退到缓存。同一轮里"拒绝项在断网时报错"的 7 项也是空通过（502 页面解析 JSON 同样失败）。该轮整体不计入任何结论，之后改为设备飞行模式并让探针区分"网络错误"与"HTTP 响应"。
+
+**模拟器的离线导航（未查明）**：iOS 模拟器上用服务器重置连接断网时，两个页面导航项在多次重复运行后出现挂起（最长等 90 秒仍无 `onload`），而第一次运行是通过的。同一场景在 Playwright 的 WebKit 26.6 与 Firefox 155 上通过（`runtime-cache.spec.ts` 的 `dynamic navigation` 两条，用 `playwright.engines.config.ts` 运行），iPhone 实体设备的真实飞行模式下也是瞬时通过。挂起更像是模拟器加"重置连接"这种断网方式的组合行为，根因没有继续追查，不作为平台结论。
 
 同日桌面复核：重建 `browser-test-harness` 的 `dist`（它是被忽略的构建产物，此前缺少 `cacheNames` 导出，导致 `runtime-cache.spec.ts` 无法加载）后，Chrome 153 上该文件 20 passed。
 
@@ -92,7 +98,7 @@ GitHub 不可用（`gh auth status` 显示本仓库账号 `haigeermail` 的令�
 ## 未取得的证据
 
 - **CI**：GitHub 不可用，以本地门禁代替（ADR-0031）；恢复后须补跑。
-- **Chrome Android N 与 N-1**：矩阵登记为未执行。2026-09-29 已用手动探针在 Xiaomi 14（Chrome 153，N）补充 19 项场景，见"手机端补充验证"；N-1 仍无设备。
+- **Chrome Android N 与 N-1**：矩阵登记为未执行。2026-09-29 已用手动探针在 Xiaomi 14（Chrome 153，N）补充 19 项场景，并在 iPhone 实体设备（Safari 27.0，真实飞行模式）补充 29 项，见"手机端补充验证"；Chrome Android N-1 仍无设备。
 - **N-1 上的全仓浏览器测试**：只跑了本模块新增的测试。
 - **门禁第 1 次失败的根因**：未能确认，只观察到浏览器上下文创建超时；同一测试在其他所有运行中通过。
 - **生产或类生产部署**：本模块没有在 Cloudflare 测试站或任何宿主上部署验证。
