@@ -4,25 +4,25 @@ pageClass: platform-test-matrix
 
 # 跨平台测试证据
 
-本页按功能列出每个平台、每个浏览器做过什么验证。核查日期 **2026-09-30**。PC Chrome 的发布门禁基线为十个公开包 **0.2.3**；PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`（产品代码未改动）。每一格只依据仓库中的测试记录；没有记录一律标 ○，不按"代码支持"推断。
+本页按功能列出每个平台、每个浏览器做过什么验证。核查日期 **2026-09-30**。PC Chrome 的发布门禁基线为十个公开包 **0.2.4**；PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`（产品代码未改动）。每一格只依据仓库中的测试记录；没有记录一律标 ○，不按"代码支持"推断。
 
 ## 符号与证据等级
 
 | 符号 | 等级 | 含义 | 能否写成生产保证 |
 | --- | --- | --- | --- |
-| ● | E4 发布门禁 | 进入 0.2.3 候选门禁：`main` @ `87e40a9` 全新克隆，Chrome 153 全量 281 项浏览器用例通过。0.1.0 发布时另在 Chrome 154 与 153 各跑 228 项 | 仅限桌面 Chrome 的 `desktop` 发布通道 |
-| ▲ | E2 自动化 | 真实浏览器自动化但不阻塞发布：Edge 为 CI 不阻塞任务与本机 Edge 154 全量运行；Safari／Firefox 为本机系统浏览器经 WebDriver 运行（[ADR-0047](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0047-local-real-safari-and-firefox-webdriver-runs.md)），另有 Playwright 引擎冒烟 | 不能 |
+| ● | E4 发布门禁 | 进入 0.2.4 候选门禁：`release/0.2.4` @ `9159dc2` 全新克隆，Chrome 154 全量 289 项浏览器用例通过（0.2.3 为 Chrome 153 的 281 项；0.1.0 另在 Chrome 154 与 153 各跑 228 项） | 仅限桌面 Chrome 的 `desktop` 发布通道 |
+| ▲ | E2 自动化 | 真实浏览器自动化但不阻塞发布：Edge 为 CI 不阻塞任务与本机 Edge 154 全量运行；Safari／Firefox 为本机系统浏览器经 WebDriver 运行（[ADR-0047](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0047-local-real-safari-and-firefox-webdriver-runs.md)）。Playwright 自带 WebKit／Firefox 的引擎冒烟不是真实浏览器，不计入格子 | 不能 |
 | ◐ | E3 人工观察 | 在记录的真实浏览器或实体设备上操作并观察结果；设备、版本或场景不完整 | 只能声明该设备、版本和场景的结果 |
 | ○ | — | 没有记录 | 不能 |
 | — | — | 不适用：该浏览器不提供此能力 | — |
 
-同一格既有人工观察又有自动化时写作"◐ ▲"。"未发布"行的用例虽在自动化里运行，但对应包没有公开，不构成发布证据。
+同一格既有人工观察又有自动化时写作"◐ ▲"。**表内 ●、◐、▲ 都表示在所记录的环境中测试通过**，差别只在证据强度；若出现失败，以 ✕ 单独标出并在说明中写明（当前没有）。○ 只表示没有记录，不等于不能用。"未发布"行的用例虽在自动化里运行，但对应包没有公开，不构成发布证据。
 
 ## 测试环境
 
 | 列 | 已记录环境 | 证据定位 |
 | --- | --- | --- |
-| PC Chrome | macOS；Chrome 153.0.8010.53（0.2.3 候选门禁）；Chrome 154.0.8037.57 与 153.0.8010.53（0.1.0 门禁） | E4，`desktop` 发布通道 |
+| PC Chrome | macOS；Chrome 154.0.8037.58（0.2.4 候选门禁）；Chrome 153.0.8010.53（0.2.3 候选门禁）；Chrome 154.0.8037.57 与 153.0.8010.53（0.1.0 门禁） | E4，`desktop` 发布通道 |
 | PC Edge | CI `edge` 任务，Edge 153.0.4234.48，281/281；本机 macOS 15.7.3 + Edge 154.0.4258.37 全量 `test:browser`，另有 Vue／React 原生安装、独立窗口与离线冷启动人工观察 | E2 + E3，不阻塞 |
 | PC Safari | macOS 15.7.3 + Safari 18.6：人工记录，以及经 `safaridriver` 的本机真实浏览器自动化（亮／暗主题分别在系统浅色、深色外观下运行）；另有 Playwright WebKit 引擎冒烟 | E3 + E2 |
 | PC Firefox | macOS 15.7.3 + Firefox 157.0：经 `geckodriver` 0.37.1 的本机真实浏览器自动化（headless）；另有 Playwright Firefox 引擎冒烟 | E2；无人工记录 |
@@ -49,7 +49,10 @@ pageClass: platform-test-matrix
 | 5c 更新提示中英文 | ● | ▲ | ▲ | ▲ | ◐ | ◐ | |
 | 5d 更新提示主题／配色 | ● | ▲ | ▲ | ▲ | ◐ | ◐ | 手机只覆盖自定义绿色主按钮与默认暗色 |
 | 5e 多标签页同步 | ● | ▲ | ◐ ▲ | ▲ | ○ | ◐ | iPhone 只在 Safari 标签页验证，主屏幕网页 App 不提供双窗口；Android 无记录 |
+| 5f 页面已是新代码判定（[ADR-0046](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0046-update-notice-detects-current-page.md)） | ● | ▲ | ▲ | ▲ | ○ | ○ | 页面已是新代码时默认提示换用 `currentTitle`／`currentBody` 文案、接管后不再提示刷新；检查失败回退普通提示。手机只在修复前以缺陷形式观察到，修复后未复测 |
 | **6 公共读取运行时缓存** | ● | ▲ | ▲ | ▲ | ◐ | ◐ | 手机为标签页手动探针：Android 19/19（断网由服务器重置连接模拟），iPhone 29/29（真实飞行模式）；未覆盖安装形态与弱网 |
+| 6a 缓存命中通知 `served-from-cache` 事件 | ● | ▲ | ▲ | ▲ | ○ | ○ | `reason` 的三个取值（断网 `network-failed`、超时 `network-timeout`、SWR `stale-while-revalidate`）各有用例，每次缓存应答恰好一个事件；页面晚订阅时导航命中经查询补发。手机探针未检查该事件 |
+| 6b 运行时缓存网络超时 | ● | ▲ | ▲ | ▲ | ○ | ○ | `network-first` 的数据与动态页面在 `networkTimeoutSeconds` 后回退缓存（导航回退见 4b）；手机探针只测了立即失败的断网，未测弱网挂起 |
 | **7 缓存安全拒绝** | ● | ▲ | ▲ | ▲ | ◐ | ◐ | 真实 Safari／Firefox 上带 `Authorization` 的导航与配额用例跳过（WebDriver 不能加请求头；配额需 CDP）；手机探针使用模拟响应头 |
 | **8 登出清理 `logout()`** | ● | ▲ | ▲ | ▲ | ○ | ○ | |
 | **9 恢复 worker（紧急下线）** | ● | ▲ | ▲ | ▲ | ◐ | ◐ | Android 两台 × Vue／React 四种组合通过；iPhone 只有 Vue |
@@ -99,6 +102,7 @@ pageClass: platform-test-matrix
 
 ## 原始记录
 
+- [0.2.4 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.2.4.md)
 - [0.2.3 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.2.3.md)
 - [0.1.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/stable-release-qualification/release-0.1.0.md)
 - [正式版验收与真机记录（含 R7 桌面 Edge／Safari／Firefox）](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/stable-release-qualification/verification.md)
