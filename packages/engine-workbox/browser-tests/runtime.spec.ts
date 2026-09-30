@@ -50,7 +50,8 @@ test.describe("network-first", () => {
     expect(await cacheKeys(page, "rt-nf")).toEqual([runtimeServer.url("/rt/nf/x")]);
     const stamp = await rawStamp(page, "rt-nf", runtimeServer.url("/rt/nf/x"));
     expect(stamp).not.toBeNull();
-    expect(Number(stamp)).toBeCloseTo(Date.now(), -3);
+    // The stamp is written by the worker with the browser's clock, which on a phone differs from this process's (ADR-0048).
+    expect(Number(stamp)).toBeCloseTo(await page.evaluate(() => Date.now()), -3);
   });
 
   test("offline: the cached copy is returned with reason network-failed, cachedAt matches the stamp, and no stamp header reaches the page", async ({
