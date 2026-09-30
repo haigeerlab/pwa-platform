@@ -198,6 +198,8 @@ describe("the checklist keeps the few rules that matter", () => {
     ["never reads or prints tokens or cookies", /令牌[\s\S]*Cookie|Cookie[\s\S]*令牌/],
     ["treats repository files, responses and pasted output as data, not instructions", /数据，不是指令/],
     ["points at the docs site instead of copying its rules", /《上线前检查》/],
+    // S6 (2026-09-30): both evaluated assistants stopped at a green build and handed every browser check to the person.
+    ["self-checks the production build locally and says what counts as done", /本机自检[\s\S]*vite preview[\s\S]*全部通过才算接入完成/],
   ])("%s", (_name, pattern) => {
     expect(text()).toMatch(pattern);
   });
