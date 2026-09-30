@@ -2,6 +2,8 @@
 
 本页是字段参考；如果还没有决定要不要缓存、离线页或恢复能力，先读[按功能接入 PWA](/guide/integration-by-capability)，不要默认复制全功能策略。
 
+查某个字段的取值规则、默认值、出错时的诊断码，以及上线后能否修改，直接看[字段参考](#field-reference)；构建日志里的诊断码见[诊断码索引](/reference/diagnostics)。
+
 接入时需要提交三组信息：<code>PwaIdentity</code> 确定应用及 URL 所有权，<code>PwaInstallMetadata</code> 确定安装展示，<code>PwaPolicy</code> 声明缓存与更新意图。下面是部署在域名根路径的起点，需替换域名、名称与图标文件。
 
 ~~~ts
@@ -159,13 +161,94 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 <code>IDENTITY.manifestUrl</code> 此时仍是必需的身份字段。应用须自行把 manifest 文件放在对应构建产物路径：根路径示例为 <code>public/manifest.webmanifest</code>，浏览器地址为 <code>/manifest.webmanifest</code>；部署在 <code>/app/</code> 时，仍放在 Vite 的 <code>public/</code>，浏览器地址改为 <code>/app/manifest.webmanifest</code>。缺少文件会使构建失败。插件仍会在 HTML 中注入该 manifest 的链接；浏览器是否提供安装入口取决于自备 manifest 和浏览器行为，关闭平台安装提示并不保证浏览器禁止安装。
 
+## 字段参考 {#field-reference}
+
+下面按“作用｜取值规则｜默认｜取错时的诊断码或后果｜首次生产注册后能否修改”逐项列出，是全站关于“哪些字段上线后不可变”的唯一依据。三个配置对象都是严格对象：多写未知字段报 <code>schema.unknown-field</code>，漏写必填字段报 <code>schema.missing-field</code>，类型不对报 <code>schema.invalid-type</code>；下表“默认”写“无”表示必填。路径类字段均要求规范路径：以 <code>/</code> 开头，不含 <code>//</code>、反斜杠、查询串或 <code>.</code>／<code>..</code> 段，否则 <code>path.invalid</code>。全部诊断码另见[诊断码索引](/reference/diagnostics)。
+
+### PwaIdentity：九个字段全部不可变
+
+首次生产发布后，这九个字段就被记入发布基线，发布门禁逐项比对，任何一项不同都以 <code>verify.baseline-mismatch</code>（路径为 <code>/identity/&lt;字段名&gt;</code>）失败。变更属于身份迁移，需要 ADR 与迁移计划，不是普通发版。
+
+| 字段 | 作用 | 取值规则 | 默认 | 取错时的诊断码或后果 | 上线后能否修改 |
+| --- | --- | --- | --- | --- | --- |
+| <code>appId</code> | 应用名，是缓存与数据库命名空间的一段（见下） | 非空字符串 | 无 | <code>schema.invalid-value</code>；共享 origin 的登记表内必须互不相同（<code>registry.duplicate-identity-field</code>） | 否 |
+| <code>manifestId</code> | manifest 的 <code>id</code>，浏览器判断“是不是同一个已安装应用”的依据（见下） | 非空字符串；平台不校验形态，惯例与 <code>scope</code> 相同（<code>/</code>、<code>/app/</code>） | 无 | <code>schema.invalid-value</code>；改值后浏览器视为另一个应用 | 否 |
+| <code>origin</code> | 部署站点，仅用于构建与发布期一致性校验，浏览器里的 worker 不读它 | 协议＋主机＋端口，不带路径和结尾斜杠；<code>https:</code>，仅 <code>localhost</code>／<code>127.0.0.1</code>／<code>[::1]</code> 允许 <code>http:</code> | 无 | <code>identity.invalid-origin</code>；完整 URL 形式的 manifest 链接与它不同则构建失败 | 否 |
+| <code>scope</code> | worker 控制的范围 | 规范路径，必须以 <code>/</code> 结尾；必须等于 <code>serviceWorkerUrl</code> 所在目录 | 无 | <code>path.invalid</code>；<code>identity.scope-outside-worker-directory</code> | 否 |
+| <code>serviceWorkerUrl</code> | worker 脚本的浏览器 URL | 规范路径，直接位于 <code>scope</code> 目录下 | 无 | <code>identity.service-worker-outside-scope</code>；<code>identity.scope-outside-worker-directory</code> | 否 |
+| <code>manifestUrl</code> | manifest 文件的浏览器 URL | 规范路径，位于 <code>scope</code> 下 | 无 | <code>identity.manifest-outside-scope</code>；HTML 里已有的 manifest 链接须与它一致 | 否 |
+| <code>mountPath</code> | 策略路径（<code>pathPrefix</code>、<code>offlineFallback.path</code>）的相对基点 | 规范路径，位于 <code>scope</code> 内；不要求以 <code>/</code> 结尾（如 <code>/m</code>） | 无 | <code>identity.scope-excludes-mount-path</code>；Vite <code>base</code> 与它对不上时，离线页等文件找不到（<code>compile.offline-fallback-not-built</code>） | 否 |
+| <code>environment</code> | 环境名；不同环境是互相独立的身份，缓存名不同 | 匹配 <code>[a-z][a-z0-9-]*</code> | 无 | <code>identity.invalid-environment</code> | 否（同一发布槽内改名等同迁移） |
+| <code>cacheNamespaceSeed</code> | 缓存命名空间的身份修订段 | 非空字符串 | 无 | <code>schema.invalid-value</code>；复用旧值会读到旧修订遗留的缓存 | 否，仅迁移时换成从未用过的新值 |
+
+另有两条跨字段规则：Vite <code>base</code> 必须位于 <code>scope</code> 内（<code>compile.public-path-outside-scope</code>）；<code>base</code> 只能是同源、首尾都是 <code>/</code> 的路径，写成完整 URL 会让构建失败（见[诊断码索引](/reference/diagnostics#无诊断码的构建失败)）。
+
+**<code>appId</code> 是什么。** 它是所有本应用持久化名称里的一段：缓存名是 <code>pwa:&lt;appId&gt;:&lt;environment&gt;:&lt;seed&gt;:precache</code> 等（见下文 [<code>cacheNamespaceSeed</code>](#cachenamespaceseed-是什么)），恢复 worker 用前缀 <code>pwa:&lt;appId&gt;:&lt;environment&gt;:</code> 找出并清理本应用的全部缓存；离线写库名、入口恢复的 IndexedDB 库名（<code>pwa-entry:&lt;appId&gt;:&lt;environment&gt;</code>）同样带它。因此改 <code>appId</code> 等于换掉所有缓存与库名，旧数据成为孤儿；同一 origin 上的两个应用必须用不同的 <code>appId</code>。它不是显示名称，显示名称写在 <code>INSTALL.name</code>。
+
+**<code>manifestId</code> 是什么。** 构建生成的 manifest 里，<code>id</code> 和 <code>scope</code> 取自身份而不是安装元数据：<code>id</code> 就是 <code>IDENTITY.manifestId</code>。浏览器用 manifest 的 <code>id</code> 判断这是不是用户已安装的同一个应用，所以它和 <code>scope</code> 一样属于身份，改了就是另一个应用。安装元数据里的 <code>name</code>、图标、颜色等展示字段则可以随发版修改。<code>install: null</code> 时平台不生成 manifest，应用自备的 manifest 需自己保证 <code>id</code> 与它一致。
+
+### PwaInstallMetadata：展示信息，可随发版修改
+
+这一组不进入发布基线，可以在后续版本里改；唯一约束是 <code>startUrl</code> 和快捷方式必须始终在 <code>scope</code> 内。除 <code>startUrl</code>、<code>display</code> 等必填项外，可选字段全部不写时，manifest 中不出现对应成员。
+
+| 字段 | 作用 | 取值规则 | 默认 | 取错时的诊断码或后果 | 上线后能否修改 |
+| --- | --- | --- | --- | --- | --- |
+| <code>startUrl</code> | 从主屏幕或桌面启动时打开的地址 | 规范路径，位于 <code>IDENTITY.scope</code> 内 | 无 | <code>install.start-url-outside-scope</code> | 能 |
+| <code>display</code> | 显示模式 | <code>standalone</code>、<code>minimal-ui</code>、<code>fullscreen</code>、<code>browser</code> 之一（不接受 <code>window-controls-overlay</code>，那属于 <code>displayOverride</code>） | 无 | <code>schema.invalid-value</code> | 能 |
+| <code>name</code>、<code>shortName</code> | 完整名称与短名称 | 非空字符串 | 无 | <code>schema.invalid-value</code> | 能 |
+| <code>themeColor</code>、<code>backgroundColor</code> | 主题色与启动背景色 | 非空字符串；应为十六进制色（<code>#rgb</code>、<code>#rgba</code>、<code>#rrggbb</code>、<code>#rrggbbaa</code>） | 无 | 非十六进制只警告 <code>install.invalid-color</code>，不阻断构建 | 能 |
+| <code>icons</code> | 应用图标 | 每项 <code>src</code>（规范路径）、<code>sizes</code>、<code>type</code>、<code>purpose</code>（<code>any</code> 或 <code>maskable</code>）；必须含 192x192 与 512x512，且每种尺寸都有 <code>any</code> 和 <code>maskable</code> | 无 | <code>install.missing-icon-variant</code>；文件缺失或头部与声明不符为 <code>vite.manifest-icon-*</code> | 能 |
+| <code>description</code> | 安装提示中的描述 | 非空字符串 | 不写 | 超过 324 个 UTF-16 码元警告 <code>install.description-too-long</code> | 能 |
+| <code>categories</code> | 分发平台分类 | 小写、非空、不重复的字符串数组，至少一项 | 不写 | <code>schema.invalid-value</code> | 能 |
+| <code>orientation</code> | 锁定方向 | <code>any</code>、<code>natural</code>、<code>portrait[-primary／-secondary]</code>、<code>landscape[-primary／-secondary]</code> | 不写 | <code>schema.invalid-value</code> | 能 |
+| <code>displayOverride</code> | 按顺序尝试的显示模式 | <code>window-controls-overlay</code>、<code>fullscreen</code>、<code>standalone</code>、<code>minimal-ui</code>、<code>browser</code> 的不重复数组，至少一项 | 不写 | <code>schema.invalid-value</code> | 能 |
+| <code>screenshots</code> | 安装界面的截图 | 每项 <code>src</code>、<code>sizes</code>（单个 <code>宽x高</code>，小写 <code>x</code>、无前导零）、<code>type</code>（<code>image/png</code>、<code>image/jpeg</code>、<code>image/webp</code>）、可选 <code>formFactor</code>（<code>wide</code>／<code>narrow</code>）与 <code>label</code>；至少一项 | 不写（未写 <code>formFactor</code> 时按 <code>narrow</code> 计） | 格式错误 <code>schema.invalid-value</code>；尺寸超出 320–3840、长边超过短边 2.3 倍、同类宽高比不一致、数量超限、无 <code>wide</code> 仅警告；文件缺失 <code>verify.manifest-asset-missing</code> | 能 |
+| <code>shortcuts</code> | 图标菜单快捷入口 | 每项 <code>name</code>、<code>url</code>（规范路径，须在 scope 内），可选 <code>shortName</code>、<code>description</code>、<code>icons</code>；至少一项 | 不写 | <code>install.shortcut-url-outside-scope</code>；共享 origin 下落进子应用 scope 为 <code>compile.shortcut-url-in-child-scope</code> | 能 |
+
+截图与快捷方式的用法、Chrome 相关的警告阈值与不接受的 manifest 成员见前文[可选的截图与快捷方式](#可选的截图与快捷方式)和[其他可选安装字段](#其他可选安装字段)。
+
+### PwaPolicy：缓存与更新意图，可随发版修改
+
+| 字段 | 作用 | 取值规则 | 默认 | 取错时的诊断码或后果 | 上线后能否修改 |
+| --- | --- | --- | --- | --- | --- |
+| <code>schemaVersion</code> | 策略版本，决定还需要哪些字段 | <code>1</code>、<code>2</code> 或 <code>3</code>（见下） | 无 | <code>schema.invalid-value</code>；各版本独有字段多写或漏写按未知字段／缺字段报错 | 能，升级时同版本升级平台包 |
+| <code>install</code> | 是否启用平台安装元数据与 <code>promptInstall()</code> | <code>{ enabled: boolean }</code> | 无 | 为真而插件 <code>install</code> 是 <code>null</code>：<code>compile.install-metadata-missing</code> | 能 |
+| <code>offlineFallback</code> | 离线回退页 | <code>{ enabled: false }</code> 或 <code>{ enabled: true, path }</code>，<code>path</code> 相对 <code>mountPath</code> | 无 | 文件不在产物中 <code>compile.offline-fallback-not-built</code>；被拒绝规则覆盖 <code>compile.offline-fallback-denied</code> | 能 |
+| <code>updateMode</code> | 更新交互模式 | 目前只接受 <code>"prompt"</code>（见下） | 无 | 其他值 <code>schema.invalid-value</code> | 能（但目前只有一个合法值） |
+| <code>resources</code> | 资源分类与缓存规则 | 规则数组，写法见[资源规则的写法约束](#资源规则的写法约束) | 无（可为空数组） | <code>policy.unsafe-cache-strategy</code>、<code>compile.duplicate-path-prefix</code>、<code>compile.allow-under-deny</code>、<code>path.invalid</code> | 能 |
+| <code>networkTimeoutSeconds</code> | 导航与 network-first 运行时缓存等待网络的秒数 | 1 到 30 的整数 | 不写＝不设超时 | 范围外或非整数 <code>schema.invalid-value</code> | 能 |
+| <code>offlineWrites</code> | 离线写入（尚未发布） | 仅 <code>schemaVersion</code> 2、3 使用；公开使用必须写全零禁用形式 | v2／v3 必填 | 禁用形式带任何非零值或非空 <code>targets</code>：<code>offline-write.disabled-configuration</code> | 保持禁用形式 |
+| <code>runtimeCache</code> | 公共读取的运行时缓存上限 | 仅 <code>schemaVersion: 3</code>；<code>{ enabled, maxEntries, maxEntryBytes, maxAgeSeconds }</code>，开启时分别为 1–200、1–1,048,576、60–604,800，关闭时 <code>enabled: false</code> 且三项上限都为 0 | v3 必填，三项上限无默认值 | 关闭却带非零上限 <code>runtime-cache.disabled-configuration</code>；开启却为 0 <code>runtime-cache.enabled-configuration</code>；没有任何可执行规则时警告 <code>compile.runtime-cache-unused</code> | 能；上限或可执行规则一变，数据缓存换新名，旧数据不迁移，见[公共读取缓存](/guide/public-read-cache) |
+
+**<code>updateMode</code> 目前只能写 <code>"prompt"</code>。** 契约里的合法值集合（<code>UPDATE_MODES</code>）只有这一项。含义是：新版本 worker 装好后进入等待，页面得到 <code>updateWaiting</code> 状态，由业务界面决定何时调用 <code>applyUpdate()</code> 接管，平台不会自动接管也不会自动刷新页面；流程见[安装与更新](/guide/updates)。所以这个字段今天不提供选择，只是把“更新由你来确认”写进策略。
+
+**<code>schemaVersion</code> 的三个版本。** 策略自身在三个版本间只差两个字段：
+
+- **1**：基础形态，没有 <code>offlineWrites</code> 和 <code>runtimeCache</code>。
+- **2**：增加必填的 <code>offlineWrites</code>。对应的离线写入能力尚未发布，公开使用者必须原样写成 <code>{ enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [] }</code>。
+- **3**：在 2 的基础上增加必填的 <code>runtimeCache</code>，用于[公共读取缓存](/guide/public-read-cache)；不用它时写 <code>{ enabled: false, maxEntries: 0, maxEntryBytes: 0, maxAgeSeconds: 0 }</code>。
+
+不需要新字段就停在 1。
+
+### Vite 插件选项：<code>pwa({ ... })</code>
+
+选项在创建插件时（读 <code>vite.config.ts</code> 的那一刻）就校验，失败信息只含诊断码和路径，如 <code>The pwa plugin's identity is not valid: identity.invalid-origin at /identity/origin</code>，不回显你的值。
+
+| 选项 | 作用 | 取值规则 | 默认 | 取错时的诊断码或后果 | 上线后能否修改 |
+| --- | --- | --- | --- | --- | --- |
+| <code>identity</code> | 身份 | 上文 <code>PwaIdentity</code> | 无 | 上文各码，路径前缀 <code>/identity</code> | 否 |
+| <code>policy</code> | 策略 | 上文 <code>PwaPolicy</code> | 无 | 路径前缀 <code>/policy</code> | 能 |
+| <code>install</code> | 安装元数据 | <code>PwaInstallMetadata</code>，或不生成 manifest 时写 <code>null</code> | 无 | 路径前缀 <code>/install</code>；<code>null</code> 而 <code>policy.install.enabled</code> 为真：<code>compile.install-metadata-missing</code> | 能 |
+| <code>topology</code> | 部署拓扑 | <code>{ kind: "standalone-origin" }</code>，或 <code>{ kind: "shared-origin", registry }</code> | 无 | <code>kind</code> 不合法时抛出 <code>topology.kind must be one of: …</code>（无诊断码）；登记表错误为 <code>registry.*</code> | 登记表变更按[同源多应用](/operations/release#同源多应用)先根后子发布 |
+| <code>offlinePage</code> | 启用平台默认离线页 | 对象，可含 <code>locale</code>（<code>zh-CN</code>／<code>en</code>）、<code>messages</code>、<code>css</code>；要求 <code>policy.offlineFallback.enabled</code> 为真 | 不写＝不生成离线页；<code>locale</code> 默认 <code>zh-CN</code> | <code>vite.offline-page-*</code>，见[离线体验](/guide/offline#默认离线页) | 能 |
+
 ## `origin` 填什么
 
 <code>IDENTITY.origin</code> 是这个身份部署到的站点，只写协议、主机和端口，例如 <code>https://app.example.com</code>，不带路径和结尾斜杠。必须是 <code>https:</code>；只有 <code>localhost</code> 这类本机回环地址允许 <code>http:</code>，否则构建以 <code>identity.invalid-origin</code> 失败。
 
 它不影响浏览器里的行为：worker 只按自己实际所在的地址判断同源请求，不读取这个字段。它用于构建和发布时的一致性校验：已有的 manifest 链接写成完整 URL 时，必须位于这个 origin 下；共享 origin 拓扑的注册表必须与它相同；它还属于生产身份基线，换域名等同于换身份。
 
-因此生产身份填正式域名；本地用 <code>vite preview</code> 验收时，配合下一节的独立 <code>environment</code>，填本地地址（如 `http://localhost:4173`）即可。
+因此生产身份填正式域名；本地用 <code>vite preview</code> 验收时，另写一份填本地地址（如 `http://localhost:4173`）的预览身份，并配合下一节的独立 <code>environment</code>，完整写法见[两份身份](#两份身份生产与本地验收)。
 
 ## `cacheNamespaceSeed` 是什么
 
@@ -174,6 +257,66 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 ## 本地验收用什么 <code>environment</code>
 
 <code>PwaIdentity.environment</code> 的约定是“每个环境都是独立身份”：不同 <code>environment</code> 的应用各自拥有互不影响的缓存命名空间。用 <code>vite preview</code> 在本地做验收时，建议给本地验收单独声明一个 <code>environment</code>（例如 <code>"preview"</code>），而不是直接复用生产身份；这样本地验收产生的缓存不会与生产环境的缓存共用前缀，清理或反复重跑也不会影响线上数据。
+
+### 两份身份：生产与本地验收 {#两份身份生产与本地验收}
+
+做法是在 <code>pwa.config.ts</code> 里再导出一份预览身份，与生产身份只差 <code>origin</code> 和 <code>environment</code>，其余（<code>appId</code>、<code>scope</code>、各路径、<code>cacheNamespaceSeed</code>）完全相同，这样本地验到的就是同一套产物布局：
+
+~~~ts
+// pwa.config.ts；紧接在 IDENTITY 之后
+export const PREVIEW_IDENTITY: PwaIdentity = {
+  ...IDENTITY,
+  origin: "http://localhost:4173", // 端口必须与下面的 vite preview 一致
+  environment: "preview",
+};
+
+// 只有 --mode preview 才用预览身份；其他任何模式（含默认的 production）都是生产身份
+export function identityFor(mode: string): PwaIdentity {
+  return mode === "preview" ? PREVIEW_IDENTITY : IDENTITY;
+}
+~~~
+
+<code>vite.config.ts</code> 改成函数形式，按 Vite 的 <code>mode</code> 选身份：
+
+~~~ts
+// vite.config.ts
+import { pwa } from "@pwa-platform/vite";
+import { defineConfig } from "vite";
+import { identityFor, INSTALL, POLICY } from "./pwa.config.ts";
+
+export default defineConfig(({ mode }) => ({
+  base: "/",
+  plugins: [
+    // 已有的框架插件继续保留
+    pwa({
+      identity: identityFor(mode),
+      policy: POLICY,
+      install: INSTALL,
+      topology: { kind: "standalone-origin" },
+    }),
+  ],
+}));
+~~~
+
+生产构建照旧：<code>pnpm exec vite build</code>。本地验收先用预览身份构建到单独的目录，再预览该目录：
+
+~~~bash
+pnpm exec vite build --mode preview --outDir dist-preview
+pnpm exec vite preview --outDir dist-preview --port 4173 --strictPort
+~~~
+
+两条命令的作用：
+
+- <code>--mode preview</code> 只切换身份，构建仍是生产构建（同样生成 worker、manifest 和离线页）。两次构建的 manifest 完全相同，差别只在 <code>sw.js</code> 与 <code>pwa-recovery-worker.js</code> 内的缓存名：生产是 <code>pwa:businessapp:production:r1:…</code>，预览是 <code>pwa:businessapp:preview:r1:…</code>。<code>origin</code> 不进入产物，只在构建时参与校验。
+- 为什么是两份身份：<code>environment</code> 不同，缓存名前缀就不同，发布基线比对时也能认出它不是生产身份；<code>origin</code> 则在构建时校验——例如 <code>index.html</code> 里手写了完整 URL 的 manifest 链接（<code>https://app.example.com/manifest.webmanifest</code>），生产构建通过，预览构建会因为它不在 `http://localhost:4173` 下而失败。所以预览构建里最好不写显式链接，由平台注入。
+- 端口：<code>vite preview</code> 的 <code>--port</code> 必须等于预览身份 <code>origin</code> 里的端口，否则身份声明的不是你实际访问的地址。<code>--strictPort</code> 让端口被占用时直接报错，而不是悄悄换到下一个端口。
+- 单独的 <code>--outDir</code> 是为了避免预览产物覆盖 <code>dist</code>。
+
+::: danger 预览身份的产物绝不能部署到生产
+<code>dist-preview</code>（以及任何带 <code>--mode preview</code> 构建的产物）只用于本机。它的 <code>environment</code> 与生产不同，并带 <code>http://localhost</code> 的 <code>origin</code>；发布门禁把它与生产基线比对时，会以 <code>verify.baseline-mismatch</code> 报 <code>/identity/origin</code> 与 <code>/identity/environment</code>。CI 与发布脚本只运行不带 <code>--mode</code> 的 <code>vite build</code>，并把预览目录加入 <code>.gitignore</code>。
+:::
+
+本地验收的具体步骤与通过标准见[Vue 接入](/start/vue#_5-构建并验收)和[React 接入](/start/react#_4-构建并验收)。
 
 ## 构建期身份校验
 

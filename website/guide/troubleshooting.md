@@ -2,6 +2,8 @@
 
 先看构建日志中的诊断码及字段路径，再确认身份、策略和最终构建产物是否一致。浏览器问题可先用生产构建的 <code>vite preview</code> 在本机排查，再到实际 HTTPS 部署地址复核。
 
+构建日志里的诊断码（如 <code>identity.invalid-origin</code>）及其含义、修法，见[诊断码索引](/reference/diagnostics)；没有诊断码的构建失败（<code>base</code> 不合法、manifest 链接冲突、产物被后续插件改写、输出路径重复）也在该页最后一节。
+
 ## Worker 注册失败
 
 <code>register()</code> 会把浏览器注册错误作为 Promise 拒绝返回。先在浏览器控制台查看错误，再核对 worker URL 是否返回本次构建的脚本、响应类型是否正确，以及 URL 和 scope 是否与身份配置及实际部署路径一致。修复后可在同一页面再次调用 <code>register()</code>；失败的注册不会被平台记作成功。不要只依靠安装或更新按钮是否出现来判断注册状态，另见[浏览器核验](/start/checklist#首次接入的浏览器核验)。
