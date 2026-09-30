@@ -95,14 +95,15 @@ test.describe("served-from-cache: subresource (network-failed)", () => {
     fixtureServer.deploy("runtime-cache");
     await installAndControl(page, fixtureServer);
     const url = `${RUNTIME_CATALOG_ITEMS_URL}?x=1`;
-    const before = Date.now();
+    // The event's `cachedAt` comes from the browser's clock; a phone's clock differs from this process's (ADR-0048).
+    const before = await page.evaluate(() => Date.now());
     await fetchOk(page, fixtureServer.url(url));
     await waitForRuntimeWrites(page, [fixtureServer.url(url)]);
 
     fixtureServer.goOffline();
     await fetchOk(page, fixtureServer.url(url));
     await waitForClientEvent(page, "served-from-cache");
-    const after = Date.now();
+    const after = await page.evaluate(() => Date.now());
 
     // Deterministic settle point (T13 review): asserting `toHaveLength(1)` right here would pass just as well if a
     // duplicate followed a moment later — `waitForClientEvent` only proves the *first* one landed. A second,
