@@ -115,7 +115,7 @@ export const REGISTRY = {
 //   topology: { kind: "shared-origin", registry: REGISTRY }
 ~~~
 
-违反这些规则会以下列诊断码失败（含义与处理见[诊断码索引](/reference/diagnostics)）：
+违反这些规则会以下列诊断码失败（含义与处理见[诊断码索引](/guide/troubleshooting)）：
 
 - 登记表本身：`registry.child-outside-root`、`registry.scope-overlap`、`registry.duplicate-identity-field`、`registry.entry-url-outside-scope`、`registry.root-url-in-child-scope`、`registry.cache-prefix-collision`。
 - 登记表与应用计划对不上：`plan.registry-identity-mismatch`、`plan.exclude-rules-mismatch`。
