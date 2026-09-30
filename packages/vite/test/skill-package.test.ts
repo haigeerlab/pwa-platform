@@ -200,6 +200,8 @@ describe("the checklist keeps the few rules that matter", () => {
     ["points at the docs site instead of copying its rules", /《上线前检查》/],
     // S6 (2026-09-30): both evaluated assistants stopped at a green build and handed every browser check to the person.
     ["self-checks the production build locally and says what counts as done", /本机自检[\s\S]*vite preview[\s\S]*全部通过才算接入完成/],
+    // S7 re-evaluation (2026-09-30): the assistant self-checked in the person's everyday Chrome profile and left a worker there.
+    ["self-checks in a separate browser profile and cleans up afterwards", /独立的配置文件[\s\S]*注销 worker[\s\S]*清除该站点数据/],
   ])("%s", (_name, pattern) => {
     expect(text()).toMatch(pattern);
   });
