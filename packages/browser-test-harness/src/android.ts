@@ -67,7 +67,13 @@ async function freePort(): Promise<number> {
 export async function exposeToAndroid(port: number, env: Env = process.env): Promise<() => Promise<void>> {
   const serial = readAndroidSerial(env);
   if (serial === undefined) return async () => {};
-  await adb(serial, "reverse", `tcp:${port}`, `tcp:${port}`);
+  const spec = ["reverse", `tcp:${port}`, `tcp:${port}`] as const;
+  // Observed once in a full run: adb refused to bind the phone-side listener ("Operation not permitted") for a fresh
+  // port. One retry after a short pause covers a transient refusal; a persistent one still fails the test.
+  await adb(serial, ...spec).catch(async () => {
+    await new Promise((done) => setTimeout(done, 500));
+    return adb(serial, ...spec);
+  });
   return async () => {
     await adb(serial, "reverse", "--remove", `tcp:${port}`).catch(() => "");
   };
