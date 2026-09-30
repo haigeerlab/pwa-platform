@@ -9,12 +9,15 @@ import type {
   PlaywrightWorkerOptions,
   TestType,
 } from "@playwright/test";
+import { connectAndroidChrome, describeAndroid, readAndroidModel, readAndroidSerial, type AndroidChrome } from "./android.js";
 import { fixturePath } from "./fixtures.js";
 import { CHROME_PATH_ENV, desktopLaunchOverrides } from "./launch.js";
 import { RealBrowser } from "./real-browser.js";
 import { describeBrowser, readRealBrowserKind } from "./webdriver.js";
 import { startFixtureServer, type FixtureServer, type FixtureServerOptions } from "./server.js";
 
+// Read first: it rejects PWA_ANDROID_SERIAL combined with PWA_REAL_BROWSER before either mode starts.
+const androidSerial = readAndroidSerial(process.env);
 const realBrowserKind = readRealBrowserKind(process.env);
 
 /** Annotation type under which every test records the version of the browser it ran in. */
@@ -51,6 +54,11 @@ const chromeTest: TestType<HarnessTestArgs, HarnessWorkerArgs> = base.extend<Har
   ],
   logBrowserVersion: [
     async ({ browser }, use) => {
+      if (androidSerial !== undefined) {
+        console.log(`[browser-test-harness] ${describeAndroid(browser.version(), await readAndroidModel(androidSerial))}`);
+        await use();
+        return;
+      }
       if (realBrowserKind !== undefined) {
         console.log(`[browser-test-harness] ${describeBrowser(realBrowserKind, { browserVersion: browser.version() }).label}`);
         await use();
@@ -99,7 +107,9 @@ type RealBrowserTestFixtures = { readonly context: BrowserContext; readonly page
  */
 export const test: TestType<HarnessTestArgs, HarnessWorkerArgs> =
   realBrowserKind === undefined
-    ? chromeTest
+    ? androidSerial === undefined
+      ? chromeTest
+      : androidTest(androidSerial)
     : chromeTest.extend<RealBrowserTestFixtures, RealBrowserWorkerFixtures>({
         realBrowser: [
           // Playwright reads fixture dependencies from the destructuring pattern; this one has none.
@@ -130,3 +140,37 @@ export const test: TestType<HarnessTestArgs, HarnessWorkerArgs> =
       });
 
 const sessions = new WeakMap<BrowserContext, { readonly page: Page }>();
+
+type AndroidWorkerFixtures = { readonly androidChrome: AndroidChrome; readonly browser: Browser };
+
+/**
+ * With `PWA_ANDROID_SERIAL=<adb serial>` (ADR-0048) `browser` is a DevTools connection to the Chrome of that USB-connected
+ * phone, forwarded with `adb forward`. Each test runs in its own new context (`viewport: null`: Android refuses window
+ * bounds changes) that is closed afterwards; the phone's everyday context is never used, and closing the connection only
+ * disconnects. `browserName` stays "chromium": it is Chromium.
+ */
+function androidTest(serial: string): TestType<HarnessTestArgs, HarnessWorkerArgs> {
+  return chromeTest.extend<{ readonly context: BrowserContext }, AndroidWorkerFixtures>({
+    androidChrome: [
+      // eslint-disable-next-line no-empty-pattern
+      async ({}, use) => {
+        const chrome = await connectAndroidChrome(serial);
+        try {
+          await use(chrome);
+        } finally {
+          await chrome.close();
+        }
+      },
+      { scope: "worker" },
+    ],
+    browser: [async ({ androidChrome }, use) => use(androidChrome.browser), { scope: "worker" }],
+    context: async ({ browser, contextOptions }, use) => {
+      const context = await browser.newContext({ ...contextOptions, viewport: null });
+      try {
+        await use(context);
+      } finally {
+        await context.close();
+      }
+    },
+  }) as unknown as TestType<HarnessTestArgs, HarnessWorkerArgs>;
+}

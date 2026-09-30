@@ -2,6 +2,7 @@ import { readFile, realpath, stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo, Socket } from "node:net";
 import { extname, sep } from "node:path";
+import { exposeToAndroid } from "./android.js";
 
 export type HeaderRule = {
   /** Prefix of the decoded request path, for example `/sw.js` or `/assets/`. */
@@ -218,6 +219,11 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
     });
   });
   const port = (server.address() as AddressInfo).port;
+  // In an Android run (ADR-0048) the phone reaches this port through `adb reverse`; unset, this maps nothing.
+  const unexpose = await exposeToAndroid(port).catch(async (error: unknown) => {
+    await new Promise<void>((done) => server.close(() => done()));
+    throw error;
+  });
   const origin = `http://localhost:${port}`;
   allowedHosts = new Set([`localhost:${port}`, `127.0.0.1:${port}`]);
 
@@ -272,7 +278,7 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
       return new Promise<void>((resolveClose, rejectClose) => {
         server.close((error) => (error ? rejectClose(error) : resolveClose()));
         server.closeAllConnections();
-      });
+      }).finally(unexpose);
     },
   };
 }
