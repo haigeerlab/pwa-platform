@@ -15,7 +15,7 @@
 
 依据规格“修订记录”与 ADR-0045 的 2026-09-30 增补。
 
-- [ ] **S5 读取方式**：删除 `packages/vite/scripts/bundle-docs.mjs`、`packages/vite/test/bundle-docs.test.ts`、`build` 中的调用与 `.gitignore` 条目；`files` 去掉 `docs`；`check-package-distribution.mjs` 改为任何包都不得含 `docs`；`SKILL.md` 改为“在线 → 仓库副本 → 停”；内容测试断言新读取顺序与三个要素（问位置、路径换算、版本比较），且不再出现 `node_modules/@pwa-platform/vite/docs`；同步《选择接入包》、根与包 README、发布流程、更新日志。验证：`pnpm build`、`pnpm test`、`pnpm typecheck`、`pnpm lint`、`pnpm test:onboarding-smoke`、`pnpm check:publish`，`npm pack --dry-run` 不含 `docs/`。
+- [x] **S5 读取方式**：删除 `packages/vite/scripts/bundle-docs.mjs`、`packages/vite/test/bundle-docs.test.ts`、`build` 中的调用与 `.gitignore` 条目；`files` 去掉 `docs`；`check-package-distribution.mjs` 改为任何包都不得含 `docs`；`SKILL.md` 改为“在线 → 仓库副本 → 停”；内容测试断言新读取顺序与三个要素（问位置、路径换算、版本比较），且不再出现 `node_modules/@pwa-platform/vite/docs`；同步《选择接入包》、根与包 README、发布流程、更新日志。验证：`pnpm build`、`pnpm test`、`pnpm typecheck`、`pnpm lint`、`pnpm test:onboarding-smoke`、`pnpm check:publish`，`npm pack --dry-run` 不含 `docs/`。
 - [ ] **S6 场景评估**：用 `onboarding-smoke/template` 准备干净的 Vite + Vue、Vite + React 项目；全新助手只拿到清单和仓库副本，在线文档站不可达；维护会话扮演项目所有者回答确认问题；产物跑 onboarding-smoke 的冒烟检查，并核对“绝不”项。结果与发现记入 [verification.md](verification.md)，清单缺陷另行修订。
 
 ## 缩减说明

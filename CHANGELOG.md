@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **`@pwa-platform/vite` no longer ships a copy of the docs (ADR-0045, 2026-09-30 addendum):** the package's `files` is back to `["dist", "skills"]` and `scripts/bundle-docs.mjs` is gone (about 140 KB less). The onboarding checklist now tells the assistant to open the docs site first and, when it is unreachable, to ask once where a copy of the PWA Platform repository is and read `website/<a>/<b>.md` there, comparing that copy's `packages/vite/package.json` version with the installed package and leaving a mismatch to the person. `pnpm check:publish` now rejects `docs` in any package's `files`. 0.2.4 still contains the bundled copy.
+
 ## 0.2.4 (2026-09-29)
 
 - **The default update notice no longer asks a page that already runs the new code to reload (ADR-0046):** `PwaUpdateNotice` from `@pwa-platform/vue/ui` and `@pwa-platform/react/ui` now checks, once per update cycle, whether this page is already on the new code: it re-requests the current document (`no-store`, with a `__pwa-page-currency=1` query so the old worker's precache can never answer it) and compares its entry module script with the one this page loaded. Online navigations are network-first, so a page can already be on the new version while the new worker still waits (seen on an Android WebAPK coming back from the offline page). In that case the card reads "An update is ready for offline use" (`zh-CN`: "新版已可离线使用"), and after the takeover it closes instead of offering "Reload page". The takeover still needs the user's click. Any failure, non-OK response, missing module script or the 5 s timeout falls back to the previous behaviour, and the card waits for the check before it appears. New optional message keys `currentTitle` / `currentBody`; when you omit them but override `readyTitle` / `readyBody`, your overrides are used. Mounting the notice now makes one extra same-origin GET per update cycle.

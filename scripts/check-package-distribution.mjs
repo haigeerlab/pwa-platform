@@ -27,12 +27,9 @@ for (const name of ordered) {
   if (JSON.stringify(pkg.exports ?? {}).includes('skills')) {
     throw new Error(`Skills must not be exported: ${name}`);
   }
-  const shipsDocs = pkg.files.includes('docs');
-  if (name === 'vite' ? !shipsDocs || !existsSync(join(directory, 'docs', 'README.md')) : shipsDocs) {
-    throw new Error(`Unexpected docs packaging: ${name}`);
-  }
-  if (JSON.stringify(pkg.exports ?? {}).includes('docs')) {
-    throw new Error(`Docs must not be exported: ${name}`);
+  // Docs are read online or from a repository copy, never shipped in a package (ADR-0045, 2026-09-30 addendum).
+  if (pkg.files.includes('docs')) {
+    throw new Error(`Docs must not ship in a package: ${name}`);
   }
   for (const [dependency, range] of Object.entries(pkg.dependencies ?? {})) {
     if (dependency.startsWith('@pwa-platform/')) {
