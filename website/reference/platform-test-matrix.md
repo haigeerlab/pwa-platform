@@ -4,13 +4,13 @@ pageClass: platform-test-matrix
 
 # 跨平台测试证据
 
-本页按功能列出每个平台、每个浏览器做过什么验证。核查日期 **2026-09-30**。PC Chrome 的发布门禁基线为十个公开包 **0.2.4**；PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`（产品代码未改动）。每一格只依据仓库中的测试记录；没有记录一律标 ○，不按"代码支持"推断。
+本页按功能列出每个平台、每个浏览器做过什么验证。核查日期 **2026-09-30**。PC Chrome 的发布门禁基线为十个公开包 **0.2.5**；PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`（产品代码未改动）。每一格只依据仓库中的测试记录；没有记录一律标 ○，不按"代码支持"推断。
 
 ## 符号与证据等级
 
 | 符号 | 等级 | 含义 | 能否写成生产保证 |
 | --- | --- | --- | --- |
-| ● | E4 发布门禁 | 进入 0.2.4 候选门禁：`release/0.2.4` @ `9159dc2` 全新克隆，Chrome 154 全量 289 项浏览器用例通过（0.2.3 为 Chrome 153 的 281 项；0.1.0 另在 Chrome 154 与 153 各跑 228 项） | 仅限桌面 Chrome 的 `desktop` 发布通道 |
+| ● | E4 发布门禁 | 进入 0.2.5 候选门禁：`release/0.2.5` @ `565cfa3` 全新克隆，Chrome 154 全量 295 项浏览器用例通过（0.2.4 为 289 项；0.2.3 为 Chrome 153 的 281 项；0.1.0 另在 Chrome 154 与 153 各跑 228 项） | 仅限桌面 Chrome 的 `desktop` 发布通道 |
 | ▲ | E2 自动化 | 真实浏览器自动化但不阻塞发布：Edge 为 CI 不阻塞任务与本机 Edge 154 全量运行；Safari／Firefox 为本机系统浏览器经 WebDriver 运行（[ADR-0047](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0047-local-real-safari-and-firefox-webdriver-runs.md)）；Android 为实体设备上的 Chrome 经 USB 调试端口运行（[ADR-0048](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0048-android-real-device-chrome-automation.md)）。Playwright 自带 WebKit／Firefox 的引擎冒烟不是真实浏览器，不计入格子 | 不能 |
 | ◐ | E3 人工观察 | 在记录的真实浏览器或实体设备上操作并观察结果；设备、版本或场景不完整 | 只能声明该设备、版本和场景的结果 |
 | ○ | — | 没有记录 | 不能 |
@@ -22,7 +22,7 @@ pageClass: platform-test-matrix
 
 | 列 | 已记录环境 | 证据定位 |
 | --- | --- | --- |
-| PC Chrome | macOS；Chrome 154.0.8037.58（0.2.4 候选门禁）；Chrome 153.0.8010.53（0.2.3 候选门禁）；Chrome 154.0.8037.57 与 153.0.8010.53（0.1.0 门禁） | E4，`desktop` 发布通道 |
+| PC Chrome | macOS；Chrome 154.0.8037.59（0.2.5 候选门禁）；Chrome 154.0.8037.58（0.2.4 候选门禁）；Chrome 153.0.8010.53（0.2.3 候选门禁）；Chrome 154.0.8037.57 与 153.0.8010.53（0.1.0 门禁） | E4，`desktop` 发布通道 |
 | PC Edge | CI `edge` 任务，Edge 153.0.4234.48，281/281；本机 macOS 15.7.3 + Edge 154.0.4258.37 全量 `test:browser`，另有 Vue／React 原生安装、独立窗口与离线冷启动人工观察 | E2 + E3，不阻塞 |
 | PC Safari | macOS 15.7.3 + Safari 18.6：人工记录，以及经 `safaridriver` 的本机真实浏览器自动化（亮／暗主题分别在系统浅色、深色外观下运行）；另有 Playwright WebKit 引擎冒烟 | E3 + E2 |
 | PC Firefox | macOS 15.7.3 + Firefox 157.0：经 `geckodriver` 0.37.1 的本机真实浏览器自动化（headless）；另有 Playwright Firefox 引擎冒烟 | E2；无人工记录 |
@@ -104,6 +104,7 @@ pageClass: platform-test-matrix
 
 ## 原始记录
 
+- [0.2.5 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.2.5.md)
 - [0.2.4 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.2.4.md)
 - [0.2.3 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.2.3.md)
 - [0.1.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/stable-release-qualification/release-0.1.0.md)
