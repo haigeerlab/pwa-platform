@@ -65,6 +65,61 @@
 
 建议在身份中沿用旧 worker 的地址和 scope，让新平台 worker 以“更新”的形式替换旧 worker；或者在旧地址上部署恢复 worker：它安装即接管，没有 <code>fetch</code> 处理器，页面请求直接走网络；它只删除本应用平台命名空间下的缓存，不会删除 <code>vite-plugin-pwa</code> 留下的旧 Workbox 缓存。恢复 worker 的部署步骤见[服务器与 CDN 配置](/operations/hosting)，回滚与恢复流程见[部署与发布](/operations/release#回滚与恢复)。不要更换 scope、worker 地址或 manifest ID 而不制定迁移方案。
 
+### 先弄清线上现状：旧 worker 的地址与 scope {#find-legacy-worker}
+
+**平台不会猜测旧值。** 不要默认旧 worker 就是 <code>vite-plugin-pwa</code> 的默认文件名或默认 scope；身份里的 <code>serviceWorkerUrl</code> 与 <code>scope</code> 必须以线上实际为准。任选一种方式核对：
+
+- **DevTools**：在生产站点打开 Application（应用）面板的 Service Workers，读取 Source（脚本地址）和 Scope；Cache Storage 里可以看到旧缓存的名字。
+- **控制台**：在生产站点的控制台执行：
+
+~~~js
+const regs = await navigator.serviceWorker.getRegistrations();
+regs.map((r) => ({
+  scope: r.scope,
+  script: (r.active ?? r.waiting ?? r.installing)?.scriptURL,
+}));
+~~~
+
+  它只列出当前浏览器里、本 origin 下的注册；同一 origin 上若还有别的应用，会一并列出，只取属于你这个应用的那一条。<code>scope</code> 与 <code>script</code> 返回的是完整 URL，写进身份时改成路径（例如 <code>/sw.js</code>）。
+- **读旧版构建产物**：查看当前生产 <code>dist</code>（或已部署的文件）里 worker 文件的实际名称，以及注册它的那段代码传入的 <code>scope</code>。
+
+核对后，把新身份的 <code>serviceWorkerUrl</code> 和 <code>scope</code> 与线上旧值对齐（原则见上面的建议），并保证 <code>manifestId</code> 与已安装的应用一致；拿不准时先不要发布。
+
+### 清理旧缓存（由业务自己负责） {#cleanup-legacy-caches}
+
+平台 worker 与恢复 worker 都只处理自己命名空间下的缓存，即名字以 <code>pwa:&lt;appId&gt;:&lt;environment&gt;:</code> 开头的缓存。恢复 worker 遍历全部缓存名，但只删除以该前缀开头的；它有意不碰其他缓存，因为同一 origin 上可能还有别的应用，无法判断哪些是“旧的”。所以 <code>workbox-</code> 开头的旧缓存不会被自动删除，要业务自己清。
+
+下面是一份可放进业务代码的参考写法，需要按你的旧构建核对名字规则：
+
+~~~ts
+// 只在平台 worker 已经控制本页之后执行，并且只执行一次（例如登录后空闲时）
+async function cleanupLegacyCaches(): Promise<void> {
+  if (!("caches" in globalThis) || navigator.serviceWorker.controller === null) return;
+  // 平台缓存一律以 "pwa:" 开头，永远不删
+  const isLegacy = (name: string) => !name.startsWith("pwa:") && name.startsWith("workbox-");
+  for (const name of await caches.keys()) {
+    if (isLegacy(name)) await caches.delete(name);
+  }
+}
+~~~
+
+使用前请核对：
+
+- **名字规则只匹配你旧构建的产物。** <code>vite-plugin-pwa</code>（Workbox）的预缓存与运行时缓存名默认以 <code>workbox-</code> 开头，但如果旧配置里给 <code>runtimeCaching</code> 设了自己的 <code>cacheName</code>，需要在 <code>isLegacy</code> 里把这些具体名字列出来。先在 DevTools 的 Cache Storage 里确认真实名字，再写规则。
+- **永远不要删“不以 <code>pwa:</code> 开头的全部缓存”。** 同一 origin 上其他应用的缓存、你自己业务代码建的缓存都在其中；务必保留 <code>!name.startsWith("pwa:")</code> 这一条，并且只删除能明确认定属于旧工具的名字。
+- **等平台 worker 接管后再执行。** 接管之前旧 worker 可能还在用这些缓存回答请求，提前删除会让旧页面在断网时失去应用壳。
+- Workbox 还会在浏览器的 IndexedDB 里留下名为 <code>workbox-expiration</code> 的过期记录库；它很小，通常可以忽略，是否删除由业务自己评估。平台的恢复 worker 只清理它为自己缓存留下的那部分记录。
+
+### 仍在运行旧代码的页面
+
+平台 worker 不会自行接管，所以发布后会有一段时间，一部分用户的页面还是旧代码：
+
+- **已经打开、运行旧 JS 的页面**没有 <code>applyUpdate()</code> 界面，因为旧代码里没有调用平台 facade。用户看到的仍是旧界面，直到他们刷新或重新打开：重新打开时，是否已加载新版取决于此前那个 worker 是否已换成平台 worker，以及旧 worker 是否预缓存了 HTML（见上面几种情形）。
+- **平台 worker 装好后进入等待**，在所有受控标签页关闭之前不会接管。用户关掉全部标签页（或完全退出已安装的应用）再打开，才由新 worker 接管并提供新应用壳；这一过程不需要用户做别的操作，但也没有提示。
+- 平台**无法**向仍在运行的旧代码推送提示。业务可以做的：在新代码里接入[更新提示](/guide/updates)，让接管之后的每次发布都走用户确认流程；在运营上通过公告、登录后横幅等业务自己的渠道提示用户“关闭所有标签页后重新打开”；如果这部分用户的旧 worker 确实有问题，再走恢复 worker 流程。
+
+如果旧 worker 用了 <code>skipWaiting</code> 与 <code>clientsClaim</code> 之类的自动更新设置，用户手里页面的行为与上面不完全一致；它取决于你线上实际部署过的那份旧构建，请在真实的旧版浏览器状态下（先装旧版、再升级到新构建）试一遍，不要凭推断。
+
 ## 迁移后暂时得不到的能力
 
 - 任意运行时缓存：只支持显式允许的同源公共 GET；私有、写入、流媒体和未分类请求不缓存。
@@ -73,7 +128,7 @@
 
 ## 其他注意事项
 
-- **旧缓存不会被平台自动清理。** 平台 worker 只管理自己命名空间下的缓存；<code>vite-plugin-pwa</code> 留下的 Workbox 缓存会一直留在已访问过的用户浏览器里，需要自行评估存储占用或提供清理方案。
+- **旧缓存不会被平台自动清理。** 平台 worker 只管理自己命名空间下的缓存；<code>vite-plugin-pwa</code> 留下的 Workbox 缓存会一直留在已访问过的用户浏览器里，需要自行评估存储占用或提供清理方案，见上面的[清理旧缓存](#cleanup-legacy-caches)。
 - **同一 scope 只有一个注册。** 用新的 worker 脚本地址重新注册会替换原注册；原 worker 在所有受控标签页关闭前，仍会继续控制已打开的页面。
 - 构建报错只给诊断码和契约路径，不会回显配置的值。
 - 若你使用的框架脚手架会在产物根目录生成文件名随构建变化的运行时配置脚本（例如某些后台管理框架模板），记得按上面"核对自定义构建产物"一节把它移入固定子目录并补一条 <code>asset</code> 规则，否则断网时应用会停在启动画面。
