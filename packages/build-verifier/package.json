@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/build-verifier",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Verify PWA Platform build and deployment facts.",
   "license": "MIT",
   "type": "module",
