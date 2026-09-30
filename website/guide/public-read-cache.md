@@ -57,7 +57,7 @@ export const POLICY: PwaPolicy = {
 
 | 诊断码 | 严重度 | 含义与修复 |
 | --- | --- | --- |
-| `compile.runtime-strategy-unsupported` | 构建失败 | 某条规则声明的资源类别与 `cache` 组合不在可执行范围内（例如给 `navigation-public-dynamic` 配 `cache-first` 或 SWR）；把 `cache` 改成上表允许的策略 |
+| `compile.runtime-strategy-unsupported` | 构建失败 | 仅在 `schemaVersion: 3` 且 `runtimeCache.enabled: true` 时检查：某条规则声明的资源类别与 `cache` 组合不在可执行范围内（例如给 `navigation-public-dynamic` 配 `cache-first` 或 SWR）；把 `cache` 改成上表允许的策略 |
 | `compile.runtime-cache-unused` | 警告，不阻塞构建 | `runtimeCache.enabled: true`，但没有任何规则落在可执行的组合里；多半是开了开关却忘了把某条规则的 `cache` 改成 `network-first` 或 `stale-while-revalidate` |
 
 ## 响应必须满足的条件

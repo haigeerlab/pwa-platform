@@ -17,7 +17,7 @@
 
 ## 1. 声明身份与策略
 
-在项目根目录新增 <code>pwa.config.ts</code>，必须导出 <code>IDENTITY</code>、<code>INSTALL</code>、<code>POLICY</code> 三个常量：直接复制[配置指南](/guide/configuration)中的完整示例，再替换真实 origin、名称和图标。前置条件：
+在项目根目录新增 <code>pwa.config.ts</code>，必须导出 <code>IDENTITY</code>、<code>INSTALL</code>、<code>POLICY</code> 三个常量：先按[按功能接入](/guide/integration-by-capability)决定要启用哪些能力；只需要安装、应用壳和默认离线页时，复制[配置指南](/guide/configuration)开头的示例，再替换真实 origin、名称和图标。前置条件：
 
 - <code>public/icons</code> 下要有四个真实的 PNG 图标：192 与 512 两种尺寸，各含 <code>any</code> 和 <code>maskable</code> 两种用途；缺任何一个都会报 <code>install.missing-icon-variant</code>。
 - 下面插件里的 <code>offlinePage: {}</code> 要求 <code>POLICY.offlineFallback.enabled: true</code>，否则构建报 <code>vite.offline-page-without-fallback</code>。

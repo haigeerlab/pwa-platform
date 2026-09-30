@@ -31,8 +31,8 @@ const install = /* 占位：你的安装元数据 */;
 const topology = /* 占位：你的拓扑声明 */;
 
 plugins: [
-  pwaEntryResilience({ identity, maxValidityDays: 30 }),
   pwa({ identity, policy, install, topology }),
+  pwaEntryResilience({ identity, maxValidityDays: 30 }),
 ]
 ```
 

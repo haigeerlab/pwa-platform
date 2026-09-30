@@ -14,7 +14,7 @@
 
 ## 构建提示离线页不存在
 
-<code>compile.offline-fallback-not-built</code> 表示策略声明的回退文件没有进入构建产物。若用平台默认离线页，检查策略已开启 <code>offlineFallback</code>、有对应 <code>asset</code> 规则，并在 Vite 插件上写了 <code>offlinePage: {}</code>。若用自定义页，检查文件是否位于 <code>public/</code> 且输出路径正确。子路径部署时不要把 <code>mountPath</code> 在策略路径里重复写一遍。
+<code>compile.offline-fallback-not-built</code> 表示策略声明的回退文件没有进入构建产物。若用平台默认离线页，检查策略已开启 <code>offlineFallback</code>、在 Vite 插件上写了 <code>offlinePage: {}</code>，且该路径没有被拒绝类规则覆盖（离线页的 <code>asset</code> 规则是可选的）。若用自定义页，检查文件是否位于 <code>public/</code> 且输出路径正确。子路径部署时不要把 <code>mountPath</code> 在策略路径里重复写一遍。
 
 ## 默认离线页与已有文件冲突
 
