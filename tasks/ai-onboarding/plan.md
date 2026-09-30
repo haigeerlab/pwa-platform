@@ -11,6 +11,15 @@
 - [x] **S3 不进入生产构建**：`onboarding-smoke` 用哨兵字符串与逐文件哈希证明，`public/` 变异必须被检测出。
 - [x] **S4 文档**：《选择接入包》、英文 README、根 README、发布流程、更新日志、`vite-adapter` 与 `examples-browser-e2e` 规格增补。
 
+## 修订：文档改从仓库副本读取（2026-09-30）
+
+依据规格“修订记录”与 ADR-0045 的 2026-09-30 增补。
+
+- [x] **S5 读取方式**：删除 `packages/vite/scripts/bundle-docs.mjs`、`packages/vite/test/bundle-docs.test.ts`、`build` 中的调用与 `.gitignore` 条目；`files` 去掉 `docs`；`check-package-distribution.mjs` 改为任何包都不得含 `docs`；`SKILL.md` 改为“在线 → 仓库副本 → 停”；内容测试断言新读取顺序与三个要素（问位置、路径换算、版本比较），且不再出现 `node_modules/@pwa-platform/vite/docs`；同步《选择接入包》、根与包 README、发布流程、更新日志。验证：`pnpm build`、`pnpm test`、`pnpm typecheck`、`pnpm lint`、`pnpm test:onboarding-smoke`、`pnpm check:publish`，`npm pack --dry-run` 不含 `docs/`。
+- [x] **S6 场景评估**：用 `onboarding-smoke/template` 准备干净的 Vite + Vue、Vite + React 项目；全新助手只拿到清单和仓库副本，在线文档站不可达；维护会话扮演项目所有者回答确认问题；产物跑 onboarding-smoke 的冒烟检查，并核对“绝不”项。结果与发现记入 [verification.md](verification.md)，清单缺陷另行修订。
+
+- [x] **S7 本机自检**：依据 S6 发现 1，`SKILL.md` 在构建与上线验证之间增加“本机自检”（`vite preview`、端口与 `origin` 一致、manifest 唯一、worker 注册与受控、断网后应用壳与离线页；能驱动浏览器就自己查，否则交人逐项读回；全部通过才算接入完成）。验证：内容测试（含变异）、体积 ≤ 6144 字节。
+
 ## 缩减说明
 
 本计划原有 16 个任务（关卡内容、状态文件、双语、一致性测试、场景夹具与评分表、场景评估、两次独立评审……）已在 2026-09-29 缩减，见规格的"缩减记录"和 [verification.md](verification.md)。完整实现保留在 git 历史里。

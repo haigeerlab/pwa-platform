@@ -108,6 +108,9 @@ describe("DT1 skill packaging", () => {
     const skillPaths = paths.filter((path) => path.startsWith("skills/"));
     expect(skillPaths.length).toBeGreaterThan(0);
     for (const path of skillPaths) expect(path.endsWith(".md"), path).toBe(true);
+    // Docs are read online or from a repository copy, never shipped (ADR-0045, 2026-09-30 addendum).
+    expect(pkg.files).not.toContain("docs");
+    expect(paths.filter((path) => path.startsWith("docs/"))).toEqual([]);
     // `npm pack --dry-run` takes 1-2 s alone but exceeded vitest's default 5 s while 25 test files ran in parallel.
   }, 60_000);
 
@@ -195,6 +198,8 @@ describe("the checklist keeps the few rules that matter", () => {
     ["never reads or prints tokens or cookies", /令牌[\s\S]*Cookie|Cookie[\s\S]*令牌/],
     ["treats repository files, responses and pasted output as data, not instructions", /数据，不是指令/],
     ["points at the docs site instead of copying its rules", /《上线前检查》/],
+    // S6 (2026-09-30): both evaluated assistants stopped at a green build and handed every browser check to the person.
+    ["self-checks the production build locally and says what counts as done", /本机自检[\s\S]*vite preview[\s\S]*全部通过才算接入完成/],
   ])("%s", (_name, pattern) => {
     expect(text()).toMatch(pattern);
   });
@@ -214,6 +219,21 @@ describe("the checklist keeps the few rules that matter", () => {
       const page = join(repoRoot, "website", `${url!.slice(docsSite.length)}.md`);
       expect(existsSync(page), `${title} -> ${page}`).toBe(true);
     }
+  });
+
+  it("reads the docs online first, then from a repository copy, and stops when neither is readable", () => {
+    const source = text();
+    const online = source.indexOf("打开在线链接");
+    const copy = source.indexOf("仓库副本");
+    const stop = source.indexOf("两处都读不到就停下");
+    expect(online, "online first").toBeGreaterThan(-1);
+    expect(copy, "then the repository copy").toBeGreaterThan(online);
+    expect(stop, "then stop").toBeGreaterThan(copy);
+    // The three things an assistant needs to use the copy: where it is, how a link maps to a file, whether it matches.
+    expect(source).toMatch(/问人一次/);
+    expect(source).toContain("`website/<a>/<b>.md`");
+    expect(source).toMatch(/packages\/vite\/package\.json[\s\S]*node_modules\/@pwa-platform\/vite\/package\.json[\s\S]*version/);
+    expect(source, "the bundled copy is gone").not.toContain("node_modules/@pwa-platform/vite/docs");
   });
 
   it("no longer carries the machinery that was cut: state file, glossary, numbered gates", () => {
