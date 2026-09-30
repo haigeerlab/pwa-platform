@@ -200,14 +200,12 @@ function compile(input: unknown): PwaValidationResult<PwaPlan> {
 
 function compileOfflineWrites(policy: PwaOfflineWritePolicy, identity: PwaPlan["identity"]): PwaPlanV2["offlineWrites"] {
   if (!policy.enabled) return { enabled: false };
-  const resolve = (prefix: string): `/${string}` =>
-    (identity.mountPath === "/" ? prefix : prefix === "/" ? identity.mountPath : `${identity.mountPath}${prefix}`) as `/${string}`;
   return {
     enabled: true,
     databaseName: `pwa-offline-write:${encodeURIComponent(identity.appId)}:${encodeURIComponent(identity.environment)}:${encodeURIComponent(identity.cacheNamespaceSeed)}`,
     maxEntries: policy.maxEntries,
     maxTotalBodyBytes: policy.maxTotalBodyBytes,
-    targets: policy.targets.map((target) => ({ id: target.id, pathPrefix: resolve(target.pathPrefix), maxBodyBytes: target.maxBodyBytes })),
+    targets: policy.targets.map((target) => ({ id: target.id, pathPrefix: resolvePrefix(identity.mountPath, target.pathPrefix), maxBodyBytes: target.maxBodyBytes })),
   };
 }
 
