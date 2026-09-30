@@ -69,7 +69,7 @@ offlineWrites: { enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [
 // vite.config.ts
 import { pwa } from "@pwa-platform/vite";
 import { defineConfig } from "vite";
-import { IDENTITY, INSTALL, POLICY } from "./pwa.config";
+import { IDENTITY, INSTALL, POLICY } from "./pwa.config.ts";
 
 export default defineConfig({
   base: "/", // 必须位于 IDENTITY.scope 内；/app/ 部署时改为 "/app/"

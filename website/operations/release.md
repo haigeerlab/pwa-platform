@@ -45,13 +45,13 @@
 | 配置 | 根应用 | `/m/` 子应用 |
 | --- | --- | --- |
 | Vite `base`、worker `scope` | `/` | `/m/` |
-| `IDENTITY.mountPath` | `/` | `/m` |
+| `IDENTITY.mountPath` | `/` | `/m/` |
 | `IDENTITY.manifestId` | `/` | `/m/` |
 | `IDENTITY.serviceWorkerUrl` | `/sw.js` | `/m/sw.js` |
 | `IDENTITY.manifestUrl` | `/manifest.webmanifest` | `/m/manifest.webmanifest` |
 | `INSTALL.startUrl` | `/` | `/m/` |
 
-两份身份使用相同的生产 `origin`、`environment`，不同的 `appId`，并在各自构建中传入同一版本的 `topology: { kind: "shared-origin", registry }`。根应用的发布计划必须先排除 `/m/`，子应用发布时用线上根计划通过 `release-order` 检查。服务器把 `/m` 重定向到 `/m/`；上线前逐项核对资源、图标、manifest、worker 和离线页的最终 URL。若移动站不注册 PWA，根 worker 仍应排除这个独立站点的路径。
+`mountPath` 与 Vite `base` 写成同一个字符串（都带结尾斜杠）；启用入口恢复时两者必须逐字相同，否则构建报 `entry.base-mismatch`。两份身份使用相同的生产 `origin`、`environment`，不同的 `appId`，并在各自构建中传入同一版本的 `topology: { kind: "shared-origin", registry }`。根应用的发布计划必须先排除 `/m/`，子应用发布时用线上根计划通过 `release-order` 检查。服务器把 `/m` 重定向到 `/m/`；上线前逐项核对资源、图标、manifest、worker 和离线页的最终 URL。若移动站不注册 PWA，根 worker 仍应排除这个独立站点的路径。
 
 ### 一部 Android 与一部 iPhone 能验证什么
 
