@@ -494,3 +494,35 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 两种外观下的跳过项互补：除 vite 两项 CDP manifest 用例外，每个配色相关用例都在与之匹配的外观下通过。
 
 浅色轮 vite `offline-page.spec.ts:310`“过早的 online 事件等待真实联网后才重载”超时失败一次；该用例未被本轮修改，此前 R7.3 三次运行与深色轮均通过，单独重复 8 次全部通过。记为 Safari 上的偶发时序失败，约 1/13。
+
+## R8 真机 Android Chrome 自动化（2026-09-30）
+
+按 ADR-0048，Xiaomi 14（23127PN0CC，Android 16，Chrome 153.0.8010.53）经 USB 连接，harness 以 `adb forward` 连接 Chrome 自带的 `chrome_devtools_remote` 调试端口并 `connectOverCDP`，每个测试新建独立浏览器上下文（`viewport: null`），fixture 服务器端口经 `adb reverse` 映射为 `http://localhost:<port>`。未修改手机或 Chrome 的任何设置，未使用 `chrome://flags`，未接触日常浏览上下文；每轮结束后 `adb forward --list`／`adb reverse --list` 均为空，`/data/local/tmp` 无残留。代码 @ `a0e014b`，产品代码（各包 `src`）未改动。
+
+执行代理各跑两遍，维护会话独立复跑一遍全量 `PWA_ANDROID_SERIAL=4a1c64d0 pnpm test:browser:android`，结果一致：
+
+| 包 | 真机 Android Chrome 153 |
+|---|---|
+| browser-test-harness | 22 通过 |
+| engine-workbox | 14 通过 |
+| sw-runtime | 69 通过 |
+| client-runtime | 22 通过 |
+| push（未发布） | 8 通过 |
+| vite | 35 通过 |
+| entry-resilience | 22 通过 |
+| nuxt（未发布） | 12 通过 |
+| examples-browser-e2e | 61 通过／2 跳过 |
+| 更新提示 UI | 28 通过 |
+
+同次全仓 `pnpm test:browser`（Chrome 154）全部通过；受共享 harness 改动影响的 R7 真实 Firefox／Safari 用例回归一致。
+
+**跳过：** 仅 examples-browser-e2e 的真实 `beforeinstallprompt` 两项（Vue、React）。该用例启动独立的桌面 Chromium 配置文件取得可安装性，在手机上只有日常配置文件可安装，ADR-0048 禁止使用。WebAPK 安装、桌面图标启动继续依赖人工观察。推送 CDP 投递、配额覆盖、worker 控制台捕获、`setViewportSize`、配色仿真在手机上均原样通过。
+
+**改写（Chrome 上继续通过）：** client-runtime `served-from-cache.spec.ts` 与 engine-workbox `runtime.spec.ts` 原以电脑时钟比较浏览器写入的时间戳；手机时钟与电脑相差约 0.5 秒，改为读取浏览器时钟，断言不变。
+
+**运行条件与偶发：**
+
+- 运行期间手机须解锁、Chrome 在前台。维护会话首次复跑时手机自动锁屏进入休眠，系统结束 Chrome，调试端口消失，全部用例在连接阶段失败（`socket hang up`）；解锁并将 Chrome 调到前台后全量通过。harness 已在连接前检查调试端口，缺失时直接提示“解锁手机并打开 Chrome”（`a0e014b`）。
+- 执行代理运行中 `adb reverse` 曾一次报 `cannot bind listener: Operation not permitted`，harness 增加一次 500 ms 后重试后未再出现。
+
+**结论：** Android 列所有 ○ 关闭，由真机自动化补齐（▲），其余行在人工观察之外新增真机自动化证据。单台设备、单一 Chrome 版本（N），不能填作 `desktop+android` 通道的 N/N-1 通过证据（ADR-0030）。
