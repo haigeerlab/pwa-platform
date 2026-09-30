@@ -33,6 +33,8 @@ features:
 
 PWA Platform 是供多个业务应用复用的 PWA 基础设施。业务团队声明应用身份和缓存意图，平台生成 manifest、Service Worker 与离线页，并在构建时核对产物。安装按钮和业务数据仍由应用负责；更新提示可选用平台默认 UI 或自行实现。
 
+第一次接触 PWA？先读 [PWA 基础与术语表](/introduction/pwa-basics)。
+
 ::: warning 当前发布状态
 十个公开包的正式版本为 **0.2.4**（npm `latest`），包括 Vite、Vue、React 和可选的入口恢复包。Nuxt、Push 与离线写入包仍只在工作区。包发布不代替业务应用的生产部署验收。
 :::

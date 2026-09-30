@@ -24,6 +24,7 @@ export default defineConfig({
       {
         text: "认识平台",
         items: [
+          { text: "PWA 基础", link: "/introduction/pwa-basics" },
           { text: "项目介绍", link: "/introduction/" },
           { text: "能力与边界", link: "/introduction/capabilities" },
           { text: "成熟应用能力对比", link: "/introduction/application-comparison" },
