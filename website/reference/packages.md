@@ -18,7 +18,7 @@ entry-resilience（可选）                                       ← 需要时
 
 ## 几条不能碰的红线
 
-1. **身份上线后不可变更。** <code>scope</code>、Service Worker URL、manifest ID 和缓存命名空间一旦在生产环境注册就不能再改；确实需要变更，必须先有架构决策记录和迁移计划。
+1. **身份上线后不可变更。** <code>PwaIdentity</code> 的九个字段（<code>appId</code>、<code>manifestId</code>、<code>origin</code>、<code>scope</code>、<code>serviceWorkerUrl</code>、<code>manifestUrl</code>、<code>mountPath</code>、<code>environment</code>、<code>cacheNamespaceSeed</code>）一旦在生产环境注册就不能再改，逐项说明见[字段参考](/guide/configuration#field-reference)；确实需要变更，必须先有架构决策记录和迁移计划。
 2. **不能注入自己的 Service Worker 代码或 Workbox 配置**，只能通过 <code>PwaPolicy</code> 声明意图。
 3. **敏感请求默认不缓存。** 私有数据、写操作、流媒体和未分类请求都不会进入缓存，想缓存某类请求必须在策略里明确声明，且不能突破安全基线。
 4. **界面归业务。** 平台只提供状态和方法，不弹任何提示，也不替业务刷新页面。
