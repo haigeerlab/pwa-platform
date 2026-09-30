@@ -23,6 +23,7 @@ V1 计划先按桌面端通道发布，**Chrome 桌面端当前版与上一个�
 | Chrome 桌面端，当前版（N）与上一个稳定版（N-1） | 必测 | 发布门禁要求；N-1 需在发布验收中单独取得，不由平台仓库的 CI 覆盖 |
 | Microsoft Edge 桌面端稳定版 | 非阻塞参考 | 仓库 CI 的 `edge` 任务用 runner 预装的 Edge 跑同一套 Chrome 浏览器测试，只在合并后、每晚和手动触发时运行，失败不阻塞发布（ADR-0044） |
 | Playwright 的 WebKit 与 Firefox | 非阻塞引擎冒烟 | 只证明 Playwright 自带的引擎构建能跑通冒烟用例，**不等于**真实 Safari、iOS 或 Firefox 稳定版的兼容证据（ADR-0042） |
+| macOS 上的系统 Safari 与 Firefox | 非阻塞本机运行 | 维护者本机经 `safaridriver`／`geckodriver` 驱动系统安装的浏览器跑同一批浏览器用例，是真实浏览器证据但不进 CI、不阻塞发布，WebDriver 取不到的检查标注为无法验证（ADR-0047） |
 | 移动端（Chrome Android、iOS Safari） | 渐进 | 按渐进增强处理；需业务用真机自行验收 |
 
 ## 不支持 Service Worker 的环境

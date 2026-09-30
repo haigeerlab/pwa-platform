@@ -16,6 +16,7 @@
 - **参考档。** Edge 与必测档跑同一组场景。失败不阻塞，但要登记 Issue，并在验证记录中写上 Issue 链接。
 - **Edge 冒烟（2026-09-29，[ADR-0044](../adr/0044-non-blocking-edge-smoke.md)）。** CI 的 `edge` 任务用运行器预装的 Edge 稳定版（`PWA_BROWSER_CHANNEL=msedge`）重跑 `pnpm test:browser`，不阻塞、不在 pull request 上触发。结果记作参考档的桌面 Edge 自动化证据，不改变必测档或发布通道的判定。
 - **引擎冒烟（2026-09-28，[ADR-0042](../adr/0042-non-blocking-webkit-and-firefox-engine-smoke.md)）。** 门禁以不阻塞命令 `pnpm test:browser:engines` 在 Playwright 自带的 WebKit 与 Firefox 上运行已接入的包。结果归入渐进兼容档，只能记为“WebKit 引擎 / Firefox（Playwright 版本号）”，不代表 Safari、iOS 或 Firefox 稳定版。
+- **本机真实 Safari 与 Firefox（2026-09-30，[ADR-0047](../adr/0047-local-real-safari-and-firefox-webdriver-runs.md)）。** 维护者在 macOS 上以 `PWA_REAL_BROWSER=safari|firefox pnpm test:browser:real` 经 W3C WebDriver 驱动系统安装的 Safari 与 Firefox 运行已接入包的浏览器用例。结果是渐进兼容档的真实浏览器证据，记为“Safari x.y（safaridriver）／Firefox x.y（geckodriver）”；不进 CI、不阻塞，WebDriver 无法取证的检查以 `unverifiable-on-real-browser` 标注记录，不计为通过。
 - **渐进兼容档。** 安装与 Push 不做保证。离线启动和更新行为与必测档不同时，写成兼容性说明（见下文）。无论哪项能力不可用，基础 Web 体验都必须可用。
 
 ## 发布通道
