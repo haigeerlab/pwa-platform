@@ -65,10 +65,11 @@ describe("package manifest", () => {
     });
   });
 
-  it("has exactly build, test, test:browser and typecheck scripts", () => {
-    // test:browser added by T7 (browser-tests/), mirroring every other package that ships a Playwright suite.
+  it("has exactly build, test, test:browser, test:browser:android and typecheck scripts", () => {
+    // test:browser added by T7 (browser-tests/), mirroring every other package that ships a Playwright suite;
+    // test:browser:android is the local real-phone run (ADR-0048).
     const scripts = manifest["scripts"] as Record<string, unknown>;
-    expect(Object.keys(scripts).sort()).toEqual(["build", "test", "test:browser", "typecheck"]);
+    expect(Object.keys(scripts).sort()).toEqual(["build", "test", "test:browser", "test:browser:android", "typecheck"]);
   });
 });
 
