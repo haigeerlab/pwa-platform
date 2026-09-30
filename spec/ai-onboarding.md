@@ -26,7 +26,7 @@
 - **front matter**：只有 `name`、`description`、`metadata.version`；`name` 为 `pwa-onboarding`；`metadata.version` 与包版本相等，由测试强制，升级版本时同步修改（见 [npm 包发布流程](../docs/operations/npm-package-release.md)）。
 - **只含 Markdown**，且没有把文件写入 `public/`、`src/`、`dist/` 的命令。
 - **体积**：`SKILL.md` ≤ 6144 字节，整个目录 ≤ 8192 字节，不含 `references/`。
-- **文档链接与离线副本**：清单引用的每篇文档都带文档站链接（`https://pwa-platform-docs.pages.dev/<路径>`），且 `website/<路径>.md` 存在（内容测试）。这些页面同时作为离线副本随包发布在 `docs/<路径>.md`（`files` 含 `docs`，不进 `exports`，构建时由 `packages/vite/scripts/bundle-docs.mjs` 从 `SKILL.md` 的链接生成，不提交）；清单要求助手先读本地副本，缺失时才读在线链接，都读不到就停。站内链接指向未随包页面时改写为在线地址。见 [ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md) 的离线文档增补。文档站仍须在含 `skills/` 的 `vite` 版本发布前从同一 `website/` 内容部署（在线兜底），见 [npm 包发布流程](../docs/operations/npm-package-release.md)第 11 条。
+- **文档链接与仓库副本**：清单引用的每篇文档都带文档站链接（`https://pwa-platform-docs.pages.dev/<路径>`），且 `website/<路径>.md` 存在（内容测试）。文档**不随包发布**（`files` 不含 `docs`）。清单要求助手按顺序读取：① 在线链接；② 打不开时读 PWA Platform 仓库副本——不知道位置就问人一次并记住，站点路径 `/<a>/<b>` 对应副本中的 `website/<a>/<b>.md`，文档内站内链接同样换算；首次读取副本时比较副本 `packages/vite/package.json` 与业务项目 `node_modules/@pwa-platform/vite/package.json` 的 `version`，不一致告诉人、由人决定是否继续；③ 都读不到就停下告诉人。见 [ADR-0045](../docs/adr/0045-ai-onboarding-skill-shipped-in-vite-package.md) 2026-09-30 增补。文档站仍须在含 `skills/` 的 `vite` 版本发布前从同一 `website/` 内容部署，见 [npm 包发布流程](../docs/operations/npm-package-release.md)第 11 条。
 - **不进入生产构建**：装有清单的项目做生产构建，产物不含清单文件与内容，且与未装时逐文件哈希相同（`onboarding-smoke`）。
 
 ## 测试
@@ -49,11 +49,16 @@
 | AC2 | `metadata.version` 等于包版本 | 版本测试 |
 | AC3 | 生产构建产物不含清单，且与未装时哈希相同 | `onboarding-smoke` |
 | AC4 | 清单保留上面的关键规则，且不含已缩减掉的机制 | 内容测试 |
-| AC5 | 清单引用的每篇文档都有文档站链接，且对应页面在 `website/` 中存在；每篇都随包发布离线副本 `docs/<路径>.md`（无站内相对链接、相对 `.md` 链接均可解析、总量 ≤ 200 KB、打包产物含 `docs/`）；发布 `vite` 前线上文档站与发布提交一致 | 内容测试；`bundle-docs.test.ts`；`check:publish`；发布流程第 11 条 |
+| AC5 | 清单引用的每篇文档都有文档站链接，且对应页面在 `website/` 中存在；清单写明“在线 → 仓库副本（问位置、路径换算、版本比较）→ 停”的读取顺序；打包产物不含 `docs/`，没有任何包的 `files` 含 `docs`；发布 `vite` 前线上文档站与发布提交一致 | 内容测试；打包测试；`check:publish`；发布流程第 11 条 |
+| AC6 | 全新的助手只凭清单与文档（在线不可达、只有仓库副本）把 Vite + Vue 与 Vite + React 模板接入，产物通过 onboarding-smoke 的冒烟检查，且没有违反“绝不”项 | 一次性场景评估，记录在 `tasks/ai-onboarding/verification.md` |
 
 ## 缩减记录
 
 2026-09-29：实现阶段走完 16 个任务、两次独立评审（共 20 个发现）、两轮场景评估（33 次运行）之后，项目所有者指出它对一个开源库过于复杂。回看的事实：交付物是 15 个文件约 58 KB 的 Markdown，周围的测试、夹具、评分表、规格、计划、评估记录的行数是它的数倍；产物是给 AI 读的散文，每轮评审都能找到新漏洞，修复又增加文字和测试，永远做不完；关卡 3–6 从未在真实部署上验证过。决定缩为一页清单，规则指向文档站不复述。完整实现保留在 git 历史里（PR #89 的早期提交），需要时可以取回。
+
+## 修订记录
+
+2026-09-30：项目所有者决定文档不再随 npm 包发布。没有网络的接入方会拿到整个 PWA Platform 仓库的副本，助手在在线文档站打不开时按路径读取副本中的 `website/` 页面。删除随包的 `docs/` 与生成脚本，AC5 改写，新增 AC6（一次性场景评估，验证缩减后的清单与新读取方式能引导助手完成接入）。
 
 ## 已知限制
 
