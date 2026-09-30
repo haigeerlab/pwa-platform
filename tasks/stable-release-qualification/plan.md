@@ -154,6 +154,22 @@ R2–R4 可以按 Vue／React 场景分别执行，但同一公开测试槽的�
 **依赖：** 无代码依赖；外部依赖为本机 `geckodriver`、Safari 远程自动化和完整安装的 Edge。
 **预计范围：** L（harness 适配层 + 五个包的移植与取证）。
 
+### R8：真机 Android Chrome 自动化证据（2026-09-30）
+
+**描述：** 按 [ADR-0048](../../docs/adr/0048-android-real-device-chrome-automation.md) 在 harness 中新增真机 Android 模式，经 USB 连接 Xiaomi 14（Android 16，Chrome 153）上的 Chrome，在独立浏览器上下文中运行现有浏览器用例，补齐矩阵 Android 列的 ○ 与缺口。不改变 `desktop+android` 通道的 N/N-1 要求。
+
+**验收标准：**
+
+- harness 在 `PWA_ANDROID_SERIAL` 下连接真机 Chrome、每个测试使用独立上下文、自动建立与撤销端口映射；不修改手机 Chrome 设置；Chrome 门禁不受影响。
+- 接入 `test:browser` 的各包在真机上运行，跳过项逐条写明原因。
+- 为移植而改写的用例在 Chrome 阻塞门禁中继续通过。
+- 结果写入 verification.md，跨平台测试证据页 Android 列按实际结果更新。
+
+**验证：** `pnpm test:browser`（Chrome，阻塞）；`test:browser:android` 各包在真机上完整运行两次；文档构建。
+
+**依赖：** 以 USB 连接并开启 USB 调试的实体 Android 设备。
+**预计范围：** M（harness 连接层 + 各包接入与取证）。
+
 ### 检查点
 
 - **R1 后：** 文档构建通过，任务清单和原始证据一致，再开始任何新真机写入。
