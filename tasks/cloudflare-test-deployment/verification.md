@@ -296,3 +296,27 @@ React/Vue 项目、实际 origin、线上静态响应头与桌面 Chrome 首次�
 - 文档站 Git 集成原先虽有 `production_deployments_enabled=false`、`preview_deployment_setting=none`，总开关 `deployments_enabled` 仍为 `true`。版本分支推送、发布记录分支推送和合并到 `main` 各留下 `github:push`、`is_skipped=true`、`idle` 的预览记录；没有产生新的成功生产部署。按 Cloudflare Pages API 的开关说明将总开关设为 `false`，随即独立 GET 确认三个开关分别为 `false`、`false`、`none`，生产分支仍为 `docs/v2026.09.25-2`，canonical 部署仍为 `69f08e16-03d4-4cdf-a9e1-427ca8a7fc79` 且成功。审计分支首次正常推送后再次 GET：部署记录总数仍为 22，最新 ID 仍为 `49c25e30-b3ee-45f6-a440-b3747c0193e8`（此前的 skipped 记录）；本次分支推送未留下新记录。合并到 `main` 后还需再核对一次，不为此额外推送。
 - React/Vue 当前生产部署均创建于 2026-09-22（UTC），完整七日存活证据尚不能由今天的审计得出；F2 继续 pending。F3 所需的真正第二台机器没有参与此次核验，继续 pending。本轮没有 Pages 上传、R2 对象写入或测试站身份变更。
 - Spec Guard 本地 `verify-artifacts` 为 2 通过、0 警告、0 失败；本模块 `documentation_impact` 为 `valid`，`documentation_verification` 因 F2/F3 仍待证据而为 `attention`，未提升交付状态。另对 `platform-governance` 运行的文档核验报 `invalid`：其规格已有两个 Documentation impact 表；本轮未改该规格，待该模块单独修复。
+
+## 2026-09-30：七日留存审计（F2）
+
+项目所有者同意后使用钥匙串中的 Pages 与 R2 凭据执行，全部为只读请求（Pages API GET、R2 GET、公开站点 GET），没有 Pages 上传、R2 对象写入或索引写入。
+
+**执行前核对：**
+
+- Pages API 读回两站当前生产部署，均未被替换：React `8589bf50-b6d2-493f-9551-ea4b7dd8adec`（创建于 2026-09-22T01:47:10Z），Vue `8472fc4d-ca25-45ca-a4f1-1237db6be642`（2026-09-22T01:48:40Z），生产分支 `main`，阶段 `success`。执行时（2026-09-30T07:29Z）两者均已存活超过七个自然日。
+- R2 用量：该 Pages 令牌无 R2 读取权限（`/r2/buckets/.../usage` 返回 403），未读到现场用量。按审计逻辑估算，本次每站读取 3 个部署索引、3 个发布包与 3 个清单，两站合计约 18 次 Class B 读取；F1a 读数约 1.14k 次，对照每月 1000 万次的免费额度可以忽略。
+
+**结果**（`pnpm audit:cloudflare:retention --target=react|vue`，2026-09-30T07:29:50Z／07:30:06Z）：
+
+| 项 | React | Vue |
+|---|---|---|
+| `retentionAuditPassed` | `true` | `true` |
+| 当前生产部署 | `8589bf50…` | `8472fc4d…` |
+| 成功生产部署历史 | 7 | 7 |
+| 需保留的部署（当前、最近三次、七日内） | 3（七日内新部署 0） | 3（七日内新部署 0） |
+| R2 发布包与元数据链核验 | 3/3 | 3/3 |
+| 当前发布文件线上逐一比对 | 14 | 14 |
+| 旧指纹资源线上仍可取回 | 5 | 5 |
+| 最早需保留部署的创建时间 | 2026-09-21T16:12:01Z | 2026-09-21T16:13:23Z |
+
+**结论：** 两站最近三次生产发布的 R2 发布包、部署索引与元数据链完整，当前发布文件与线上一致，保留期内的旧指纹资源仍可从线上取回；证据跨度从 2026-09-21 起超过七个自然日，且期间没有为取证重新部署。F2 通过。F3（真正第二台机器上的恢复）仍待项目所有者执行，T5 与文档交付状态继续 `pending`，待 F4 复核。
