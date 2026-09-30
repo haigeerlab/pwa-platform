@@ -1,6 +1,7 @@
 import {
   expect,
   expectLifecycleSequence,
+  readRealBrowserKind,
   readRegistration,
   test,
   waitForControllerChange,
@@ -10,6 +11,7 @@ import { FIXTURE_SITE, SHELL_URL, WORKER_URL } from "./fixture-site.js";
 import {
   collectedEvents,
   documentMark,
+  elapsePageTime,
   installAndControl,
   installAndControlWithUpdateCheck,
   markDocument,
@@ -64,12 +66,17 @@ test.describe("manual update check", () => {
 });
 
 test.describe("automatic update check", () => {
+  // A real browser waits out the check interval in real time (`elapsePageTime`).
+  test.beforeEach(() => {
+    if (readRealBrowserKind(process.env) !== undefined) test.setTimeout(120_000);
+  });
+
   test("finds a deployed update once the interval elapses, without reloading", async ({ page, fixtureServer }) => {
     await installAndControlWithUpdateCheck(page, fixtureServer, AUTOMATIC_CHECK_INTERVAL_MS);
     await markDocument(page);
 
     fixtureServer.deploy("v2");
-    await page.clock.runFor(AUTOMATIC_CHECK_INTERVAL_MS);
+    await elapsePageTime(page, AUTOMATIC_CHECK_INTERVAL_MS, AUTOMATIC_CHECK_INTERVAL_MS);
 
     await waitForClientEvent(page, "update-waiting");
     expect(await documentMark(page)).toBe("kept");
@@ -81,8 +88,8 @@ test.describe("automatic update check", () => {
 
     await setPageVisibility(page, "hidden");
     fixtureServer.deploy("v2");
-    await page.clock.runFor(AUTOMATIC_CHECK_INTERVAL_MS * 3);
-    // runFor() only guarantees the fake timers fired; a check it wrongly started would still reach the server
+    await elapsePageTime(page, AUTOMATIC_CHECK_INTERVAL_MS * 3, AUTOMATIC_CHECK_INTERVAL_MS);
+    // On Chrome elapsePageTime() only guarantees the fake timers fired; a check it wrongly started would still reach the server
     // through a real fetch, which needs real wall-clock time to land. Give it a moment before trusting "zero".
     await new Promise((resolve) => setTimeout(resolve, 500));
 

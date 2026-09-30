@@ -110,6 +110,6 @@ test.describe("recovery drill", () => {
 
     fixtureServer.goOffline();
     await page.goto(fixtureServer.url(SHELL_URL));
-    await expect(page.locator("[data-shell]")).toHaveText("app shell v1");
+    await expect.poll(() => page.locator("[data-shell]").textContent()).toBe("app shell v1");
   });
 });

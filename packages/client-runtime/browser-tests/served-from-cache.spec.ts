@@ -128,14 +128,14 @@ test.describe("served-from-cache: navigation (page subscribes only after the wor
     await installAndControl(page, fixtureServer);
     // Warm the pages cache online, with a plain navigation (no facade involvement).
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
-    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await expect.poll(() => page.locator("[data-dashboard]").textContent()).toBe("dashboard v1");
     await waitForRuntimeWrites(page, [fixtureServer.url(RUNTIME_DASHBOARD_URL)]);
 
     fixtureServer.goOffline();
     // A fresh navigation: a brand-new document, whose page script has not called register() yet, so nothing is
     // listening for the worker's message when it answers this navigation from the runtime cache.
     await page.goto(fixtureServer.url(RUNTIME_DASHBOARD_URL));
-    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await expect.poll(() => page.locator("[data-dashboard]").textContent()).toBe("dashboard v1");
 
     // Only now does the page subscribe and register — the pending-query path (not a direct postMessage) must still
     // deliver the signal for the navigation that already happened.

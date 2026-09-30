@@ -36,7 +36,7 @@ test.describe("a shared origin with a root app and a child app (ADR-0019)", () =
 
     const controller = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);
     expect(controller).toBe(fixtureServer.url(CHILD_WORKER_URL));
-    await expect(page.locator("#child-marker")).toBeVisible();
+    await expect.poll(() => page.locator("#child-marker").isVisible()).toBe(true);
   });
 
   test("the root page is controlled by the root worker, not the child's", async ({ page, fixtureServer }) => {
@@ -46,6 +46,6 @@ test.describe("a shared origin with a root app and a child app (ADR-0019)", () =
 
     const controller = await page.evaluate(() => navigator.serviceWorker.controller?.scriptURL ?? null);
     expect(controller).toBe(fixtureServer.url(ROOT_WORKER_URL));
-    await expect(page.locator("#root-marker")).toBeVisible();
+    await expect.poll(() => page.locator("#root-marker").isVisible()).toBe(true);
   });
 });

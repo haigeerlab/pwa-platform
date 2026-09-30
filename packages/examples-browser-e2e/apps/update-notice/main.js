@@ -2,6 +2,7 @@ import { createApp, h } from "vue";
 import { createPwa } from "@pwa-platform/vue";
 import { PwaUpdateNotice as VueNotice } from "@pwa-platform/vue/ui";
 import { createElement } from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { PwaProvider } from "@pwa-platform/react";
 import { PwaUpdateNotice as ReactNotice } from "@pwa-platform/react/ui";
@@ -59,9 +60,13 @@ const props = {
 
 if (params.get("framework") === "react") {
   await import("@pwa-platform/react/update-notice.css");
-  createRoot(globalThis.document.getElementById("app")).render(
-    createElement(PwaProvider, { config, client }, createElement(ReactNotice, props)),
-  );
+  // Synchronous, so the notice has subscribed to the client (in an effect) before `__fixture` below lets a test emit;
+  // an asynchronous render lost an early `wait()` about one run in twenty on Safari.
+  flushSync(() => {
+    createRoot(globalThis.document.getElementById("app")).render(
+      createElement(PwaProvider, { config, client }, createElement(ReactNotice, props)),
+    );
+  });
 } else {
   await import("@pwa-platform/vue/update-notice.css");
   createApp({ render: () => h(VueNotice, props) }).use(createPwa({ config, client })).mount("#app");

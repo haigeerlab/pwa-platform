@@ -58,7 +58,7 @@ for (const example of EXAMPLES) {
 
       // The page actually links it — a manifest nobody references offers no installation.
       await page.goto(fixtureServer.url(SHELL_URL));
-      await expect(page.locator('link[rel="manifest"]')).toHaveAttribute("href", MANIFEST_URL);
+      await expect.poll(() => page.locator('link[rel="manifest"]').getAttribute("href")).toBe(MANIFEST_URL);
     });
 
     test("every declared icon is a PNG at its manifest dimensions", async ({ page, fixtureServer }) => {
@@ -153,7 +153,7 @@ for (const example of EXAMPLES) {
           );
         }
         // The browser did offer installation, so from here on a missing button is a failure, never a skip.
-        await expect(page.locator("#install")).toBeVisible();
+        await expect.poll(() => page.locator("#install").isVisible()).toBe(true);
       });
     });
 
@@ -161,19 +161,19 @@ for (const example of EXAMPLES) {
       // ADR-0042: Playwright's WebKit loses the page when the React example's push panel queries PushManager.
       if (example === "react") await keepWebKitOffPushManager(context, browserName);
       await installAndControl(page, fixtureServer);
-      await expect(page.locator("#install")).toHaveCount(0);
+      await expect.poll(() => page.locator("#install").count()).toBe(0);
 
       await page.evaluate(() => {
         window.dispatchEvent(new Event("beforeinstallprompt", { cancelable: true }));
       });
-      await expect(page.locator("#install")).toBeVisible();
-      await expect(page.locator("#installed")).toHaveCount(0);
+      await expect.poll(() => page.locator("#install").isVisible()).toBe(true);
+      await expect.poll(() => page.locator("#installed").count()).toBe(0);
 
       await page.evaluate(() => {
         window.dispatchEvent(new Event("appinstalled"));
       });
-      await expect(page.locator("#installed")).toHaveText("installed");
-      await expect(page.locator("#install")).toHaveCount(0);
+      await expect.poll(() => page.locator("#installed").textContent()).toBe("installed");
+      await expect.poll(() => page.locator("#install").count()).toBe(0);
     });
   });
 }

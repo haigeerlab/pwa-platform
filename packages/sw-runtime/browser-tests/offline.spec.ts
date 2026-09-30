@@ -1,4 +1,4 @@
-import { expect, requestFromPage, test } from "@pwa-platform/browser-test-harness";
+import { expect, expectFromServiceWorker, expectNavigationStatus, requestFromPage, test } from "@pwa-platform/browser-test-harness";
 import { DENIED_URL, FIXTURE_SITE, GUIDE_URL, PRECACHE_CACHE_NAME, SHELL_URL, UNCLASSIFIED_URL } from "./fixture-site.js";
 import { cacheContents, installAndControl } from "./page-probe.js";
 
@@ -10,7 +10,7 @@ test.describe("offline startup", () => {
     fixtureServer.goOffline();
 
     await page.goto(fixtureServer.url(SHELL_URL));
-    await expect(page.locator("[data-shell]")).toHaveText("app shell v1");
+    await expect.poll(() => page.locator("[data-shell]").textContent()).toBe("app shell v1");
     // The shell came from the precache, not from the server.
     expect(fixtureServer.requests()).toEqual([]);
   });
@@ -25,7 +25,7 @@ test.describe("offline startup", () => {
     // Only `/app/index.html` is precached, not `/app/` itself, so this exercises the query-dropped fallback
     // candidates: the exact, query-preserving URL misses, and only dropping `?return=…` reaches the shell document.
     await page.goto(fixtureServer.url(`${SHELL_URL}?return=%2Fapp%2Fproducts%2F42`));
-    await expect(page.locator("[data-shell]")).toHaveText("app shell v1");
+    await expect.poll(() => page.locator("[data-shell]").textContent()).toBe("app shell v1");
     expect(fixtureServer.requests()).toEqual([]);
   });
 
@@ -34,7 +34,7 @@ test.describe("offline startup", () => {
     fixtureServer.goOffline();
 
     await page.goto(fixtureServer.url("/app/products/42"));
-    await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
+    await expect.poll(() => page.locator("[data-offline]").textContent()).toBe("offline fallback");
     expect(fixtureServer.requests()).toEqual([]);
   });
 
@@ -54,7 +54,7 @@ test.describe("offline startup", () => {
 
     for (const url of [GUIDE_URL, `${GUIDE_URL}/`]) {
       await page.goto(fixtureServer.url(url));
-      await expect(page.locator("[data-guide]"), url).toHaveText("prerendered guide");
+      await expect.poll(() => page.locator("[data-guide]").textContent(), {message: url}).toBe("prerendered guide");
     }
     expect(fixtureServer.requests()).toEqual([]);
   });
@@ -64,7 +64,7 @@ test.describe("offline startup", () => {
     fixtureServer.goOffline();
 
     await page.goto(fixtureServer.url(DENIED_URL));
-    await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
+    await expect.poll(() => page.locator("[data-offline]").textContent()).toBe("offline fallback");
     // Chrome may check the worker script independently of this navigation. The denied URL itself must never reach the server offline.
     expect(fixtureServer.requests().filter(({ path }) => path === DENIED_URL)).toEqual([]);
   });
@@ -84,8 +84,8 @@ test.describe("excluded paths (shared-origin root, ADR-0019)", () => {
     await installAndControl(page, fixtureServer);
 
     const online = await page.goto(fixtureServer.url(`${GUIDE_URL}/`));
-    expect(online?.status()).toBe(200);
-    expect(online?.fromServiceWorker()).toBe(false);
+    expectNavigationStatus(online, 200);
+    expectFromServiceWorker(online, false);
     expect(fixtureServer.requests().map(({ path }) => path)).toEqual([`${GUIDE_URL}/`]);
 
     await page.goto(fixtureServer.url(SHELL_URL));
@@ -93,7 +93,7 @@ test.describe("excluded paths (shared-origin root, ADR-0019)", () => {
     fixtureServer.goOffline();
     // Contrast on the same worker: a denied navigation falls back to the offline page, an excluded one does not.
     await page.goto(fixtureServer.url(DENIED_URL));
-    await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
+    await expect.poll(() => page.locator("[data-offline]").textContent()).toBe("offline fallback");
     await expect(page.goto(fixtureServer.url(`${GUIDE_URL}/`))).rejects.toThrow();
     expect(fixtureServer.requests()).toEqual([]);
   });
@@ -104,13 +104,16 @@ test.describe("denied navigations online", () => {
     await installAndControl(page, fixtureServer);
 
     const response = await page.goto(fixtureServer.url(DENIED_URL));
-    expect(response?.status()).toBe(200);
+    expectNavigationStatus(response, 200);
     // The worker now answers this navigation, but from its own network request: the server saw exactly one request.
     // Chrome also asks for /favicon.ico after navigating to this JSON document, at a moment of its own choosing; a
     // JSON response cannot carry the inline empty icon the fixture pages use to prevent that, so it is excluded.
-    expect(response?.fromServiceWorker()).toBe(true);
+    expectFromServiceWorker(response, true);
     expect(fixtureServer.requests().map(({ path }) => path).filter((path) => path !== "/favicon.ico")).toEqual([DENIED_URL]);
 
+    // Firefox renders a JSON document in its viewer, where the Cache API is unavailable ("The operation is insecure"), so
+    // read the caches from the precached shell page instead (ADR-0047). The shell comes from the precache and writes nothing.
+    await page.goto(fixtureServer.url(SHELL_URL));
     const contents = await cacheContents(page);
     expect(Object.keys(contents)).toEqual([PRECACHE_CACHE_NAME]);
     expect(contents[PRECACHE_CACHE_NAME]?.some((key) => key.includes(DENIED_URL))).toBe(false);

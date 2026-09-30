@@ -15,8 +15,8 @@ for (const example of EXAMPLES) {
       await page.goto(fixtureServer.url(SHELL_URL));
 
       // Asserted through the page, as a user would see it: the binding's state reaches the interface.
-      await expect(page.locator("#registered")).toHaveText("registered");
-      await expect(page.locator("#version")).toHaveText("v1");
+      await expect.poll(() => page.locator("#registered").textContent()).toBe("registered");
+      await expect.poll(() => page.locator("#version").textContent()).toBe("v1");
 
       const registration = await readRegistration(page, SHELL_URL);
       expect(registration?.scope).toBe(fixtureServer.url(SHELL_URL));
@@ -24,8 +24,8 @@ for (const example of EXAMPLES) {
 
     test("the published example's recovery page uses the same English locale as its offline page", async ({ page, fixtureServer }) => {
       await page.goto(fixtureServer.url("/app/pwa-entry.html"));
-      await expect(page.locator("html")).toHaveAttribute("lang", "en");
-      await expect(page).toHaveTitle("Alternative entry");
+      await expect.poll(() => page.locator("html").getAttribute("lang")).toBe("en");
+      await expect.poll(() => page.title()).toBe("Alternative entry");
     });
 
     test("every site version exists and serves its own worker", async ({ page, fixtureServer }) => {

@@ -137,6 +137,23 @@ R2–R4 可以按 Vue／React 场景分别执行，但同一公开测试槽的�
 **依赖：** R2、R3、R4；外部依赖为第二台可控 Android 设备。
 **预计范围：** M（真实设备验收）。
 
+### R7：补齐桌面 Edge、Safari、Firefox 的真实浏览器证据（2026-09-30）
+
+**描述：** 按 [ADR-0047](../../docs/adr/0047-local-real-safari-and-firefox-webdriver-runs.md) 在 harness 中新增 W3C WebDriver 适配层，让现有浏览器用例在本机真实 Safari 18.6 与 Firefox 157 上运行；按 ADR-0044 在本机真实 Edge 上运行完整 `test:browser`，并补 Edge 原生安装的人工记录。目标是桌面三列不再有 ○，▲ 升为真实浏览器证据；不改变 `desktop` 通道定义。
+
+**验收标准：**
+
+- harness 在 `PWA_REAL_BROWSER=safari|firefox` 下以 WebDriver 会话运行用例，调用未实现的能力时报明确错误；Chrome 门禁不受影响。
+- sw-runtime、client-runtime、examples-browser-e2e、vite、entry-resilience 与更新提示 UI 套件都能在两款真实浏览器上运行；跳过项逐条写明原因。
+- 为移植而改写的用例（`setOffline`、`page.route`、假时钟）在 Chrome 阻塞门禁中继续通过。
+- 本机 Edge 完整 `test:browser` 结果与 Edge 原生安装人工观察写入 verification.md。
+- 跨平台测试证据页按实际结果更新，每格可追溯到记录。
+
+**验证：** `pnpm test:browser`（Chrome，阻塞）；`test:browser:real` 两款浏览器各一次完整运行；`PWA_BROWSER_CHANNEL=msedge pnpm test:browser`；文档构建。
+
+**依赖：** 无代码依赖；外部依赖为本机 `geckodriver`、Safari 远程自动化和完整安装的 Edge。
+**预计范围：** L（harness 适配层 + 五个包的移植与取证）。
+
 ### 检查点
 
 - **R1 后：** 文档构建通过，任务清单和原始证据一致，再开始任何新真机写入。

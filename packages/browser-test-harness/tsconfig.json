@@ -8,6 +8,7 @@
     "src/**/*.ts",
     "test/**/*.ts",
     "browser-tests/**/*.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "playwright.real.config.ts"
   ]
 }

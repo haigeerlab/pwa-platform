@@ -8,10 +8,13 @@ export type { CacheSpec } from "./caches.js";
 export { contrastRatio } from "./contrast.js";
 export { fixturePath, MINIMAL_PAGE_MARKER } from "./fixtures.js";
 export { CHROME_PATH_ENV } from "./launch.js";
+export { expectFromServiceWorker, expectNavigationStatus, recordUnverifiable, UNVERIFIABLE_ANNOTATION } from "./navigation.js";
 export { expectLifecycleSequence } from "./lifecycle.js";
 export { startFixtureServer } from "./server.js";
 export type { FixtureResponseRule, FixtureServer, FixtureServerOptions, HeaderRule, RequestRecord } from "./server.js";
 export { BROWSER_VERSION_ANNOTATION, test } from "./test.js";
+export { readRealBrowserKind, REAL_BROWSER_ENV, REAL_BROWSER_HEADED_ENV } from "./webdriver.js";
+export type { RealBrowserKind } from "./webdriver.js";
 export type { HarnessTestArgs, HarnessWorkerArgs } from "./test.js";
 export {
   readRegistration,

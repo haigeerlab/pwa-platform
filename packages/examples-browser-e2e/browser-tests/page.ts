@@ -1,6 +1,6 @@
 // Page-side helpers shared by the specs. Everything is observed through the examples' interface where the interface
 // shows it; worker state that no interface shows is read from `navigator.serviceWorker` directly.
-import { expect, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
+import { expect, readRealBrowserKind, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
 import type { BrowserContext, Page } from "@playwright/test";
 import { SHELL_URL, WORKER_URL } from "../apps/shared/identity.js";
 
@@ -11,9 +11,12 @@ import { SHELL_URL, WORKER_URL } from "../apps/shared/identity.js";
  * reproduces it, without any platform code. The React example's push panel reads the subscription on mount, so on
  * WebKit only, and before any page script runs, that method answers "no subscription" instead. Nothing these specs
  * assert involves push; push is covered in Chromium. Real Safari and iPhone are unaffected (verification.md).
+ *
+ * A real Safari session (ADR-0047) reports `webkit` too but does not have that crash, and WebDriver cannot inject a
+ * script before the page's own anyway, so nothing is applied there: the specs run against the real `PushManager`.
  */
 export async function keepWebKitOffPushManager(context: BrowserContext, browserName: string): Promise<void> {
-  if (browserName !== "webkit") return;
+  if (browserName !== "webkit" || readRealBrowserKind(process.env) !== undefined) return;
   await context.addInitScript(() => {
     PushManager.prototype.getSubscription = () => Promise.resolve(null);
   });
@@ -40,11 +43,11 @@ export async function waitForActivatedWorker(page: Page, timeout = 10_000): Prom
  */
 export async function installAndControl(page: Page, fixtureServer: FixtureServer): Promise<void> {
   await page.goto(fixtureServer.url(SHELL_URL));
-  await expect(page.locator("#registered")).toHaveText("registered");
+  await expect.poll(() => page.locator("#registered").textContent()).toBe("registered");
   await waitForActivatedWorker(page);
   await page.reload();
   await waitForController(page, WORKER_URL);
-  await expect(page.locator("#registered")).toHaveText("registered");
+  await expect.poll(() => page.locator("#registered").textContent()).toBe("registered");
 }
 
 /**
@@ -73,10 +76,10 @@ export async function deployAndOffer(page: Page, fixtureServer: FixtureServer, v
   // The prompt must not be showing already, or the wait below would return before anything was deployed. A prior
   // prompt clears only after its page observes controllerchange, so this also proves the preceding update cycle
   // has actually completed before a new deployment begins.
-  await expect(page.locator("#apply-update")).toHaveCount(0);
+  await expect.poll(() => page.locator("#apply-update").count()).toBe(0);
   fixtureServer.deploy(version);
   await checkForUpdate(page);
-  await expect(page.locator("#apply-update")).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => page.locator("#apply-update").isVisible(), { timeout: 15_000 }).toBe(true);
 }
 
 export async function checkForUpdate(page: Page): Promise<void> {

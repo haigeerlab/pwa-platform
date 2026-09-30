@@ -30,14 +30,14 @@ for (const example of EXAMPLES) {
       // detach, so a rebuilt facade stays unregistered and the interface shows it. If that effect ever re-ran on
       // every attach, a rebuilt facade would register itself again and this test could no longer see the rebuild.
       await installAndControl(page, fixtureServer);
-      await expect(page.locator("#count")).toHaveText("0");
+      await expect.poll(() => page.locator("#count").textContent()).toBe("0");
 
       for (let click = 1; click <= 3; click += 1) {
         await page.locator("#bump").click();
-        await expect(page.locator("#count")).toHaveText(String(click));
+        await expect.poll(() => page.locator("#count").textContent()).toBe(String(click));
       }
 
-      await expect(page.locator("#registered")).toHaveText("registered");
+      await expect.poll(() => page.locator("#registered").textContent()).toBe("registered");
       // Both halves matter. The interface must say "registered", and that must still be true — a check on the
       // interface alone would also pass a binding that says "registered" about a registration that is long gone.
       expect(await hasRegistration(page)).toBe(true);
@@ -48,13 +48,13 @@ for (const example of EXAMPLES) {
       await page.locator("#logout").click();
 
       // The application's own flag, set from what `logout()` returned: a registration really was removed.
-      await expect(page.locator("#logged-out")).toHaveText("logged out");
+      await expect.poll(() => page.locator("#logged-out").textContent()).toBe("logged out");
       expect(await hasRegistration(page)).toBe(false);
 
       // And the documented limitation, on screen: `logout()` emits no event, so the adapter never learns the
       // registration is gone and `registered` stays true. Asserted as it is, not as it should be — an example that
       // hid this would misrepresent what an application actually gets (spec: vue-react-adapters, 已知限制).
-      await expect(page.locator("#registered")).toHaveText("registered");
+      await expect.poll(() => page.locator("#registered").textContent()).toBe("registered");
     });
   });
 }
@@ -66,7 +66,7 @@ test.describe("react example · handover", () => {
     // Unit tests stop short of this: called outside a render, React's dispatcher rejects `useContext` before the
     // binding's own null check runs, so the message below is only reachable from a real render.
     await page.goto(fixtureServer.url(SHELL_URL));
-    await expect(page.locator("#outside-usepwa")).toHaveText(NO_PROVIDER);
-    await expect(page.locator("#outside-usepwa")).toBeHidden();
+    await expect.poll(() => page.locator("#outside-usepwa").textContent()).toBe(NO_PROVIDER);
+    await expect.poll(() => page.locator("#outside-usepwa").isVisible()).toBe(false);
   });
 });

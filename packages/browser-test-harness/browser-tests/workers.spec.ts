@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import {
   expect,
   fixturePath,
+  readRealBrowserKind,
   readRegistration,
   registerWorker,
   requestFromPage,
@@ -116,6 +117,9 @@ test.describe("deployments", () => {
 
 test.describe("requests", () => {
   test("responses produced by a fetch handler are reported as coming from the service worker", async ({ page, fixtureServer }) => {
+    // Firefox reports a relayed response without network timing, so it reads as the worker's. Safari 18.6 reports
+    // the same timing for a relayed and for a passed-through request (protocol http/1.1, workerStart set for both).
+    test.skip(readRealBrowserKind(process.env) === "safari", "Safari gives no signal that tells respondWith(fetch(request)) from a plain network response");
     await page.goto(fixtureServer.url("/"));
     await registerWorker(page, { scriptUrl: "/passthrough-worker.js" });
     await waitForController(page, "/passthrough-worker.js");
@@ -147,10 +151,11 @@ test.describe("requests", () => {
     });
   });
 
-  test("offline requests report a network error and never reach the server", async ({ page, context, fixtureServer }) => {
+  test("offline requests report a network error and never reach the server", async ({ page, fixtureServer }) => {
     await page.goto(fixtureServer.url("/"));
     fixtureServer.clearRequests();
-    await context.setOffline(true);
+    // Server-side fault (ADR-0047): works in every browser, including real Safari and Firefox sessions.
+    fixtureServer.goOffline();
 
     const result = await requestFromPage(page, "/index.html");
 

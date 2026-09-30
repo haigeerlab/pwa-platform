@@ -1,6 +1,8 @@
-import { BROWSER_VERSION_ANNOTATION, expect, test } from "../src/index.js";
+import { BROWSER_VERSION_ANNOTATION, expect, readRealBrowserKind, test } from "../src/index.js";
 
 test("runs in the configured installed branded browser (Google Chrome unless PWA_BROWSER_CHANNEL says otherwise) and records its version", async ({ page, browserName }, testInfo) => {
+  // The Chrome-only assertions (channel, Playwright locators, dotted version) do not apply to a WebDriver session.
+  test.skip(readRealBrowserKind(process.env) !== undefined, "Chrome channel smoke; real Safari/Firefox versions are printed by logBrowserVersion");
   expect(browserName).toBe("chromium");
   // ADR-0044: the non-blocking Edge job sets PWA_BROWSER_CHANNEL=msedge; every other run uses Chrome.
   expect(testInfo.project.use.channel).toBe(process.env.PWA_BROWSER_CHANNEL ?? "chrome");

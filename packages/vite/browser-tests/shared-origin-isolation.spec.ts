@@ -17,26 +17,27 @@ import { installAndControl, urlIsInAnyCache } from "./page-probe.js";
 test.use({ fixtureSite: SHARED_ORIGIN_SITE });
 
 test.describe("the root worker never answers for the child's scope", () => {
-  test("offline, the child's pages are served by the child worker, never the root's", async ({ page, context, fixtureServer }) => {
+  test("offline, the child's pages are served by the child worker, never the root's", async ({ page, fixtureServer }) => {
     await installAndControl(page, fixtureServer, ROOT_SHELL_URL, ROOT_WORKER_URL);
     await installAndControl(page, fixtureServer, CHILD_SHELL_URL, CHILD_WORKER_URL);
 
-    await context.setOffline(true);
+    // Server-side fault (ADR-0047): works in every browser, including real Safari and Firefox sessions.
+    fixtureServer.goOffline();
     try {
       fixtureServer.clearRequests();
       await page.reload();
-      await expect(page.locator("#child-marker")).toBeVisible();
-      await expect(page.locator("#root-marker")).toHaveCount(0);
+      await expect.poll(() => page.locator("#child-marker").isVisible()).toBe(true);
+      await expect.poll(() => page.locator("#root-marker").count()).toBe(0);
 
       // A child route nothing precached: the child's own offline page, not the root's.
       await page.goto(fixtureServer.url(CHILD_UNKNOWN_ROUTE_URL));
-      await expect(page.locator("#child-offline-marker")).toBeVisible();
-      await expect(page.locator("#root-offline-marker")).toHaveCount(0);
+      await expect.poll(() => page.locator("#child-offline-marker").isVisible()).toBe(true);
+      await expect.poll(() => page.locator("#root-offline-marker").count()).toBe(0);
 
       // Both navigations were answered from a precache; the server saw neither.
       expect(fixtureServer.requests()).toEqual([]);
     } finally {
-      await context.setOffline(false);
+      fixtureServer.goOnline();
     }
   });
 
@@ -60,20 +61,19 @@ test.describe("the root worker never answers for the child's scope", () => {
 
   test("root-only site: offline navigation to a child path with no worker gets a network error, not the root's offline page", async ({
     page,
-    context,
     fixtureServer,
   }) => {
     fixtureServer.deploy("root-only");
     await installAndControl(page, fixtureServer, ROOT_SHELL_URL, ROOT_WORKER_URL);
 
-    await context.setOffline(true);
+    fixtureServer.goOffline();
     try {
       fixtureServer.clearRequests();
       await expect(page.goto(fixtureServer.url(CHILD_UNKNOWN_ROUTE_URL))).rejects.toThrow();
       // No worker answered and nothing reached the (unreachable) server either.
       expect(fixtureServer.requests()).toEqual([]);
     } finally {
-      await context.setOffline(false);
+      fixtureServer.goOnline();
     }
   });
 });

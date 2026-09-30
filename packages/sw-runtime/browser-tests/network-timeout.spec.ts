@@ -105,7 +105,7 @@ test.describe("navigation timeout (ADR-0038)", () => {
     await page.goto(target);
     const elapsedMs = Date.now() - startedAt;
 
-    await expect(page.locator("[data-offline]")).toHaveText("offline fallback");
+    await expect.poll(() => page.locator("[data-offline]").textContent()).toBe("offline fallback");
     expect(elapsedMs).toBeGreaterThanOrEqual(TIMEOUT_LOWER_BOUND_MS);
     expect(elapsedMs).toBeLessThan(TIMEOUT_UPPER_BOUND_MS);
     // navigate()'s timeout branch never writes to any cache (spec "边界": 不引入新的缓存写入).
@@ -172,14 +172,14 @@ test.describe("runtime cache timeout (ADR-0038)", () => {
     const target = fixtureServer.url(RUNTIME_DASHBOARD_URL);
 
     await page.goto(target);
-    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await expect.poll(() => page.locator("[data-dashboard]").textContent()).toBe("dashboard v1");
 
     const before = await snapshotCaches(page);
     const stall = stallRoute(fixtureServer, target);
     const startedAt = Date.now();
     await page.goto(target);
     const elapsedMs = Date.now() - startedAt;
-    await expect(page.locator("[data-dashboard]")).toHaveText("dashboard v1");
+    await expect.poll(() => page.locator("[data-dashboard]").textContent()).toBe("dashboard v1");
     const served = await queryPendingServed(page);
     const after = await snapshotCaches(page);
     stall.release();

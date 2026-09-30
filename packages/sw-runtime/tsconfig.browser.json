@@ -6,7 +6,8 @@
   },
   "include": [
     "browser-tests/**/*.ts",
-    "playwright.config.ts"
+    "playwright.config.ts",
+    "playwright.real.config.ts"
   ],
   "exclude": ["browser-tests/recovery-fault-entry.ts"]
 }

@@ -65,3 +65,14 @@
   - [x] 项目所有者接受 ADR-0041；公开文案继续保持“渐进兼容／部分通过”
 - [ ] R6 取得第二台 Android 后完成 N/N-1 两机门禁
 - [x] 查明 Playwright WebKit 下 React 示例 worker 安装期间页面挂起的根因（2026-09-29：推送面板调用 `PushManager.getSubscription()` 使 Playwright WebKit 的网络进程因不合法 IPC 消息退出；WebKit 上改为替换该方法，19 个用例恢复运行，见 ADR-0042 增补）
+
+## 2026-09-30 桌面三浏览器补证（R7，ADR-0047）
+
+- [x] R7.1 harness：W3C WebDriver 客户端与 `PWA_REAL_BROWSER` fixture、`test:browser:real` 脚本，harness 自身用例在 Safari／Firefox 通过
+- [x] R7.2 sw-runtime、client-runtime、examples-browser-e2e 的 `browser-tests` 在真实 Safari／Firefox 运行（行 1、3–9、5a、5e、6–8）
+- [x] R7.3 vite `browser-tests`：`setOffline` 改服务器断网后在两款真实浏览器运行（行 2b、4、4a、4c、4d、11、12）
+- [x] R7.4 entry-resilience：入口恢复页、中英文、主题在两款真实浏览器运行（行 10、10a、10b、12）
+- [x] R7.5 更新提示 UI：`page.route` 改服务器响应规则后在两款真实浏览器运行（行 5b、5c、5d）
+- [x] R7.6 本机真实 Edge 完整 `test:browser` 与 Edge 原生安装人工记录（行 2）
+- [x] R7.7 Safari 亮／暗主题分次运行（需维护者切换系统外观）
+- [ ] R7.8 记录 verification.md、更新跨平台测试证据页，开 PR

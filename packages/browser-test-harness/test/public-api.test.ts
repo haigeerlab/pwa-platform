@@ -28,7 +28,11 @@ describe("package manifest", () => {
   });
 
   it("runs unit tests with Vitest and browser self-tests with Playwright", () => {
-    expect(manifest["scripts"]).toMatchObject({ test: "vitest run", "test:browser": "playwright test" });
+    expect(manifest["scripts"]).toMatchObject({
+      test: "vitest run",
+      "test:browser": "playwright test",
+      "test:browser:real": "playwright test --config playwright.real.config.ts",
+    });
   });
 });
 

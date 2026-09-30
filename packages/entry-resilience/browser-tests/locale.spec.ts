@@ -1,6 +1,7 @@
 // EL3 (tasks/pwa-entry-resilience/plan.md's "修订：恢复页的构建期语言与文案覆盖"): the recovery page built with
 // `locale: "en"` and one `messages` override, in a real browser. Helpers are duplicated from styling.spec.ts on
-// purpose, as that file explains, so each spec stays readable on its own.
+// purpose, as that file explains, so each spec stays readable on its own. Assertions poll instead of using
+// web-first locator matchers so the same spec runs on real Safari and Firefox (ADR-0047).
 import { expect, test, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
 import type { Page } from "@playwright/test";
 import type { EntryUpdateResult } from "../src/client/index.js";
@@ -22,7 +23,7 @@ async function waitForActivatedWorker(page: Page, timeout = 10_000): Promise<voi
 
 async function installAndControl(page: Page, primary: FixtureServer): Promise<void> {
   await page.goto(primary.url(SHELL_URL));
-  await expect(page.locator("#shell")).toBeVisible();
+  await expect.poll(() => page.locator("#shell").isVisible()).toBe(true);
   await waitForActivatedWorker(page);
   await page.reload();
   await waitForController(page, WORKER_URL);
@@ -71,9 +72,11 @@ test.describe("recovery page built with locale en", () => {
     if (result.kind !== "available") throw new Error("expected an available entry");
 
     await page.goto(sites.primary.url(result.recoveryPageUrl));
-    await expect(page.locator(".pwa-entry__headline")).toHaveText("This app is moving to a new address");
-    await expect(page.locator(".pwa-entry__expiry")).toHaveText(/^This notice is valid until \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
-    await expect(page.locator(".pwa-entry__button")).toHaveText(`Open ${new URL(sites.alternate.origin).host}`);
+    await expect.poll(() => page.locator(".pwa-entry__headline").textContent()).toBe("This app is moving to a new address");
+    await expect
+      .poll(() => page.locator(".pwa-entry__expiry").textContent())
+      .toMatch(/^This notice is valid until \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC$/);
+    await expect.poll(() => page.locator(".pwa-entry__button").textContent()).toBe(`Open ${new URL(sites.alternate.origin).host}`);
     expect(await page.locator("html").getAttribute("lang")).toBe("en");
     expect(await page.title()).toBe("Alternative entry");
   });
@@ -85,6 +88,6 @@ test.describe("recovery page built with locale en", () => {
     if (result.kind !== "available") throw new Error("expected an available entry");
 
     await page.goto(sites.primary.url(result.recoveryPageUrl));
-    await expect(page.locator(".pwa-entry__headline")).toHaveText("This app's usual address is having problems");
+    await expect.poll(() => page.locator(".pwa-entry__headline").textContent()).toBe("This app's usual address is having problems");
   });
 });

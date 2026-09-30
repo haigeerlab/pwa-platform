@@ -379,3 +379,118 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 - 第 5 步在 24 ms 内返回，没有出现操作单预计的“断网请求挂起、约 10 秒后返回”。本轮只记录这个现象，没有区分是 `onLine=false` 提前返回，还是两次探测都立即失败。
 - 路由器家长控制拦截表现为请求**挂起**，没有像操作单预期的那样 DNS 解析失败。平台按 5 秒探测超时处理，这正是 `unconfirmed-outage` 分支要覆盖的情形。
 - 加上上一节已通过的第 1、2、3、4a、8 步，iPhone 单 Origin 故障演练的全部步骤均已通过。
+
+## R7.6 桌面 Edge 原生安装人工观察（2026-09-30）
+
+环境：macOS 15.7.3，Microsoft Edge 154.0.4258.37（稳定版，本机新装）。站点为公开示例 `https://pwa-platform-vue-demo.pages.dev/app/` 与 `https://pwa-platform-react-demo.pages.dev/app/`。由项目所有者在本机手工操作并口头报告结果，不是自动化截图。
+
+| 步骤 | Vue | React |
+|---|---|---|
+| 首次访问后重载，页面受控 | 通过 | 通过 |
+| Edge“将此站点作为应用安装”，打开独立窗口（无地址栏、无标签栏） | 通过 | 通过 |
+| 关闭后从系统应用入口重新启动，仍为独立窗口且正常加载 | 通过 | 通过 |
+| 关闭 Wi-Fi 后冷启动应用，应用壳正常显示、无白屏；随后恢复 Wi-Fi | 通过 | 通过 |
+
+结论：桌面 Edge 154 的 Vue／React 原生安装、独立窗口与离线冷启动有人工观察记录（E3）。未在该安装窗口执行真实 v1→v2 更新；Edge 的更新、缓存与恢复路径以同日本机 Edge 完整 `test:browser` 自动化为准（见下节）。
+
+### 本机 Edge 完整 `test:browser`（2026-09-30）
+
+在 `main` @ `e9e95d9`（0.2.4 发布后）的独立干净 worktree 中执行 `pnpm build` 后以 `PWA_BROWSER_CHANNEL=msedge pnpm test:browser` 运行，harness 打印 `chromium 154.0.4258.37 (configured channel)`，即本机 Microsoft Edge 154.0.4258.37。全部包逐个运行到底（`--no-bail`）：**276 通过，1 失败，0 跳过**。
+
+唯一失败为 entry-resilience `locale.spec.ts:67`（英文入口恢复页文案），失败点在测试开始前的 `browser.newContext` 30 秒超时，用例体未执行；运行时本机同时在跑 Safari／Firefox WebDriver 会话。随后单独对 entry-resilience 包以 Edge 连续运行 3 次，均为 **20/20 通过**，判定为启动期偶发，不是 Edge 行为差异。结论：桌面 Edge 154 的完整浏览器套件在本机真实浏览器上通过（E2，不阻塞，ADR-0044）。
+
+## R7.2 真实 Safari／Firefox：sw-runtime、client-runtime、examples-browser-e2e（2026-09-30）
+
+按 ADR-0047 经 W3C WebDriver 驱动本机系统浏览器：macOS 15.7.3 上的 Safari 18.6（`safaridriver`）与 Firefox 157.0（`geckodriver` 0.37.1，headless）。代码为分支 `claude/safari-testing-229f9f` @ `6be3312`，产品代码（各包 `src`）相对 `main` 未改动，只改测试与 harness。执行代理各跑两遍，维护会话再独立复跑一遍，三次结果一致：
+
+| 包 | Chrome 154（阻塞门禁） | Firefox 157 | Safari 18.6 |
+|---|---|---|---|
+| sw-runtime | 69 通过 | 62 通过／7 跳过 | 62 通过／7 跳过 |
+| client-runtime | 22 通过 | 21 通过／1 跳过 | 22 通过 |
+| examples-browser-e2e | 63 + 26（UI）通过 | 61 通过／2 跳过 | 61 通过／2 跳过 |
+
+同次复跑的全仓 `pnpm test:browser`（Chrome 154.0.8037.59）全部通过。
+
+**跳过（均写明原因）：** sw-runtime 推送 ×3（CDP 推送投递）、配额 ×2（CDP `Storage.overrideQuotaForOrigin`）、worker 控制台捕获 ×1、带 `Authorization` 的导航 ×1（WebDriver 不能给导航加请求头）；client-runtime 在 Firefox 跳过 ADR-0043 已记录的 `register()` 不排在挂起更新之后的用例；examples-browser-e2e 为 Chromium 专有的 `beforeinstallprompt` ×2。
+
+**真实浏览器上无法取证、以 `unverifiable-on-real-browser` 标注记录（不计为通过）：** Safari 18.6 不暴露导航的 HTTP 状态（Navigation Timing 无 `responseStatus`）；Safari 与 Firefox 无法区分“worker 转发的网络响应”和“直接网络响应”，因此 `fromServiceWorker: true` 只在响应完全不经网络时可证。涉及 examples-browser-e2e `offline.spec.ts` 的排除路径与被拒导航两例。
+
+**观察到的浏览器差异（非产品缺陷）：**
+
+- Safari 的自动化窗口从不在前台，页面 `visibilityState` 恒为 `hidden`，SDK 因此正确跳过定时更新检查；自动更新检查用例在真实浏览器上先把页面设为可见（与既有“隐藏时跳过”用例相同的覆盖方式）。定时检查以真实 60 秒间隔验证（产品拒绝更短间隔），不使用假时钟。
+- Safari 与 Firefox 都会在受控页面加载约 1 秒后自行重新请求 `sw.js`。
+- Firefox 的 WebDriver Refresh 为强制重载、绕过 Service Worker，因此真实浏览器上的重载改为页面内 `location.reload()`。
+- Safari 对不可达地址的导航落到 `safari-resource:/ErrorPage.html`，而不是报错。
+- 已中止运行遗留的 `Safari --automation` 进程会让下一轮所有 worker 安装失败；每轮运行前后结束该进程后不再复现。
+
+**偶发：** client-runtime `registration.spec.ts:79` 在 Safari 上的 `< 1000 ms` 墙钟断言曾一次为 1526 ms（含 WebDriver 往返），重复 10 次均通过。
+
+## R7.3 真实 Safari／Firefox：vite 离线页、恢复、主题、多应用隔离（2026-09-30）
+
+环境同 R7.2，代码 @ `0ea2a12`。vite `browser-tests` 共 35 项；执行代理各跑两遍，维护会话独立复跑一遍，结果一致：Chrome 154 **35 通过**；Firefox 157 **33 通过／2 跳过**；Safari 18.6（系统外观：浅色）**31 通过／4 跳过**。适配层改动后，R7.2 三个包在两款浏览器上的回归结果与 R7.2 记录完全一致。
+
+| 矩阵行 | Safari 18.6 | Firefox 157 | 说明 |
+|---|---|---|---|
+| 2b manifest 快捷方式 | 通过 | 通过 | 页面自行拉取所链接的 manifest，逐字段比对 shortcuts 等扩展成员，并确认图标 200；浏览器是否无错解析不可见（CDP 用例跳过） |
+| 3／4 离线壳与离线页 | 通过 | 通过 | 服务器端断网 |
+| 4a 联网自动恢复 | 通过 | 通过 | 主证据为“浏览器不发 online 事件时由网络探针恢复”；“联网即自动重载”用例在真实浏览器上同时派发合成 `online` 事件，只验证页面监听器 |
+| 4c 离线页中英文 | 通过 | 通过 | 中文默认与英文覆盖文案 |
+| 4d 离线页亮／暗 | 仅浅色通过，深色 2 项待 R7.7 | 两种都通过 | Firefox 经 `layout.css.prefers-color-scheme.content-override` 强制并以 `matchMedia` 核实；Safari 无法模拟，只跑与系统外观一致的一半 |
+| 11 同源多应用隔离 | 8/8 通过 | 8/8 通过 | 无跳过 |
+| 12 对比度／焦点／窄屏 | 浅色通过（320px） | 通过（窄屏只达 500px） | Firefox 窗口最小外宽 500px，320px 无横向溢出未验证，已标注 |
+
+**差异与限制：**
+
+- Safari 18.6 默认设置下 Tab 键跳过按钮、只落在文本输入框（系统“按 Tab 键高亮每个项目”未开启）；离线页的重试按钮以 Option+Tab 验证可聚焦，普通 Tab 未断言。这是 Safari 默认行为，不是产品缺陷。
+- Safari 自动化窗口不在前台，`visibilityState` 为 `hidden`，离线页据此暂停探针；恢复类用例在真实浏览器上先设为可见，与 R7.2 相同。
+- 严格 CSP 用例：真实浏览器上无法在页面脚本之前挂 `securitypolicyviolation` 监听，也读不到导航响应头，改为读取同一预缓存 URL 的 CSP 头，并验证页面在该策略下正常渲染、重试脚本可用；“零违规”一项标注为无法验证。
+- Firefox 的 `emulateMedia` 需要 geckodriver 以 `--allow-system-access` 启动（只作用于本次会话的临时配置文件）。
+
+## R7.4／R7.5 真实 Safari／Firefox：入口恢复页与更新提示 UI（2026-09-30）
+
+环境同 R7.2，代码 @ `1ad6c7f`。执行代理各跑两遍，维护会话独立复跑一遍，结果一致：
+
+| 套件 | Chrome 154 | Firefox 157 | Safari 18.6（系统外观：浅色） |
+|---|---|---|---|
+| entry-resilience（20 项） | 20 通过 | 20 通过 | 15 通过／5 跳过（深色，待 R7.7） |
+| 更新提示 UI（26 项） | 26 通过 | 26 通过 | 24 通过／2 跳过（深色，待 R7.7） |
+
+同次 Chrome 上 examples-browser-e2e 两套（63 + 26）全部通过。R7.2／R7.3 各包在适配层修复后于两款浏览器回归，数字与既有记录一致。
+
+| 矩阵行 | Safari 18.6 | Firefox 157 | 说明 |
+|---|---|---|---|
+| 10 入口恢复页 | 12 个场景全部通过 | 同左 | 含跳转备用 Origin、预缓存路由、严格 CSP、IndexedDB 与恢复 worker 场景；“当前 Origin 失效”为主 Origin 服务器断网，“整机离线”为两个 Origin 同时断网 |
+| 10a 中英文 | 通过 | 通过 | |
+| 10b 主题与样式 | 浅色 3 项通过，深色 5 项待 R7.7 | 8 项全部通过 | Firefox 320px 窄屏未验证（最小 500px）；“localStorage 不可用”半例无法在页面脚本前注入，已标注 |
+| 5b 默认更新提示 | 通过 | 通过 | 等待、稍后、重试、接管、显式刷新、失败与进行中、位置、配色属性、页面已是新代码判定 |
+| 5c 更新提示中英文 | 通过 | 通过 | |
+| 5d 更新提示主题／配色 | 浅色通过，深色 2 项待 R7.7 | 通过 | |
+
+**替代与限制：** `page.route` 改为测试进程内的 Vite 中间件，对当前页新鲜度检查请求返回旧壳／断开连接／放行，断言不变，Chrome 同路径；30 分钟再提醒在真实浏览器上把该定时器缩短为 2.5 秒，只验证提醒机制，不验证间隔值（Chrome 仍用假时钟验证）；CSP 违规事件在真实浏览器上无法取证，已标注，CSP 头经预缓存页读取断言。
+
+**适配层缺陷与修复：** Firefox 上 `page.evaluate` 的对象参数原先在驱动脚本的 realm 中构造，被页面代码的纯对象检查拒绝（`entry.manifest-invalid-shape`）；改为在页面 realm 中以 `JSON.parse` 重建，已加单元测试。
+
+**测试夹具时序：** React 更新提示夹具在渲染完成订阅前就暴露了事件触发器，Safari 上约 5% 的运行丢失首个事件；夹具改用 `flushSync` 同步渲染后重复 80 次无丢失。真实客户端的更新事件在 `register()` 之后才产生，而 React 绑定在接入客户端并订阅后才放行 `register()`，因此该时序只影响可随时发事件的测试替身，不是产品缺陷。
+
+**浏览器差异：** Safari 默认 Tab 不聚焦按钮（同 R7.3），以 Option+Tab 验证并标注。
+
+## R7.7 Safari 深色／浅色外观分次运行（2026-09-30）
+
+项目所有者先把 macOS 切到深色外观（`AppleInterfaceStyle = Dark`），维护会话在 Safari 18.6 上运行 vite、entry-resilience 与更新提示 UI 三套；再切回浅色外观复跑一次。
+
+深色下首轮暴露两类测试缺陷（均为用例问题，非产品问题），已修复（`fb6add8`）：
+
+- vite 与 entry-resilience 的严格 CSP 用例把“样式已生效”写死为浅色背景 `rgb(255, 255, 255)`，深色外观下页面正确显示 `#0f1419`；改为按页面实际 `prefers-color-scheme` 取对应背景色，两种外观都要求样式生效。
+- entry-resilience 的“亮／暗对比度、焦点与窄屏”、更新提示 UI 的“桌面亮／暗对比度”，以及入口恢复“文档化深色覆盖在两条深色路径上都生效”三处把两种配色放在一个用例里；Safari 无法模拟配色，因此在任一外观下都会中途跳过，深色一半（或“系统浅色 + 应用要求深色”路径）从未在 Safari 上执行。已拆为每种配色／每条路径一个用例，断言不变。
+
+修复后结果（Chrome 与 Firefox 同步复跑全部通过）：
+
+| 套件 | Safari 深色外观 | Safari 浅色外观 |
+|---|---|---|
+| vite（35 项） | 32 通过／3 跳过 | 30 通过／4 跳过／1 偶发失败（见下） |
+| entry-resilience（22 项） | 17 通过／5 跳过 | 17 通过／5 跳过 |
+| 更新提示 UI（28 项） | 26 通过／2 跳过 | 26 通过／2 跳过 |
+
+两种外观下的跳过项互补：除 vite 两项 CDP manifest 用例外，每个配色相关用例都在与之匹配的外观下通过。
+
+浅色轮 vite `offline-page.spec.ts:310`“过早的 online 事件等待真实联网后才重载”超时失败一次；该用例未被本轮修改，此前 R7.3 三次运行与深色轮均通过，单独重复 8 次全部通过。记为 Safari 上的偶发时序失败，约 1/13。
