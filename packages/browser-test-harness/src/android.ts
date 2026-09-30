@@ -86,6 +86,14 @@ export type AndroidChrome = {
 };
 
 export async function connectAndroidChrome(serial: string): Promise<AndroidChrome> {
+  // Chrome only listens on its DevTools socket while it runs; a locked or dozing phone kills it in the background, and
+  // connectOverCDP then fails with a bare "socket hang up". Say what to do instead.
+  const sockets = await adb(serial, "shell", "cat", "/proc/net/unix");
+  if (!sockets.includes(`@${DEVTOOLS_SOCKET.slice("localabstract:".length)}`)) {
+    throw new Error(
+      `Chrome is not running on Android device ${serial} (no ${DEVTOOLS_SOCKET} socket): unlock the phone, open Chrome, keep the screen on, and run again (ADR-0048)`,
+    );
+  }
   const port = await freePort();
   await adb(serial, "forward", `tcp:${port}`, DEVTOOLS_SOCKET);
   try {
