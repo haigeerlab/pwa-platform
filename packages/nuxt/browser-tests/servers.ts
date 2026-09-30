@@ -5,6 +5,7 @@
 // sees the one, stable proxy port. `requests()` is also what offline.spec.ts and recovery.spec.ts use to prove the
 // server received no (or exactly one) request.
 import { spawn, type ChildProcess } from "node:child_process";
+import { exposeToAndroid } from "@pwa-platform/browser-test-harness";
 import { createServer as createHttpServer, request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http";
 import { createServer as createNetServer } from "node:net";
 import type { AddressInfo } from "node:net";
@@ -103,6 +104,8 @@ export async function startNuxtServer(): Promise<NuxtServer> {
       resolveListen((proxy.address() as AddressInfo).port);
     });
   });
+  // Android run (ADR-0048): the phone reaches the proxy through `adb reverse`; otherwise this maps nothing.
+  const unexpose = await exposeToAndroid(proxyPort);
   const origin = `http://127.0.0.1:${proxyPort}`;
 
   return {
@@ -126,7 +129,7 @@ export async function startNuxtServer(): Promise<NuxtServer> {
       await new Promise<void>((resolveClose, rejectClose) => {
         proxy.close((error) => (error ? rejectClose(error) : resolveClose()));
         proxy.closeAllConnections();
-      });
+      }).finally(unexpose);
     },
   };
 }

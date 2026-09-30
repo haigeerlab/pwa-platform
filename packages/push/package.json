@@ -21,6 +21,7 @@
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "test:browser:android": "playwright test --config playwright.android.config.ts",
     "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.server.json && tsc --noEmit --project tsconfig.browser.json"
   },
   "dependencies": {

@@ -1,11 +1,12 @@
-import { BROWSER_VERSION_ANNOTATION, expect, readRealBrowserKind, test } from "../src/index.js";
+import { BROWSER_VERSION_ANNOTATION, expect, isAndroidRun, readRealBrowserKind, test } from "../src/index.js";
 
 test("runs in the configured installed branded browser (Google Chrome unless PWA_BROWSER_CHANNEL says otherwise) and records its version", async ({ page, browserName }, testInfo) => {
   // The Chrome-only assertions (channel, Playwright locators, dotted version) do not apply to a WebDriver session.
   test.skip(readRealBrowserKind(process.env) !== undefined, "Chrome channel smoke; real Safari/Firefox versions are printed by logBrowserVersion");
   expect(browserName).toBe("chromium");
   // ADR-0044: the non-blocking Edge job sets PWA_BROWSER_CHANNEL=msedge; every other run uses Chrome.
-  expect(testInfo.project.use.channel).toBe(process.env.PWA_BROWSER_CHANNEL ?? "chrome");
+  // An Android run connects to the phone's own Chrome over DevTools; no desktop channel is launched (ADR-0048).
+  if (!isAndroidRun()) expect(testInfo.project.use.channel).toBe(process.env.PWA_BROWSER_CHANNEL ?? "chrome");
 
   await page.setContent("<main data-harness-marker>ready</main>");
   await expect(page.locator("[data-harness-marker]")).toHaveText("ready");

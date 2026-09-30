@@ -32,6 +32,7 @@ describe("package manifest", () => {
       test: "vitest run",
       "test:browser": "playwright test",
       "test:browser:real": "playwright test --config playwright.real.config.ts",
+      "test:browser:android": "playwright test --config playwright.android.config.ts",
     });
   });
 });

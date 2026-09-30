@@ -7,7 +7,7 @@
 // `getByRole` and no web-first matchers; the fake clock and the `load` event are replaced by a shortened timer and a
 // marker on the document; screenshots (artifacts, not assertions) are not taken; and what a WebDriver session cannot
 // make is recorded with `recordUnverifiable`.
-import { contrastRatio, expect, readRealBrowserKind, recordUnverifiable, test } from "@pwa-platform/browser-test-harness";
+import { contrastRatio, expect, exposeToAndroid, readRealBrowserKind, recordUnverifiable, test } from "@pwa-platform/browser-test-harness";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
@@ -16,6 +16,7 @@ const REAL_BROWSER = readRealBrowserKind(process.env) !== undefined;
 
 let server: ViteDevServer;
 let origin: string;
+let unexpose: () => Promise<void> = async () => {};
 
 /**
  * The notice asks the server for the current document again (a `fetch`, not a navigation) and compares its entry
@@ -61,11 +62,14 @@ test.beforeAll(async () => {
   await server.listen();
   const address = server.httpServer?.address();
   if (address === null || typeof address === "string" || address === undefined) throw new Error("Vite did not listen");
+  // Android run (ADR-0048): the phone reaches the dev server through `adb reverse`; otherwise this maps nothing.
+  unexpose = await exposeToAndroid(address.port);
   origin = `http://127.0.0.1:${address.port}`;
 });
 
 test.afterAll(async () => {
   await server?.close();
+  await unexpose();
 });
 
 // eslint-disable-next-line no-empty-pattern
