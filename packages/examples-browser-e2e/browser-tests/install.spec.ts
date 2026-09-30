@@ -1,4 +1,4 @@
-import { expect, test } from "@pwa-platform/browser-test-harness";
+import { expect, isAndroidRun, test } from "@pwa-platform/browser-test-harness";
 import { INSTALL, MANIFEST_URL, SHELL_URL } from "../apps/shared/identity.js";
 import { test as installableTest } from "./installable-context.js";
 import { installAndControl, keepWebKitOffPushManager } from "./page.js";
@@ -98,8 +98,8 @@ for (const example of EXAMPLES) {
     // `beforeinstallprompt` event and its CDP installability diagnostics are Chromium-only mechanisms (ADR-0042).
     installableTest.describe("real beforeinstallprompt (Chromium-only)", () => {
       installableTest.skip(
-        ({ browserName }) => browserName !== "chromium",
-        "beforeinstallprompt and CDP installability diagnostics are Chromium-only",
+        ({ browserName }) => browserName !== "chromium" || isAndroidRun(),
+        "beforeinstallprompt and CDP installability diagnostics are Chromium-only; on Android only the phone's everyday profile can be installable, and ADR-0048 forbids using it",
       );
 
       installableTest("the browser offers installation on its own (real beforeinstallprompt)", async ({ page, fixtureServer }, testInfo) => {
