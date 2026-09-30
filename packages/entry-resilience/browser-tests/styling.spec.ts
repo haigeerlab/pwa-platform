@@ -156,39 +156,41 @@ test.describe("default style", () => {
     // background token (#0f1419).
     const url = await recoveryPageUrl(page, sites);
     await page.emulateMedia({ colorScheme: "dark" });
-    await page.goto(url);
-    await expectButton(page);
+      await page.goto(url);
+      await expectButton(page);
 
-    const samples = await page.evaluate(() => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      const points: [number, number][] = [
-        [1, 1],
-        [width - 2, 1],
-        [1, height - 2],
-        [width - 2, height - 2],
-        [Math.round(width / 2), height - 2],
-      ];
-      return points.map(([x, y]) => {
-        const element = document.elementFromPoint(x, y);
-        return { id: element?.id ?? null, background: element === null ? null : getComputedStyle(element).backgroundColor };
+      const samples = await page.evaluate(() => {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const points: [number, number][] = [
+          [1, 1],
+          [width - 2, 1],
+          [1, height - 2],
+          [width - 2, height - 2],
+          [Math.round(width / 2), height - 2],
+        ];
+        return points.map(([x, y]) => {
+          const element = document.elementFromPoint(x, y);
+          return { id: element?.id ?? null, background: element === null ? null : getComputedStyle(element).backgroundColor };
+        });
       });
+      for (const sample of samples) expect(sample).toEqual({ id: "pwa-entry", background: "rgb(15, 20, 25)" });
     });
-    for (const sample of samples) expect(sample).toEqual({ id: "pwa-entry", background: "rgb(15, 20, 25)" });
-  });
 
-  test("light and dark themes keep readable contrast, keyboard focus and a narrow layout", async ({ page }) => {
-    const url = await recoveryPageUrl(page, sites);
-    await page.setViewportSize({ width: 320, height: 650 });
-    // A browser with a minimum window width (Firefox: 500px) ends wider; the overflow check below then holds for the
-    // width it really had, and the 320px claim itself is recorded as unverifiable rather than passed.
-    const achieved = page.viewportSize();
-    if (achieved !== null && achieved.width !== 320) {
-      recordUnverifiable(`320px narrow layout: this browser's smallest viewport is ${achieved.width}px wide`);
-    }
-
+    // One test per scheme, so real Safari (which follows the macOS appearance and cannot emulate it) runs the matching
+    // one and skips only the other (ADR-0047).
     for (const colorScheme of ["light", "dark"] as const) {
-      await page.emulateMedia({ colorScheme });
+      test(`the ${colorScheme} theme keeps readable contrast, keyboard focus and a narrow layout`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme });
+        const url = await recoveryPageUrl(page, sites);
+        await page.setViewportSize({ width: 320, height: 650 });
+        // A browser with a minimum window width (Firefox: 500px) ends wider; the overflow check below then holds for the
+        // width it really had, and the 320px claim itself is recorded as unverifiable rather than passed.
+        const achieved = page.viewportSize();
+        if (achieved !== null && achieved.width !== 320) {
+          recordUnverifiable(`320px narrow layout: this browser's smallest viewport is ${achieved.width}px wide`);
+        }
+
       await page.goto(url);
       await expect.poll(() => page.locator(".pwa-entry__expiry").isVisible()).toBe(true);
       await expect.poll(() => page.locator(".pwa-entry__button").isVisible()).toBe(true);
@@ -223,34 +225,44 @@ test.describe("default style", () => {
       await expect
         .poll(() => page.evaluate(() => document.activeElement === document.querySelector(".pwa-entry__button")))
         .toBe(true);
-    }
-  });
+    });
+  }
 
   // The recipe docs/guides/entry-recovery-integration.md tells hosts to copy, verbatim, on both dark paths. It has
   // to name the platform's own dark selectors: the spec first documented a plain `.pwa-entry` inside the media
   // query, which loses on specificity to `.pwa-entry:not([data-theme="light"])` (0,1,0 against 0,2,0), so the
   // override silently did nothing in dark mode while reading perfectly sensibly in review. Light mode worked
   // either way, which is exactly why the test above did not catch it.
-  test("the documented dark override wins on both dark paths, not just in light mode", async ({ page }) => {
-    const customSites = await startSites({
-      css: [
-        ".pwa-entry { --pwa-entry-accent: #c8102e; }",
-        "@media (prefers-color-scheme: dark) {",
-        '  .pwa-entry:not([data-theme="light"]) { --pwa-entry-accent: #ff6b81; }',
-        "}",
-        '.pwa-entry[data-theme="dark"] { --pwa-entry-accent: #ff6b81; }',
-      ].join("\n"),
-    });
+  // One test per dark path, so real Safari (which follows the macOS appearance and cannot emulate it) runs each path
+  // under the appearance it needs (ADR-0047).
+  const DOCUMENTED_DARK_OVERRIDE = [
+    ".pwa-entry { --pwa-entry-accent: #c8102e; }",
+    "@media (prefers-color-scheme: dark) {",
+    '  .pwa-entry:not([data-theme="light"]) { --pwa-entry-accent: #ff6b81; }',
+    "}",
+    '.pwa-entry[data-theme="dark"] { --pwa-entry-accent: #ff6b81; }',
+  ].join("\n");
+  const hostDark = "rgb(255, 107, 129)"; // #ff6b81 — the platform's own dark accent is #4c93ff
+
+  test("the documented dark override wins on the system-dark path, not just in light mode", async ({ page }) => {
+    const customSites = await startSites({ css: DOCUMENTED_DARK_OVERRIDE });
     try {
       const url = await recoveryPageUrl(page, customSites);
-      const hostDark = "rgb(255, 107, 129)"; // #ff6b81 — the platform's own dark accent is #4c93ff
 
       await page.emulateMedia({ colorScheme: "dark" });
       await page.goto(url);
       await expectButton(page);
       expect(await buttonBackground(page)).toBe(hostDark);
+    } finally {
+      await customSites.closeAll();
+    }
+  });
 
-      // The other dark path: the system is light and the application asked for dark.
+  test("the documented dark override wins when the system is light and the application asked for dark", async ({ page }) => {
+    const customSites = await startSites({ css: DOCUMENTED_DARK_OVERRIDE });
+    try {
+      const url = await recoveryPageUrl(page, customSites);
+
       await page.goto(customSites.primary.url(SHELL_URL));
       await setStoredTheme(page, "dark");
       await page.emulateMedia({ colorScheme: "light" });

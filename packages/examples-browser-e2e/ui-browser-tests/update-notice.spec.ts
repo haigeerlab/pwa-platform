@@ -402,14 +402,16 @@ for (const framework of ["vue", "react"] as const) {
 }
 
 for (const framework of ["vue", "react"] as const) {
-  test(`${framework}: desktop light and dark modes keep readable contrast inside the viewport`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    const viewport = page.viewportSize() ?? { width: 1280, height: 800 };
-    if (viewport.width !== 1280 || viewport.height !== 800) {
-      recordUnverifiable(`1280x800 desktop viewport: this window reached ${viewport.width}x${viewport.height}`);
-    }
-    for (const colorScheme of ["light", "dark"] as const) {
+  // One test per scheme, so real Safari (which follows the macOS appearance and cannot emulate it) runs the matching
+  // one and skips only the other (ADR-0047).
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`${framework}: desktop ${colorScheme} mode keeps readable contrast inside the viewport`, async ({ page }, testInfo) => {
       await page.emulateMedia({ colorScheme });
+      await page.setViewportSize({ width: 1280, height: 800 });
+      const viewport = page.viewportSize() ?? { width: 1280, height: 800 };
+      if (viewport.width !== 1280 || viewport.height !== 800) {
+        recordUnverifiable(`1280x800 desktop viewport: this window reached ${viewport.width}x${viewport.height}`);
+      }
       await openFixture(page, `framework=${framework}`);
       await page.evaluate("window.__fixture.wait()");
       await expectNoticeVisible(page);
@@ -436,6 +438,6 @@ for (const framework of ["vue", "react"] as const) {
       if (!REAL_BROWSER && framework === "vue" && colorScheme === "dark") {
         await page.screenshot({ path: testInfo.outputPath("pwa-update-notice-dark.png") });
       }
-    }
-  });
+    });
+  }
 }

@@ -299,9 +299,12 @@ test("a strict CSP accepts the recovery page's published style hash and same-ori
     }
     const button = page.locator(".pwa-entry__button");
     await expect.poll(() => button.isVisible()).toBe(true);
+    // The default style is applied under the strict policy: white on a light system, #0f1419 on a dark one (real Safari
+    // follows the macOS appearance and cannot emulate it, ADR-0047).
+    const dark = await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches);
     expect(
       await page.evaluate(() => getComputedStyle(document.querySelector(".pwa-entry") as Element).backgroundColor),
-    ).toBe("rgb(255, 255, 255)");
+    ).toBe(dark ? "rgb(15, 20, 25)" : "rgb(255, 255, 255)");
     if (!REAL_BROWSER) expect(await page.evaluate(readCspViolations)).toEqual([]);
 
     sites.primary.goOnline();

@@ -154,9 +154,12 @@ test.describe("default offline page, built-in zh-CN copy", () => {
         expect((await response?.allHeaders())?.["content-security-policy"]).toBe(policy);
       }
       await expect.poll(() => page.locator(".pwa-offline__heading").isVisible()).toBe(true);
+      // The default style is applied under the strict policy: white on a light system, #0f1419 on a dark one (real Safari
+      // follows the macOS appearance and cannot emulate it, ADR-0047).
+      const dark = await page.evaluate(() => matchMedia("(prefers-color-scheme: dark)").matches);
       expect(
         await page.evaluate(() => getComputedStyle(document.querySelector(".pwa-offline") as Element).backgroundColor),
-      ).toBe("rgb(255, 255, 255)");
+      ).toBe(dark ? "rgb(15, 20, 25)" : "rgb(255, 255, 255)");
       if (!REAL_BROWSER) expect(await page.evaluate(readCspViolations)).toEqual([]);
 
       await markDocument(page);
