@@ -248,7 +248,7 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 
 它不影响浏览器里的行为：worker 只按自己实际所在的地址判断同源请求，不读取这个字段。它用于构建和发布时的一致性校验：已有的 manifest 链接写成完整 URL 时，必须位于这个 origin 下；共享 origin 拓扑的注册表必须与它相同；它还属于生产身份基线，换域名等同于换身份。
 
-因此生产身份填正式域名；本地用 <code>vite preview</code> 验收时，配合下一节的独立 <code>environment</code>，填本地地址（如 `http://localhost:4173`）即可。
+因此生产身份填正式域名；本地用 <code>vite preview</code> 验收时，另写一份填本地地址（如 `http://localhost:4173`）的预览身份，并配合下一节的独立 <code>environment</code>，完整写法见[两份身份](#两份身份生产与本地验收)。
 
 ## `cacheNamespaceSeed` 是什么
 
@@ -257,6 +257,66 @@ export const INSTALL_WITH_EXTRAS: PwaInstallMetadata = {
 ## 本地验收用什么 <code>environment</code>
 
 <code>PwaIdentity.environment</code> 的约定是“每个环境都是独立身份”：不同 <code>environment</code> 的应用各自拥有互不影响的缓存命名空间。用 <code>vite preview</code> 在本地做验收时，建议给本地验收单独声明一个 <code>environment</code>（例如 <code>"preview"</code>），而不是直接复用生产身份；这样本地验收产生的缓存不会与生产环境的缓存共用前缀，清理或反复重跑也不会影响线上数据。
+
+### 两份身份：生产与本地验收 {#两份身份生产与本地验收}
+
+做法是在 <code>pwa.config.ts</code> 里再导出一份预览身份，与生产身份只差 <code>origin</code> 和 <code>environment</code>，其余（<code>appId</code>、<code>scope</code>、各路径、<code>cacheNamespaceSeed</code>）完全相同，这样本地验到的就是同一套产物布局：
+
+~~~ts
+// pwa.config.ts；紧接在 IDENTITY 之后
+export const PREVIEW_IDENTITY: PwaIdentity = {
+  ...IDENTITY,
+  origin: "http://localhost:4173", // 端口必须与下面的 vite preview 一致
+  environment: "preview",
+};
+
+// 只有 --mode preview 才用预览身份；其他任何模式（含默认的 production）都是生产身份
+export function identityFor(mode: string): PwaIdentity {
+  return mode === "preview" ? PREVIEW_IDENTITY : IDENTITY;
+}
+~~~
+
+<code>vite.config.ts</code> 改成函数形式，按 Vite 的 <code>mode</code> 选身份：
+
+~~~ts
+// vite.config.ts
+import { pwa } from "@pwa-platform/vite";
+import { defineConfig } from "vite";
+import { identityFor, INSTALL, POLICY } from "./pwa.config.ts";
+
+export default defineConfig(({ mode }) => ({
+  base: "/",
+  plugins: [
+    // 已有的框架插件继续保留
+    pwa({
+      identity: identityFor(mode),
+      policy: POLICY,
+      install: INSTALL,
+      topology: { kind: "standalone-origin" },
+    }),
+  ],
+}));
+~~~
+
+生产构建照旧：<code>pnpm exec vite build</code>。本地验收先用预览身份构建到单独的目录，再预览该目录：
+
+~~~bash
+pnpm exec vite build --mode preview --outDir dist-preview
+pnpm exec vite preview --outDir dist-preview --port 4173 --strictPort
+~~~
+
+两条命令的作用：
+
+- <code>--mode preview</code> 只切换身份，构建仍是生产构建（同样生成 worker、manifest 和离线页）。两次构建的 manifest 完全相同，差别只在 <code>sw.js</code> 与 <code>pwa-recovery-worker.js</code> 内的缓存名：生产是 <code>pwa:businessapp:production:r1:…</code>，预览是 <code>pwa:businessapp:preview:r1:…</code>。<code>origin</code> 不进入产物，只在构建时参与校验。
+- 为什么是两份身份：<code>environment</code> 不同，缓存名前缀就不同，发布基线比对时也能认出它不是生产身份；<code>origin</code> 则在构建时校验——例如 <code>index.html</code> 里手写了完整 URL 的 manifest 链接（<code>https://app.example.com/manifest.webmanifest</code>），生产构建通过，预览构建会因为它不在 `http://localhost:4173` 下而失败。所以预览构建里最好不写显式链接，由平台注入。
+- 端口：<code>vite preview</code> 的 <code>--port</code> 必须等于预览身份 <code>origin</code> 里的端口，否则身份声明的不是你实际访问的地址。<code>--strictPort</code> 让端口被占用时直接报错，而不是悄悄换到下一个端口。
+- 单独的 <code>--outDir</code> 是为了避免预览产物覆盖 <code>dist</code>。
+
+::: danger 预览身份的产物绝不能部署到生产
+<code>dist-preview</code>（以及任何带 <code>--mode preview</code> 构建的产物）只用于本机。它的 <code>environment</code> 与生产不同，并带 <code>http://localhost</code> 的 <code>origin</code>；发布门禁把它与生产基线比对时，会以 <code>verify.baseline-mismatch</code> 报 <code>/identity/origin</code> 与 <code>/identity/environment</code>。CI 与发布脚本只运行不带 <code>--mode</code> 的 <code>vite build</code>，并把预览目录加入 <code>.gitignore</code>。
+:::
+
+本地验收的具体步骤与通过标准见[Vue 接入](/start/vue#_5-构建并验收)和[React 接入](/start/react#_4-构建并验收)。
 
 ## 构建期身份校验
 
