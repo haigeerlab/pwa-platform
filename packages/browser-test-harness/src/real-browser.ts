@@ -44,6 +44,13 @@ const DEFAULT_WAIT_TIMEOUT = 30_000;
 const DEFAULT_POLLING = 50;
 /** How often `setViewportSize` re-measures and corrects the window for the browser's own chrome. */
 const VIEWPORT_ATTEMPTS = 3;
+/**
+ * How long an iOS `goto` waits for the new document after the driver returned before calling the navigation failed. The
+ * measured lag was ~200 ms; the margin covers a slow phone, and only a navigation that really fails pays it in full.
+ */
+const IOS_COMMIT_GRACE_MS = 5_000;
+/** How long the iPhone cleanup waits for its own document, which the HTTPS proxy always answers. */
+const CLEANUP_LOAD_TIMEOUT_MS = 30_000;
 
 /** Message prefix of every error a real-browser stand-in throws for a Playwright capability it does not implement. */
 export function unsupportedMessage(kind: RealBrowserKind, member: string): string {
@@ -348,6 +355,13 @@ class RealPage {
       await this.session.navigate(url);
       return this.session.url();
     });
+    if (before !== undefined && !sameDocumentFragment(before.href, url)) {
+      // The driver can return before the new document commits, so the old one answering is only a failure once it
+      // still does after IOS_COMMIT_GRACE_MS. The evidence below must then come from the new document, not the old one.
+      if (!(await this.session.waitForNewDocument(this.handle, before.origin, IOS_COMMIT_GRACE_MS))) {
+        throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser kept the previous document)`);
+      }
+    }
     const evidence = await this.evaluate(() => {
       const entry = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
       return {
@@ -359,10 +373,6 @@ class RealPage {
     // Playwright rejects a navigation that fails to load; Safari's driver reports success and shows its error page
     // (whose URL only the page itself reports: Get Current URL still names the failed address).
     if (isBrowserErrorPage(evidence.url)) throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser showed its error page)`);
-    if (before !== undefined && !sameDocumentFragment(before.href, url)) {
-      const after = await this.evaluate(() => performance.timeOrigin);
-      if (after === before.origin) throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser kept the previous document)`);
-    }
     return new RealResponse(this.kind, evidence).toPlaywright();
   }
 
@@ -724,7 +734,7 @@ async function cleanupOrigins(session: WebDriverSession, origins: readonly strin
   const noop = (): void => undefined;
   for (const origin of origins) {
     prepareIosOriginForCleanup(origin);
-    await session.inWindow(keep, () => session.navigate(`${origin}${CLEANUP_PATH}`));
+    await openCleanupDocument(session, keep, `${origin}${CLEANUP_PATH}`);
     const left = (await session.evaluate(keep, serializePageScript(iosCleanupScript, undefined), noop)) as CleanupReport;
     if (left.registrations !== 0 || left.caches !== 0) {
       throw new Error(`iPhone cleanup of ${origin} left ${left.registrations} service worker registration(s) and ${left.caches} cache(s)`);
@@ -732,7 +742,7 @@ async function cleanupOrigins(session: WebDriverSession, origins: readonly strin
     // Ports are reused across tests, so a worker or cache of this test must be gone for good before the next test
     // reaches the same origin: look again on a fresh load after a short pause.
     await new Promise((resolve) => setTimeout(resolve, 300));
-    await session.inWindow(keep, () => session.navigate(`${origin}${CLEANUP_PATH}`));
+    await openCleanupDocument(session, keep, `${origin}${CLEANUP_PATH}`);
     const again = (await session.evaluate(keep, serializePageScript(iosCleanupScript, undefined), noop)) as CleanupReport;
     if (again.registrations !== 0 || again.caches !== 0) {
       throw new Error(`iPhone cleanup of ${origin} found ${again.registrations} service worker registration(s) and ${again.caches} cache(s) again after it finished`);
@@ -741,6 +751,28 @@ async function cleanupOrigins(session: WebDriverSession, origins: readonly strin
     if (origin === origins[origins.length - 1]) await assertStorageHealthy(session, keep);
   }
   await session.inWindow(keep, () => session.navigate("about:blank"));
+}
+
+/**
+ * Navigates `handle` to `url` and resolves once that new document has loaded. Like `goto`, it cannot trust the driver's
+ * return: the test's last page may still be hydrating, and a script sent then runs in that page or fails with "no such
+ * window" while it is replaced (iPhone Safari 27.0.1).
+ */
+async function openCleanupDocument(session: WebDriverSession, handle: string, url: string): Promise<void> {
+  let before = Number.NaN;
+  try {
+    before = (await session.evaluate(handle, serializePageScript(currentTimeOrigin, undefined), () => undefined)) as number;
+  } catch {
+    // The test ended mid-navigation; any loaded document after the navigate below is the cleanup document.
+  }
+  await session.inWindow(handle, () => session.navigate(url));
+  if (!(await session.waitForNewDocument(handle, before, CLEANUP_LOAD_TIMEOUT_MS))) {
+    throw new Error(`iPhone cleanup: ${url} did not load within ${CLEANUP_LOAD_TIMEOUT_MS} ms`);
+  }
+}
+
+function currentTimeOrigin(): number {
+  return performance.timeOrigin;
 }
 
 /** Runs the storage probe in the session's current tab (which must be at a proxied origin) and throws if storage is broken. */

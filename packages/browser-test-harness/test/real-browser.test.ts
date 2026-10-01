@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 import type { Page } from "@playwright/test";
 import { describe, expect, it } from "vitest";
-import { NavigationStatusUnavailableError, RealApiRequestContext, RealBrowser, RealResponse, unsupportedMessage } from "../src/real-browser.js";
+import { NavigationStatusUnavailableError, RealApiRequestContext, RealBrowser, RealResponse, unsupportedMessage, type RealSession } from "../src/real-browser.js";
 import {
   correctedWindowSize,
   describeBrowser,
@@ -283,6 +283,93 @@ describe("reload", () => {
     } finally {
       await new Promise((resolve) => server.close(resolve));
     }
+  });
+});
+
+describe("navigation on iOS", () => {
+  /**
+   * An iOS driver whose Navigate To returns before the new document commits, as measured on iPhone Safari 27.0.1 when
+   * the previous document was still hydrating: the new document replaces it only `commitAfter` page scripts later
+   * (never, for a navigation the worker failed closed). Page scripts are answered from a one-document model; with
+   * `swapError`, the first script sent while the document is being replaced gets "no such window", as the phone answered.
+   */
+  async function withIosDriver(commitAfter: number, run: (session: RealSession) => Promise<void>, swapError = false): Promise<void> {
+    let document = { origin: 1000, href: "https://x/app/" };
+    let pending: { readonly href: string; scripts: number } | undefined;
+    const server = createServer((request, response) => {
+      let text = "";
+      request.on("data", (chunk: Buffer) => (text += chunk.toString()));
+      request.on("end", () => {
+        const body = text === "" ? undefined : (JSON.parse(text) as { url?: string; args?: { source: string; arg: unknown }[] });
+        const path = `${request.method} ${request.url}`;
+        let value: unknown = null;
+        if (path === "POST /session") value = { sessionId: "s", capabilities: { browserVersion: "27.0.1", platformName: "iOS" } };
+        else if (path === "GET /session/s/window") value = "handle";
+        else if (path === "GET /session/s/window/handles") value = ["handle"];
+        else if (path === "POST /session/s/url") pending = { href: body?.url ?? "", scripts: 0 };
+        else if (path === "GET /session/s/url") value = pending?.href ?? document.href;
+        else if (path === "POST /session/s/execute/async") {
+          if (pending !== undefined && (pending.scripts += 1) > commitAfter) {
+            document = { origin: document.origin + 270, href: pending.href };
+            pending = undefined;
+          } else if (swapError && pending?.scripts === 1) {
+            response.writeHead(404, { "content-type": "application/json" });
+            response.end(JSON.stringify({ value: { error: "no such window", message: "" } }));
+            return;
+          }
+          const script = body?.args?.[0];
+          const source = script?.source ?? "";
+          const result = source.includes("getRegistrations")
+            ? { registrations: 0, caches: 0 }
+            : source.includes("pwa-harness-health")
+              ? { indexedDb: null, cacheStorage: null }
+              : source.includes("readyState")
+                ? document.origin !== script?.arg
+                : source.includes("responseStatus")
+                  ? { status: 0, protocol: "unknown", url: document.href }
+                  : source.includes("timeOrigin")
+                    ? { origin: document.origin, href: document.href }
+                    : document.href;
+          value = { ok: true, value: result, href: document.href };
+        }
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ value }));
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const { port } = server.address() as { port: number };
+      const browser = new RealBrowser("safari", { baseUrl: `http://127.0.0.1:${port}`, stop: async () => undefined }, { version: "27.0.1", label: "x" }, {});
+      const session = await browser.openSession();
+      await run(session);
+      await session.quit();
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  }
+
+  it("waits for a document that commits after the driver's navigate returned", async () => {
+    await withIosDriver(3, async ({ page }) => {
+      await page.goto("https://x/app/about");
+      await expect(page.evaluate(() => location.href)).resolves.toBe("https://x/app/about");
+    });
+  });
+
+  // Waits out the full commit grace (5 s) before rejecting.
+  it("still rejects when the browser keeps the previous document", { timeout: 15_000 }, async () => {
+    await withIosDriver(Number.POSITIVE_INFINITY, async ({ page }) => {
+      await expect(page.goto("https://x/app/about")).rejects.toThrow("page.goto: net::ERR_FAILED at https://x/app/about (the browser kept the previous document)");
+    });
+  });
+
+  it("cleans an origin in its cleanup document, not in the document that page was still replacing", async () => {
+    await withIosDriver(
+      3,
+      async (session) => {
+        await session.cleanupOrigins(["https://x"]);
+      },
+      true,
+    );
   });
 });
 
