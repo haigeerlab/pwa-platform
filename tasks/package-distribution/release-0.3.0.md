@@ -1,6 +1,6 @@
 # npm 发布记录：0.3.0
 
-> 状态：十个 npm 包已公开，最终 0.3.0 文档站待部署。执行顺序见 [本次计划](release-0.3.0-plan.md)。
+> 状态：十个 npm 包与最终 0.3.0 文档站均已发布。执行顺序见 [本次计划](release-0.3.0-plan.md)。
 
 ## 范围
 
@@ -53,6 +53,6 @@ registry 记录的公开时间：`contracts` 16:47:38、`core` 16:53:45、`engin
 
 包内文案遗留：`sw-runtime@0.3.0` 的 README 有一处“当前正式版（0.2.5）”，只用于说明 Push 尚未公开，功能说明本身正确。npm 版本不可覆盖，仓库 README 已在发布后的文档 PR 中改为 `0.3.0`；已发布 tarball 保留原文字节。
 
-## 待完成
+## 最终文档与结果
 
-- 将网站与仓库入口改为已发布 `0.3.0`，经 PR、最终 `main` CI 后以 Wrangler 手动部署最终文档并读回生产部署 ID、页面和配置。
+网站与仓库入口经 [PR #125](https://github.com/haigeerlab/pwa-platform/pull/125) 更新为已发布的 `0.3.0`；PR 的 Node 22、Node 24、Chrome 三项必需检查通过，合并提交 `f70bb9ef2b03ad558fcaf499889b195974685e3b` 的[最终 main 手动 CI](https://github.com/haigeerlab/pwa-platform/actions/runs/36898142394) 六项全部成功。从该提交固定 `docs/v2026.10.02-0.3.0`，构建 122 个纯静态文件，以 Wrangler 4.144.0 手动部署到 Cloudflare Pages。生产部署 ID `7a914cfa-2bf2-48f2-b021-97018f4d80d0`，部署提交与固定分支一致；三个自动部署开关仍关闭。公开站点首页与关键接入、可移植部署、发布检查页面均为 200，显示 `0.3.0` 新能力已发布；未知路径为 404，随包 skill 的 12 个链接和 `ai-onboarding` 锚点均核对通过。完整结果见[文档站部署记录](../../docs/operations/documentation-site.md)。React／Vue 演示站不在本次重部署范围。
