@@ -14,6 +14,7 @@ const IMMUTABLE = "public, max-age=31536000, immutable";
 const example = "vue";
 
 test.use({ fixtureSite: fixtureSite(example) });
+test.skip(({ browserName }) => browserName !== "chromium", "HTTP cache causality expectations are established for Chromium browsers only");
 
 for (const mime of ["application/javascript", "text/plain"] as const) {
   test(`worker Content-Type ${mime}: registration determines whether offline startup is available`, async ({ page, fixtureServer }) => {
