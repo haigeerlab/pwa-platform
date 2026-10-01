@@ -2,8 +2,8 @@
 
 此模式适用于构建时还不知道最终 HTTPS 域名，但希望把**同一份字节**部署到多个域名的 Vite + Vue／React 宿主。已有固定域名项目继续使用[固定身份配置](/guide/configuration)，不会因漏填 `origin` 自动切换。
 
-::: warning 版本状态
-本页描述的是当前仓库工作区的待发布能力；已发布 npm `0.2.5` **不支持** `deployment: { kind: "portable" }`、`PwaPortableIdentity` 或 v4 构建计划。首个支持版本尚未发布，不能直接把本页配置复制到 `0.2.5` 项目。使用 `0.2.5` 时请按[固定身份配置](/guide/configuration)接入。
+::: tip 版本状态
+npm `0.3.0` **已支持** `deployment: { kind: "portable" }`、`PwaPortableIdentity` 和 v4 构建计划。使用旧版 `0.2.5` 时请按[固定身份配置](/guide/configuration)接入。
 :::
 
 ## 配置

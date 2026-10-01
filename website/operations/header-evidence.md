@@ -38,7 +38,7 @@ pageClass: header-evidence
 
 ## 实测时发生了什么
 
-“请求数”只计该用例观测窗口内抵达临时服务器的目标 URL 请求；不是线上流量估计。表中“门禁”指仓库当前待发布源码的检查结果，尤其包含新增的 `worker-mime`。
+“请求数”只计该用例观测窗口内抵达临时服务器的目标 URL 请求；不是线上流量估计。表中“门禁”指 npm `0.3.0` **已发布**的检查结果，包含新增的 `worker-mime`。
 
 | 对照条件 | 请求数 | Chrome 观察 | 发布检查结论 |
 | --- | ---: | --- | --- |
@@ -72,5 +72,5 @@ curl -sS -L -D - -o /dev/null https://app.example.com/app/assets/index-EXAMPLE1.
 ## 证据边界与版本
 
 - 本地对照自动化 **23/23 通过**；Vue/React 的真实构建发布报告用例 **2/2 通过**。复现见仓库中的[浏览器用例](https://github.com/haigeerlab/pwa-platform/blob/main/packages/examples-browser-e2e/browser-tests/header-causality.spec.ts)与[完整验证记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/examples-browser-e2e/header-causality-verification.md)。
-- 已发布 npm `0.2.5` 的 `build-verifier` **没有**独立的 `worker-mime` 检查；该版本须人工核对 worker `Content-Type`。仓库当前待发布源码已加入检查和本地正反例，只有发布包含该变更的新包后，业务发布系统才能使用它。当前版本的 `response-headers` 只判断缓存头。
+- npm `0.3.0` **已包含**独立的 `worker-mime` 检查和本地正反例；业务发布系统须采集 worker `Content-Type` 并执行该检查。旧版 `0.2.5` 没有这项检查，须人工核对。`response-headers` 仍只判断缓存头。
 - 原生安装后的 manifest 系统显示名更新周期、其他浏览器与移动端、真实 Nginx/CDN 的共享缓存与失效传播、worker 导入脚本和长期自动检查时序均未由这组实验确认。不要把表中的本地差异写成某个线上站点已经发生的故障。

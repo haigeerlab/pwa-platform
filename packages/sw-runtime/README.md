@@ -69,7 +69,7 @@ const worker = injectWorkerConfig(workerTemplate, platformConfig);
 
 `SKIP_WAITING_MESSAGE` 是页面确认更新时发送的唯一接管消息。`isSkipWaitingMessage()`、`isOfflineWriteMessage()`、`isRuntimeCacheServedMessage()` 等守卫只接受闭合的纯数据对象，避免调用不可信 accessor。
 
-`checkPushPayload()`／`checkPushPayloadText()`／`validatePushPayload()` 只验证 payload 契约；它们不代表 `@pwa-platform/push` 已公开。当前正式版（0.2.5）的公开接入面不包含 Push 订阅与后端发送服务。
+`checkPushPayload()`／`checkPushPayloadText()`／`validatePushPayload()` 只验证 payload 契约；它们不代表 `@pwa-platform/push` 已公开。当前正式版（0.3.0）的公开接入面不包含 Push 订阅与后端发送服务。
 
 ## 安全边界
 
