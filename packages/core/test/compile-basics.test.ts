@@ -127,6 +127,36 @@ describe("compilePlan: input validation", () => {
     });
   });
 
+  it("resolves offline-write targets under a trailing-slash mount path like every other prefix", () => {
+    const result = compile({
+      ...input,
+      identity: { ...input.identity, mountPath: "/app/" },
+      policy: {
+        ...input.policy,
+        schemaVersion: 2,
+        resources: [{ pathPrefix: "/", resourceClass: "mutation", cache: "none" }],
+        offlineWrites: {
+          enabled: true,
+          maxEntries: 2,
+          maxTotalBodyBytes: 2,
+          targets: [
+            { id: "submit-order", pathPrefix: "/orders", maxBodyBytes: 1 },
+            { id: "submit-any", pathPrefix: "/", maxBodyBytes: 1 },
+          ],
+        },
+      },
+    });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.ok && result.value).toMatchObject({
+      offlineWrites: {
+        targets: [
+          { id: "submit-order", pathPrefix: "/app/orders" },
+          { id: "submit-any", pathPrefix: "/app" },
+        ],
+      },
+    });
+  });
+
   it("rejects an offline-write target outside mutation rules", () => {
     expectRejected(
       compile({
