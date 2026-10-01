@@ -49,10 +49,10 @@ pageClass: platform-test-matrix
 | 5c 更新提示中英文 | ● | ▲ | ▲ | ▲ | ◐ ▲ | ◐ ▲ | |
 | 5d 更新提示主题／配色 | ● | ▲ | ▲ | ▲ | ◐ ▲ | ◐ ▲ | 手机只覆盖自定义绿色主按钮与默认暗色 |
 | 5e 多标签页同步 | ● | ▲ | ◐ ▲ | ▲ | ▲ | ◐ ▲ | iPhone 只在 Safari 标签页验证，主屏幕网页 App 不提供双窗口；Android 为 Chrome 标签页自动化，WebAPK 未验证 |
-| 5f 页面已是新代码判定（[ADR-0046](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0046-update-notice-detects-current-page.md)） | ● | ▲ | ▲ | ▲ | ▲ | ▲ | 页面已是新代码时默认提示换用 `currentTitle`／`currentBody` 文案、接管后不再提示刷新；检查失败回退普通提示。Android 为修复后的真机自动化；iPhone 只在修复前以缺陷形式观察到，修复后未复测 |
+| 5f 页面已是新代码判定（[ADR-0046](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0046-update-notice-detects-current-page.md)） | ● | ▲ | ▲ | ▲ | ▲ | ▲ | 页面已是新代码时默认提示换用 `currentTitle`／`currentBody` 文案、接管后不再提示刷新；检查失败回退普通提示。Android、iPhone 均为修复后的真机自动化 |
 | **6 公共读取运行时缓存** | ● | ▲ | ▲ | ▲ | ◐ ▲ | ◐ ▲ | 手机为标签页手动探针：Android 19/19（断网由服务器重置连接模拟），iPhone 29/29（真实飞行模式）；未覆盖安装形态与弱网 |
-| 6a 缓存命中通知 `served-from-cache` 事件 | ● | ▲ | ▲ | ▲ | ▲ | ▲ | `reason` 的三个取值（断网 `network-failed`、超时 `network-timeout`、SWR `stale-while-revalidate`）各有用例，每次缓存应答恰好一个事件；页面晚订阅时导航命中经查询补发。Android 为真机自动化；iPhone 探针未检查该事件 |
-| 6b 运行时缓存网络超时 | ● | ▲ | ▲ | ▲ | ▲ | ▲ | `network-first` 的数据与动态页面在 `networkTimeoutSeconds` 后回退缓存（导航回退见 4b）；Android 为真机自动化（服务器挂起请求）；iPhone 未测弱网挂起 |
+| 6a 缓存命中通知 `served-from-cache` 事件 | ● | ▲ | ▲ | ▲ | ▲ | ▲ | `reason` 的三个取值（断网 `network-failed`、超时 `network-timeout`、SWR `stale-while-revalidate`）各有用例，每次缓存应答恰好一个事件；页面晚订阅时导航命中经查询补发。Android、iPhone 均为真机自动化 |
+| 6b 运行时缓存网络超时 | ● | ▲ | ▲ | ▲ | ▲ | ▲ | `network-first` 的数据与动态页面在 `networkTimeoutSeconds` 后回退缓存（导航回退见 4b）；Android、iPhone 均为真机自动化（服务器挂起请求）；真实弱网未测 |
 | **7 缓存安全拒绝** | ● | ▲ | ▲ | ▲ | ◐ ▲ | ◐ ▲ | 真实 Safari／Firefox 上带 `Authorization` 的导航与配额用例跳过（WebDriver 不能加请求头；配额需 CDP）；手机探针使用模拟响应头 |
 | **8 登出清理 `logout()`** | ● | ▲ | ▲ | ▲ | ▲ | ▲ | |
 | **9 恢复 worker（紧急下线）** | ● | ▲ | ▲ | ▲ | ◐ ▲ | ◐ ▲ | Android 两台 × Vue／React 四种组合通过；iPhone 只有 Vue |
