@@ -46,8 +46,8 @@ describe("PwaPlan v1", () => {
   });
 
   it("pins every version field to its schema version", () => {
-    expectTypeOf<PwaPlan["schemaVersion"]>().toEqualTypeOf<1 | 2 | 3>();
-    expectTypeOf<PwaPlan["planVersion"]>().toEqualTypeOf<1 | 2 | 3>();
+    expectTypeOf<PwaPlan["schemaVersion"]>().toEqualTypeOf<1 | 2 | 3 | 4>();
+    expectTypeOf<PwaPlan["planVersion"]>().toEqualTypeOf<1 | 2 | 3 | 4>();
     expectTypeOf<PwaPlan["policyVersion"]>().toEqualTypeOf<1 | 2 | 3>();
     expectTypeOf<PwaPolicy["schemaVersion"]>().toEqualTypeOf<1 | 2 | 3>();
   });

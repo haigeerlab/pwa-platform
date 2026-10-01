@@ -6,6 +6,8 @@
 
 接入时需要提交三组信息：<code>PwaIdentity</code> 确定应用及 URL 所有权，<code>PwaInstallMetadata</code> 确定安装展示，<code>PwaPolicy</code> 声明缓存与更新意图。下面是部署在域名根路径的起点，需替换域名、名称与图标文件。
 
+同一份构建产物需要部署到构建时未知的多个 HTTPS 域名时，改用[显式可移植部署](/guide/portable-deployment)：`deployment: { kind: "portable" }`、不含 origin 的 `PwaPortableIdentity` 和 v3 策略。未写 `deployment` 仍是本页的固定域名模式，必须填写并校验 `origin`。
+
 ~~~ts
 // pwa.config.ts
 import type {
@@ -96,6 +98,8 @@ export default defineConfig({
 把四个图标文件放在 Vite 的 <code>public/icons/</code>。文件不能只是改了名称的占位图：生产构建会检查主图标是否存在，并读取 PNG／JPEG／WebP 文件头核对声明 MIME 与实际尺寸；失败时按 <code>vite.manifest-icon-*</code> 提示中的配置索引、URL、声明值和实测值修正。<code>icons</code> 必须包含 192x192 与 512x512 两种尺寸，且每种尺寸都要同时有 <code>purpose: "any"</code> 与 <code>"maskable"</code> 的条目，缺任何一个都以 <code>install.missing-icon-variant</code> 失败。其他图片格式（<code>vite.manifest-icon-unverified</code>）会给出未验证警告，maskable 安全区仍需视觉检查。安装元数据也支持描述、截图和快捷方式；截图与快捷方式图标必须真实存在于发布产物中。
 
 插件会在构建时为每个 HTML 入口注入 manifest 链接，应用无需再写 <code>&lt;link rel="manifest"&gt;</code>。已有链接时，只保留一个，并将其 <code>href</code> 写为与 <code>IDENTITY.manifestUrl</code> 完全相同的根路径，或同一 <code>IDENTITY.origin</code> 下该路径的完整 URL；相对路径、不同地址和重复链接都会让构建失败。页面含 <code>&lt;base&gt;</code> 也会被拒绝，接入现有项目时先检查 <code>index.html</code> 及其他 HTML 入口。
+
+可移植模式只接受与 `manifestUrl` 完全相同的根绝对路径链接；完整 URL 即使指向本次测试域名也会被拒绝。
 
 ## 可选的截图与快捷方式
 

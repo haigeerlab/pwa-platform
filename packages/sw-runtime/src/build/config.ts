@@ -36,7 +36,7 @@ function runtimeCacheWorkerConfig(plan: PwaPlan): PwaPlatformWorkerConfig["runti
   const { identity } = plan;
   const pagesCacheName = cacheName(identity, "runtime-pages");
   const dataCacheNamePrefix = `${cacheName(identity, "runtime-data")}-`;
-  if (plan.schemaVersion !== 3 || !plan.runtimeCache.enabled) {
+  if ((plan.schemaVersion !== 3 && plan.schemaVersion !== 4) || !plan.runtimeCache.enabled) {
     return { enabled: false, pagesCacheName, dataCacheNamePrefix };
   }
   const rules = plan.pathRules

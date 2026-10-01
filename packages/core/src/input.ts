@@ -1,9 +1,11 @@
 import type {
   AbsolutePath,
   PwaIdentity,
+  PwaPortableIdentity,
   PwaInstallMetadata,
   PwaPolicy,
   PwaTopology,
+  PwaPortableTopology,
 } from "@pwa-platform/contracts";
 
 export type PwaHostBuildFile = {
@@ -24,10 +26,16 @@ export type PwaCompileHostOutput = {
 };
 
 /** Typed for callers; `compilePlan` still validates every field at runtime. */
-export type PwaCompileInput = {
-  readonly identity: PwaIdentity;
+type PwaCompileFields = {
   readonly install: PwaInstallMetadata | null;
   readonly policy: PwaPolicy;
-  readonly topology: PwaTopology;
   readonly hostBuildOutput: PwaCompileHostOutput;
 };
+
+export type PwaFixedCompileInput = PwaCompileFields & {
+  readonly deployment?: { readonly kind: "fixed" }; readonly identity: PwaIdentity; readonly topology: PwaTopology;
+};
+export type PwaPortableCompileInput = PwaCompileFields & {
+  readonly deployment: { readonly kind: "portable" }; readonly identity: PwaPortableIdentity; readonly topology: PwaPortableTopology;
+};
+export type PwaCompileInput = PwaFixedCompileInput | PwaPortableCompileInput;

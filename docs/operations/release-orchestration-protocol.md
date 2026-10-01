@@ -4,7 +4,8 @@
 `@pwa-platform/build-verifier`、保存完整发布线，并在成功后更新身份基线。它落实
 [ADR-0014](../adr/0014-build-verification-boundary-and-report.md)、
 [ADR-0024](../adr/0024-release-retention-verification.md) 与
-[ADR-0025](../adr/0025-release-gate-completeness-and-external-orchestration.md)，不替代
+[ADR-0025](../adr/0025-release-gate-completeness-and-external-orchestration.md)；
+可移植部署另遵循 [ADR-0050](../adr/0050-portable-deployment.md)。本协议不替代
 [发布与事故处置手册](release-and-incident-runbook.md)的门禁或
 [职责与 RACI](../product/ownership-and-raci.md)。
 
@@ -25,6 +26,10 @@
 ```text
 appId + origin + environment + slot
 ```
+
+固定模式的 `origin` 来自计划身份；可移植模式的 `origin` 是本次部署的实际目标
+`deployment.targetOrigin`。同一构建发往两个域名时，分别取得锁、查基线、读完整历史、
+收集证据并保存发布记录。不能把 A 域名的首次发布批准或历史记录复用到 B。
 
 - `slot` 是应用登记的稳定 kebab-case 名称，不是 `PwaIdentity` 字段，不改名也不复用；其
   语义见[身份发布基线规则](identity-release-baseline.md#基线是什么)。外部系统还须持有该稳定
@@ -50,6 +55,7 @@ appId + origin + environment + slot
 | 标识与状态 | `releaseAttemptId`、发布线四元组、状态、状态时间线、操作者或自动化运行引用 | 失败、撤销和成功均保留；不得把失败尝试改写为成功。 |
 | 候选构建 | 完整候选 `PwaPlan`、构建提交或不可变构建标识、构建完成时间 | 候选计划须来自本次构建并能通过 `validatePlan`。 |
 | 机器事实 | 绝对产物路径清单、公开路径的观测 `Cache-Control`、评估时刻、当前可用绝对资产路径 | 路径形态与 build-verifier 输入一致；不存原始响应体或私有 URL。 |
+| 可移植部署事实 | 本次实际目标 origin、每个必需平台路径跟随重定向后的最终响应 URL、HTTP 状态码和响应头、采集时间与采集运行引用 | 编排器必须请求该域名取得事实；只填 `targetOrigin` 字符串不是部署证据。最终响应须为 200。目标域名须是 HTTPS（本地演练允许 loopback HTTP）。 |
 | 历史与拓扑 | 本发布线全部先前成功发布的计划与生产发布时间（新到旧）；共享源子应用的实际线上根计划 | 历史不能截断；根计划须来自同源、同环境的已部署根应用。 |
 | 门禁结论 | `verifyRelease` 报告、`verifyReleaseGateCoverage` 结果、必需检查集合 | 覆盖完整与报告通过分开保存，不能只保留布尔汇总。 |
 | 人工证据 | 发布通道；CI、浏览器矩阵、原生安装、恢复演练、类生产环境核对的引用 | 证据须满足运行手册；不能以本地构建结果替代，唯一例外是 GitHub 不可用期间按 [ADR-0031](../adr/0031-local-gate-substitute-for-ci.md) 取得的本地门禁记录，并标注"本地替代"。浏览器证据按 [ADR-0030](../adr/0030-desktop-release-channel.md) 的发布通道判定，通道在发布尝试创建时确定。 |
@@ -88,10 +94,15 @@ prepared -> verified -> deployed -> recorded
    线上根计划。尝试尚未采齐事实前不进入状态机。
 2. 验证候选计划，并采集本次构建的绝对产物路径。向受控类生产环境部署候选或等价不可变
    产物后，采集公开资源的响应头与当前可用资产路径；采集不应携带用户会话。事实齐全后写入
-   `prepared` 记录。
+   `prepared` 记录。对 v4 可移植计划，每个目标域名分别请求计划要求的 HTML、worker、恢复
+   worker、manifest、预缓存及旧资源，跟随重定向后保存最终 URL、HTTP 状态码与响应头。`deployment.responses`
+   以计划中的根绝对路径为键，每项形如 `{ finalUrl, status, headers }`；最终 URL 必须仍在目标 origin 且保留该路径，状态码须为 200。编排器必须保证
+   这些响应来自本次实际部署，验证器无法证明调用方是否真的发起过网络请求。
 3. 调用 `verifyRelease(candidatePlan, collectedFacts)`。独立源与共享源根应用的机器必需集是
    `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`；共享源子应用额外
-   要求 `release-order`，并传入线上根计划。
+   要求 `release-order`，并传入线上根计划。v4 还必须执行 `deployment-origin`，并传入本次
+   `deployment: { targetOrigin, responses }`；v4 共享子应用传入该域名实际线上根应用的
+   `deployedRoot: { origin, plan, workerFinalUrl }`。根计划与根 worker 最终 URL 均须属于本域名。
 4. 调用 `verifyReleaseGateCoverage(report, requiredReleaseChecks(candidatePlan))`（`requiredReleaseChecks` 由 build-verifier 按上一步的规则从计划推导，不要手写清单；ADR-0025 增补）。正常发布只有在 `report.ok` 与
    覆盖结果的 `ok` 都为 `true` 时，机器门禁才通过；二者缺一不可。
 5. 将 CI、浏览器矩阵、原生安装、恢复演练和类生产环境核对的证据引用附入记录。它们是
@@ -107,6 +118,10 @@ prepared -> verified -> deployed -> recorded
 [身份发布基线规则](identity-release-baseline.md#首次生产发布)要求的评审已获平台负责人批准，
 该事实才可作为首次发布例外进入 `verified`。记录须保存报告、批准引用和“首次发布”判定，
 不能把报告改写为通过。
+
+可移植计划的基线记录为 `{ origin, identity }`，其中 `origin` 为目标域名；历史记录和可用
+旧资源也只取该域名的发布线。域名 B 不能使用域名 A 的基线、历史或根应用记录。迁入可移植
+模式属于身份迁移，须保留原诊断及批准记录；旧 v1–v3 计划始终按固定 origin 校验。
 
 身份迁移同样保留 `verify.baseline-mismatch` 的原始事实，并附上已批准的迁移记录。发布系统
 只可按[身份迁移](identity-release-baseline.md#身份迁移)的审批结论继续；成功后才用新身份更新

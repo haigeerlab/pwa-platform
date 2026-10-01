@@ -43,7 +43,7 @@ describe("verifyRelease", () => {
     // `release-order` only runs for a shared-origin child; `release-retention` and `html-headers` were not
     // supplied here (their own describe blocks below cover them), so this call runs the other three.
     expect(names(report)).toEqual(
-      VERIFICATION_CHECKS.filter((name) => name !== "release-order" && name !== "release-retention" && name !== "html-headers"),
+      VERIFICATION_CHECKS.filter((name) => name !== "release-order" && name !== "release-retention" && name !== "html-headers" && name !== "deployment-origin"),
     );
     expect(report.diagnostics).toEqual([]);
   });

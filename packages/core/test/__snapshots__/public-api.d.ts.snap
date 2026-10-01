@@ -1,6 +1,6 @@
 // ---- index.d.ts ----
 export { compilePlan } from "./compile.js";
-export type { PwaCompileHostOutput, PwaCompileInput, PwaHostBuildFile } from "./input.js";
+export type { PwaCompileHostOutput, PwaCompileInput, PwaFixedCompileInput, PwaPortableCompileInput, PwaHostBuildFile } from "./input.js";
 
 // ---- compile.d.ts ----
 import type { PwaPlan, PwaValidationResult } from "@pwa-platform/contracts";
@@ -12,7 +12,7 @@ import type { PwaCompileInput } from "./input.js";
 export declare function compilePlan(input: PwaCompileInput): PwaValidationResult<PwaPlan>;
 
 // ---- input.d.ts ----
-import type { AbsolutePath, PwaIdentity, PwaInstallMetadata, PwaPolicy, PwaTopology } from "@pwa-platform/contracts";
+import type { AbsolutePath, PwaIdentity, PwaPortableIdentity, PwaInstallMetadata, PwaPolicy, PwaTopology, PwaPortableTopology } from "@pwa-platform/contracts";
 export type PwaHostBuildFile = {
     /** POSIX path relative to the build output directory. */
     readonly path: string;
@@ -29,10 +29,24 @@ export type PwaCompileHostOutput = {
     readonly files: readonly PwaHostBuildFile[];
 };
 /** Typed for callers; `compilePlan` still validates every field at runtime. */
-export type PwaCompileInput = {
-    readonly identity: PwaIdentity;
+type PwaCompileFields = {
     readonly install: PwaInstallMetadata | null;
     readonly policy: PwaPolicy;
-    readonly topology: PwaTopology;
     readonly hostBuildOutput: PwaCompileHostOutput;
 };
+export type PwaFixedCompileInput = PwaCompileFields & {
+    readonly deployment?: {
+        readonly kind: "fixed";
+    };
+    readonly identity: PwaIdentity;
+    readonly topology: PwaTopology;
+};
+export type PwaPortableCompileInput = PwaCompileFields & {
+    readonly deployment: {
+        readonly kind: "portable";
+    };
+    readonly identity: PwaPortableIdentity;
+    readonly topology: PwaPortableTopology;
+};
+export type PwaCompileInput = PwaFixedCompileInput | PwaPortableCompileInput;
+export {};

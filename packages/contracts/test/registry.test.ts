@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateOriginRegistry } from "../src/index.js";
+import { validateOriginRegistry, validatePortableOriginRegistry } from "../src/index.js";
 import type { PwaOriginRegistry, PwaValidationResult } from "../src/index.js";
 
 type Finding = readonly [code: string, path: string];
@@ -232,5 +232,26 @@ describe("validateOriginRegistry", () => {
     ["unknown top-level field", { ...baseRegistry, unknownField: true }, ["schema.unknown-field", ""]],
   ] as const)("rejects %s", (_name, input, expected) => {
     expectRejected(validateOriginRegistry(input), [expected]);
+  });
+});
+
+describe("validatePortableOriginRegistry", () => {
+  const portable = {
+    schemaVersion: 2, registryVersion: 1, environment: "production",
+    root: { ...baseRegistry.root, manifestId: "/app/" },
+    children: [{ ...baseRegistry.children[0]!, manifestId: "/app/m/" }],
+  };
+
+  it("accepts the v2 registry without origin", () => {
+    expect(validatePortableOriginRegistry(portable).ok).toBe(true);
+  });
+
+  it("rejects a fixed origin or full URL manifest id", () => {
+    expectRejected(validatePortableOriginRegistry({ ...portable, origin: baseRegistry.origin }), [
+      ["schema.invalid-type", "/origin"],
+    ]);
+    expectRejected(validatePortableOriginRegistry({
+      ...portable, children: [{ ...portable.children[0]!, manifestId: "https://example.test/m/" }],
+    }), [["path.invalid", "/children/0/manifestId"]]);
   });
 });

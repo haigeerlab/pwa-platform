@@ -98,6 +98,11 @@ describe("v1 enumerations", () => {
       "verify.root-registry-diverged",
       "verify.retention-history-invalid",
       "verify.retention-missing",
+      "verify.deployment-origin-invalid",
+      "verify.deployment-response-missing",
+      "verify.deployment-response-mismatch",
+      "verify.deployment-response-unsuccessful",
+      "verify.baseline-origin-mismatch",
     ]);
   });
 

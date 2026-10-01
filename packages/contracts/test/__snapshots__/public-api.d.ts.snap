@@ -6,11 +6,11 @@ export type { PwaContractPath, PwaDiagnostic, PwaDiagnosticCode, PwaDiagnosticSe
 export { LIFECYCLE_EVENT_TYPES, readLifecycleEvent } from "./events.js";
 export type { PwaEventEnvelope, PwaEventReadResult, PwaLifecycleEvent, PwaLifecycleEventType, } from "./events.js";
 export { INSTALL_DISPLAY_MODES, INSTALL_DISPLAY_OVERRIDES, INSTALL_ICON_PURPOSES, INSTALL_ORIENTATIONS, INSTALL_SCREENSHOT_FORM_FACTORS, INSTALL_SCREENSHOT_TYPES, } from "./identity.js";
-export type { AbsolutePath, PwaDisplayMode, PwaDisplayOverride, PwaIconPurpose, PwaIdentity, PwaInstallIcon, PwaInstallMetadata, PwaInstallScreenshot, PwaInstallScreenshotFormFactor, PwaInstallScreenshotType, PwaInstallShortcut, PwaOrientation, } from "./identity.js";
+export type { AbsolutePath, PwaDisplayMode, PwaDisplayOverride, PwaIconPurpose, PwaIdentity, PwaPortableIdentity, PwaDeploymentIdentity, PwaInstallIcon, PwaInstallMetadata, PwaInstallScreenshot, PwaInstallScreenshotFormFactor, PwaInstallScreenshotType, PwaInstallShortcut, PwaOrientation, } from "./identity.js";
 export type { JsonPrimitive, JsonValue, PwaExtensionNamespace, PwaExtensions, } from "./json.js";
 export { REQUEST_BASELINE_DENIALS, TOPOLOGY_KINDS } from "./plan.js";
-export type { PwaArtifacts, PwaCacheNamespace, PwaHostBuildOutput, PwaOriginRegistry, PwaPathRule, PwaPathRuleAction, PwaOfflineWritePlan, PwaPlan, PwaPlanV1, PwaPlanV2, PwaPlanV3, PwaPlanOfflineFallback, PwaPrecacheEntry, PwaRegistryEntry, PwaRequestBaselineDenial, PwaRuntimeCachePlan, PwaTopology, PwaTopologyKind, } from "./plan.js";
-export { validateIdentity, validateInstallMetadata, validateOriginRegistry, validatePlan, validatePolicy, } from "./validate.js";
+export type { PwaArtifacts, PwaCacheNamespace, PwaHostBuildOutput, PwaOriginRegistry, PwaPortableOriginRegistry, PwaPathRule, PwaPathRuleAction, PwaOfflineWritePlan, PwaPlan, PwaPlanV1, PwaPlanV2, PwaPlanV3, PwaPlanV4, PwaPlanOfflineFallback, PwaPrecacheEntry, PwaPortableRegistryEntry, PwaRegistryEntry, PwaRequestBaselineDenial, PwaRuntimeCachePlan, PwaTopology, PwaPortableTopology, PwaTopologyKind, } from "./plan.js";
+export { validateIdentity, validatePortableIdentity, validateInstallMetadata, validateOriginRegistry, validatePortableOriginRegistry, validatePlan, validatePolicy, } from "./validate.js";
 export { CACHE_STRATEGIES, RESOURCE_CLASSES, UPDATE_MODES } from "./policy.js";
 export type { MountRelativePath, PwaCacheStrategy, PwaOfflineFallback, PwaOfflineWritePolicy, PwaOfflineWriteTarget, PwaPolicy, PwaPolicyV1, PwaPolicyV2, PwaPolicyV3, PwaResourceClass, PwaResourceRule, PwaRuntimeCachePolicy, PwaUpdateMode, } from "./policy.js";
 
@@ -29,7 +29,7 @@ export declare function runtimeDataCacheName(identity: Pick<PwaIdentity, "appId"
 // ---- diagnostics.d.ts ----
 export declare const DIAGNOSTIC_SEVERITIES: readonly ["error", "warning"];
 export type PwaDiagnosticSeverity = (typeof DIAGNOSTIC_SEVERITIES)[number];
-export declare const DIAGNOSTIC_CODES: readonly ["schema.invalid-type", "schema.invalid-value", "schema.missing-field", "schema.unknown-field", "schema.unsupported-version", "value.not-serializable", "path.invalid", "extensions.invalid-namespace", "identity.invalid-origin", "identity.invalid-environment", "identity.scope-excludes-mount-path", "identity.service-worker-outside-scope", "identity.scope-outside-worker-directory", "identity.manifest-outside-scope", "install.start-url-outside-scope", "install.missing-icon-variant", "install.invalid-color", "install.shortcut-url-outside-scope", "install.screenshot-size-out-of-range", "install.screenshot-aspect-ratio", "install.screenshot-aspect-mismatch", "install.screenshot-count", "install.screenshot-no-wide", "install.description-too-long", "policy.identity-override", "policy.unsafe-cache-strategy", "offline-write.disabled-configuration", "offline-write.enabled-configuration", "offline-write.target-required", "offline-write.duplicate-target-id", "offline-write.duplicate-target-path", "runtime-cache.disabled-configuration", "runtime-cache.enabled-configuration", "plan.incomplete-baseline-denials", "plan.cache-namespace-mismatch", "plan.offline-write-database-mismatch", "plan.offline-write-target-invalid", "plan.offline-write-duplicate-target-id", "plan.offline-write-duplicate-target-path", "compile.invalid-host-output", "compile.unsupported-topology", "compile.public-path-outside-scope", "compile.duplicate-path-prefix", "compile.allow-under-deny", "compile.install-metadata-missing", "compile.offline-fallback-not-built", "compile.offline-fallback-denied", "compile.asset-rule-unmatched", "compile.offline-write-target-invalid", "compile.runtime-strategy-unsupported", "compile.runtime-cache-unused", "verify.artifact-missing", "verify.artifact-path-mismatch", "verify.manifest-asset-missing", "verify.header-missing-directive", "verify.header-forbidden-directive", "verify.header-unreadable", "verify.baseline-invalid", "verify.baseline-missing", "verify.baseline-mismatch", "registry.child-outside-root", "registry.scope-overlap", "registry.duplicate-identity-field", "registry.entry-url-outside-scope", "registry.root-url-in-child-scope", "registry.cache-prefix-collision", "plan.registry-identity-mismatch", "plan.exclude-rules-mismatch", "plan.exclude-not-first", "compile.policy-rule-in-child-scope", "compile.offline-fallback-in-child-scope", "compile.host-file-in-child-scope", "compile.start-url-in-child-scope", "compile.shortcut-url-in-child-scope", "verify.root-plan-not-shared-origin", "verify.root-plan-missing-exclude", "verify.root-registry-older", "verify.root-registry-child-mismatch", "verify.root-registry-diverged", "verify.retention-history-invalid", "verify.retention-missing", "plan.precache-in-child-scope", "plan.offline-fallback-in-child-scope", "plan.start-url-in-child-scope", "plan.shortcut-url-in-child-scope"];
+export declare const DIAGNOSTIC_CODES: readonly ["schema.invalid-type", "schema.invalid-value", "schema.missing-field", "schema.unknown-field", "schema.unsupported-version", "value.not-serializable", "path.invalid", "extensions.invalid-namespace", "identity.invalid-origin", "identity.invalid-environment", "identity.scope-excludes-mount-path", "identity.service-worker-outside-scope", "identity.scope-outside-worker-directory", "identity.manifest-outside-scope", "install.start-url-outside-scope", "install.missing-icon-variant", "install.invalid-color", "install.shortcut-url-outside-scope", "install.screenshot-size-out-of-range", "install.screenshot-aspect-ratio", "install.screenshot-aspect-mismatch", "install.screenshot-count", "install.screenshot-no-wide", "install.description-too-long", "policy.identity-override", "policy.unsafe-cache-strategy", "offline-write.disabled-configuration", "offline-write.enabled-configuration", "offline-write.target-required", "offline-write.duplicate-target-id", "offline-write.duplicate-target-path", "runtime-cache.disabled-configuration", "runtime-cache.enabled-configuration", "plan.incomplete-baseline-denials", "plan.cache-namespace-mismatch", "plan.offline-write-database-mismatch", "plan.offline-write-target-invalid", "plan.offline-write-duplicate-target-id", "plan.offline-write-duplicate-target-path", "compile.invalid-host-output", "compile.unsupported-topology", "compile.public-path-outside-scope", "compile.duplicate-path-prefix", "compile.allow-under-deny", "compile.install-metadata-missing", "compile.offline-fallback-not-built", "compile.offline-fallback-denied", "compile.asset-rule-unmatched", "compile.offline-write-target-invalid", "compile.runtime-strategy-unsupported", "compile.runtime-cache-unused", "verify.artifact-missing", "verify.artifact-path-mismatch", "verify.manifest-asset-missing", "verify.header-missing-directive", "verify.header-forbidden-directive", "verify.header-unreadable", "verify.baseline-invalid", "verify.baseline-missing", "verify.baseline-mismatch", "registry.child-outside-root", "registry.scope-overlap", "registry.duplicate-identity-field", "registry.entry-url-outside-scope", "registry.root-url-in-child-scope", "registry.cache-prefix-collision", "plan.registry-identity-mismatch", "plan.exclude-rules-mismatch", "plan.exclude-not-first", "compile.policy-rule-in-child-scope", "compile.offline-fallback-in-child-scope", "compile.host-file-in-child-scope", "compile.start-url-in-child-scope", "compile.shortcut-url-in-child-scope", "verify.root-plan-not-shared-origin", "verify.root-plan-missing-exclude", "verify.root-registry-older", "verify.root-registry-child-mismatch", "verify.root-registry-diverged", "verify.retention-history-invalid", "verify.retention-missing", "verify.deployment-origin-invalid", "verify.deployment-response-missing", "verify.deployment-response-mismatch", "verify.deployment-response-unsuccessful", "verify.baseline-origin-mismatch", "plan.precache-in-child-scope", "plan.offline-fallback-in-child-scope", "plan.start-url-in-child-scope", "plan.shortcut-url-in-child-scope"];
 export type PwaDiagnosticCode = (typeof DIAGNOSTIC_CODES)[number];
 /** Platform-authored message for every code; messages never contain input text. */
 export declare const DIAGNOSTIC_MESSAGES: Readonly<Record<PwaDiagnosticCode, string>>;
@@ -114,6 +114,19 @@ export type PwaIdentity = {
     /** Identity revision segment of the cache namespace (ADR-0008). */
     readonly cacheNamespaceSeed: string;
 };
+/** Only a deployment explicitly marked portable may use this identity. */
+export type PwaPortableIdentity = {
+    readonly appId: string;
+    readonly manifestId: AbsolutePath;
+    readonly scope: AbsolutePath;
+    readonly serviceWorkerUrl: AbsolutePath;
+    readonly manifestUrl: AbsolutePath;
+    readonly mountPath: AbsolutePath;
+    readonly environment: string;
+    readonly cacheNamespaceSeed: string;
+    readonly origin?: never;
+};
+export type PwaDeploymentIdentity = PwaIdentity | PwaPortableIdentity;
 export declare const INSTALL_DISPLAY_MODES: readonly ["standalone", "minimal-ui", "fullscreen", "browser"];
 export type PwaDisplayMode = (typeof INSTALL_DISPLAY_MODES)[number];
 export declare const INSTALL_ICON_PURPOSES: readonly ["any", "maskable"];
@@ -178,7 +191,7 @@ export type PwaExtensions = {
 
 // ---- plan.d.ts ----
 import type { PwaWarningDiagnostic } from "./diagnostics.js";
-import type { AbsolutePath, PwaIdentity, PwaInstallMetadata } from "./identity.js";
+import type { AbsolutePath, PwaIdentity, PwaPortableIdentity, PwaInstallMetadata } from "./identity.js";
 import type { PwaCacheStrategy, PwaResourceClass, PwaUpdateMode } from "./policy.js";
 export declare const TOPOLOGY_KINDS: readonly ["standalone-origin", "shared-origin"];
 export type PwaTopologyKind = (typeof TOPOLOGY_KINDS)[number];
@@ -187,6 +200,13 @@ export type PwaRegistryEntry = {
     readonly scope: AbsolutePath;
     readonly serviceWorkerUrl: AbsolutePath;
     readonly manifestId: string;
+    readonly manifestUrl: AbsolutePath;
+};
+export type PwaPortableRegistryEntry = {
+    readonly appId: string;
+    readonly scope: AbsolutePath;
+    readonly serviceWorkerUrl: AbsolutePath;
+    readonly manifestId: AbsolutePath;
     readonly manifestUrl: AbsolutePath;
 };
 /** Describes every application on one origin and environment (ADR-0019). */
@@ -200,11 +220,26 @@ export type PwaOriginRegistry = {
     /** At least one; pairwise non-overlapping and not nested within each other. */
     readonly children: readonly PwaRegistryEntry[];
 };
+/** Same paths and application IDs on every deployed origin. */
+export type PwaPortableOriginRegistry = {
+    readonly schemaVersion: 2;
+    readonly registryVersion: number;
+    readonly environment: string;
+    readonly root: PwaPortableRegistryEntry;
+    readonly children: readonly PwaPortableRegistryEntry[];
+    readonly origin?: never;
+};
 export type PwaTopology = {
     readonly kind: "standalone-origin";
 } | {
     readonly kind: "shared-origin";
     readonly registry: PwaOriginRegistry;
+};
+export type PwaPortableTopology = {
+    readonly kind: "standalone-origin";
+} | {
+    readonly kind: "shared-origin";
+    readonly registry: PwaPortableOriginRegistry;
 };
 export type PwaHostBuildOutput = {
     readonly publicPath: AbsolutePath;
@@ -305,7 +340,20 @@ export type PwaPlanV3 = Expand<PwaPlanFields & {
     readonly offlineWrites: PwaOfflineWritePlan;
     readonly runtimeCache: PwaRuntimeCachePlan;
 }>;
-export type PwaPlan = PwaPlanV1 | PwaPlanV2 | PwaPlanV3;
+/** Portable plan; older versions retain the fixed-origin identity and registry semantics. */
+export type PwaPlanV4 = Expand<Omit<PwaPlanFields, "identity" | "topology"> & {
+    readonly schemaVersion: 4;
+    readonly planVersion: 4;
+    readonly policyVersion: 3;
+    readonly deployment: {
+        readonly kind: "portable";
+    };
+    readonly identity: PwaPortableIdentity;
+    readonly topology: PwaPortableTopology;
+    readonly offlineWrites: PwaOfflineWritePlan;
+    readonly runtimeCache: PwaRuntimeCachePlan;
+}>;
+export type PwaPlan = PwaPlanV1 | PwaPlanV2 | PwaPlanV3 | PwaPlanV4;
 export {};
 
 // ---- policy.d.ts ----
@@ -395,12 +443,14 @@ export type PwaPolicy = PwaPolicyV1 | PwaPolicyV2 | PwaPolicyV3;
 
 // ---- validate.d.ts ----
 import type { PwaValidationResult } from "./diagnostics.js";
-import type { PwaIdentity, PwaInstallMetadata } from "./identity.js";
-import type { PwaOriginRegistry, PwaPlan } from "./plan.js";
+import type { PwaDeploymentIdentity, PwaIdentity, PwaPortableIdentity, PwaInstallMetadata } from "./identity.js";
+import type { PwaOriginRegistry, PwaPortableOriginRegistry, PwaPlan } from "./plan.js";
 import type { PwaPolicy } from "./policy.js";
 export declare function validateIdentity(input: unknown): PwaValidationResult<PwaIdentity>;
+export declare function validatePortableIdentity(input: unknown): PwaValidationResult<PwaPortableIdentity>;
 /** `identity` must already be a validated identity; install URLs are checked against its scope. */
-export declare function validateInstallMetadata(input: unknown, identity: PwaIdentity): PwaValidationResult<PwaInstallMetadata>;
+export declare function validateInstallMetadata(input: unknown, identity: PwaDeploymentIdentity): PwaValidationResult<PwaInstallMetadata>;
 export declare function validatePolicy(input: unknown): PwaValidationResult<PwaPolicy>;
 export declare function validatePlan(input: unknown): PwaValidationResult<PwaPlan>;
 export declare function validateOriginRegistry(input: unknown): PwaValidationResult<PwaOriginRegistry>;
+export declare function validatePortableOriginRegistry(input: unknown): PwaValidationResult<PwaPortableOriginRegistry>;

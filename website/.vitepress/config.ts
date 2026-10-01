@@ -45,6 +45,7 @@ export default defineConfig({
         items: [
           { text: "按功能接入", link: "/guide/integration-by-capability" },
           { text: "身份与策略配置", link: "/guide/configuration" },
+          { text: "多域名可移植部署", link: "/guide/portable-deployment" },
           { text: "离线体验", link: "/guide/offline" },
           { text: "公共读取缓存", link: "/guide/public-read-cache" },
           { text: "安装与更新", link: "/guide/updates" },

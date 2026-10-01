@@ -1,5 +1,5 @@
 import type { PwaWarningDiagnostic } from "./diagnostics.js";
-import type { AbsolutePath, PwaIdentity, PwaInstallMetadata } from "./identity.js";
+import type { AbsolutePath, PwaIdentity, PwaPortableIdentity, PwaInstallMetadata } from "./identity.js";
 import type {
   PwaCacheStrategy,
   PwaResourceClass,
@@ -18,6 +18,14 @@ export type PwaRegistryEntry = {
   readonly manifestUrl: AbsolutePath;
 };
 
+export type PwaPortableRegistryEntry = {
+  readonly appId: string;
+  readonly scope: AbsolutePath;
+  readonly serviceWorkerUrl: AbsolutePath;
+  readonly manifestId: AbsolutePath;
+  readonly manifestUrl: AbsolutePath;
+};
+
 /** Describes every application on one origin and environment (ADR-0019). */
 export type PwaOriginRegistry = {
   readonly schemaVersion: 1;
@@ -30,9 +38,23 @@ export type PwaOriginRegistry = {
   readonly children: readonly PwaRegistryEntry[];
 };
 
+/** Same paths and application IDs on every deployed origin. */
+export type PwaPortableOriginRegistry = {
+  readonly schemaVersion: 2;
+  readonly registryVersion: number;
+  readonly environment: string;
+  readonly root: PwaPortableRegistryEntry;
+  readonly children: readonly PwaPortableRegistryEntry[];
+  readonly origin?: never;
+};
+
 export type PwaTopology =
   | { readonly kind: "standalone-origin" }
   | { readonly kind: "shared-origin"; readonly registry: PwaOriginRegistry };
+
+export type PwaPortableTopology =
+  | { readonly kind: "standalone-origin" }
+  | { readonly kind: "shared-origin"; readonly registry: PwaPortableOriginRegistry };
 
 export type PwaHostBuildOutput = {
   readonly publicPath: AbsolutePath;
@@ -152,4 +174,16 @@ export type PwaPlanV3 = Expand<PwaPlanFields & {
   readonly runtimeCache: PwaRuntimeCachePlan;
 }>;
 
-export type PwaPlan = PwaPlanV1 | PwaPlanV2 | PwaPlanV3;
+/** Portable plan; older versions retain the fixed-origin identity and registry semantics. */
+export type PwaPlanV4 = Expand<Omit<PwaPlanFields, "identity" | "topology"> & {
+  readonly schemaVersion: 4;
+  readonly planVersion: 4;
+  readonly policyVersion: 3;
+  readonly deployment: { readonly kind: "portable" };
+  readonly identity: PwaPortableIdentity;
+  readonly topology: PwaPortableTopology;
+  readonly offlineWrites: PwaOfflineWritePlan;
+  readonly runtimeCache: PwaRuntimeCachePlan;
+}>;
+
+export type PwaPlan = PwaPlanV1 | PwaPlanV2 | PwaPlanV3 | PwaPlanV4;

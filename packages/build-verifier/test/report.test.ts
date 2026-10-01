@@ -32,6 +32,11 @@ describe("verify.* diagnostic codes", () => {
       "verify.root-registry-diverged",
       "verify.retention-history-invalid",
       "verify.retention-missing",
+      "verify.deployment-origin-invalid",
+      "verify.deployment-response-missing",
+      "verify.deployment-response-mismatch",
+      "verify.deployment-response-unsuccessful",
+      "verify.baseline-origin-mismatch",
     ]);
   });
 
@@ -74,7 +79,7 @@ describe("check", () => {
 });
 
 describe("VERIFICATION_CHECKS", () => {
-  it("names the six checks in the order verifyRelease runs them", () => {
+  it("names the seven checks in the order verifyRelease runs them", () => {
     expect(VERIFICATION_CHECKS).toEqual([
       "artifacts",
       "response-headers",
@@ -82,6 +87,7 @@ describe("VERIFICATION_CHECKS", () => {
       "release-order",
       "release-retention",
       "html-headers",
+      "deployment-origin",
     ]);
   });
 

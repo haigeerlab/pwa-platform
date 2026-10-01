@@ -4,7 +4,7 @@
 // files get precached, what revision each carries, whether the release check passes — rests on this list, so it is
 // read from the bundle itself rather than from the disk the bundle is about to be written to.
 import { createHash } from "node:crypto";
-import type { PwaIdentity } from "@pwa-platform/contracts";
+import type { PwaDeploymentIdentity } from "@pwa-platform/contracts";
 import type { PwaCompileHostOutput, PwaHostBuildFile } from "@pwa-platform/core";
 import type { PwaArtifactSourceFile } from "./artifacts.js";
 import type { PwaPublicFile } from "./public-files.js";
@@ -101,7 +101,7 @@ export function assertUnchangedBundleFiles(bundle: PwaBundle, expected: Readonly
 export function collectSourceFiles(
   files: readonly PwaArtifactSourceFile[],
   base: string,
-  identity: PwaIdentity,
+  identity: PwaDeploymentIdentity,
 ): PwaCompileHostOutput {
   if (!base.startsWith("/") || !base.endsWith("/")) {
     // Vite normalises `base` to a trailing slash, and core requires the same of publicPath. A base that is a full
@@ -152,7 +152,7 @@ function resolveContentHash(file: PwaArtifactSourceFile): string {
 export function collectHostOutput(
   bundle: PwaBundle,
   base: string,
-  identity: PwaIdentity,
+  identity: PwaDeploymentIdentity,
   publicFiles: readonly PwaPublicFile[] = [],
 ): PwaCompileHostOutput {
   return collectSourceFiles(bundleSourceFiles(bundle, publicFiles), base, identity);

@@ -14,6 +14,8 @@
 
 检查 <code>index.html</code> 和其他 HTML 入口：每页只能有一个 manifest 链接，地址须与 <code>IDENTITY.manifestUrl</code> 一致，或是同一 <code>IDENTITY.origin</code> 下该路径的完整 URL。相对地址和旧插件留下的重复链接应删除或改正；若无需保留自定义链接，全部移除后由平台在构建时注入。当前插件不接受 <code>&lt;base&gt;</code>；若业务依赖它，应先调整页面的路径与路由配置，再移除该标签。详见[配置规则](/guide/configuration)。
 
+可移植模式不允许完整域名链接；只使用 `manifestUrl` 的根绝对路径。若构建报跨源 `base`，把 Vite `base` 改成与实际部署路径一致的同源根路径。发布报告出现 `verify.deployment-*` 时，核对编排器是否在**本次目标域名**采集了每个必需路径的最终响应 URL；重定向到其他域名、路径变化或缺证据都不能通过。[逐域名发布验收](/guide/portable-deployment#每个域名的发布验收)列出范围。
+
 ## 构建提示离线页不存在
 
 <code>compile.offline-fallback-not-built</code> 表示策略声明的回退文件没有进入构建产物。若用平台默认离线页，检查策略已开启 <code>offlineFallback</code>、在 Vite 插件上写了 <code>offlinePage: {}</code>，且该路径没有被拒绝类规则覆盖（离线页的 <code>asset</code> 规则是可选的）。若用自定义页，检查文件是否位于 <code>public/</code> 且输出路径正确。子路径部署时不要把 <code>mountPath</code> 在策略路径里重复写一遍。

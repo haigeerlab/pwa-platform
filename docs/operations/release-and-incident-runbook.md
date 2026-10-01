@@ -24,6 +24,12 @@
 | 独立源，或同源根应用 | `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers` |
 | 同源子应用 | 上述五项，加 `release-order`；必须传入实际线上根计划 |
 
+可移植 v4 计划在相应行之外还要求 `deployment-origin`。外部编排器对**每个实际 HTTPS 域名**
+分别采集完整平台路径的最终响应 URL、HTTP 状态码、响应头与该域名的旧资源可用性，并以
+`deployment: { targetOrigin, responses }` 传入；本地演练可使用 loopback HTTP。域名 A 的响应、
+基线、历史、首次发布批准或线上根计划都不能替代域名 B 的事实。只提供目标字符串或只验证
+构建产物不算完成门禁。采集与状态机细节见[发布编排协议](release-orchestration-protocol.md)。
+
 调用方采集公开产物路径、响应头（含公开 HTML 的响应头，`htmlObserved`）、完整成功历史和当前可用资产路径，再显式传给
 build-verifier。采集公开 HTML 的响应头时跟随同源重定向，记录最终响应的头（[ADR-0032](../adr/0032-html-response-header-check.md)）。
 直接拿 build-verifier 导出的 `VERIFICATION_CHECKS` 当必需集的调用方，升级到包含 `html-headers` 的版本后会要求该检查。`release-retention` 的历史必须是同一发布线完整的新到旧记录；Vite 构建不持有
@@ -103,6 +109,11 @@ build-verifier。采集公开 HTML 的响应头时跟随同源重定向，记录
 2. **先发布根应用。** 新的根计划中会出现该子 scope 的 `exclude` 规则。保留这次发布的计划作为发布记录。
 3. **再发布子应用。** 发布门禁中运行 `verifyRelease({ plan: 子应用计划, deployedRootPlan: 线上根应用计划 })`，`release-order` 检查必须通过：线上根计划是同一源、同一环境的根应用，已排除该子 scope，且登记表版本不低于子应用的。
 4. 子应用的 `requiredChecks` 包含 `release-order`，且报告通过与覆盖完整都不可缺少。检查失败时不得发布子应用：`verify.root-plan-missing-exclude` 表示根应用还没排除该子路径；`verify.root-registry-older` 表示子应用用了比线上根应用更新的登记表，先发布根应用。
+
+可移植共享根/子沿用上述顺序，但登记表使用无 origin 的 v2；**每个目标域名独立执行**。
+发布子应用时用该域名实际线上根记录提供
+`deployedRoot: { origin, plan, workerFinalUrl }`，其中 worker 最终 URL 也必须在该域名。
+固定模式继续使用 v1 登记表与 `deployedRootPlan`，不改变原有发布记录。
 
 **服务器不得规范化路径**：浏览器与平台 worker 按路径原样判断 scope（`/M/`、`//m/` 不在 `/m/` 之内）。若服务器对路径大小写不敏感，或像部分反向代理默认那样合并连续斜杠，这些地址会返回子应用的内容，却由根 worker 接管、断网时给出根应用的离线页。同源部署须关闭这类规范化，或在服务器上把它们重定向到规范写法。
 

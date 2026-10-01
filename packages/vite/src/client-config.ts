@@ -8,11 +8,11 @@
 // That is sound because every field it needs comes from the options and none from the build output: the config is
 // fully determined before the first file is read. A parity test pins this module to `createClientConfig` on real
 // compiled plans, the same arrangement build-verifier uses for its second Cache-Control parser.
-import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/contracts";
+import type { PwaDeploymentIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/contracts";
 import { validateClientConfig, type PwaClientConfig } from "@pwa-platform/client-runtime/build";
 
 export type PwaClientConfigInput = {
-  readonly identity: PwaIdentity;
+  readonly identity: PwaDeploymentIdentity;
   readonly policy: PwaPolicy;
   readonly install: PwaInstallMetadata | null;
 };

@@ -11,6 +11,12 @@ import {
   CHILD_RECOVERY_ROOT,
   CHILD_TOPOLOGY,
   PLAIN_CHILD_PAGE,
+  PORTABLE_CHILD_IDENTITY,
+  PORTABLE_CHILD_POLICY,
+  PORTABLE_ROOT_IDENTITY,
+  PORTABLE_ROOT_POLICY,
+  PORTABLE_SHARED_ROOT,
+  PORTABLE_TOPOLOGY,
   ROOT_APP_ROOT,
   ROOT_IDENTITY,
   ROOT_ONLY_ROOT,
@@ -43,6 +49,20 @@ export default async function sharedOriginGlobalSetup(): Promise<void> {
   // is copied back in now, after both builds, purely so the merged site still serves the URL the test fetches —
   // this has no effect on either app's already-compiled plan or worker.
   await cp(join(ROOT_APP_ROOT, "public/m/root-leftover.json"), join(SHARED_ROOT, "m/root-leftover.json"));
+
+  // The same root/child topology without a build-time origin, served unchanged on two origins in the portable spec.
+  await build({
+    configFile: false, root: ROOT_APP_ROOT, base: "/", envDir: false, logLevel: "error",
+    build: { outDir: PORTABLE_SHARED_ROOT, emptyOutDir: true, minify: false, sourcemap: false },
+    plugins: [pwa({ deployment: { kind: "portable" }, identity: PORTABLE_ROOT_IDENTITY,
+      policy: PORTABLE_ROOT_POLICY, install: null, topology: PORTABLE_TOPOLOGY })],
+  });
+  await build({
+    configFile: false, root: CHILD_APP_ROOT, base: "/m/", envDir: false, logLevel: "error",
+    build: { outDir: join(PORTABLE_SHARED_ROOT, "m"), emptyOutDir: true, minify: false, sourcemap: false },
+    plugins: [pwa({ deployment: { kind: "portable" }, identity: PORTABLE_CHILD_IDENTITY,
+      policy: PORTABLE_CHILD_POLICY, install: null, topology: PORTABLE_TOPOLOGY })],
+  });
 
   // Same root, but the child was never deployed: a plain page at `/m/`, no worker, no manifest.
   await buildRoot(ROOT_ONLY_ROOT, ROOT_TOPOLOGY);

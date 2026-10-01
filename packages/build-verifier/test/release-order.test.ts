@@ -8,7 +8,7 @@ import {
   validatePlan,
   type PwaIdentity,
   type PwaOriginRegistry,
-  type PwaPlan,
+  type PwaPlanV1,
   type PwaRegistryEntry,
 } from "@pwa-platform/contracts";
 import { compilePlan } from "@pwa-platform/core";
@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 import { verifyRelease } from "../src/release.js";
 import { isSharedOriginChild, verifyReleaseOrder } from "../src/release-order.js";
 
-const storefront = JSON.parse(readFileSync(new URL("./fixtures/storefront.plan.json", import.meta.url), "utf8")) as PwaPlan;
+const storefront = JSON.parse(readFileSync(new URL("./fixtures/storefront.plan.json", import.meta.url), "utf8")) as PwaPlanV1;
 
 const rootIdentity: PwaIdentity = storefront.identity;
 const childIdentity: PwaIdentity = {
@@ -45,13 +45,14 @@ function pick(identity: PwaIdentity): PwaOriginRegistry["root"] {
   return { appId, scope, serviceWorkerUrl, manifestId, manifestUrl };
 }
 
-function valid(plan: PwaPlan): PwaPlan {
+function valid(plan: PwaPlanV1): PwaPlanV1 {
   const result = validatePlan(plan);
   if (!result.ok) throw new Error(`fixture plan is invalid: ${result.diagnostics.map(({ code, path }) => `${code} at ${path}`).join(", ")}`);
+  if (result.value.schemaVersion !== 1) throw new Error("expected a v1 fixture");
   return result.value;
 }
 
-function rootPlan(registryVersion: number, withExclude = true): PwaPlan {
+function rootPlan(registryVersion: number, withExclude = true): PwaPlanV1 {
   return {
     ...storefront,
     topology: { kind: "shared-origin", registry: registry(registryVersion) },
@@ -62,7 +63,7 @@ function rootPlan(registryVersion: number, withExclude = true): PwaPlan {
   };
 }
 
-function childPlan(registryVersion: number): PwaPlan {
+function childPlan(registryVersion: number): PwaPlanV1 {
   return valid({
     ...storefront,
     identity: childIdentity,
@@ -77,7 +78,7 @@ function childPlan(registryVersion: number): PwaPlan {
 }
 
 /** A valid root plan identical to `rootPlan(2)` except that identity, registry and cache namespace move with `change`. */
-function movedRoot(change: Partial<Pick<PwaIdentity, "environment" | "origin">>): PwaPlan {
+function movedRoot(change: Partial<Pick<PwaIdentity, "environment" | "origin">>): PwaPlanV1 {
   const identity: PwaIdentity = { ...rootIdentity, ...change };
   const base = rootPlan(2);
   if (base.topology.kind !== "shared-origin") throw new Error("unreachable");
@@ -89,8 +90,8 @@ function movedRoot(change: Partial<Pick<PwaIdentity, "environment" | "origin">>)
   });
 }
 
-const otherEnvironmentRoot = (): PwaPlan => movedRoot({ environment: "staging" });
-const otherOriginRoot = (): PwaPlan => movedRoot({ origin: "https://other.example.com" });
+const otherEnvironmentRoot = (): PwaPlanV1 => movedRoot({ environment: "staging" });
+const otherOriginRoot = (): PwaPlanV1 => movedRoot({ origin: "https://other.example.com" });
 
 const codes = (check: { diagnostics: readonly { code: string }[] }): string[] => check.diagnostics.map(({ code }) => code);
 
@@ -106,7 +107,7 @@ describe("verifyReleaseOrder", () => {
   it("reports a deployed root without the child's exclude rule", () => {
     // Still a valid plan? No — contracts pins a root's exclude set to its children. A root deployed before the child
     // was registered carries an older registry without the child and therefore no exclude for it.
-    const older: PwaPlan = valid({
+    const older: PwaPlanV1 = valid({
       ...storefront,
       topology: { kind: "shared-origin", registry: { ...registry(1), children: [{ ...pick(childIdentity), appId: "storefront-other", scope: "/app/other/", serviceWorkerUrl: "/app/other/sw.js", manifestId: "/app/other/", manifestUrl: "/app/other/manifest.webmanifest" }] } },
       pathRules: [{ pathPrefix: "/app/other", resourceClass: "unclassified", action: "exclude", source: "platform" }, ...storefront.pathRules],
@@ -203,7 +204,7 @@ function mallRegistry(registryVersion: number, children: readonly PwaRegistryEnt
 }
 
 /** Compiles a real plan for `identity` against `registry`, throwing with the diagnostics if it does not compile. */
-function compileMall(identity: PwaRegistryEntry & { readonly mountPath: `/${string}` }, registry: PwaOriginRegistry): PwaPlan {
+function compileMall(identity: PwaRegistryEntry & { readonly mountPath: `/${string}` }, registry: PwaOriginRegistry): PwaPlanV1 {
   const result = compilePlan({
     identity: {
       appId: identity.appId,
@@ -222,6 +223,7 @@ function compileMall(identity: PwaRegistryEntry & { readonly mountPath: `/${stri
     hostBuildOutput: { publicPath: identity.scope, serviceWorkerFile: "sw.js", manifestFile: "manifest.webmanifest", files: [] },
   });
   if (!result.ok) throw new Error(`fixture plan did not compile: ${result.diagnostics.map(({ code, path }) => `${code} at ${path}`).join(", ")}`);
+  if (result.value.schemaVersion !== 1) throw new Error("expected a v1 fixture");
   return result.value;
 }
 

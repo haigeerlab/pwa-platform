@@ -159,6 +159,26 @@ describe("createPlatformWorkerConfig", () => {
     });
   });
 
+  it("keeps runtime caching enabled for a portable v4 plan with v3 policy", () => {
+    const { origin: _origin, ...identity } = storefront.identity;
+    void _origin;
+    const portable = {
+      ...storefront,
+      schemaVersion: 4,
+      planVersion: 4,
+      policyVersion: 3,
+      deployment: { kind: "portable" },
+      identity,
+      offlineWrites: { enabled: false },
+      runtimeCache: { enabled: true, maxEntries: 40, maxEntryBytes: 65_536, maxAgeSeconds: 300, configDigest: "0123456789abcdef" },
+    } as PwaPlan;
+    expect(createPlatformWorkerConfig(portable).runtimeCache).toMatchObject({
+      enabled: true,
+      dataCacheName: `${cacheName(identity, "runtime-data")}-0123456789abcdef`,
+      rules: [{ pathPrefix: "/app/api/catalog", resourceClass: "public-data", strategy: "stale-while-revalidate" }],
+    });
+  });
+
   it("carries networkTimeoutSeconds only when the plan set it (ADR-0038)", () => {
     expect(createPlatformWorkerConfig(storefront).networkTimeoutSeconds).toBeUndefined();
     expect(Object.hasOwn(createPlatformWorkerConfig(storefront), "networkTimeoutSeconds")).toBe(false);
@@ -187,9 +207,8 @@ describe("createRecoveryWorkerConfig", () => {
 describe("invalid plans", () => {
   it("are rejected by both functions with diagnostic codes and paths but without echoing values", () => {
     const secret = "tok_do_not_echo";
-    // schemaVersion 4 does not exist yet (unlike 3, added by the v3 runtime-cache plan); keeps this an
-    // unsupported-version case rather than a v3 plan missing its other required fields.
-    const invalid = { ...storefront, schemaVersion: 4, identity: { ...storefront.identity, appId: `${secret} ` } } as unknown as PwaPlan;
+    // v4 is the portable plan; use a future version to exercise unsupported-version diagnostics.
+    const invalid = { ...storefront, schemaVersion: 99, identity: { ...storefront.identity, appId: `${secret} ` } } as unknown as PwaPlan;
     for (const create of [createPlatformWorkerConfig, createRecoveryWorkerConfig]) {
       const text = message(() => create(invalid));
       expect(text).toMatch(/^Cannot create a worker config from an invalid PwaPlan: /);

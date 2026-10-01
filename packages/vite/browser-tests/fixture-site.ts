@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/contracts";
+import type { PwaIdentity, PwaInstallMetadata, PwaPolicy, PwaPolicyV3, PwaPortableIdentity } from "@pwa-platform/contracts";
 import type { FixtureServerOptions } from "@pwa-platform/browser-test-harness";
 
 const here = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
@@ -45,6 +45,10 @@ export const IDENTITY: PwaIdentity = {
   cacheNamespaceSeed: "r1",
 };
 
+const { origin: _fixedOrigin, ...portableIdentity } = IDENTITY;
+void _fixedOrigin;
+export const PORTABLE_IDENTITY: PwaPortableIdentity = { ...portableIdentity, manifestId: SHELL_URL };
+
 export const INSTALL: PwaInstallMetadata = {
   startUrl: SHELL_URL,
   display: "standalone",
@@ -81,6 +85,20 @@ export const POLICY: PwaPolicy = {
     { pathPrefix: "/offline.html", resourceClass: "asset", cache: "cache-first" },
     { pathPrefix: "/assets", resourceClass: "asset", cache: "cache-first" },
   ],
+};
+
+export const PORTABLE_POLICY: PwaPolicyV3 = {
+  ...POLICY,
+  schemaVersion: 3,
+  offlineWrites: { enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [] },
+  runtimeCache: { enabled: false, maxEntries: 0, maxEntryBytes: 0, maxAgeSeconds: 0 },
+};
+export const SITE_PORTABLE_V1_ROOT: string = here("../browser-build/site-portable-v1/");
+export const SITE_PORTABLE_V2_ROOT: string = here("../browser-build/site-portable-v2/");
+export const SITE_PORTABLE_V1_OUT: string = here("../browser-build/site-portable-v1/app/");
+export const SITE_PORTABLE_V2_OUT: string = here("../browser-build/site-portable-v2/app/");
+export const PORTABLE_FIXTURE_SITE: FixtureServerOptions = {
+  versions: { v1: SITE_PORTABLE_V1_ROOT, v2: SITE_PORTABLE_V2_ROOT }, initialVersion: "v1",
 };
 
 /** Two deployed versions of the same app, both produced by the plugin. */
