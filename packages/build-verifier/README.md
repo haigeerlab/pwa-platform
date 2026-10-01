@@ -1,6 +1,6 @@
 # @pwa-platform/build-verifier
 
-校验 PWA 构建和发布事实：产物、响应头、身份基线、共享 Origin 发布顺序、旧指纹资源保留和 HTML 缓存头。
+校验 PWA 构建和发布事实：产物、响应头、身份基线、共享 Origin 发布顺序、旧指纹资源保留、HTML 缓存头与 worker 主脚本 MIME。
 
 ## 谁会使用
 
@@ -19,18 +19,21 @@ npm install @pwa-platform/build-verifier
 ```ts
 import { verifyRelease } from "@pwa-platform/build-verifier";
 
+const observed = {
+  "/app/sw.js": { "cache-control": "no-cache", "content-type": "text/javascript" },
+  "/app/assets/app-a1b2.js": { "cache-control": "public, max-age=31536000, immutable" },
+};
+
 const report = verifyRelease({
   plan,
   published: ["/app/index.html", "/app/assets/app-a1b2.js", "/app/sw.js"],
-  observed: {
-    "/app/sw.js": { "cache-control": "no-cache" },
-    "/app/assets/app-a1b2.js": { "cache-control": "public, max-age=31536000, immutable" },
-  },
+  observed,
   baseline: storedIdentityBaseline,
   retention: retentionSnapshot,
   htmlObserved: {
     "/app/": { "cache-control": "no-cache" },
   },
+  workerMimeObserved: observed,
 });
 
 if (!report.ok) {
@@ -49,7 +52,7 @@ if (!report.ok) {
 | --- | --- | --- |
 | 聚合 | `verifyRelease`, `PwaVerifyReleaseInput` | 按固定顺序生成一个 `PwaVerificationReport` |
 | 产物 | `verifyArtifacts` | 检查计划引用的文件是否实际发布 |
-| 响应头 | `verifyResponseHeaders`, `verifyHtmlHeaders` | 判断 worker、manifest、指纹资源和 HTML 的缓存头 |
+| 响应头 | `verifyResponseHeaders`, `verifyHtmlHeaders`, `verifyWorkerScriptMime` | 判断 worker、manifest、指纹资源和 HTML 的缓存头，以及 worker 主脚本的 JavaScript MIME |
 | 身份 | `readIdentityBaseline`, `compareIdentityBaseline`, `BASELINE_FIELDS` | 读取并比较生产 identity 基线 |
 | 共享 Origin | `isSharedOriginChild`, `verifyReleaseOrder` | 确认根应用已排除子应用 scope，再发布子应用 |
 | 保留 | `verifyReleaseRetention` | 检查当前和历史发布记录要求的指纹资源仍可取用 |

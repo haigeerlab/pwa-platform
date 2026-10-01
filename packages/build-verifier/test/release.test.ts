@@ -36,6 +36,19 @@ const retention = {
 const names = (report: { checks: readonly { name: string }[] }): string[] => report.checks.map(({ name }) => name);
 
 describe("verifyRelease", () => {
+  it("keeps old reports unchanged when workerMimeObserved is omitted, and appends the independent check when supplied", () => {
+    const before = verifyRelease({ plan, published, observed });
+    expect(names(before)).toEqual(["artifacts", "response-headers"]);
+
+    const after = verifyRelease({ plan, published, observed, workerMimeObserved: {
+      [plan.identity.serviceWorkerUrl]: { "content-type": "text/plain" },
+    } });
+    expect(names(after)).toEqual(["artifacts", "response-headers", "worker-mime"]);
+    expect(after.checks.slice(0, -1)).toEqual(before.checks);
+    expect(after.checks.at(-1)?.diagnostics.map(({ code }) => code)).toEqual(["verify.worker-script-mime-invalid"]);
+    expect(after.ok).toBe(false);
+  });
+
   it("runs every supplied check and passes when all of them do", () => {
     const report = verifyRelease({ plan, published, observed, baseline: { ...plan.identity } });
 
@@ -43,7 +56,7 @@ describe("verifyRelease", () => {
     // `release-order` only runs for a shared-origin child; `release-retention` and `html-headers` were not
     // supplied here (their own describe blocks below cover them), so this call runs the other three.
     expect(names(report)).toEqual(
-      VERIFICATION_CHECKS.filter((name) => name !== "release-order" && name !== "release-retention" && name !== "html-headers" && name !== "deployment-origin"),
+      VERIFICATION_CHECKS.filter((name) => name !== "release-order" && name !== "release-retention" && name !== "html-headers" && name !== "deployment-origin" && name !== "worker-mime"),
     );
     expect(report.diagnostics).toEqual([]);
   });

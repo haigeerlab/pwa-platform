@@ -136,6 +136,7 @@ export function assembleReleaseInput(args: PwaAssembleReleaseInputArgs): PwaAsse
     published: args.publishedPaths,
     observed: args.observed,
     htmlObserved: args.htmlObserved,
+    workerMimeObserved: args.observed,
     baseline: args.baseline.found ? args.baseline.value : undefined,
     ...(outcome.complete
       ? {
@@ -176,6 +177,7 @@ export function assemblePreDeployInput(args: PwaAssemblePreDeployInputArgs): Pwa
     published: args.publishedPaths,
     observed: args.observed,
     htmlObserved: args.htmlObserved,
+    workerMimeObserved: args.observed,
     baseline: args.baseline.found ? args.baseline.value : undefined,
     ...(outcome.complete
       ? {

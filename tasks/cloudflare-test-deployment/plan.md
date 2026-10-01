@@ -574,3 +574,7 @@ React/Vue 测试网页由 Pages Direct Upload 提供，私有 R2 Standard 桶存
 4. **独立机器恢复（云端只读、本机写入）：** 在第二台机器上全新克隆并安装依赖，确认没有旧 `build/` 状态，按手册以最小权限凭据分别运行 `pnpm recover:cloudflare:site --target=react` 和 `--target=vue`；保存恢复命令输出、当前 canonical 部署 ID、发布包 SHA-256、归档资源核对和失败项。该演练不执行 Pages 部署、R2 上传或索引写入；同机隔离模拟不计作此项通过。
 
 两项真实验收都有证据后再评估 T5 与文档交付状态。H5、Android、iOS 和正式 V1 门禁仍按现有矩阵独立处理；Nuxt Worker 可行性失败不触发云端创建。
+
+## 增量：worker MIME 发布检查接线（2026-10-01）
+
+依据 [ADR-0051](../../docs/adr/0051-worker-script-mime-release-check.md) 与 [Task WM](../build-verifier/plan.md)：复用已采集的 worker 响应头，为上线前、上线后组装传入 `workerMimeObserved`；必需集由 `requiredReleaseChecks` 提供，新项为 `worker-mime`。核验工具测试含错误 MIME 反例，断言 `response-headers` 通过但新检查阻断结论。此前五项清单保留作历史阶段记录。

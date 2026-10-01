@@ -157,7 +157,7 @@ pnpm verify:cloudflare:release --target=react --slot=main --history=<仓库外�
 - 退出码：`0` 通过；`1` 跑完但未通过，报告照常写出；`2` 拒绝运行，不写任何报告。
 - 产出 `facts.json`、`report.json`、`coverage.json`、`verdict.json`、`record.md`，终端打印各自 SHA-256。`coverage.json` 含必需集 `requiredChecks` 与覆盖结果 `ok`、`missing`。结论三个分量分别给出：`report.ok`、覆盖结果、历史是否完整。
 - 2026-09-22 首次运行结果见[验证记录](../../tasks/cloudflare-test-deployment/verification.md)：两站均因此前的发布没有保存计划而未通过保留检查。这是如实结论；此后的发布都带计划，保留窗口内不再有缺计划的部署后即可通过。
-- 公开 HTML：工具对入口、启动地址、离线页与预缓存中带 revision 的 `.html` 逐个请求，只跟随同源、同协议的重定向（Cloudflare 会把 `/app/index.html` 308 到 `/app/`、`/app/offline.html` 308 到 `/app/offline`），以最终 200 响应的头执行 `html-headers`（[ADR-0032](../adr/0032-html-response-header-check.md)），重定向链记入事实文件；重定向响应本身的头不参与判定。必需集为 `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`。
+- 公开 HTML：工具对入口、启动地址、离线页与预缓存中带 revision 的 `.html` 逐个请求，只跟随同源、同协议的重定向（Cloudflare 会把 `/app/index.html` 308 到 `/app/`、`/app/offline.html` 308 到 `/app/offline`），以最终 200 响应的头执行 `html-headers`（[ADR-0032](../adr/0032-html-response-header-check.md)），重定向链记入事实文件；重定向响应本身的头不参与判定。worker 的已采集响应头还用于 `worker-mime`（[ADR-0051](../adr/0051-worker-script-mime-release-check.md)），不新增请求。必需集为 `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`、`worker-mime`。
 
 ## 上线前核验（预览部署）
 

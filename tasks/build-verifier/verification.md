@@ -286,3 +286,18 @@ CI 取不到，因此在合并进 `main` 之前补跑了一次本地完整门禁
 - build-verifier 152 项通过。变异：跳过截图检查、跳过快捷方式图标检查，各 2 项转红。
 - Vite 与 Nuxt 的真实构建中，缺失截图都以该诊断失败（vite-adapter 验证记录）。
 - 已知限制：既有 `icons` 不做存在性检查（ADR-0037）。
+
+## worker 主脚本 MIME 发布检查（2026-10-01）
+
+项目所有者批准[设计](../examples-browser-e2e/header-gate-revision-design.md)后，按 [ADR-0051](../../docs/adr/0051-worker-script-mime-release-check.md)增加独立 `worker-mime` 检查与 `verify.worker-script-mime-invalid` 诊断码；旧 `response-headers` 的 `no-cache` 字面规则保留。先写新测试确认缺少导出与诊断码时转红，再实施。
+
+| 验证 | 结果 |
+|---|---|
+| `pnpm build`、`pnpm typecheck`、`pnpm lint`、`pnpm test` | 全部退出 0；contracts 273 项、build-verifier 168 项、examples-browser-e2e 249 项通过 |
+| `pnpm check:publish` | 退出 0；10 个包的候选元数据与构建导出通过 |
+| Chrome 154 响应头对照 | `header-causality.spec.ts` 23 项通过；JavaScript MIME 注册且离线启动成功，`text/plain` 注册与离线启动失败；旧缓存头检查两者通过，新 MIME 检查仅正例通过 |
+| Vue/React 真实发布报告 | `release.spec.ts` 指定用例 2 项通过；六项必需检查出现且报告通过 |
+| Cloudflare 核验工具本地反例 | `run.test.ts`：worker `Content-Type: text/plain` 时 `response-headers.ok=true`、`worker-mime` 报新诊断、整体拒绝通过；上线前/上线后组装复用已采集响应头 |
+| 文档与改动格式 | 修改过的 Markdown 相对链接可解析；`git diff --check` 通过 |
+
+本次没有改动 Cloudflare 线上配置、部署测试站或发布 npm 版本；真实 CDN 缓存变体、其他浏览器和原生安装后的 manifest 元数据更新仍按[实验记录](../examples-browser-e2e/header-causality-verification.md)的未覆盖项判读。

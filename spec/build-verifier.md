@@ -13,7 +13,7 @@
 **交付物：**
 
 - 私有工作区包 `packages/build-verifier`，包名 `@pwa-platform/build-verifier`：
-  - 入口 `.`：`verifyArtifacts`、`verifyResponseHeaders`、`compareIdentityBaseline`、`verifyReleaseRetention`、`verifyRelease`、`verifyReleaseGateCoverage`、`requiredReleaseChecks`（2026-09-28 增补，ADR-0025 增补）、`readIdentityBaseline` 与报告类型。
+  - 入口 `.`：`verifyArtifacts`、`verifyResponseHeaders`、`verifyHtmlHeaders`、`verifyWorkerScriptMime`、`compareIdentityBaseline`、`verifyReleaseRetention`、`verifyRelease`、`verifyReleaseGateCoverage`、`requiredReleaseChecks`（2026-09-28 增补，ADR-0025 增补）、`readIdentityBaseline` 与报告类型。
 - contracts 追加本模块所需的 `verify.*` 诊断码（见"诊断"及后续修订）。这是对已交付包公开契约的修改，随本模块交付，并同步更新声明快照。
 - 单元测试（Vitest）。本模块不含浏览器行为，不需要浏览器自测。
 - `docs/adr/0014-build-verification-boundary-and-report.md`：记录职责边界、纯函数取向、基线存放约定与报告形态。
@@ -377,3 +377,13 @@ type PwaVerifyReleaseInput = {
 | shared-origin-topology | follow | 同源子应用的发布顺序检查由本模块实现，拓扑规则由该模块定义。 |
 | push-module | follow | 不校验 Push 配置。 |
 | public-read-cache | follow | 本模块不改变该基线的权威文档或验收结论。 |
+
+## 修订：worker 主脚本 MIME 发布检查（2026-10-01，项目所有者已确认）
+
+本地[响应头因果实验](../tasks/examples-browser-e2e/header-causality-verification.md)显示 `Content-Type: text/plain` 使 worker 注册和离线启动失败，但现有 `response-headers` 仍通过。决定见 [ADR-0051](../docs/adr/0051-worker-script-mime-release-check.md)。保留上述 `Cache-Control: no-cache` 字面规则：`max-age=0, must-revalidate` 在本次 Chrome 实验中取得新内容，不代表它与 `no-cache` 在共享缓存和所有指令组合下等价。
+
+新增独立检查 `worker-mime`，不扩展现有 `response-headers`。导出 `verifyWorkerScriptMime(plan, observed)`；只判断 `plan.identity.serviceWorkerUrl` 的实收 `Content-Type` 是否属于 [MIME Sniffing 标准的 JavaScript MIME 类型](https://mimesniff.spec.whatwg.org/#javascript-mime-type)，比较 essence 时忽略参数。路径无观测报现有 `verify.header-unreadable`；路径已观测而类型缺失、非法或非 JavaScript，报新增 `verify.worker-script-mime-invalid`，路径 `/identity/serviceWorkerUrl`，消息不回显实收值。
+
+`PwaVerifyReleaseInput` 新增可选 `workerMimeObserved?: PwaObservedResponses`；省略时不执行新检查。`VERIFICATION_CHECKS` 末尾追加 `worker-mime`，`verifyRelease` 在既有检查后运行它；旧调用方不传新属性时既有报告逐字节不变。所有拓扑的发布必需集增加 `worker-mime`；调用方可复用采集 `response-headers` 时的同一组实收响应头，无需重复请求。检查范围仅为主脚本，不宣称覆盖 worker 的导入脚本、manifest MIME 或其他资源类型。
+
+验收：JavaScript MIME 正例（`text/javascript`、`application/javascript`、带 `charset` 参数）通过；`text/plain`、缺失/非法类型失败；无观测单独报错；无值回显；省略新输入时报告兼容；覆盖校验指出缺少 `worker-mime`；Cloudflare 核验工具复用既有 worker 头并在错误 MIME 时拒绝发布；现有浏览器 MIME 正反例与门禁结论一致。

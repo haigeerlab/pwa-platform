@@ -21,8 +21,8 @@
 
 | 拓扑 | `requiredChecks` |
 |---|---|
-| 独立源，或同源根应用 | `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers` |
-| 同源子应用 | 上述五项，加 `release-order`；必须传入实际线上根计划 |
+| 独立源，或同源根应用 | `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`、`worker-mime` |
+| 同源子应用 | 上述六项，加 `release-order`；必须传入实际线上根计划 |
 
 可移植 v4 计划在相应行之外还要求 `deployment-origin`。外部编排器对**每个实际 HTTPS 域名**
 分别采集完整平台路径的最终响应 URL、HTTP 状态码、响应头与该域名的旧资源可用性，并以
@@ -32,7 +32,7 @@
 
 调用方采集公开产物路径、响应头（含公开 HTML 的响应头，`htmlObserved`）、完整成功历史和当前可用资产路径，再显式传给
 build-verifier。采集公开 HTML 的响应头时跟随同源重定向，记录最终响应的头（[ADR-0032](../adr/0032-html-response-header-check.md)）。
-直接拿 build-verifier 导出的 `VERIFICATION_CHECKS` 当必需集的调用方，升级到包含 `html-headers` 的版本后会要求该检查。`release-retention` 的历史必须是同一发布线完整的新到旧记录；Vite 构建不持有
+`worker-mime` 复用 worker 已采集的响应头判断实收 `Content-Type`，不新增请求（[ADR-0051](../adr/0051-worker-script-mime-release-check.md)）。直接拿 build-verifier 导出的 `VERIFICATION_CHECKS` 当必需集的调用方，升级后会要求 `worker-mime`。`release-retention` 的历史必须是同一发布线完整的新到旧记录；Vite 构建不持有
 这些生产事实，不能声称该检查已通过。
 
 **首次发布与身份迁移例外。** 首次发布必须显式运行身份基线检查并保留
@@ -64,6 +64,8 @@ build-verifier。采集公开 HTML 的响应头时跟随同源重定向，记录
 | 私有 HTML 与数据（人工核对） | `private`、`no-store` | `public`、`immutable` |
 
 - **判定方式。** 逐个指令比较：必须包含的指令都在、不得包含的指令都不在，即为符合；其他不冲突的指令不影响结果。
+- **规则与功能的对应证据。** [本地响应头因果实验](../../tasks/examples-browser-e2e/header-causality-verification.md)逐项记录了头值、浏览器请求、更新与离线表现，以及机器门禁结果。本表是项目发布约定；门禁不通过不自动等于浏览器功能已经失效。例如 `max-age=0, must-revalidate` 在实测 Chrome 中重新取到了 HTML，但字面规则仍要求 `no-cache`。
+- **worker MIME。** 独立的 `worker-mime` 检查要求 worker 主脚本实收 `Content-Type` 属于浏览器认可的 JavaScript MIME；`response-headers` 仍只判 `Cache-Control`。本地正反例中，`text/plain` 使注册与离线启动失败，`response-headers` 通过而 `worker-mime` 失败。
 - **私有优先。** 私有 HTML 按"私有 HTML 与数据"一行判定，不按"公开 HTML"一行。
 - 核对时逐类抽取实际响应头，写入验证记录。
 - **worker 脚本的请求量。** 应用启用 client-runtime 的自动检查更新（`updateCheck`，[ADR-0020](../adr/0020-client-update-check.md)）后，每个可见标签页每隔 `intervalMs` 请求一次 `serviceWorkerUrl`，且绕过 HTTP 缓存；以 60 秒下限计，每个可见标签页每小时最多 60 次，隐藏的标签页不请求。评估源站或 CDN 容量时计入这部分请求。

@@ -22,7 +22,7 @@ function verifyReleaseGateCoverage(
 
 - `required` 使用既有检查名，重复或未知名称是调用错误，抛出不回显宿主数据的 `TypeError`。
 - 输出只回答每个必需检查是否在 `report.checks` 中出现；`ok` 不替代 `report.ok`，也不判断手工证据。
-- 独立源应用的通常机器必需集为 `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`（[ADR-0032](../docs/adr/0032-html-response-header-check.md)）；共享源子应用额外包含 `release-order`。选择集合属于外部发布协议，而非包内环境推断。
+- 独立源应用的通常机器必需集为 `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`（[ADR-0032](../docs/adr/0032-html-response-header-check.md)）、`worker-mime`（[ADR-0051](../docs/adr/0051-worker-script-mime-release-check.md)）；共享源子应用额外包含 `release-order`。选择集合属于外部发布协议，而非包内环境推断。
 
 **不做：** 网络采集、文件写入、部署、基线更新、首次发布判断、CI 或浏览器证据判定，以及改变 `verifyRelease` 现有的可选输入语义。
 

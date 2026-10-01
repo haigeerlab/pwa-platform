@@ -8,7 +8,7 @@ import type { PwaPlan } from "@pwa-platform/contracts";
  *
  * The set itself comes from build-verifier's `requiredReleaseChecks` (ADR-0025 addendum), so this tool cannot drift
  * from the protocol's definition (review risk R4). A standalone origin and a shared-origin root both need the same
- * five checks.
+ * six checks.
  *
  * A shared-origin child additionally needs `release-order`, which can only be verified against the root plan
  * actually deployed on the origin (ADR-0019). This tool only ever observes the single registered test target it was

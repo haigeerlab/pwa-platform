@@ -5,6 +5,7 @@ import { compareIdentityBaseline, comparePortableIdentityBaseline } from "./base
 import { observedFromDeployment, verifyDeploymentOrigin, type PwaPortableDeploymentEvidence } from "./deployment.js";
 import { verifyResponseHeaders, type PwaObservedResponses } from "./headers.js";
 import { verifyHtmlHeaders } from "./html-headers.js";
+import { verifyWorkerScriptMime } from "./worker-mime.js";
 import { isSharedOriginChild, verifyReleaseOrder } from "./release-order.js";
 import { verifyReleaseRetention, type PwaReleaseRetentionInput } from "./release-retention.js";
 import type { PwaVerificationCheck, PwaVerificationReport } from "./report.js";
@@ -44,6 +45,8 @@ export type PwaVerifyReleaseInput = {
    * final response's headers; this package only judges the headers it is given.
    */
   readonly htmlObserved?: PwaObservedResponses;
+  /** Main worker script response headers for the independent MIME check; omission skips it for fixed plans. */
+  readonly workerMimeObserved?: PwaObservedResponses;
   /** Required for a portable plan; final URLs and headers must be collected at the actual target origin. */
   readonly deployment?: PwaPortableDeploymentEvidence;
   /** For a portable shared child, the live root's record including the origin where it is deployed. */
@@ -52,7 +55,7 @@ export type PwaVerifyReleaseInput = {
 
 /**
  * Runs checks in the order `VERIFICATION_CHECKS` lists them. A portable plan always runs response-header,
- * HTML-header and deployment-origin checks, so missing deployment evidence is a failure.
+ * HTML-header, deployment-origin and worker-MIME checks, so missing deployment evidence is a failure.
  *
  * Other checks whose inputs were omitted do not appear in `checks`. A fixed plan with no inputs has an empty
  * report with `ok: true`; callers must compare `checks` with `requiredReleaseChecks(plan)` as well as checking
@@ -92,6 +95,9 @@ export function verifyRelease(input: PwaVerifyReleaseInput): PwaVerificationRepo
   }
   if (input.plan.schemaVersion === 4) {
     checks.push(verifyDeploymentOrigin(input.plan, input.deployment, input.retention?.available));
+    checks.push(verifyWorkerScriptMime(input.plan, observedFromDeployment(input.deployment)));
+  } else if (Object.hasOwn(input, "workerMimeObserved")) {
+    checks.push(verifyWorkerScriptMime(input.plan, input.workerMimeObserved as PwaObservedResponses));
   }
 
   return {

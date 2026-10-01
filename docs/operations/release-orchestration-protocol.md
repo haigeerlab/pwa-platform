@@ -93,16 +93,17 @@ prepared -> verified -> deployed -> recorded
 1. 取得发布线锁，分配 `releaseAttemptId`；读取该槽位当前基线、完整成功历史和（如适用）实际
    线上根计划。尝试尚未采齐事实前不进入状态机。
 2. 验证候选计划，并采集本次构建的绝对产物路径。向受控类生产环境部署候选或等价不可变
-   产物后，采集公开资源的响应头与当前可用资产路径；采集不应携带用户会话。事实齐全后写入
+   产物后，采集公开资源的响应头（含 worker `Content-Type`）与当前可用资产路径；采集不应携带用户会话。事实齐全后写入
    `prepared` 记录。对 v4 可移植计划，每个目标域名分别请求计划要求的 HTML、worker、恢复
    worker、manifest、预缓存及旧资源，跟随重定向后保存最终 URL、HTTP 状态码与响应头。`deployment.responses`
    以计划中的根绝对路径为键，每项形如 `{ finalUrl, status, headers }`；最终 URL 必须仍在目标 origin 且保留该路径，状态码须为 200。编排器必须保证
    这些响应来自本次实际部署，验证器无法证明调用方是否真的发起过网络请求。
 3. 调用 `verifyRelease(candidatePlan, collectedFacts)`。独立源与共享源根应用的机器必需集是
-   `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`；共享源子应用额外
+   `artifacts`、`response-headers`、`identity-baseline`、`release-retention`、`html-headers`、`worker-mime`；共享源子应用额外
    要求 `release-order`，并传入线上根计划。v4 还必须执行 `deployment-origin`，并传入本次
    `deployment: { targetOrigin, responses }`；v4 共享子应用传入该域名实际线上根应用的
-   `deployedRoot: { origin, plan, workerFinalUrl }`。根计划与根 worker 最终 URL 均须属于本域名。
+   `deployedRoot: { origin, plan, workerFinalUrl }`。根计划与根 worker 最终 URL 均须属于本域名。v3 调用方另传
+   `workerMimeObserved`；v4 从同一份 `deployment.responses` 判断 MIME，不另发请求。
 4. 调用 `verifyReleaseGateCoverage(report, requiredReleaseChecks(candidatePlan))`（`requiredReleaseChecks` 由 build-verifier 按上一步的规则从计划推导，不要手写清单；ADR-0025 增补）。正常发布只有在 `report.ok` 与
    覆盖结果的 `ok` 都为 `true` 时，机器门禁才通过；二者缺一不可。
 5. 将 CI、浏览器矩阵、原生安装、恢复演练和类生产环境核对的证据引用附入记录。它们是

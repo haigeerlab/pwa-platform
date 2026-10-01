@@ -123,3 +123,12 @@
 | capability-map | delivered | `spec/CAPABILITY-MAP.md` | 已登记本模块边界与依赖。 |
 | capability-comparison | delivered | `tasks/capability-comparison/verification.md` | 工具对照与固定提交的成熟应用矩阵已交付并完成响应式核验。 |
 | developer-entry | delivered | `README.md`、`website/index.md`、`website/guide/integration-by-capability.md` | 仓库入口、文档站首页与按能力接入路径已更新。 |
+
+## 增量计划：运维响应头证据页（2026-10-01）
+
+1. 核对本地[因果实验](../examples-browser-e2e/header-causality-verification.md)、文档站旧 `0.2.4` 口径、npm `latest=0.2.5` 与适用规范，确定“配置清单”和“实测证据”分工。验收：不把项目 `no-cache` 门禁写成所有 PWA 的规范要求，不把待发布 `worker-mime` 写成现行 npm 能力。
+2. 新增 `website/operations/header-evidence.md` 并加入导航；从 `hosting.md` 与 `release.md` 互链。验收：运维可从一页读到路径、字段、建议值、功能影响、实测正反例和未验证项。
+3. 更新既有 Nginx/CDN 示例、自检和机器检查描述中的过期语句。验收：worker MIME 配置明确，示例检查实际 GET 最终响应，现行发布检查数量与版本一致。
+4. 运行 `pnpm docs:build`、站内链接检查与 `git diff --check`；核对生成页包含表格、命令及版本提示。只编辑文档源，不发布文档站或 npm。
+
+**状态：** 四步本地完成；预览的 375px/1280px 路由与版式核验通过，记录见[验证记录](verification.md)。

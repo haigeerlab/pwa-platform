@@ -12,7 +12,7 @@ const plan = JSON.parse(readFileSync(new URL("./fixtures/storefront.plan.json", 
 const publishedPaths = [...plan.precache.map(({ url }) => url), plan.identity.serviceWorkerUrl, plan.identity.manifestUrl];
 
 const observed = {
-  [plan.identity.serviceWorkerUrl]: { "cache-control": "no-cache" },
+  [plan.identity.serviceWorkerUrl]: { "cache-control": "no-cache", "content-type": "application/javascript" },
   [plan.identity.manifestUrl]: { "cache-control": "no-cache" },
   ...Object.fromEntries(
     plan.precache
@@ -50,7 +50,7 @@ const baseArgs = {
   baseline: { found: true, value: { ...plan.identity } } as const,
 };
 
-const requiredChecks = ["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers"] as const;
+const requiredChecks = ["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers", "worker-mime"] as const;
 
 describe("assemblePreDeployInput / history", () => {
   it("treats every production deployment as a previous release, ordered newest to oldest", () => {

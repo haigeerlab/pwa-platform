@@ -33,6 +33,33 @@
   overflow-x: auto;
 }
 
+.header-evidence .vp-doc table:first-of-type {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.header-evidence .vp-doc table:first-of-type th:nth-child(1),
+.header-evidence .vp-doc table:first-of-type td:nth-child(1) {
+  min-width: 11rem;
+}
+
+.header-evidence .vp-doc table:first-of-type th:nth-child(2),
+.header-evidence .vp-doc table:first-of-type td:nth-child(2) {
+  min-width: 19rem;
+}
+
+.header-evidence .vp-doc table:first-of-type th:nth-child(3),
+.header-evidence .vp-doc table:first-of-type td:nth-child(3) {
+  min-width: 15rem;
+}
+
+.header-evidence .vp-doc table:first-of-type th:nth-child(4),
+.header-evidence .vp-doc table:first-of-type td:nth-child(4) {
+  min-width: 18rem;
+}
+
 .production-home .vp-doc table,
 .application-comparison .vp-doc table,
 .platform-test-matrix .vp-doc table {

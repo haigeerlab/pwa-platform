@@ -88,6 +88,7 @@ describe("v1 enumerations", () => {
       "verify.header-missing-directive",
       "verify.header-forbidden-directive",
       "verify.header-unreadable",
+      "verify.worker-script-mime-invalid",
       "verify.baseline-invalid",
       "verify.baseline-missing",
       "verify.baseline-mismatch",

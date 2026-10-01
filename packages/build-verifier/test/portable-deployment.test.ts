@@ -40,7 +40,10 @@ function evidence(origin: string) {
     responses: Object.fromEntries(requiredDeploymentPaths(candidate).map((path) => [path, {
       finalUrl: `${origin}${path}`,
       status: 200,
-      headers: { "cache-control": path.includes("main-12345678") ? "public, max-age=31536000, immutable" : "no-cache" },
+      headers: {
+        "cache-control": path.includes("main-12345678") ? "public, max-age=31536000, immutable" : "no-cache",
+        ...(path === candidate.identity.serviceWorkerUrl ? { "content-type": "text/javascript" } : {}),
+      },
     }])),
   };
 }
@@ -60,6 +63,7 @@ describe("portable release evidence", () => {
     expect(gate(A).ok).toBe(true);
     expect(gate(B).ok).toBe(true);
     expect(requiredReleaseChecks(candidate)).toContain("deployment-origin");
+    expect(requiredReleaseChecks(candidate)).toContain("worker-mime");
     expect(verifyReleaseGateCoverage(gate(A), requiredReleaseChecks(candidate)).ok).toBe(true);
     const missing = verifyRelease({ plan: candidate, published: [], baseline: null, retention: { asOfMs: 1, previous: [], available: [] } });
     expect(missing.ok).toBe(false);
@@ -73,6 +77,23 @@ describe("portable release evidence", () => {
     const result = gate(B, { ...evidence(A), targetOrigin: B });
     expect(result.ok).toBe(false);
     expect(result.diagnostics.map((finding) => finding.code)).toContain("verify.deployment-response-mismatch");
+  });
+
+  it("uses the deployed worker response for MIME and blocks a non-JavaScript type", () => {
+    const observed = evidence(A);
+    const worker = observed.responses[candidate.identity.serviceWorkerUrl];
+    if (!worker) throw new Error("missing worker fixture");
+    const result = gate(A, {
+      ...observed,
+      responses: { ...observed.responses, [candidate.identity.serviceWorkerUrl]: {
+        ...worker, headers: { ...worker.headers, "content-type": "text/plain" },
+      } },
+    });
+    expect(result.checks.find((entry) => entry.name === "response-headers")?.ok).toBe(true);
+    expect(result.checks.find((entry) => entry.name === "deployment-origin")?.ok).toBe(true);
+    expect(result.checks.find((entry) => entry.name === "worker-mime")?.diagnostics.map(({ code }) => code))
+      .toEqual(["verify.worker-script-mime-invalid"]);
+    expect(result.ok).toBe(false);
   });
 
   it.each([204, 404])("rejects a required path that returns HTTP %i", (status) => {

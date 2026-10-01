@@ -270,7 +270,7 @@ describe("runVerification / pre-deploy: an empty production history", () => {
     const coverage = JSON.parse(readFileSync(resolve(outDir, "coverage.json"), "utf8"));
     expect(coverage.missing).toContain("release-retention");
     expect(coverage.ok).toBe(false);
-    expect(coverage.requiredChecks).toEqual(["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers"]);
+    expect(coverage.requiredChecks).toEqual(["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers", "worker-mime"]);
   });
 });
 

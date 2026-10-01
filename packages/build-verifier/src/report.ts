@@ -11,6 +11,7 @@ export const VERIFICATION_CHECKS = [
   "release-retention",
   "html-headers",
   "deployment-origin",
+  "worker-mime",
 ] as const;
 
 export type PwaVerificationCheckName = (typeof VERIFICATION_CHECKS)[number];

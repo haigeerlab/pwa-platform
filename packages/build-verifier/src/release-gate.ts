@@ -41,8 +41,8 @@ export function verifyReleaseGateCoverage(
 
 /**
  * The machine-required checks for releasing `plan`, as the release orchestration protocol defines them (ADR-0025
- * addendum): every topology needs artifacts, response headers, the identity baseline, release retention and HTML
- * headers; a shared-origin child also needs release order. Returned in `VERIFICATION_CHECKS` order, ready for
+ * addendum): every topology needs artifacts, response headers, the identity baseline, release retention, HTML
+ * headers and worker MIME; a shared-origin child also needs release order. Returned in `VERIFICATION_CHECKS` order, ready for
  * `verifyReleaseGateCoverage`. It only reads the plan: whether a first release may pass without a baseline stays a
  * release-system decision, so `identity-baseline` is always required.
  */

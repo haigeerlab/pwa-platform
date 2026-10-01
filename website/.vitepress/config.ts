@@ -73,6 +73,7 @@ export default defineConfig({
           { text: "默认值与时间约定", link: "/reference/conventions" },
           { text: "跨平台测试证据", link: "/reference/platform-test-matrix" },
           { text: "服务器与 CDN 配置", link: "/operations/hosting" },
+          { text: "响应头配置实测依据", link: "/operations/header-evidence" },
           { text: "部署与发布", link: "/operations/release" },
         ],
       },

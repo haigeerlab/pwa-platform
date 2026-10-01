@@ -348,3 +348,16 @@ H1 → 确认 → H2 → H3 → H4。
 | decisions | delivered | `docs/adr/0032-html-response-header-check.md` | ADR-0032 已接受（2026-09-22）。 |
 | release-and-incident | delivered | `docs/operations/release-and-incident-runbook.md` | 2026-09-22 起必需集含 `html-headers`，响应头基线注明公开 HTML 由机器检查。 |
 | build-verifier | delivered | `spec/build-verifier.md` | 规格含三次修订（保留窗口、覆盖判定、HTML 响应头）与对应验证记录。 |
+
+## 修订计划：worker 主脚本 MIME 发布检查（Task WM，2026-10-01）
+
+规格见[本模块修订](../../spec/build-verifier.md#修订worker-主脚本-mime-发布检查2026-10-01项目所有者已确认)，决定见 [ADR-0051](../../docs/adr/0051-worker-script-mime-release-check.md)。[对照实验](../examples-browser-e2e/header-causality-verification.md)已复现错误 MIME 阻断注册而现有头门禁通过；项目所有者已确认新增独立检查和诊断码。
+
+1. **WM1 契约与红灯**：先提交 `worker-mime` 正反例、无观测、报告兼容与覆盖测试；新增诊断码的契约快照断言先失败。验收：失败指向缺失的新检查而非环境错误。
+2. **WM2 纯检查实现**：在 contracts 增加 `verify.worker-script-mime-invalid`；build-verifier 增加 MIME 判断和可选报告输入，保持零网络、零写盘和旧报告兼容。验收：contracts/build-verifier 测试、类型检查、构建通过。
+3. **WM3 发布调用方**：Cloudflare 核验工具将已采集的 `observed` 同时交给 `workerMimeObserved`；必需集由 `requiredReleaseChecks` 给出。更新组装、运行与错误 MIME 反例。验收：核验工具单元测试证明失败可见，既有事实文件无新敏感内容。
+4. **WM4 浏览器与文档收口**：浏览器 MIME 正反例并列 `response-headers` 与新检查结果；同步手册、发布编排协议、包边界、验证记录；执行相关包测试、Chrome 对照、lint/typecheck/build、包导出检查与 `git diff --check`。失败时先定位，不降低门禁或删反例。
+
+顺序 WM1 → WM2 → WM3 → WM4。改动限于新增检查、诊断、发布工具接线与对应文档；保留 `no-cache` 规则，不修改线上配置或发布 npm 包。
+
+**执行状态（2026-10-01）：** WM1–WM4 已完成；证据见[本模块验证记录](verification.md)。Cloudflare 真实部署与 npm 发布不在本次本地增量内。

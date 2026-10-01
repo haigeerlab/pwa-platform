@@ -29,17 +29,18 @@ function sharedOriginPlan(identity: PwaIdentity, children: readonly PwaIdentity[
 }
 
 describe("requiredChecksFor", () => {
-  it("requires the five checks for a standalone-origin plan", () => {
+  it("requires the six checks for a standalone-origin plan", () => {
     expect(requiredChecksFor(storefront)).toEqual([
       "artifacts",
       "response-headers",
       "identity-baseline",
       "release-retention",
       "html-headers",
+      "worker-mime",
     ]);
   });
 
-  it("requires the same five checks for a shared-origin root plan", () => {
+  it("requires the same six checks for a shared-origin root plan", () => {
     const root = sharedOriginPlan(storefront.identity, [childIdentity]);
     expect(requiredChecksFor(root)).toEqual([
       "artifacts",
@@ -47,6 +48,7 @@ describe("requiredChecksFor", () => {
       "identity-baseline",
       "release-retention",
       "html-headers",
+      "worker-mime",
     ]);
   });
 

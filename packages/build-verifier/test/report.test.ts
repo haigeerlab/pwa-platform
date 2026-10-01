@@ -21,6 +21,7 @@ describe("verify.* diagnostic codes", () => {
       "verify.header-missing-directive",
       "verify.header-forbidden-directive",
       "verify.header-unreadable",
+      "verify.worker-script-mime-invalid",
       "verify.baseline-invalid",
       "verify.baseline-missing",
       "verify.baseline-mismatch",
@@ -79,7 +80,7 @@ describe("check", () => {
 });
 
 describe("VERIFICATION_CHECKS", () => {
-  it("names the seven checks in the order verifyRelease runs them", () => {
+  it("names the eight checks in the order verifyRelease runs them", () => {
     expect(VERIFICATION_CHECKS).toEqual([
       "artifacts",
       "response-headers",
@@ -88,6 +89,7 @@ describe("VERIFICATION_CHECKS", () => {
       "release-retention",
       "html-headers",
       "deployment-origin",
+      "worker-mime",
     ]);
   });
 

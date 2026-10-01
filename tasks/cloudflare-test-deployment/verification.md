@@ -320,3 +320,7 @@ React/Vue 项目、实际 origin、线上静态响应头与桌面 Chrome 首次�
 | 最早需保留部署的创建时间 | 2026-09-21T16:12:01Z | 2026-09-21T16:13:23Z |
 
 **结论：** 两站最近三次生产发布的 R2 发布包、部署索引与元数据链完整，当前发布文件与线上一致，保留期内的旧指纹资源仍可从线上取回；证据跨度从 2026-09-21 起超过七个自然日，且期间没有为取证重新部署。F2 通过。F3（真正第二台机器上的恢复）仍待项目所有者执行，T5 与文档交付状态继续 `pending`，待 F4 复核。
+
+## worker MIME 门禁接线（2026-10-01，本地验证）
+
+上线前和上线后组装复用已有的 worker 响应头，把 `workerMimeObserved` 传给 build-verifier；当前必需集增加 `worker-mime`。`pnpm test` 全仓通过，其中 examples-browser-e2e 249 项。核验工具的本地 HTTP 反例把 worker `Content-Type` 改为 `text/plain`，报告中 `response-headers` 通过、`worker-mime` 失败且结论未通过；没有为这项验证新增云端部署或改动生产响应头。F3、T5 与文档交付的既有状态不因此改变。
