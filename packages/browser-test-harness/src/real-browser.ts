@@ -11,6 +11,7 @@ import {
   readIosSessionTests,
   remoteAutomationHint,
   closeReleasedIosProxies,
+  IOS_PORT_POOL,
   iosStorageProbeScript,
   setIosNetworkOffline,
   setIosSessionOpen,
@@ -669,6 +670,14 @@ async function cleanupOrigins(session: WebDriverSession, origins: readonly strin
     if (left.registrations !== 0 || left.caches !== 0) {
       throw new Error(`iPhone cleanup of ${origin} left ${left.registrations} service worker registration(s) and ${left.caches} cache(s)`);
     }
+    // Ports are reused across tests, so a worker or cache of this test must be gone for good before the next test
+    // reaches the same origin: look again on a fresh load after a short pause.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await session.inWindow(keep, () => session.navigate(`${origin}${CLEANUP_PATH}`));
+    const again = (await session.evaluate(keep, serializePageScript(iosCleanupScript, undefined), noop)) as CleanupReport;
+    if (again.registrations !== 0 || again.caches !== 0) {
+      throw new Error(`iPhone cleanup of ${origin} found ${again.registrations} service worker registration(s) and ${again.caches} cache(s) again after it finished`);
+    }
     // Storage that cannot be written would otherwise surface as a cascade of unrelated failures in later tests.
     if (origin === origins[origins.length - 1]) await assertStorageHealthy(session, keep);
   }
@@ -684,7 +693,7 @@ async function assertStorageHealthy(session: WebDriverSession, handle: string): 
 
 /** Storage health check at worker start: cleans a short-lived proxy origin (no upstream is needed), which probes storage there. */
 async function checkStorage(session: WebDriverSession, device: NonNullable<ReturnType<typeof readIosDevice>>): Promise<void> {
-  const proxy = await startIosProxy(device, 1, { hostname: "localhost" });
+  const proxy = await startIosProxy(device, 1, { hostname: "localhost", ports: IOS_PORT_POOL });
   try {
     await cleanupOrigins(session, [proxy.origin]);
   } finally {

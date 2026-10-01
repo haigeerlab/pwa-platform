@@ -1,5 +1,5 @@
 import { exposeToAndroid } from "./android.js";
-import { readIosDevice, startIosProxy, type ExposedServer } from "./ios.js";
+import { IOS_PORT_POOL, readIosDevice, startIosProxy, type ExposedServer } from "./ios.js";
 
 export type ExposeOptions = {
   /** Host name of the origin tests use: `localhost` (default) or, for a server that only answers it, `127.0.0.1`. */
@@ -17,6 +17,6 @@ export type ExposeOptions = {
 export async function exposeServer(port: number, options: ExposeOptions = {}, env: Readonly<Record<string, string | undefined>> = process.env): Promise<ExposedServer> {
   const hostname = options.hostname ?? "localhost";
   const ios = readIosDevice(env);
-  if (ios !== undefined) return startIosProxy(ios, port, { hostname, ...(options.prepareCleanup === undefined ? {} : { prepareCleanup: options.prepareCleanup }) });
+  if (ios !== undefined) return startIosProxy(ios, port, { hostname, ports: IOS_PORT_POOL, ...(options.prepareCleanup === undefined ? {} : { prepareCleanup: options.prepareCleanup }) });
   return { origin: `http://${hostname}:${port}`, release: await exposeToAndroid(port, env) };
 }

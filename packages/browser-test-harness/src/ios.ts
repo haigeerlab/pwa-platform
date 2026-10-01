@@ -234,7 +234,49 @@ export async function closeReleasedIosProxies(): Promise<void> {
 /** A server made reachable from the test browser: the origin tests must use, and the call that undoes it. */
 export type ExposedServer = { readonly origin: string; release(): Promise<void> };
 
+/**
+ * Ports the proxies use on the LAN address: a small fixed pool, so tests reuse a handful of origins instead of creating
+ * a new origin (and new Safari storage) per test.
+ */
+export const IOS_PORT_POOL: readonly number[] = [8441, 8442, 8443, 8444, 8445, 8446, 8447, 8448];
+
+/** The lowest port of `pool` not in `taken`, or `undefined` when every port is taken. */
+export function lowestFreePort(pool: readonly number[], taken: ReadonlySet<number>): number | undefined {
+  return [...pool].sort((a, b) => a - b).find((port) => !taken.has(port));
+}
+
+const portsInUse = new Set<number>();
+
+/** Listens on the lowest pool port that is free here and on the machine; a random port when no pool is given. */
+async function listenOnPool(server: ReturnType<typeof createHttpsServer>, host: string, pool: readonly number[] | undefined): Promise<number> {
+  const attempt = (port: number): Promise<number> =>
+    new Promise<number>((resolveListen, rejectListen) => {
+      server.once("error", rejectListen);
+      server.listen(port, host, () => {
+        server.off("error", rejectListen);
+        resolveListen((server.address() as AddressInfo).port);
+      });
+    });
+  if (pool === undefined) return attempt(0);
+  const skipped = new Set(portsInUse);
+  for (;;) {
+    const port = lowestFreePort(pool, skipped);
+    if (port === undefined) throw new Error(`No free port in the iPhone proxy pool ${pool[0]}-${pool[pool.length - 1]} (${portsInUse.size} in use by this process)`);
+    portsInUse.add(port);
+    try {
+      return await attempt(port);
+    } catch (error) {
+      portsInUse.delete(port);
+      // Taken by another process: try the next port.
+      if ((error as NodeJS.ErrnoException).code !== "EADDRINUSE") throw error;
+      skipped.add(port);
+    }
+  }
+}
+
 export type ProxyOptions = {
+  /** Ports to choose from, lowest free first (`IOS_PORT_POOL`); a random free port when omitted. */
+  readonly ports?: readonly number[];
   /** Host name the upstream server expects in `Host` (`localhost` for the fixture servers, `127.0.0.1` for some others). */
   readonly hostname: string;
   /** Called before cleanup loads the cleanup document: bring the upstream back online and release held requests. */
@@ -301,14 +343,8 @@ export async function startIosProxy(device: IosDevice, port: number, options: Pr
     client.once("close", () => upstream.destroy());
   });
 
-  await new Promise<void>((resolveListen, rejectListen) => {
-    proxy.once("error", rejectListen);
-    proxy.listen(0, device.lanIp, () => {
-      proxy.off("error", rejectListen);
-      resolveListen();
-    });
-  });
-  origin = `https://${device.lanIp}:${(proxy.address() as AddressInfo).port}`;
+  const listeningPort = await listenOnPool(proxy, device.lanIp, options.ports);
+  origin = `https://${device.lanIp}:${listeningPort}`;
   const exposure: Exposure = {
     origin,
     prepareCleanup: options.prepareCleanup ?? (() => undefined),
@@ -323,6 +359,7 @@ export async function startIosProxy(device: IosDevice, port: number, options: Pr
     liveExposures.delete(exposure);
     for (const socket of sockets) socket.destroy();
     await new Promise<void>((resolveClose) => proxy.close(() => resolveClose()));
+    portsInUse.delete(listeningPort);
   };
   return {
     origin,

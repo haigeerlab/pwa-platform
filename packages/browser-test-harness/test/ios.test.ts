@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readAndroidSerial } from "../src/android.js";
 import { exposeServer } from "../src/expose.js";
-import { CLEANUP_PATH, closeReleasedIosProxies, describeIosSafari, iosCapabilities, readIosDevice, readIosSessionTests, remoteAutomationHint, setIosNetworkOffline, setIosSessionOpen, startIosProxy, storageHealthError, trustIosTestCa } from "../src/ios.js";
+import { CLEANUP_PATH, closeReleasedIosProxies, describeIosSafari, iosCapabilities, lowestFreePort, readIosDevice, readIosSessionTests, remoteAutomationHint, setIosNetworkOffline, setIosSessionOpen, startIosProxy, storageHealthError, trustIosTestCa } from "../src/ios.js";
 import { readRealBrowserKind, requestedCapabilities } from "../src/webdriver.js";
 
 const ENV = { PWA_IOS_UDID: "00008140-001E51203A81801C", PWA_IOS_LAN_IP: "192.168.100.71", PWA_IOS_TLS_DIR: "/tmp/tls" };
@@ -206,8 +206,34 @@ describe("iPhone HTTPS proxy", () => {
     await expect(get(proxy.origin, CLEANUP_PATH)).rejects.toThrow();
   });
 
+  it("serves from pool ports on the LAN address, frees a port on release and fails when the pool is exhausted", async () => {
+    const free = createServer();
+    await new Promise<void>((done) => free.listen(0, "127.0.0.1", done));
+    const base = (free.address() as AddressInfo).port;
+    await new Promise((done) => free.close(done));
+    const pool = [base, base + 1];
+    const device = { udid: "U", lanIp: "127.0.0.1", tlsDir: directory };
+    const first = await startIosProxy(device, upstreamPort, { hostname: "localhost", ports: pool });
+    const second = await startIosProxy(device, upstreamPort, { hostname: "localhost", ports: pool });
+    expect([first.origin, second.origin]).toEqual([`https://127.0.0.1:${base}`, `https://127.0.0.1:${base + 1}`]);
+    await expect(startIosProxy(device, upstreamPort, { hostname: "localhost", ports: pool })).rejects.toThrow(/No free port in the iPhone proxy pool/);
+    await first.release();
+    const third = await startIosProxy(device, upstreamPort, { hostname: "localhost", ports: pool });
+    expect(third.origin).toBe(`https://127.0.0.1:${base}`);
+    await second.release();
+    await third.release();
+  });
+
   it("explains an unreadable certificate directory", async () => {
     await expect(startIosProxy({ udid: "U", lanIp: "127.0.0.1", tlsDir: join(directory, "missing") }, upstreamPort, { hostname: "localhost" })).rejects.toThrow(/Cannot read .*server\.key \(PWA_IOS_TLS_DIR\)/);
+  });
+});
+
+describe("proxy port pool", () => {
+  it("allocates the lowest free port and reuses a released one", () => {
+    expect(lowestFreePort([8443, 8441, 8442], new Set())).toBe(8441);
+    expect(lowestFreePort([8441, 8442, 8443], new Set([8441, 8443]))).toBe(8442);
+    expect(lowestFreePort([8441, 8442], new Set([8441, 8442]))).toBeUndefined();
   });
 });
 
