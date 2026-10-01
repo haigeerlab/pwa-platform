@@ -10,7 +10,7 @@ pageClass: platform-test-matrix
 
 | 符号 | 等级 | 含义 | 能否写成生产保证 |
 | --- | --- | --- | --- |
-| ● | E4 发布门禁 | 进入 0.2.5 候选门禁：`release/0.2.5` @ `565cfa3` 全新克隆，Chrome 154 全量 295 项浏览器用例通过（0.2.4 为 289 项；0.2.3 为 Chrome 153 的 281 项；0.1.0 另在 Chrome 154 与 153 各跑 228 项） | 仅限桌面 Chrome 的 `desktop` 发布通道 |
+| ● | E4 发布门禁 | 进入 0.2.5 候选门禁：`release/0.2.5` @ `6fc9553` 全新克隆，Chrome 154 全量 295 项浏览器用例通过（0.2.4 为 289 项；0.2.3 为 Chrome 153 的 281 项；0.1.0 另在 Chrome 154 与 153 各跑 228 项） | 仅限桌面 Chrome 的 `desktop` 发布通道 |
 | ▲ | E2 自动化 | 真实浏览器自动化但不阻塞发布：Edge 为 CI 不阻塞任务与本机 Edge 154 全量运行；Safari／Firefox 为本机系统浏览器经 WebDriver 运行（[ADR-0047](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0047-local-real-safari-and-firefox-webdriver-runs.md)）；Android 为实体设备上的 Chrome 经 USB 调试端口运行（[ADR-0048](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0048-android-real-device-chrome-automation.md)）。Playwright 自带 WebKit／Firefox 的引擎冒烟不是真实浏览器，不计入格子 | 不能 |
 | ◐ | E3 人工观察 | 在记录的真实浏览器或实体设备上操作并观察结果；设备、版本或场景不完整 | 只能声明该设备、版本和场景的结果 |
 | ○ | — | 没有记录 | 不能 |
