@@ -1,7 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.2.5 (2026-09-30)
 
+- **The onboarding checklist self-checks the production build before handing over (`@pwa-platform/vite`, ai-onboarding S7/S8):** a new step 6 has the assistant open the production build with `vite preview` (on the port of the identity's `origin`) and confirm a single manifest link, worker registration and control, and that the app shell and the offline page still load offline; onboarding counts as complete only when all of them pass, and deployment checks follow as step 7. The self-check uses a separate browser profile, not the person's everyday browser, and unregisters the worker and clears the site's data afterwards. Found by a scenario evaluation in which two assistants stopped at a green build (`tasks/ai-onboarding/verification.md`).
 - **`@pwa-platform/vite` no longer ships a copy of the docs (ADR-0045, 2026-09-30 addendum):** the package's `files` is back to `["dist", "skills"]` and `scripts/bundle-docs.mjs` is gone (about 140 KB less). The onboarding checklist now tells the assistant to open the docs site first and, when it is unreachable, to ask once where a copy of the PWA Platform repository is and read `website/<a>/<b>.md` there, comparing that copy's `packages/vite/package.json` version with the installed package and leaving a mismatch to the person. `pnpm check:publish` now rejects `docs` in any package's `files`. 0.2.4 still contains the bundled copy.
 
 ## 0.2.4 (2026-09-29)
