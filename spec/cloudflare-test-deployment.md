@@ -425,3 +425,7 @@
 | push-module | follow | 本模块不改变该事实源或既有验收结论。 |
 | cloudflare-test-deployment | create | 新增目标登记、操作手册与验证记录。 |
 | public-read-cache | follow | 本模块不改变该基线的权威文档或验收结论。 |
+
+## 修订：复用 worker 响应头执行 MIME 发布检查（2026-10-01）
+
+依 [ADR-0051](../docs/adr/0051-worker-script-mime-release-check.md)，上线前与上线后核验组装都把既有 `observed` 传给 `workerMimeObserved`，不额外请求 worker；独立源及同源根应用的当前必需集在 `html-headers` 后增加 `worker-mime`。线上 worker 返回非 JavaScript `Content-Type` 时，即使 `response-headers` 通过，报告也须失败；无 worker 头观测时保留明确诊断。上述较早的五项清单是当时增量的历史记录，当前执行以本修订和 `requiredReleaseChecks` 为准。

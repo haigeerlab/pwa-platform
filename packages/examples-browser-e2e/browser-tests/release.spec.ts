@@ -1,4 +1,4 @@
-// The five build-verifier checks a standalone-origin app's release gate requires (spec/release-gate-contract.md),
+// The six build-verifier checks a standalone-origin app's release gate requires (spec/release-gate-contract.md),
 // run against what the examples actually built and what the server actually serves.
 import {
   readIdentityBaseline,
@@ -35,7 +35,7 @@ for (const example of EXAMPLES) {
   test.describe(`${example} example · release checks`, () => {
     test.use({ fixtureSite: fixtureSite(example) });
 
-    test("the release report covers all five checks and passes", async ({ page, fixtureServer }) => {
+    test("the release report covers all six checks and passes", async ({ page, fixtureServer }) => {
       // The plan is assembled from the shipped worker, so first confirm the worker really is this app's: if the
       // scope or the cache namespace did not match the identity, everything below would be verifying some other
       // build's artifacts against this identity's baseline.
@@ -66,19 +66,21 @@ for (const example of EXAMPLES) {
       // below, against v1 and v2's real build output, where there actually is a prior release to retain.
       const retention: PwaReleaseRetentionInput = { asOfMs: Date.now(), previous: [], available: await publishedPaths(example, "v1") };
 
+      const observed = await collectHeaders(page, fixtureServer, paths);
       const report = verifyRelease({
         plan,
         published: await publishedPaths(example, "v1"),
-        observed: await collectHeaders(page, fixtureServer, paths),
+        observed,
         baseline: readIdentityBaseline({ directory: BASELINE_DIRECTORY, slot: BASELINE_SLOT }),
         retention,
         htmlObserved: await collectHeaders(page, fixtureServer, htmlPaths),
+        workerMimeObserved: observed,
       });
 
       // Asserted before `ok`, and deliberately: a check whose input is omitted does not appear in the report at
       // all, and `verifyRelease` of nothing is `ok: true`. `ok` says "nothing that ran failed", not "this was
-      // verified" — so the first thing to establish is that all five actually ran.
-      expect(names(report)).toEqual(["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers"]);
+      // verified" — so the first thing to establish is that all six actually ran.
+      expect(names(report)).toEqual(["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers", "worker-mime"]);
       expect(report.diagnostics).toEqual([]);
       expect(report.ok).toBe(true);
     });

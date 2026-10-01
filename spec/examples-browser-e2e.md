@@ -2,6 +2,10 @@
 
 ## 目标
 
+### 响应头因果实验（2026-10-01 补充）
+
+复用本模块的真实构建产物与本地 fixture 服务器，针对发布响应头做单变量对照：记录字段实际值、浏览器网络请求、更新提示或 HTTP 缓存行为，并与发布门禁结果并列。实验结论只覆盖测试过的浏览器和请求路径；门禁失败不得自动表述为功能失败。优先验证 worker 与公开 HTML 的 `Cache-Control`，再验证 manifest、指纹资源的 HTTP 缓存效果；另用 worker `Content-Type` 正反例暴露当前头门禁的覆盖边界，引用现有运行时公共读取缓存测试说明 `Cache-Control` 与 `Vary` 的实际影响。不修改平台公开契约或生产缓存策略。
+
 交付 Vue 3 与 React 19 的示例应用，并在真实浏览器中执行 [V1 验收矩阵](../docs/architecture/v1-acceptance-matrix.md)第 6 行"Vue 与 React 示例"所要求的验证：**安装、离线启动、更新提示、恢复路径**四项，两个示例各跑一套。
 
 这是整个 v1 的**验收出口**。此前每个模块都把"真实浏览器里的端到端行为"移交到这里：client-runtime 的安装引导与登出、sw-runtime 的离线降级与恢复 worker、vite-adapter 的构建产物、vue-react-adapters 的 Provider 与 hook 运行时路径。本模块是它们第一次被放在一起、以应用的姿态运行。

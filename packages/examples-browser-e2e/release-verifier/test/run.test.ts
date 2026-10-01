@@ -154,7 +154,7 @@ describe("runVerification / a complete pass", () => {
     // The module spec's "coverage.json（覆盖结果与必需集）": the required set travels with the coverage result.
     const coverage = JSON.parse(readFileSync(resolve(outDir, "coverage.json"), "utf8"));
     expect(coverage).toEqual({
-      requiredChecks: ["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers"],
+      requiredChecks: ["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers", "worker-mime"],
       ok: true,
       missing: [],
     });
@@ -190,6 +190,28 @@ describe("runVerification / a complete pass", () => {
 });
 
 describe("runVerification / response headers", () => {
+  it("fails worker-mime when the worker is served as text/plain, while response-headers still passes", async () => {
+    const rules = [
+      ...PASSING_HEADER_RULES,
+      { pathPrefix: "/app/sw.js", headers: { "Cache-Control": "no-cache", "Content-Type": "text/plain" } },
+    ];
+    const { repoRoot, server } = await setUpPassingCandidate(rules);
+    const historyPath = freshHistoryPath();
+    writeHistoryFile(historyPath, historyFileFor([candidateHistoryEntry()]));
+    const outDir = freshOutDir();
+
+    const result = await runVerification({ repoRoot, target: TARGET, slot: SLOT, historyPath, outDir, nowMs: NOW_MS, originOverride: server.origin });
+    expect(result.outcome).toBe("completed");
+    if (result.outcome !== "completed") return;
+    expect(result.pass).toBe(false);
+    const report = JSON.parse(readFileSync(resolve(outDir, "report.json"), "utf8"));
+    expect(report.checks.find((entry: { name: string }) => entry.name === "response-headers").ok).toBe(true);
+    expect(report.checks.find((entry: { name: string }) => entry.name === "worker-mime").diagnostics.map((entry: { code: string }) => entry.code))
+      .toEqual(["verify.worker-script-mime-invalid"]);
+    const coverage = JSON.parse(readFileSync(resolve(outDir, "coverage.json"), "utf8"));
+    expect(coverage).toMatchObject({ ok: true, missing: [] });
+  });
+
   it("fails when the worker response is missing no-cache", async () => {
     const headerRules = [
       { pathPrefix: "/app/manifest.webmanifest", headers: { "Cache-Control": "no-cache" } },
@@ -452,7 +474,7 @@ describe("runVerification / cross-origin redirects and request timeouts", () => 
     );
     const site = registerScriptedServer(
       await startScriptedServer({
-        "/app/sw.js": { status: 200, headers: { "cache-control": "no-cache" }, body: SW_JS },
+        "/app/sw.js": { status: 200, headers: { "cache-control": "no-cache", "content-type": "application/javascript" }, body: SW_JS },
         "/app/manifest.webmanifest": { status: 200, headers: { "cache-control": "no-cache" }, body: MANIFEST },
         "/app/assets/app.3f9a2c7d.js": { status: 200, headers: { "cache-control": "public, max-age=31536000, immutable" }, body: ASSET_JS },
         "/app/assets/logo.svg": { status: 200, body: LOGO_SVG },
@@ -515,7 +537,7 @@ describe("runVerification / cross-origin redirects and request timeouts", () => 
     setUpCandidateFilesOnly(repoRoot, { "app/index.html": indexHtml });
     const site = registerScriptedServer(
       await startScriptedServer({
-        "/app/sw.js": { status: 200, headers: { "cache-control": "no-cache" }, body: SW_JS },
+        "/app/sw.js": { status: 200, headers: { "cache-control": "no-cache", "content-type": "application/javascript" }, body: SW_JS },
         "/app/manifest.webmanifest": { status: 200, headers: { "cache-control": "no-cache" }, body: MANIFEST },
         "/app/assets/app.3f9a2c7d.js": { status: 200, headers: { "cache-control": "public, max-age=31536000, immutable" }, body: ASSET_JS },
         "/app/assets/logo.svg": { status: 200, body: LOGO_SVG },
@@ -548,7 +570,7 @@ describe("runVerification / html-headers", () => {
   /** The worker, manifest and fingerprinted-asset routes every test below needs, so each test only has to vary the
    * public HTML routes it is actually exercising. */
   const NON_HTML_ROUTES = {
-    "/app/sw.js": { status: 200, headers: { "cache-control": "no-cache" }, body: SW_JS },
+    "/app/sw.js": { status: 200, headers: { "cache-control": "no-cache", "content-type": "application/javascript" }, body: SW_JS },
     "/app/manifest.webmanifest": { status: 200, headers: { "cache-control": "no-cache" }, body: MANIFEST },
     "/app/assets/app.3f9a2c7d.js": { status: 200, headers: { "cache-control": "public, max-age=31536000, immutable" }, body: ASSET_JS },
     "/app/assets/logo.svg": { status: 200, body: LOGO_SVG },

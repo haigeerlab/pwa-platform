@@ -8,7 +8,7 @@
 
 - `PwaPlan`、产物清单、可用资产清单和线上根计划可以作为不可变附件保存；记录须给出可审计
   的引用与摘要，使审计者能重放 build-verifier 输入。
-- 只记录公开绝对路径和 `Cache-Control` 指令。不得写入令牌、Cookie、认证头、响应体、用户
+- 只记录公开绝对路径、`Cache-Control` 指令与 worker 主脚本的 `Content-Type`。不得写入令牌、Cookie、认证头、响应体、用户
   数据或私有资产 URL；私有 HTML/数据只记录人工核对的脱敏结论与证据引用。
 - 每个状态转换追加一条时间线，不得修改既有条目。`recorded` 只用于生产成功且历史与基线都
   已完成写入的尝试；失败、取消和回滚也保留其原始记录。
@@ -44,6 +44,7 @@
 - 评估时刻（UTC epoch milliseconds）：<整数>
 - 绝对产物路径清单：<公开路径附件引用；摘要/哈希>
 - 公开路径的 `Cache-Control` 观测：<仅 worker、manifest 与带指纹资源；附件引用>
+- worker 主脚本的 `Content-Type` 观测：<复用公开响应头附件引用>
 - 当前可用绝对资产路径：<公开路径附件引用；摘要/哈希>
 - 完整成功历史（新到旧）：<每项的完整计划、生产发布时间与附件引用；首次发布为空>
 - 共享源子应用的实际线上根计划：<不适用，或完整计划引用>
@@ -51,7 +52,7 @@
 
 ## 机器门禁
 
-- requiredChecks：<独立源/根：artifacts, response-headers, identity-baseline, release-retention, html-headers；子应用另加 release-order>
+- requiredChecks：<独立源/根：artifacts, response-headers, identity-baseline, release-retention, html-headers, worker-mime；子应用另加 release-order>
 - `verifyRelease` 输入附件：<候选计划与上述事实的引用>
 - `verifyRelease` 完整报告：<附件引用；记录 ok、已执行 checks、诊断码与路径，不记录敏感输入>
 - `verifyReleaseGateCoverage` 结果：<ok 与 missing；附件引用>
@@ -95,5 +96,5 @@
 |---|---|---|
 | 普通独立源发布 | 四项必需检查均在报告中，`report.ok` 与 coverage 均为 true，全部人工门禁通过 | `prepared → verified → deployed → recorded`；随后写历史与基线 |
 | 首次发布 | 显式身份查找产生 `verify.baseline-missing`，覆盖完整，其他检查与人工门禁通过，平台负责人已批准 | 可按例外进入 `verified`；生产成功后才首次写基线与历史 |
-| 同源子应用发布 | 五项必需检查均在报告中，`release-order` 使用实际线上根计划并通过 | 正常进入 `recorded`；根计划引用与子应用记录一起保存 |
+| 同源子应用发布 | 六项必需检查均在报告中，`release-order` 使用实际线上根计划并通过 | 正常进入 `recorded`；根计划引用与子应用记录一起保存 |
 | 失败发布 | 必需事实或报告检查缺失、coverage 为 false、部署失败或批准缺失 | 转为 `failed` 或 `aborted`；旧历史和基线保持不变 |

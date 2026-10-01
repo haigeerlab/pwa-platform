@@ -9,6 +9,7 @@ export type { PwaCacheControlDirective } from "./cache-control.js";
 export { verifyResponseHeaders } from "./headers.js";
 export type { PwaObservedResponses } from "./headers.js";
 export { verifyHtmlHeaders } from "./html-headers.js";
+export { verifyWorkerScriptMime } from "./worker-mime.js";
 export { isSharedOriginChild, verifyReleaseOrder } from "./release-order.js";
 export { verifyReleaseRetention } from "./release-retention.js";
 export type { PwaReleaseRetentionInput, PwaReleaseRetentionSnapshot } from "./release-retention.js";

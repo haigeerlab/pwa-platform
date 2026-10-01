@@ -19,6 +19,14 @@ function report(checks: PwaVerificationReport["checks"], ok = checks.every((entr
 }
 
 describe("verifyReleaseGateCoverage", () => {
+  it("reports worker-mime missing from the new release protocol", () => {
+    const supplied = verifyRelease({ plan, published: [] });
+    expect(verifyReleaseGateCoverage(supplied, ["artifacts", "worker-mime"])).toEqual({
+      ok: false,
+      missing: ["worker-mime"],
+    });
+  });
+
   it("confirms required checks ran even when a real verification report failed", () => {
     const supplied = verifyRelease({ plan, published: [], baseline: { ...plan.identity } });
 
@@ -75,17 +83,18 @@ describe("requiredReleaseChecks (ADR-0025 addendum)", () => {
   const sharedOrigin = (children: readonly { readonly appId: string }[]): PwaPlan =>
     ({ ...plan, topology: { kind: "shared-origin", registry: { children } } }) as unknown as PwaPlan;
 
-  it("requires the protocol's five checks for a standalone origin, in VERIFICATION_CHECKS order", () => {
-    expect(requiredReleaseChecks(plan)).toEqual(["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers"]);
+  it("requires the protocol's six checks for a standalone origin, in VERIFICATION_CHECKS order", () => {
+    expect(requiredReleaseChecks(plan)).toEqual(["artifacts", "response-headers", "identity-baseline", "release-retention", "html-headers", "worker-mime"]);
   });
 
-  it("requires the same five for a shared-origin root", () => {
+  it("requires the same six for a shared-origin root", () => {
     expect(requiredReleaseChecks(sharedOrigin([{ appId: "some-child" }]))).toEqual([
       "artifacts",
       "response-headers",
       "identity-baseline",
       "release-retention",
       "html-headers",
+      "worker-mime",
     ]);
   });
 
@@ -97,6 +106,7 @@ describe("requiredReleaseChecks (ADR-0025 addendum)", () => {
       "release-order",
       "release-retention",
       "html-headers",
+      "worker-mime",
     ]);
   });
 
@@ -104,8 +114,7 @@ describe("requiredReleaseChecks (ADR-0025 addendum)", () => {
     const supplied = verifyRelease({ plan, published: [] });
     expect(verifyReleaseGateCoverage(supplied, requiredReleaseChecks(plan))).toEqual({
       ok: false,
-      missing: ["response-headers", "identity-baseline", "release-retention", "html-headers"],
+      missing: ["response-headers", "identity-baseline", "release-retention", "html-headers", "worker-mime"],
     });
   });
 });
-

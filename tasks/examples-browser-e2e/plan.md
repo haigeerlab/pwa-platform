@@ -2,6 +2,13 @@
 
 ## 概览
 
+### 2026-10-01 响应头因果实验
+
+1. 用 v1/v2 构建产物和 `FixtureServer.setHeaderRules()`，每组仅改变一个资源类别的 `Cache-Control`；先跑现有更新用例确认环境。
+2. worker 组观察 v2 请求、waiting worker 与更新提示；HTML 组先在隔离的无 SW 浏览器上下文中比较两次相同 URL 的正文和服务器请求数，再以真实 worker 控制的新标签页核对入口导航版本。
+3. manifest 与指纹资源组比较 `no-cache` 与正 `max-age` 下同 URL 的重复请求次数；再更改 v2 manifest 名称，比较后续读取取得的新旧值。worker MIME 做 JavaScript／`text/plain` 注册及离线启动正反例；运行时公共读取缓存复核现有拒绝响应 E2E。
+4. 将每项资源路径、实收响应头、浏览器版本、观测和限制写入实验记录，并只读核对自有 Cloudflare 站当前头值。只根据实际观察给运维建议；对未直接导致故障的规则说明其预防风险及触发条件。
+
 按 [spec/examples-browser-e2e.md](../../spec/examples-browser-e2e.md) 交付 Vue 3 与 React 19 示例应用，并在真实浏览器中执行 [V1 验收矩阵](../../docs/architecture/v1-acceptance-matrix.md)第 6 行要求的四项验证。
 
 本模块是整个 v1 的**验收出口**：此前每个模块都把"真实浏览器里的端到端行为"移交到这里。因此它的风险不在写测试，而在三处：

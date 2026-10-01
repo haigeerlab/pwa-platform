@@ -25,6 +25,7 @@ describe("public exports", () => {
       "verifyReleaseOrder",
       "verifyReleaseRetention",
       "verifyResponseHeaders",
+      "verifyWorkerScriptMime",
     ]);
   });
 });
