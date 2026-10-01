@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readAndroidSerial } from "../src/android.js";
 import { exposeServer } from "../src/expose.js";
-import { CLEANUP_PATH, closeReleasedIosProxies, describeIosSafari, iosCapabilities, lowestFreePort, readIosDevice, readIosSessionTests, remoteAutomationHint, setIosNetworkOffline, setIosSessionOpen, startIosProxy, storageHealthError, trustIosTestCa } from "../src/ios.js";
+import { CLEANUP_PATH, closeReleasedIosProxies, describeIosSafari, iosCapabilities, lowestFreePort, markIosStorageFailed, parseMobileSafariPid, readIosDevice, readIosRestartEvery, restartReason, takeIosStorageFailed, readIosSessionTests, remoteAutomationHint, setIosNetworkOffline, setIosSessionOpen, startIosProxy, storageHealthError, trustIosTestCa } from "../src/ios.js";
 import { readRealBrowserKind, requestedCapabilities } from "../src/webdriver.js";
 
 const ENV = { PWA_IOS_UDID: "00008140-001E51203A81801C", PWA_IOS_LAN_IP: "192.168.100.71", PWA_IOS_TLS_DIR: "/tmp/tls" };
@@ -234,6 +234,49 @@ describe("proxy port pool", () => {
     expect(lowestFreePort([8443, 8441, 8442], new Set())).toBe(8441);
     expect(lowestFreePort([8441, 8442, 8443], new Set([8441, 8443]))).toBe(8442);
     expect(lowestFreePort([8441, 8442], new Set([8441, 8442]))).toBeUndefined();
+  });
+});
+
+describe("restarting the phone's Safari", () => {
+  const TABLE = [
+    "PID    Path",
+    "910    /System/Library/PrivateFrameworks/SafariSafeBrowsing.framework/com.apple.Safari.SafeBrowsing.Service",
+    "3014   /private/var/containers/Bundle/Application/97B815C8/MobileSafari.app/MobileSafari",
+    "3015   /private/preboot/Cryptexes/OS/System/Library/ExtensionKit/Extensions/NetworkingExtension.appex/com.apple.WebKit.Networking",
+    "3022   /private/preboot/Cryptexes/App/usr/libexec/com.apple.Safari.History",
+  ].join("\n");
+
+  it("selects only the process whose path ends with /MobileSafari.app/MobileSafari", () => {
+    expect(parseMobileSafariPid(TABLE)).toBe(3014);
+    expect(parseMobileSafariPid(TABLE.replace("3014", "5467"))).toBe(5467);
+  });
+
+  it("finds nothing when MobileSafari is not running or only look-alikes are", () => {
+    expect(parseMobileSafariPid("")).toBeUndefined();
+    expect(parseMobileSafariPid(TABLE.split("\n").filter((line) => !line.includes("MobileSafari")).join("\n"))).toBeUndefined();
+    expect(parseMobileSafariPid("77   /x/MobileSafari.app/MobileSafari.helper\n78   /x/NotMobileSafari.app/MobileSafari2")).toBeUndefined();
+    expect(parseMobileSafariPid("79   /private/var/MobileSafari.app/com.apple.WebKit.WebContent")).toBeUndefined();
+  });
+
+  it("reads the restart interval, 100 by default", () => {
+    expect(readIosRestartEvery({})).toBe(100);
+    expect(readIosRestartEvery({ PWA_IOS_RESTART_EVERY: "" })).toBe(100);
+    expect(readIosRestartEvery({ PWA_IOS_RESTART_EVERY: "40" })).toBe(40);
+    for (const bad of ["0", "-3", "1.5", "often"]) expect(() => readIosRestartEvery({ PWA_IOS_RESTART_EVERY: bad })).toThrow(/positive integer/);
+  });
+
+  it("restarts after a failed health check at once, and otherwise once the interval is reached", () => {
+    expect(restartReason({ testsSinceRestart: 3, every: 100, storageFailed: true })).toBe("storage health check failed");
+    expect(restartReason({ testsSinceRestart: 99, every: 100, storageFailed: false })).toBeUndefined();
+    expect(restartReason({ testsSinceRestart: 100, every: 100, storageFailed: false })).toBe("periodic restart");
+    expect(restartReason({ testsSinceRestart: 100, every: 100, storageFailed: true })).toBe("storage health check failed");
+  });
+
+  it("remembers a failed health check until it is taken", () => {
+    expect(takeIosStorageFailed()).toBe(false);
+    markIosStorageFailed();
+    expect(takeIosStorageFailed()).toBe(true);
+    expect(takeIosStorageFailed()).toBe(false);
   });
 });
 

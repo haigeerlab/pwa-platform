@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
+import { execFile } from "node:child_process";
 import { request as httpRequest } from "node:http";
+import { promisify } from "node:util";
 import { createServer as createHttpsServer } from "node:https";
 import { connect, isIPv4, type AddressInfo, type Socket } from "node:net";
 import { join } from "node:path";
@@ -51,6 +53,82 @@ export function readIosSessionTests(env: Env): number {
   if (value === "") return IOS_DEFAULT_SESSION_TESTS;
   if (!/^[1-9]\d*$/.test(value)) throw new Error(`${IOS_SESSION_TESTS_ENV} must be a positive integer, got "${value}"`);
   return Number(value);
+}
+
+/** Tests between automatic restarts of the phone's Safari; default `IOS_DEFAULT_RESTART_EVERY`. */
+export const IOS_RESTART_EVERY_ENV = "PWA_IOS_RESTART_EVERY";
+export const IOS_DEFAULT_RESTART_EVERY = 100;
+
+/** Reads `PWA_IOS_RESTART_EVERY`: a positive integer, the default when unset or empty; anything else is an error. */
+export function readIosRestartEvery(env: Env): number {
+  const value = env[IOS_RESTART_EVERY_ENV] ?? "";
+  if (value === "") return IOS_DEFAULT_RESTART_EVERY;
+  if (!/^[1-9]\d*$/.test(value)) throw new Error(`${IOS_RESTART_EVERY_ENV} must be a positive integer, got "${value}"`);
+  return Number(value);
+}
+
+/** Why the phone's Safari should be restarted before the next test, or `undefined` when it should not. */
+export function restartReason(state: { readonly testsSinceRestart: number; readonly every: number; readonly storageFailed: boolean }): "storage health check failed" | "periodic restart" | undefined {
+  if (state.storageFailed) return "storage health check failed";
+  return state.testsSinceRestart >= state.every ? "periodic restart" : undefined;
+}
+
+let storageFailed = false;
+
+/** Remembers that the storage health check failed, so the next gap between tests restarts Safari. */
+export function markIosStorageFailed(): void {
+  storageFailed = true;
+}
+
+/** Whether the storage health check failed since the last call; resets the flag. */
+export function takeIosStorageFailed(): boolean {
+  const failed = storageFailed;
+  storageFailed = false;
+  return failed;
+}
+
+const MOBILE_SAFARI_PATH = "/MobileSafari.app/MobileSafari";
+
+/**
+ * The pid of MobileSafari in the output of `devicectl device info processes`: the one line whose executable path ends
+ * with exactly `/MobileSafari.app/MobileSafari`. Nothing else matches (not WebKit.WebContent, not Safari helper services).
+ */
+export function parseMobileSafariPid(output: string): number | undefined {
+  for (const line of output.split("\n")) {
+    const match = /^\s*(\d+)\s+(\S.*?)\s*$/.exec(line);
+    if (match?.[1] !== undefined && match[2] !== undefined && match[2].endsWith(MOBILE_SAFARI_PATH)) return Number(match[1]);
+  }
+  return undefined;
+}
+
+const exec = promisify(execFile);
+const SAFARI_GONE_TIMEOUT_MS = 10_000;
+const SAFARI_POLL_MS = 500;
+
+async function devicectl(...args: readonly string[]): Promise<string> {
+  try {
+    return (await exec("xcrun", ["devicectl", ...args], { maxBuffer: 16 * 1024 * 1024 })).stdout;
+  } catch (error) {
+    throw new Error(`xcrun devicectl ${args.join(" ")} failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
+}
+
+/**
+ * Terminates the phone's MobileSafari process (and only that one) and waits until it is gone; the next WebDriver session
+ * launches it again with fresh WebKit services, which clears the storage failure seen after many sessions (ADR-0049).
+ * Precondition: no WebDriver session is open and no safaridriver is running (iOS switches Remote Automation off when a
+ * session is cut). MobileSafari not running counts as already stopped. No device setting is touched.
+ */
+export async function restartIosSafari(device: IosDevice): Promise<void> {
+  const processes = (): Promise<string> => devicectl("device", "info", "processes", "--device", device.udid);
+  const pid = parseMobileSafariPid(await processes());
+  if (pid === undefined) return;
+  await devicectl("device", "process", "terminate", "--device", device.udid, "--pid", String(pid));
+  const deadline = Date.now() + SAFARI_GONE_TIMEOUT_MS;
+  while (parseMobileSafariPid(await processes()) === pid) {
+    if (Date.now() >= deadline) throw new Error(`MobileSafari (pid ${pid}) was still running ${SAFARI_GONE_TIMEOUT_MS} ms after it was terminated`);
+    await new Promise((resolve) => setTimeout(resolve, SAFARI_POLL_MS));
+  }
 }
 
 /** True when this run drives the Safari of an iPhone; specs use it for precise `test.skip` reasons. */

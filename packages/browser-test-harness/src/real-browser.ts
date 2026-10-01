@@ -12,6 +12,11 @@ import {
   remoteAutomationHint,
   closeReleasedIosProxies,
   IOS_PORT_POOL,
+  markIosStorageFailed,
+  readIosRestartEvery,
+  restartIosSafari,
+  restartReason,
+  takeIosStorageFailed,
   iosStorageProbeScript,
   setIosNetworkOffline,
   setIosSessionOpen,
@@ -497,7 +502,7 @@ export class RealContext {
 export class RealBrowser {
   constructor(
     readonly kind: RealBrowserKind,
-    private readonly driver: DriverProcess,
+    private driver: DriverProcess,
     readonly identity: BrowserIdentity,
     private readonly capabilities: Record<string, unknown>,
     /** iPhone runs: the single WebDriver session every test of this worker shares. */
@@ -507,8 +512,20 @@ export class RealBrowser {
   /** Tests finished on the current shared session (see `PWA_IOS_SESSION_TESTS`). */
   private testsOnSession = 0;
 
+  /** Tests finished since the phone's Safari was last restarted (see `PWA_IOS_RESTART_EVERY`). */
+  private testsSinceRestart = 0;
+
+  /** Set when the phone's storage stayed broken after a restart: every later test fails with it at once. */
+  private broken: Error | undefined;
+
   /** Starts the driver and reads the browser's identity from a short-lived probe session. */
   static async start(kind: RealBrowserKind, env: Readonly<Record<string, string | undefined>>): Promise<RealBrowser> {
+    const device = readIosDevice(env);
+    if (device !== undefined) {
+      // A fresh Safari for every package run (no session and no driver exist yet, as the restart requires).
+      console.log("[browser-test-harness] restarting iPhone Safari (worker start, 0 tests since the last restart)");
+      await restartIosSafari(device);
+    }
     const driver = await startDriver(kind);
     try {
       const capabilities = requestedCapabilities(kind, env);
@@ -525,6 +542,7 @@ export class RealBrowser {
       try {
         await checkStorage(probe, ios);
       } catch (error) {
+        takeIosStorageFailed();
         await probe.quit().catch(() => undefined);
         untrackForExit(probe);
         throw error;
@@ -552,6 +570,7 @@ export class RealBrowser {
 
   /** Starts a new session (one browser instance state) with a context and its first page. */
   async openSession(): Promise<RealSession> {
+    if (this.broken !== undefined) throw this.broken;
     const session = this.shared ?? (await WebDriverSession.create(this.driver.baseUrl, this.capabilities));
     if (this.shared === undefined) {
       this.open.add(session);
@@ -573,8 +592,10 @@ export class RealBrowser {
           setIosSessionOpen(false);
           await closeReleasedIosProxies();
           this.testsOnSession += 1;
-          const limit = readIosSessionTests(process.env);
-          if (this.testsOnSession >= limit) await this.recycle(this.shared);
+          this.testsSinceRestart += 1;
+          const reason = restartReason({ testsSinceRestart: this.testsSinceRestart, every: readIosRestartEvery(process.env), storageFailed: takeIosStorageFailed() });
+          if (reason !== undefined) await this.restartPhoneSafari(reason, this.shared);
+          else if (this.testsOnSession >= readIosSessionTests(process.env)) await this.recycle(this.shared);
           return;
         }
         this.open.delete(session);
@@ -585,6 +606,44 @@ export class RealBrowser {
         }
       },
     };
+  }
+
+  /**
+   * Between tests: ends the session, stops the driver, restarts the phone's Safari, starts a new driver and session and
+   * re-runs the storage health check. A test that failed before this stays failed (nothing is retried). If storage is
+   * still broken after the restart the owner has to act, and every later test fails with that message.
+   */
+  private async restartPhoneSafari(reason: string, old: WebDriverSession): Promise<void> {
+    const device = readIosDevice(process.env);
+    if (device === undefined) throw new Error("restartPhoneSafari outside an iPhone run");
+    console.log(`[browser-test-harness] restarting iPhone Safari (${reason}, ${this.testsSinceRestart} tests since the last restart)`);
+    this.shared = undefined;
+    try {
+      await old.quit();
+    } finally {
+      untrackForExit(old);
+    }
+    await this.driver.stop();
+    try {
+      await restartIosSafari(device);
+      this.driver = await startDriver(this.kind);
+      const next = await WebDriverSession.create(this.driver.baseUrl, this.capabilities);
+      trackForExit(next);
+      try {
+        await checkStorage(next, device);
+      } catch (error) {
+        takeIosStorageFailed();
+        await next.quit().catch(() => undefined);
+        untrackForExit(next);
+        throw error;
+      }
+      this.shared = next;
+      this.testsOnSession = 0;
+      this.testsSinceRestart = 0;
+    } catch (error) {
+      this.broken = error instanceof Error ? error : new Error(String(error));
+      throw error;
+    }
   }
 
   /** Ends the shared session and starts a fresh one in its place (the old one is always deleted first). */
@@ -688,7 +747,10 @@ async function cleanupOrigins(session: WebDriverSession, origins: readonly strin
 async function assertStorageHealthy(session: WebDriverSession, handle: string): Promise<void> {
   const report = (await session.evaluate(handle, serializePageScript(iosStorageProbeScript, undefined), () => undefined)) as StorageReport;
   const problem = storageHealthError(report);
-  if (problem !== undefined) throw new Error(problem);
+  if (problem !== undefined) {
+    markIosStorageFailed();
+    throw new Error(problem);
+  }
 }
 
 /** Storage health check at worker start: cleans a short-lived proxy origin (no upstream is needed), which probes storage there. */
