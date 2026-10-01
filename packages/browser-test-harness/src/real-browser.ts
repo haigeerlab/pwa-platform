@@ -213,6 +213,19 @@ export class RealApiRequestContext {
   }
 }
 
+/** True when `target` differs from `current` only by its fragment, which navigates without creating a new document. */
+function sameDocumentFragment(current: string, target: string): boolean {
+  try {
+    const a = new URL(current);
+    const b = new URL(target);
+    a.hash = "";
+    b.hash = "";
+    return a.href === b.href && new URL(target).hash !== "";
+  } catch {
+    return false;
+  }
+}
+
 type Size = { readonly width: number; readonly height: number };
 
 /** The `Page` subset the specs use, on one tab of a WebDriver session. */
@@ -313,6 +326,11 @@ class RealPage {
    * `status()`, `ok()`, `url()` and `fromServiceWorker()` only, taken from the loaded document's Navigation Timing entry.
    */
   async goto(url: string): Promise<Response> {
+    // iOS Safari answers a navigation that a controlling worker fails closed by keeping the previous document, with no
+    // error page and no error from the driver. A new document has a new `timeOrigin`; one that did not change (and is
+    // not a mere fragment navigation) means the navigation never happened, which Playwright reports as a rejection.
+    const ios = this.session.capabilities["platformName"] === "iOS";
+    const before = ios ? await this.evaluate(() => ({ origin: performance.timeOrigin, href: location.href })) : undefined;
     this.lastUrl = await this.inWindow(async () => {
       await this.session.navigate(url);
       return this.session.url();
@@ -328,6 +346,10 @@ class RealPage {
     // Playwright rejects a navigation that fails to load; Safari's driver reports success and shows its error page
     // (whose URL only the page itself reports: Get Current URL still names the failed address).
     if (isBrowserErrorPage(evidence.url)) throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser showed its error page)`);
+    if (before !== undefined && !sameDocumentFragment(before.href, url)) {
+      const after = await this.evaluate(() => performance.timeOrigin);
+      if (after === before.origin) throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser kept the previous document)`);
+    }
     return new RealResponse(this.kind, evidence).toPlaywright();
   }
 

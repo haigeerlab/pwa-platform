@@ -108,9 +108,12 @@ export function keyActions(key: string): { readonly actions: readonly unknown[] 
   return { actions: [{ type: "key", id: "keyboard", actions }] };
 }
 
-/** Safari WebDriver does not fail a navigation that cannot load: it lands on this built-in error page instead. */
+/**
+ * Safari WebDriver does not fail a navigation that cannot load: it lands on a built-in error page instead, whose URL
+ * (reported by the page itself) is `safari-resource:...` on macOS and `data:text/html,` on iOS.
+ */
 export function isBrowserErrorPage(url: string): boolean {
-  return url.startsWith("safari-resource:");
+  return url.startsWith("safari-resource:") || url === "data:text/html,";
 }
 
 /** Failure reported by the driver or by a script run in the page. */
