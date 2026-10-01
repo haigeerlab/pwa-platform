@@ -89,7 +89,7 @@ pageClass: platform-test-matrix
 
 - 2026-10-01 起，iPhone 16 Pro（iOS 27.0.1，Safari 27.0.1）经 USB WebDriver 与只监听局域网 IP 的 HTTPS 转发运行全部浏览器用例（ADR-0049），测试根证书由项目所有者安装并信任，测试后删除；每个测试新开会话并清理该来源的 worker、缓存与存储。跳过与“无法验证”与 macOS Safari 相同（响应头、导航状态、配色模拟、CDP），另有：亮／暗主题只在浅色外观下运行；视口不可调整（<code>setWindowRect</code> 不支持），320px 未验证；Safari 标签页不提供 Web Push。安装为主屏幕网页 App 仍只有人工观察。
 - 自动化中观察到：导航失败时 iOS 错误页地址为 <code>data:text/html,</code>；受控页面的 worker 以关闭方式拒绝导航时，iOS 保留上一页面、不显示错误；同一 Safari 进程连续新建约 150–250 个会话后 IndexedDB 与 Cache Storage 写入失败，需重启 Safari（自动化在每个包开始前重启 Safari 规避）。
-- 未发布的 Nuxt 适配中，断网后导航到预渲染子页 <code>/app/about</code> 在 iPhone 上不提交导航、请求不到达服务器（Chrome 正常），原因未查明，该用例在 iPhone 上跳过并记录。
+- 上一页面仍在初始化时，iOS Safari 的 WebDriver 导航命令可能早于新页面提交约 200 ms 返回；测试工具改为等待新页面加载后再判断。未发布的 Nuxt 适配中，断网导航到预渲染子页 <code>/app/about</code> 曾因此被误判为失败，修复后在 iPhone 上通过（3／3）。
 - 不设 `networkTimeoutSeconds` 时，物理断网冷启动约 60 秒才回退；生产接入不能依赖 Safari 自行超时。
 - 断网恢复后页面曾短暂显示 `not registered`。平台侧根因（`register()` 排在挂起的更新检查之后）已在 0.2.3 由 [ADR-0043](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0043-registered-from-existing-active-registration.md) 修复，修复版在真机上在线、离线都正常；界面层现象本轮未能复现，仍需后续观察。
 - Safari 真实断网时 `navigator.onLine` 可能仍为 `true`，请求会挂起而不是立即失败，因此离线页使用真实网络探针。
