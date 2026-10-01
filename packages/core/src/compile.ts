@@ -2,6 +2,7 @@ import {
   REQUEST_BASELINE_DENIALS,
   cacheNamespacePrefix,
   validateIdentity,
+  validatePortableIdentity,
   validateInstallMetadata,
   validatePlan,
   validatePolicy,
@@ -12,6 +13,7 @@ import type {
   PwaOfflineWritePolicy,
   PwaPlan,
   PwaPlanV2,
+  PwaPlanV4,
   PwaValidationResult,
   PwaWarningDiagnostic,
 } from "@pwa-platform/contracts";
@@ -28,7 +30,7 @@ import { installStartUrlInChildScope, policyRulesInChildScope, resolveTopology }
 
 const INPUT_FIELDS = ["identity", "install", "policy", "topology", "hostBuildOutput"] as const;
 
-type InputFields = { readonly [Field in (typeof INPUT_FIELDS)[number]]: unknown };
+type InputFields = { readonly [Field in (typeof INPUT_FIELDS)[number]]: unknown } & { readonly deployment?: unknown };
 
 /**
  * Compiles platform identity, install metadata, policy, topology and host build output into a
@@ -47,10 +49,10 @@ export function compilePlan(input: PwaCompileInput): PwaValidationResult<PwaPlan
 function readInput(input: unknown): InputFields | PwaDiagnostic[] {
   if (!isPlainRecord(input)) return [diagnostic("schema.invalid-type", [])];
   const findings: PwaDiagnostic[] = [];
-  if (Reflect.ownKeys(input).some((key) => !(INPUT_FIELDS as readonly PropertyKey[]).includes(key))) {
+  if (Reflect.ownKeys(input).some((key) => key !== "deployment" && !(INPUT_FIELDS as readonly PropertyKey[]).includes(key))) {
     findings.push(diagnostic("schema.unknown-field", []));
   }
-  const fields: { [Field in (typeof INPUT_FIELDS)[number]]?: unknown } = {};
+  const fields: { [Field in (typeof INPUT_FIELDS)[number]]?: unknown } & { deployment?: unknown } = {};
   for (const field of INPUT_FIELDS) {
     const descriptor = Object.getOwnPropertyDescriptor(input, field);
     if (descriptor === undefined) {
@@ -60,6 +62,11 @@ function readInput(input: unknown): InputFields | PwaDiagnostic[] {
     } else {
       fields[field] = descriptor.value;
     }
+  }
+  const deployment = Object.getOwnPropertyDescriptor(input, "deployment");
+  if (deployment !== undefined) {
+    if (!deployment.enumerable || !("value" in deployment)) findings.push(diagnostic("value.not-serializable", ["deployment"]));
+    else fields.deployment = deployment.value;
   }
   return findings.length > 0 ? findings : (fields as InputFields);
 }
@@ -71,13 +78,19 @@ function compile(input: unknown): PwaValidationResult<PwaPlan> {
   const errors: PwaDiagnostic[] = [];
   const warnings: PwaWarningDiagnostic[] = [];
 
-  const identityResult = validateIdentity(fields.identity);
+  const portable = isDeployment(fields.deployment, "portable");
+  if (fields.deployment !== undefined && !portable && !isDeployment(fields.deployment, "fixed")) {
+    errors.push(diagnostic("schema.invalid-value", ["deployment"]));
+  }
+
+  const identityResult = portable ? validatePortableIdentity(fields.identity) : validateIdentity(fields.identity);
   if (!identityResult.ok) errors.push(...identityResult.diagnostics.map((finding) => withinField("identity", finding)));
   const identity = identityResult.ok ? identityResult.value : undefined;
 
   const policyResult = validatePolicy(fields.policy);
   if (!policyResult.ok) errors.push(...policyResult.diagnostics.map((finding) => withinField("policy", finding)));
   const policy = policyResult.ok ? policyResult.value : undefined;
+  if (portable && policy?.schemaVersion !== 3) errors.push(diagnostic("schema.unsupported-version", ["policy", "schemaVersion"]));
   // v2 policy validation lands before its plan and worker contract. Never discard an accepted offline-write
   // declaration and emit a v1 plan: until the coordinated v2 compiler slice exists, reject it explicitly.
   const installEnabled = policy?.install.enabled === true;
@@ -96,7 +109,7 @@ function compile(input: unknown): PwaValidationResult<PwaPlan> {
     }
   }
 
-  const topologyResolution = resolveTopology(fields.topology, identity);
+  const topologyResolution = resolveTopology(fields.topology, identity, portable);
   errors.push(...topologyResolution.findings);
   const resolvedTopology = topologyResolution.resolved;
 
@@ -171,7 +184,15 @@ function compile(input: unknown): PwaValidationResult<PwaPlan> {
       : {}),
   };
   const plan: PwaPlan =
-    policy.schemaVersion === 3
+    portable && policy.schemaVersion === 3
+      ? {
+          ...planFields,
+          schemaVersion: 4, planVersion: 4, policyVersion: 3,
+          deployment: { kind: "portable" },
+          offlineWrites: compileOfflineWrites(policy.offlineWrites, identity),
+          runtimeCache: compileRuntimeCache(policy, identity.mountPath).runtimeCache,
+        } as PwaPlanV4
+      : policy.schemaVersion === 3
       ? {
           ...planFields,
           schemaVersion: 3,
@@ -181,7 +202,7 @@ function compile(input: unknown): PwaValidationResult<PwaPlan> {
           // Errors from an unsupported strategy already returned `failure` above; recomputing here is
           // pure and side-effect free, and keeps the runtime-cache plan shape colocated with the others.
           runtimeCache: compileRuntimeCache(policy, identity.mountPath).runtimeCache,
-        }
+        } as PwaPlan
       : policy.schemaVersion === 2
         ? {
             ...planFields,
@@ -189,8 +210,8 @@ function compile(input: unknown): PwaValidationResult<PwaPlan> {
             planVersion: 2,
             policyVersion: 2,
             offlineWrites: compileOfflineWrites(policy.offlineWrites, identity),
-          }
-        : { ...planFields, schemaVersion: 1, planVersion: 1, policyVersion: 1 };
+          } as PwaPlan
+        : { ...planFields, schemaVersion: 1, planVersion: 1, policyVersion: 1 } as PwaPlan;
 
   // Guarantees the documented contract: a successful compilation always passes validatePlan.
   const checked = validatePlan(plan);
@@ -213,4 +234,8 @@ function failure(diagnostics: readonly PwaDiagnostic[]): PwaValidationResult<nev
   const [first, ...rest] = diagnostics;
   if (!first) throw new Error("A failed compilation must carry at least one diagnostic.");
   return { ok: false, diagnostics: [first, ...rest] };
+}
+
+function isDeployment(value: unknown, kind: "fixed" | "portable"): boolean {
+  return isPlainRecord(value) && Reflect.ownKeys(value).length === 1 && value.kind === kind;
 }

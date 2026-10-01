@@ -1,7 +1,7 @@
 import { DIAGNOSTIC_MESSAGES, TOPOLOGY_KINDS, type PwaIdentity, type PwaInstallMetadata, type PwaPolicy } from "@pwa-platform/contracts";
 import { describe, expect, it } from "vitest";
 import { pwa } from "../src/index.js";
-import { validateOfflinePageOption, validateOptions, type PwaViteOfflinePageOptions, type PwaViteOptions } from "../src/options.js";
+import { validateOfflinePageOption, validateOptions, type PwaFixedViteOptions, type PwaViteOfflinePageOptions } from "../src/options.js";
 
 const identity: PwaIdentity = {
   appId: "storefront",
@@ -38,7 +38,7 @@ const policy: PwaPolicy = {
   resources: [],
 };
 
-function options(overrides: Partial<PwaViteOptions> = {}): PwaViteOptions {
+function options(overrides: Partial<PwaFixedViteOptions> = {}): PwaFixedViteOptions {
   return { identity, policy, install, topology: { kind: "standalone-origin" }, ...overrides };
 }
 
@@ -81,7 +81,7 @@ describe("validateOptions", () => {
   });
 
   it("rejects a topology kind outside the exported constant", () => {
-    const broken = { kind: "multi-tenant-origin" } as unknown as PwaViteOptions["topology"];
+    const broken = { kind: "multi-tenant-origin" } as unknown as PwaFixedViteOptions["topology"];
     expect(() => validateOptions(options({ topology: broken }))).toThrow(/topology\.kind must be one of/);
     expect(TOPOLOGY_KINDS).toContain("standalone-origin");
   });

@@ -1,7 +1,8 @@
 // One report for a release: the checks a compiler cannot make, run in a fixed order and summed up.
 import type { PwaPlan } from "@pwa-platform/contracts";
 import { verifyArtifacts } from "./artifacts.js";
-import { compareIdentityBaseline } from "./baseline.js";
+import { compareIdentityBaseline, comparePortableIdentityBaseline } from "./baseline.js";
+import { observedFromDeployment, verifyDeploymentOrigin, type PwaPortableDeploymentEvidence } from "./deployment.js";
 import { verifyResponseHeaders, type PwaObservedResponses } from "./headers.js";
 import { verifyHtmlHeaders } from "./html-headers.js";
 import { isSharedOriginChild, verifyReleaseOrder } from "./release-order.js";
@@ -43,34 +44,54 @@ export type PwaVerifyReleaseInput = {
    * final response's headers; this package only judges the headers it is given.
    */
   readonly htmlObserved?: PwaObservedResponses;
+  /** Required for a portable plan; final URLs and headers must be collected at the actual target origin. */
+  readonly deployment?: PwaPortableDeploymentEvidence;
+  /** For a portable shared child, the live root's record including the origin where it is deployed. */
+  readonly deployedRoot?: { readonly origin: string; readonly plan: unknown; readonly workerFinalUrl: string };
 };
 
 /**
- * Runs each check whose input was supplied, in the order `VERIFICATION_CHECKS` lists them.
+ * Runs checks in the order `VERIFICATION_CHECKS` lists them. A portable plan always runs response-header,
+ * HTML-header and deployment-origin checks, so missing deployment evidence is a failure.
  *
- * A check whose input was omitted does not appear in `checks` at all, so `ok` speaks only for what actually ran.
- * That makes an empty report `ok: true` — verifying nothing cannot fail. Callers that gate a release on this must
- * therefore confirm `checks` covers what they meant to verify; `ok` alone does not say anything was verified.
+ * Other checks whose inputs were omitted do not appear in `checks`. A fixed plan with no inputs has an empty
+ * report with `ok: true`; callers must compare `checks` with `requiredReleaseChecks(plan)` as well as checking
+ * `report.ok`.
  */
 export function verifyRelease(input: PwaVerifyReleaseInput): PwaVerificationReport {
   const checks: PwaVerificationCheck[] = [];
 
   if (input.published !== undefined) checks.push(verifyArtifacts(input.plan, input.published));
-  if (input.observed !== undefined) checks.push(verifyResponseHeaders(input.plan, input.observed));
+  if (input.plan.schemaVersion === 4) {
+    checks.push(verifyResponseHeaders(input.plan, observedFromDeployment(input.deployment)));
+  } else if (input.observed !== undefined) checks.push(verifyResponseHeaders(input.plan, input.observed));
   // `hasOwn` rather than an undefined test: the absence of the property is what means "not compared".
   if (Object.hasOwn(input, "baseline")) {
-    checks.push(compareIdentityBaseline(input.plan.identity, input.baseline));
+    checks.push(input.plan.schemaVersion === 4
+      ? comparePortableIdentityBaseline(input.plan.identity, input.deployment?.targetOrigin, input.baseline)
+      : compareIdentityBaseline(input.plan.identity, input.baseline));
   }
   // Same "omitted means not compared" rule as the baseline. Roots and standalone apps have no release order to check.
-  if (Object.hasOwn(input, "deployedRootPlan") && isSharedOriginChild(input.plan)) {
+  if (input.plan.schemaVersion !== 4 && Object.hasOwn(input, "deployedRootPlan") && isSharedOriginChild(input.plan)) {
     checks.push(verifyReleaseOrder(input.plan, input.deployedRootPlan));
   }
+  if (input.plan.schemaVersion === 4 && Object.hasOwn(input, "deployedRoot") && isSharedOriginChild(input.plan)) {
+    checks.push(verifyReleaseOrder(input.plan, input.deployedRoot?.plan, input.deployment?.targetOrigin, input.deployedRoot?.origin, input.deployedRoot?.workerFinalUrl));
+  }
   if (Object.hasOwn(input, "retention")) {
-    checks.push(verifyReleaseRetention(input.plan, input.retention as PwaReleaseRetentionInput));
+    const retention = input.retention as PwaReleaseRetentionInput;
+    checks.push(verifyReleaseRetention(input.plan, input.plan.schemaVersion === 4
+      ? { ...retention, ...(input.deployment?.targetOrigin === undefined ? {} : { origin: input.deployment.targetOrigin }) }
+      : retention));
   }
   // Runs after every other check, so a report follows VERIFICATION_CHECKS order regardless of input order.
-  if (Object.hasOwn(input, "htmlObserved")) {
+  if (input.plan.schemaVersion === 4) {
+    checks.push(verifyHtmlHeaders(input.plan, observedFromDeployment(input.deployment)));
+  } else if (Object.hasOwn(input, "htmlObserved")) {
     checks.push(verifyHtmlHeaders(input.plan, input.htmlObserved as PwaObservedResponses));
+  }
+  if (input.plan.schemaVersion === 4) {
+    checks.push(verifyDeploymentOrigin(input.plan, input.deployment, input.retention?.available));
   }
 
   return {

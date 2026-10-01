@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import type { PwaIdentity, PwaPlan, PwaPolicy } from "@pwa-platform/contracts";
 import type { FixtureServerOptions } from "@pwa-platform/browser-test-harness";
-import { compilePlan, type PwaCompileInput, type PwaHostBuildFile } from "@pwa-platform/core";
+import { compilePlan, type PwaCompileInput, type PwaFixedCompileInput, type PwaHostBuildFile } from "@pwa-platform/core";
 import {
   createPlatformWorkerConfig,
   createRecoveryWorkerConfig,
@@ -165,7 +165,7 @@ const COMMON_FILES: readonly PwaHostBuildFile[] = [
 /** The same policy without the offline fallback, for the version that must fail closed when offline. */
 const policyWithoutFallback: PwaPolicy = { ...policy, offlineFallback: { enabled: false } };
 
-function input(files: readonly PwaHostBuildFile[], selected: PwaPolicy = policy): PwaCompileInput {
+function input(files: readonly PwaHostBuildFile[], selected: PwaPolicy = policy): PwaFixedCompileInput {
   return {
     identity,
     install: null,

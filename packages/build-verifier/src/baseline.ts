@@ -3,11 +3,14 @@
 import {
   DIAGNOSTIC_MESSAGES,
   validateIdentity,
+  validatePortableIdentity,
   type PwaContractPath,
   type PwaDiagnostic,
   type PwaIdentity,
+  type PwaPortableIdentity,
 } from "@pwa-platform/contracts";
 import { check, type PwaVerificationCheck } from "./report.js";
+import { isReleaseOrigin } from "./deployment.js";
 
 /**
  * The fields compared, in the order the release baseline rules list them: the eight ADR-0008 immutable fields,
@@ -65,6 +68,42 @@ export function compareIdentityBaseline(candidate: PwaIdentity, baseline: unknow
   }
 
   return check("identity-baseline", diagnostics);
+}
+
+export type PwaPortableIdentityBaseline = {
+  readonly origin: string;
+  readonly identity: PwaPortableIdentity;
+};
+
+/** A portable baseline belongs to one actual deployment origin, not to the reusable build. */
+export function comparePortableIdentityBaseline(
+  candidate: PwaPortableIdentity,
+  origin: string | undefined,
+  baseline: unknown,
+): PwaVerificationCheck {
+  if (!validatePortableIdentity(candidate).ok) throw new TypeError("The candidate identity is not valid");
+  if (baseline === undefined || baseline === null) {
+    return check("identity-baseline", [diagnostic("verify.baseline-missing", "/identity")]);
+  }
+  if (typeof baseline !== "object" || !Object.hasOwn(baseline, "identity") || !Object.hasOwn(baseline, "origin")) {
+    return check("identity-baseline", [diagnostic("verify.baseline-invalid", "/identity")]);
+  }
+  const record = baseline as { readonly identity: unknown; readonly origin: unknown };
+  const checked = validatePortableIdentity(record.identity);
+  if (!checked.ok || !isReleaseOrigin(record.origin)) {
+    return check("identity-baseline", [diagnostic("verify.baseline-invalid", "/identity")]);
+  }
+  const findings: PwaDiagnostic[] = [];
+  if (record.origin !== origin) findings.push({
+    code: "verify.baseline-origin-mismatch", severity: "error", path: "/deployment/targetOrigin",
+    message: DIAGNOSTIC_MESSAGES["verify.baseline-origin-mismatch"],
+  });
+  for (const field of BASELINE_FIELDS) {
+    if (field !== "origin" && candidate[field] !== checked.value[field]) {
+      findings.push(diagnostic("verify.baseline-mismatch", `/identity/${field}`));
+    }
+  }
+  return check("identity-baseline", findings);
 }
 
 /** Diagnostics name the field that drifted, never the two values: messages must not echo input. */

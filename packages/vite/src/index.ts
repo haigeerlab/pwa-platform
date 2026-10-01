@@ -20,7 +20,7 @@ import {
 } from "./options.js";
 import { readPublicFiles } from "./public-files.js";
 
-export type { PwaViteOfflinePageOptions, PwaViteOptions } from "./options.js";
+export type { PwaViteOfflinePageOptions, PwaViteOptions, PwaFixedViteOptions, PwaPortableViteOptions } from "./options.js";
 export type { PwaOfflinePageLocale, PwaOfflinePageMessages } from "./offline-page.js";
 export type {
   PwaArtifactInput,
@@ -112,6 +112,10 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
     },
 
     configResolved(config) {
+      if (validated.deployment?.kind === "portable" &&
+          (!config.base.startsWith("/") || config.base.startsWith("//") || !config.base.endsWith("/"))) {
+        throw new TypeError("The pwa plugin's portable deployment needs a same-origin base path");
+      }
       // `base` is the only thing this plugin takes from the host's config, and it is read once: reading it again
       // inside generateBundle would let a later plugin's mutation change what the plan says was published.
       base = config.base;
@@ -125,7 +129,7 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
       // `ctx.path` is Vite's own root-relative served path for this HTML entry ("/index.html",
       // "/admin/index.html") — an identifier this plugin already gets for free, safe to put in an error message,
       // and the same whether the app builds one page or many.
-      const action = resolveManifestLinkAction(html, validated.identity.origin, validated.identity.manifestUrl, ctx.path);
+      const action = resolveManifestLinkAction(html, validated.identity.origin ?? null, validated.identity.manifestUrl, ctx.path);
       htmlEntryFiles.add(ctx.path.replace(/^\//, ""));
       if (action === "keep") return;
       // `injectTo: "head"` appends at the end of <head>, matching the spec: the platform adds its own link without
@@ -228,7 +232,7 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
         const html = typeof output.source === "string" ? output.source : new TextDecoder().decode(output.source);
         assertFinalManifestLink(
           html,
-          validated.identity.origin,
+          validated.identity.origin ?? null,
           validated.identity.manifestUrl,
           `/${output.fileName}`,
         );

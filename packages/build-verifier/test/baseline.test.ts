@@ -1,13 +1,13 @@
-import { DIAGNOSTIC_MESSAGES, type PwaIdentity, type PwaPlan } from "@pwa-platform/contracts";
+import { DIAGNOSTIC_MESSAGES, type PwaIdentity, type PwaPlanV1 } from "@pwa-platform/contracts";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { BASELINE_FIELDS, compareIdentityBaseline } from "../src/baseline.js";
 
-function readPlan(name: string): PwaPlan {
+function readPlan(name: string): PwaPlanV1 {
   const location = decodeURIComponent(new URL(`./fixtures/${name}.plan.json`, import.meta.url).pathname);
   const text = ts.sys.readFile(location);
   if (text === undefined) throw new Error(`Cannot read ${location}`);
-  return JSON.parse(text) as PwaPlan;
+  return JSON.parse(text) as PwaPlanV1;
 }
 
 const identity = readPlan("storefront").identity;

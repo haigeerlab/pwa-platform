@@ -2,6 +2,8 @@
 
 PWA 身份在生产注册后不可变更。本文规定如何保存、比较和迁移身份，依据为 [ADR-0004](../adr/0004-identity-is-immutable-after-production-registration.md)、[ADR-0008](../adr/0008-cache-namespace-and-identity-baseline.md) 和 [ADR-0009](../adr/0009-identity-migration-bumps-cache-namespace-seed.md)。
 
+**可移植部署增补（ADR-0050）：** `PwaPortableIdentity` 不含构建时 origin，但发布槽位仍按每个实际 HTTPS origin 独立。外部系统为每个 `appId + origin + environment + slot` 保存 `{ origin, identity }` 基线，分别比较、保留完整历史并审批首次发布。固定模式现有 `PwaIdentity` 基线文件格式与比较规则不变；从固定迁入可移植模式不得自动继承旧基线或静默当作首次发布。
+
 ## 基线是什么
 
 - **每个部署槽位一份发布基线。** 部署槽位是在应用配置中登记的稳定名称，代表"某个环境中的某个已安装应用"。它不是 `PwaIdentity` 的字段，身份迁移时保持不变，因此无论哪个身份字段发生变化，都能找到原来的基线。
@@ -10,6 +12,14 @@ PWA 身份在生产注册后不可变更。本文规定如何保存、比较和�
 - **更新时机。** 只有生产发布成功后才更新基线，尚未发布的变更不得写入。
 - **环境相互独立。** 一个槽位只对应一个环境。不同环境使用不同的槽位，各自有独立的基线，彼此不做比较，也不共用缓存命名空间。
 - **槽位不改名、不复用。** 槽位名登记后不再修改；应用下线后，它的槽位名也不再分配给其他应用。
+
+### 可移植模式的逐源基线
+
+上面的 `<基线目录>/<槽位名>.json` 与 `readIdentityBaseline` 是固定模式的既有格式。
+可移植模式由外部发布系统以 `appId + 实际 origin + environment + slot` 为键，分别保存
+`{ origin, identity }`，并用 `comparePortableIdentityBaseline` 比较。读取域名 A 的记录不能
+给域名 B 当作“已有基线”；B 第一次发布须单独完成首次发布评审。评审中的 scope、
+worker 路径和缓存种子等规则不变，`origin` 取 B 的实际 HTTPS 部署源。
 
 ## 首次生产发布
 

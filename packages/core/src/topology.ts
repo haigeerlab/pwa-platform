@@ -1,13 +1,14 @@
-import { validateOriginRegistry } from "@pwa-platform/contracts";
+import { validateOriginRegistry, validatePortableOriginRegistry } from "@pwa-platform/contracts";
 import type {
   AbsolutePath,
   PwaDiagnostic,
-  PwaIdentity,
+  PwaDeploymentIdentity,
   PwaInstallMetadata,
   PwaPathRule,
   PwaPolicy,
   PwaRegistryEntry,
   PwaTopology,
+  PwaPortableTopology,
 } from "@pwa-platform/contracts";
 import { diagnostic, withinPath } from "./internal/diagnostics.js";
 import { compareCodePoints } from "./internal/order.js";
@@ -17,7 +18,7 @@ import { resolvePrefix } from "./rules.js";
 
 export type ResolvedTopology = {
   /** Recorded as-is in the plan's `topology` field. */
-  readonly value: PwaTopology;
+  readonly value: PwaTopology | PwaPortableTopology;
   /** Decoded path keys of every child scope; empty unless this app is the root of a `shared-origin` registry. */
   readonly childPrefixKeys: readonly string[];
   /** Exclude rules to place ahead of every other path rule; empty unless this app is the root. */
@@ -35,13 +36,13 @@ export type TopologyResolution = {
  * building app's identity to exactly one registry entry, and (for the root app) computes the
  * exclude rules and child scope keys the rest of compilation needs.
  */
-export function resolveTopology(topology: unknown, identity: PwaIdentity | undefined): TopologyResolution {
+export function resolveTopology(topology: unknown, identity: PwaDeploymentIdentity | undefined, portable = false): TopologyResolution {
   if (hasExactKeys(topology, ["kind"]) && topology.kind === "standalone-origin") {
     return { findings: [], resolved: { value: { kind: "standalone-origin" }, childPrefixKeys: [], excludeRules: [] } };
   }
 
   if (hasExactKeys(topology, ["kind", "registry"]) && topology.kind === "shared-origin") {
-    const registryResult = validateOriginRegistry(topology.registry);
+    const registryResult = portable ? validatePortableOriginRegistry(topology.registry) : validateOriginRegistry(topology.registry);
     if (!registryResult.ok) {
       return {
         findings: registryResult.diagnostics.map((finding) => withinPath(["topology", "registry"], finding)),
@@ -53,11 +54,14 @@ export function resolveTopology(topology: unknown, identity: PwaIdentity | undef
     if (identity === undefined) return { findings: [], resolved: undefined };
 
     const matches = [registry.root, ...registry.children].filter((entry) => matchesIdentity(entry, identity));
-    if (registry.origin !== identity.origin || registry.environment !== identity.environment || matches.length !== 1) {
+    if (registry.environment !== identity.environment || matches.length !== 1 ||
+        (!portable && (registry.schemaVersion !== 1 || registry.origin !== identity.origin))) {
       return { findings: [diagnostic("plan.registry-identity-mismatch", ["topology", "registry"])], resolved: undefined };
     }
 
-    const value: PwaTopology = { kind: "shared-origin", registry };
+    const value: PwaTopology | PwaPortableTopology = portable
+      ? { kind: "shared-origin", registry: registry as Extract<PwaPortableTopology, { kind: "shared-origin" }>["registry"] }
+      : { kind: "shared-origin", registry: registry as Extract<PwaTopology, { kind: "shared-origin" }>["registry"] };
     if (!matchesIdentity(registry.root, identity)) {
       return { findings: [], resolved: { value, childPrefixKeys: [], excludeRules: [] } };
     }
@@ -107,7 +111,7 @@ export function installStartUrlInChildScope(
   return findings;
 }
 
-function matchesIdentity(entry: PwaRegistryEntry, identity: PwaIdentity): boolean {
+function matchesIdentity(entry: PwaRegistryEntry, identity: PwaDeploymentIdentity): boolean {
   return (
     entry.appId === identity.appId &&
     entry.scope === identity.scope &&

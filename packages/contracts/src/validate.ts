@@ -16,7 +16,7 @@ import {
   INSTALL_SCREENSHOT_FORM_FACTORS,
   INSTALL_SCREENSHOT_TYPES,
 } from "./identity.js";
-import type { AbsolutePath, PwaIdentity, PwaInstallMetadata, PwaInstallScreenshot } from "./identity.js";
+import type { AbsolutePath, PwaDeploymentIdentity, PwaIdentity, PwaPortableIdentity, PwaInstallMetadata, PwaInstallScreenshot } from "./identity.js";
 import { diagnostic, mapIssues } from "./internal/diagnostic.js";
 import { findNonJsonValue, isExtensionNamespace } from "./internal/json.js";
 import { decodedPathKey, isWithinKey } from "./internal/path-key.js";
@@ -29,7 +29,7 @@ import {
 } from "./internal/paths.js";
 import type { PwaExtensions } from "./json.js";
 import { REQUEST_BASELINE_DENIALS } from "./plan.js";
-import type { PwaOriginRegistry, PwaPathRule, PwaPlan, PwaPlanV2, PwaPlanV3, PwaRegistryEntry } from "./plan.js";
+import type { PwaOriginRegistry, PwaPortableOriginRegistry, PwaPathRule, PwaPlan, PwaPlanV2, PwaPlanV3, PwaPlanV4, PwaRegistryEntry } from "./plan.js";
 import { CACHE_STRATEGIES, RESOURCE_CLASSES, UPDATE_MODES } from "./policy.js";
 import type { MountRelativePath, PwaOfflineWritePolicy, PwaPolicy, PwaResourceClass, PwaRuntimeCachePolicy } from "./policy.js";
 
@@ -99,19 +99,31 @@ function createSchemas() {
   const originValue = refinedString<string>(isSecureOrigin, "identity.invalid-origin");
   const environmentValue = refinedString<string>((value) => ENVIRONMENT.test(value), "identity.invalid-environment");
 
-  const identity = z
-    .strictObject({
+  const identityFields = {
       appId: namespaceSegment,
       manifestId: text,
-      origin: originValue,
       scope: scopePath,
       serviceWorkerUrl: absolutePath,
       manifestUrl: absolutePath,
       mountPath: absolutePath,
       environment: environmentValue,
       cacheNamespaceSeed: namespaceSegment,
-    })
-    .readonly();
+  };
+  // Keep the fixed identity's serialized key order byte-for-byte stable for v1-v3 plans.
+  const identity = z.strictObject({
+    appId: identityFields.appId,
+    manifestId: identityFields.manifestId,
+    origin: originValue,
+    scope: identityFields.scope,
+    serviceWorkerUrl: identityFields.serviceWorkerUrl,
+    manifestUrl: identityFields.manifestUrl,
+    mountPath: identityFields.mountPath,
+    environment: identityFields.environment,
+    cacheNamespaceSeed: identityFields.cacheNamespaceSeed,
+  }).readonly();
+  const portableIdentity = z.strictObject({
+    ...identityFields, manifestId: absolutePath, origin: z.exactOptional(z.never()),
+  }).readonly();
 
   const registryEntry = z
     .strictObject({
@@ -122,6 +134,10 @@ function createSchemas() {
       manifestUrl: absolutePath,
     })
     .readonly();
+  const portableRegistryEntry = z.strictObject({
+    appId: namespaceSegment, scope: scopePath, serviceWorkerUrl: absolutePath,
+    manifestId: absolutePath, manifestUrl: absolutePath,
+  }).readonly();
 
   const registryVersion = z
     .number()
@@ -141,6 +157,10 @@ function createSchemas() {
       children: z.array(registryEntry).min(1).readonly(),
     })
     .readonly();
+  const portableRegistry = z.strictObject({
+    schemaVersion: z.literal(2), registryVersion, environment: environmentValue,
+    root: portableRegistryEntry, children: z.array(portableRegistryEntry).min(1).readonly(), origin: z.exactOptional(z.never()),
+  }).readonly();
 
   const topology = z
     .discriminatedUnion("kind", [
@@ -148,6 +168,10 @@ function createSchemas() {
       z.strictObject({ kind: z.literal("shared-origin"), registry }).readonly(),
     ])
     .readonly();
+  const portableTopology = z.discriminatedUnion("kind", [
+    z.strictObject({ kind: z.literal("standalone-origin") }).readonly(),
+    z.strictObject({ kind: z.literal("shared-origin"), registry: portableRegistry }).readonly(),
+  ]).readonly();
 
   const installIcon = z
     .strictObject({ src: absolutePath, sizes: text, type: text, purpose: z.enum(INSTALL_ICON_PURPOSES) })
@@ -383,10 +407,17 @@ function createSchemas() {
           runtimeCache: planRuntimeCache,
         })
         .readonly(),
+      z.strictObject({
+        ...planFields,
+        schemaVersion: z.literal(4), planVersion: z.literal(4), policyVersion: z.literal(3),
+        deployment: z.strictObject({ kind: z.literal("portable") }).readonly(),
+        identity: portableIdentity, topology: portableTopology,
+        offlineWrites: planOfflineWrites, runtimeCache: planRuntimeCache,
+      }).readonly(),
     ])
     .readonly();
 
-  return { identity, install, policy, plan, registry };
+  return { identity, portableIdentity, install, policy, plan, registry, portableRegistry };
 }
 
 type Schemas = ReturnType<typeof createSchemas>;
@@ -399,7 +430,9 @@ const schemaMatchesPublicTypes: [
   Equal<z.output<Schemas["policy"]>, PwaPolicy>,
   Equal<z.output<Schemas["plan"]>, PwaPlan>,
   Equal<z.output<Schemas["registry"]>, PwaOriginRegistry>,
-] = [true, true, true, true, true];
+  Equal<z.output<Schemas["portableIdentity"]>, PwaPortableIdentity>,
+  Equal<z.output<Schemas["portableRegistry"]>, PwaPortableOriginRegistry>,
+] = [true, true, true, true, true, true, true];
 void schemaMatchesPublicTypes;
 
 // Built on first use: constructing zod objects probes `new Function`, which must not happen at import.
@@ -442,7 +475,7 @@ function isWarning(finding: PwaDiagnostic): finding is PwaWarningDiagnostic {
   return finding.severity === "warning";
 }
 
-function identityInvariants(identity: PwaIdentity, at: readonly PropertyKey[] = []): PwaDiagnostic[] {
+function identityInvariants(identity: PwaDeploymentIdentity, at: readonly PropertyKey[] = []): PwaDiagnostic[] {
   const findings: PwaDiagnostic[] = [];
   if (!isWithinPath(identity.mountPath, identity.scope)) {
     findings.push(diagnostic("identity.scope-excludes-mount-path", [...at, "scope"]));
@@ -464,7 +497,7 @@ function identityInvariants(identity: PwaIdentity, at: readonly PropertyKey[] = 
 
 function installInvariants(
   install: PwaInstallMetadata,
-  identity: PwaIdentity,
+  identity: PwaDeploymentIdentity,
   at: readonly PropertyKey[] = [],
 ): PwaDiagnostic[] {
   const findings: PwaDiagnostic[] = [];
@@ -658,7 +691,7 @@ function scopeToPathPrefix(scope: AbsolutePath): AbsolutePath {
 
 const REGISTRY_IDENTITY_FIELDS = ["appId", "serviceWorkerUrl", "manifestId", "manifestUrl"] as const;
 
-function registryInvariants(registry: PwaOriginRegistry, at: readonly PropertyKey[] = []): PwaDiagnostic[] {
+function registryInvariants(registry: PwaOriginRegistry | PwaPortableOriginRegistry, at: readonly PropertyKey[] = []): PwaDiagnostic[] {
   const findings: PwaDiagnostic[] = [];
   const entries: { readonly entry: PwaRegistryEntry; readonly at: readonly PropertyKey[] }[] = [
     { entry: registry.root, at: [...at, "root"] },
@@ -721,7 +754,7 @@ function registryInvariants(registry: PwaOriginRegistry, at: readonly PropertyKe
   return findings;
 }
 
-function matchesRegistryEntry(entry: PwaRegistryEntry, identity: PwaIdentity): boolean {
+function matchesRegistryEntry(entry: PwaRegistryEntry, identity: PwaDeploymentIdentity): boolean {
   return (
     entry.appId === identity.appId &&
     entry.scope === identity.scope &&
@@ -731,10 +764,11 @@ function matchesRegistryEntry(entry: PwaRegistryEntry, identity: PwaIdentity): b
   );
 }
 
-function sharedOriginPlanInvariants(plan: PwaPlan, registry: PwaOriginRegistry): PwaDiagnostic[] {
+function sharedOriginPlanInvariants(plan: PwaPlan, registry: PwaOriginRegistry | PwaPortableOriginRegistry): PwaDiagnostic[] {
   const identity = plan.identity;
   const matches = [registry.root, ...registry.children].filter((entry) => matchesRegistryEntry(entry, identity));
-  if (registry.origin !== identity.origin || registry.environment !== identity.environment || matches.length !== 1) {
+  if (registry.environment !== identity.environment || matches.length !== 1 ||
+      (plan.schemaVersion === 4 ? registry.schemaVersion !== 2 : registry.schemaVersion !== 1 || registry.origin !== identity.origin)) {
     return [diagnostic("plan.registry-identity-mismatch", ["topology", "registry"])];
   }
 
@@ -763,7 +797,7 @@ function sharedOriginPlanInvariants(plan: PwaPlan, registry: PwaOriginRegistry):
  * `compile.start-url-in-child-scope`), so a correctly compiled plan never trips these checks; they are
  * a plan-level backstop that holds regardless of how the plan was produced.
  */
-function rootChildScopeInvariants(plan: PwaPlan, registry: PwaOriginRegistry): PwaDiagnostic[] {
+function rootChildScopeInvariants(plan: PwaPlan, registry: PwaOriginRegistry | PwaPortableOriginRegistry): PwaDiagnostic[] {
   const childKeys = registry.children.map((child) => scopeKey(child.scope));
   const inChildScope = (path: AbsolutePath): boolean => {
     const key = decodedPathKey(path);
@@ -838,7 +872,7 @@ function planInvariants(plan: PwaPlan): PwaDiagnostic[] {
     );
   }
 
-  if ((plan.schemaVersion === 2 || plan.schemaVersion === 3) && plan.offlineWrites.enabled) {
+  if ((plan.schemaVersion === 2 || plan.schemaVersion === 3 || plan.schemaVersion === 4) && plan.offlineWrites.enabled) {
     findings.push(...offlineWritePlanInvariants(plan, plan.offlineWrites));
   }
 
@@ -846,7 +880,7 @@ function planInvariants(plan: PwaPlan): PwaDiagnostic[] {
 }
 
 function offlineWritePlanInvariants(
-  plan: PwaPlanV2 | PwaPlanV3,
+  plan: PwaPlanV2 | PwaPlanV3 | PwaPlanV4,
   offlineWrites: Extract<PwaPlanV2["offlineWrites"], { readonly enabled: true }>,
 ): PwaDiagnostic[] {
   const findings: PwaDiagnostic[] = [];
@@ -880,10 +914,14 @@ export function validateIdentity(input: unknown): PwaValidationResult<PwaIdentit
   return validate<PwaIdentity>(input, getSchemas().identity, (identity) => identityInvariants(identity));
 }
 
+export function validatePortableIdentity(input: unknown): PwaValidationResult<PwaPortableIdentity> {
+  return validate<PwaPortableIdentity>(input, getSchemas().portableIdentity, (identity) => identityInvariants(identity));
+}
+
 /** `identity` must already be a validated identity; install URLs are checked against its scope. */
 export function validateInstallMetadata(
   input: unknown,
-  identity: PwaIdentity,
+  identity: PwaDeploymentIdentity,
 ): PwaValidationResult<PwaInstallMetadata> {
   return validate<PwaInstallMetadata>(input, getSchemas().install, (install) => installInvariants(install, identity));
 }
@@ -898,4 +936,8 @@ export function validatePlan(input: unknown): PwaValidationResult<PwaPlan> {
 
 export function validateOriginRegistry(input: unknown): PwaValidationResult<PwaOriginRegistry> {
   return validate<PwaOriginRegistry>(input, getSchemas().registry, (registry) => registryInvariants(registry));
+}
+
+export function validatePortableOriginRegistry(input: unknown): PwaValidationResult<PwaPortableOriginRegistry> {
+  return validate<PwaPortableOriginRegistry>(input, getSchemas().portableRegistry, (registry) => registryInvariants(registry));
 }

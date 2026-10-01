@@ -14,6 +14,10 @@ import {
   INSTALL,
   POLICY,
   POLICY_WITH_DEFAULT_OFFLINE,
+  PORTABLE_IDENTITY,
+  PORTABLE_POLICY,
+  SITE_PORTABLE_V1_OUT,
+  SITE_PORTABLE_V2_OUT,
   SHELL_URL,
   SITE_MANIFEST_EXT_OUT,
   SITE_OFFLINE_EN_OUT,
@@ -34,6 +38,7 @@ export default async function globalSetup(): Promise<void> {
   await rm(BUILD_ROOT, { recursive: true, force: true });
 
   await buildVersion(SITE_V1_OUT);
+  await buildPortableVersion(SITE_PORTABLE_V1_OUT);
 
   // v2 differs in the app shell's content, so its asset hash changes and the browser sees a genuinely new worker:
   // the precache manifest injected into it lists a different URL. Editing the source and restoring it afterwards
@@ -42,6 +47,7 @@ export default async function globalSetup(): Promise<void> {
   try {
     await writeFile(APP_SHELL_CSS, original.replace('content: " v1"', 'content: " v2"'), "utf8");
     await buildVersion(SITE_V2_OUT);
+    await buildPortableVersion(SITE_PORTABLE_V2_OUT);
   } finally {
     await writeFile(APP_SHELL_CSS, original, "utf8");
   }
@@ -63,6 +69,15 @@ export default async function globalSetup(): Promise<void> {
   // T7's shared-origin fixture (root + child app on one origin): a separate site tree, built independently of the
   // standalone fixture above so neither can affect the other's output.
   await sharedOriginGlobalSetup();
+}
+
+async function buildPortableVersion(outDir: string): Promise<void> {
+  await build({
+    configFile: false, root: APP_ROOT, base: SHELL_URL, envDir: false, logLevel: "error",
+    build: { outDir, emptyOutDir: true, minify: false, sourcemap: false },
+    plugins: [pwa({ deployment: { kind: "portable" }, identity: PORTABLE_IDENTITY,
+      policy: PORTABLE_POLICY, install: INSTALL, topology: { kind: "standalone-origin" } })],
+  });
 }
 
 type BuildVariant = {

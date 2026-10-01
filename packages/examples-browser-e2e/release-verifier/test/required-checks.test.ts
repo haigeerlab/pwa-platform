@@ -3,11 +3,11 @@
 // they are structurally enough to exercise this one pure function, not claims about a valid plan.
 import { readFileSync } from "node:fs";
 import { requiredReleaseChecks } from "@pwa-platform/build-verifier";
-import type { PwaIdentity, PwaOriginRegistry, PwaPlan } from "@pwa-platform/contracts";
+import type { PwaIdentity, PwaOriginRegistry, PwaPlanV1 } from "@pwa-platform/contracts";
 import { describe, expect, it } from "vitest";
 import { requiredChecksFor } from "../required-checks.ts";
 
-const storefront = JSON.parse(readFileSync(new URL("./fixtures/storefront.plan.json", import.meta.url), "utf8")) as PwaPlan;
+const storefront = JSON.parse(readFileSync(new URL("./fixtures/storefront.plan.json", import.meta.url), "utf8")) as PwaPlanV1;
 
 function registryEntry(identity: PwaIdentity): PwaOriginRegistry["root"] {
   const { appId, scope, serviceWorkerUrl, manifestId, manifestUrl } = identity;
@@ -16,7 +16,7 @@ function registryEntry(identity: PwaIdentity): PwaOriginRegistry["root"] {
 
 const childIdentity: PwaIdentity = { ...storefront.identity, appId: "storefront-m" };
 
-function sharedOriginPlan(identity: PwaIdentity, children: readonly PwaIdentity[]): PwaPlan {
+function sharedOriginPlan(identity: PwaIdentity, children: readonly PwaIdentity[]): PwaPlanV1 {
   const registry: PwaOriginRegistry = {
     schemaVersion: 1,
     registryVersion: 1,

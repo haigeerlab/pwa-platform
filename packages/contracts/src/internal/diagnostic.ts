@@ -28,6 +28,7 @@ const KNOWN_FIELD_NAMES = [
   "configDigest",
   "description",
   "diagnostics",
+  "deployment",
   "databaseName",
   "display",
   "displayOverride",

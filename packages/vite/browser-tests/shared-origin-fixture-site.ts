@@ -1,5 +1,5 @@
 import { fileURLToPath } from "node:url";
-import type { PwaIdentity, PwaOriginRegistry, PwaPolicy, PwaTopology } from "@pwa-platform/contracts";
+import type { PwaIdentity, PwaOriginRegistry, PwaPolicy, PwaPolicyV3, PwaPortableIdentity, PwaPortableOriginRegistry, PwaPortableTopology, PwaTopology } from "@pwa-platform/contracts";
 import type { FixtureServerOptions } from "@pwa-platform/browser-test-harness";
 
 const here = (path: string): string => fileURLToPath(new URL(path, import.meta.url));
@@ -12,6 +12,7 @@ export const CHILD_APP_ROOT: string = here("./shared-origin-child-app/");
 export const BUILD_ROOT: string = here("../browser-build/shared-origin/");
 /** Root at the site root, child under `/m/`: the merged origin every "normal" scenario serves. */
 export const SHARED_ROOT: string = here("../browser-build/shared-origin/shared/");
+export const PORTABLE_SHARED_ROOT: string = here("../browser-build/shared-origin/portable-shared/");
 /** Same root build; `/m/` is a plain page with no worker — the child app was never deployed. */
 export const ROOT_ONLY_ROOT: string = here("../browser-build/shared-origin/root-only/");
 /**
@@ -116,6 +117,18 @@ export const REGISTRY_WITHOUT_CHILD: PwaOriginRegistry = {
 
 export const ROOT_TOPOLOGY: PwaTopology = { kind: "shared-origin", registry: REGISTRY };
 export const CHILD_TOPOLOGY: PwaTopology = { kind: "shared-origin", registry: REGISTRY };
+const { origin: _rootOrigin, ...portableRootIdentity } = ROOT_IDENTITY;
+const { origin: _childOrigin, ...portableChildIdentity } = CHILD_IDENTITY;
+void _rootOrigin;
+void _childOrigin;
+export const PORTABLE_ROOT_IDENTITY: PwaPortableIdentity = { ...portableRootIdentity, manifestId: ROOT_SHELL_URL };
+export const PORTABLE_CHILD_IDENTITY: PwaPortableIdentity = { ...portableChildIdentity, manifestId: CHILD_SHELL_URL };
+export const PORTABLE_REGISTRY: PwaPortableOriginRegistry = {
+  schemaVersion: 2, registryVersion: REGISTRY.registryVersion, environment: REGISTRY.environment,
+  root: { ...REGISTRY.root, manifestId: ROOT_SHELL_URL },
+  children: [{ ...REGISTRY.children[0]!, manifestId: CHILD_SHELL_URL }],
+};
+export const PORTABLE_TOPOLOGY: PwaPortableTopology = { kind: "shared-origin", registry: PORTABLE_REGISTRY };
 /** Mutation-only: a root with no registry at all, so it generates no exclude rule for `/m`. */
 export const STANDALONE_TOPOLOGY: PwaTopology = { kind: "standalone-origin" };
 export const TOPOLOGY_WITHOUT_CHILD: PwaTopology = { kind: "shared-origin", registry: REGISTRY_WITHOUT_CHILD };
@@ -150,6 +163,19 @@ function policy(rootCatchAllClass: "navigation-public-static" | "asset" = "navig
 
 export const ROOT_POLICY: PwaPolicy = policy("asset");
 export const CHILD_POLICY: PwaPolicy = policy();
+export const PORTABLE_ROOT_POLICY: PwaPolicyV3 = {
+  ...ROOT_POLICY, schemaVersion: 3,
+  offlineWrites: { enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [] },
+  runtimeCache: { enabled: false, maxEntries: 0, maxEntryBytes: 0, maxAgeSeconds: 0 },
+};
+export const PORTABLE_CHILD_POLICY: PwaPolicyV3 = {
+  ...CHILD_POLICY, schemaVersion: 3,
+  offlineWrites: { enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [] },
+  runtimeCache: { enabled: false, maxEntries: 0, maxEntryBytes: 0, maxAgeSeconds: 0 },
+};
+export const PORTABLE_SHARED_SITE: FixtureServerOptions = {
+  versions: { shared: PORTABLE_SHARED_ROOT }, initialVersion: "shared",
+};
 
 /** Every built variant, served by one fixture server; a test switches with `fixtureServer.deploy(name)`. */
 export const SHARED_ORIGIN_SITE: FixtureServerOptions = {

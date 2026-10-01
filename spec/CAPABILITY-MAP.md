@@ -40,8 +40,9 @@
 | stable-release-qualification | 对九个现有公开包和入口恢复包做跨浏览器安装、更新、离线、入口恢复与 npm 分发验收；真实记录限制，修复后复测，再决定正式版本发布。 | package-distribution, browser-release-evidence, update-notice-ui, pwa-entry-resilience |
 | production-readiness-documentation | 基于正式包、源码、自动化与真机证据审计生产就绪度；在文档站公开多端测试矩阵、可追溯的能力对比，补齐十个公开包 README，并按功能目标重组接入说明。 | stable-release-qualification, capability-comparison |
 | ai-onboarding | 随 @pwa-platform/vite 发布、与所装版本匹配的一页 AI 接入清单（skills/pwa-onboarding/SKILL.md，一个 Markdown 文件）：只交代接入中最易出错的几件事——先查能不能接、冲突不自动删除、身份字段不可变须逐项确认、公共缓存规则逐个接口由人确认、不推送不部署不切换 worker；其余规则指向文档站，不复述；仅开发期辅助，不进入生产构建。 | vite-adapter, package-distribution, production-readiness-documentation |
+| portable-deployment | 以显式可移植模式生成与域名无关的 PWA 产物，并按每个实际 HTTPS 源验证发布证据、身份历史与共享源顺序。 | contracts-foundation, policy-compiler, vite-adapter, shared-origin-topology, release-gate-contract, release-orchestration-protocol, ai-onboarding |
 
-Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation → ai-onboarding
+Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation → ai-onboarding → portable-deployment
 
 ---
 
@@ -127,3 +128,12 @@ Build order: contracts-foundation → policy-compiler, platform-governance, brow
 
 评审人：项目所有者
 日期：2026-09-28
+
+### 2026-10-01 修订：新增 `portable-deployment`
+
+- [x] 模块边界：显式可移植构建、v4 计划与逐源发布证据；不新增部署器，也不改变旧固定 origin 模式
+- [x] 依赖方向：复用现有契约、编译器、Vite、共享源治理、发布门禁、编排协议与随包接入清单
+- [x] 构建位置：在全部直接依赖之后；设计由本次项目所有者需求授权，决策详见 ADR-0050
+
+评审人：项目所有者（本次需求）
+日期：2026-10-01

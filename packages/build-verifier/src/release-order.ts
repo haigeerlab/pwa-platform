@@ -6,8 +6,9 @@ import {
   validatePlan,
   type PwaContractPath,
   type PwaDiagnostic,
-  type PwaIdentity,
+  type PwaDeploymentIdentity,
   type PwaOriginRegistry,
+  type PwaPortableOriginRegistry,
   type PwaPlan,
   type PwaRegistryEntry,
 } from "@pwa-platform/contracts";
@@ -30,7 +31,7 @@ export function isSharedOriginChild(plan: PwaPlan): boolean {
  * Throws when `plan` itself is not a shared-origin child: that is a caller mistake (`verifyRelease` only calls this
  * for children), not something the release gate should report as drift.
  */
-export function verifyReleaseOrder(plan: PwaPlan, deployedRootPlan: unknown): PwaVerificationCheck {
+export function verifyReleaseOrder(plan: PwaPlan, deployedRootPlan: unknown, deploymentOrigin?: string, rootOrigin?: string, rootWorkerFinalUrl?: string): PwaVerificationCheck {
   if (plan.topology.kind !== "shared-origin" || !isSharedOriginChild(plan)) {
     throw new TypeError("verifyReleaseOrder only applies to the plan of a shared-origin child app");
   }
@@ -46,7 +47,10 @@ export function verifyReleaseOrder(plan: PwaPlan, deployedRootPlan: unknown): Pw
     // The deployed plan must be this origin's root, not another child or another app that happens to be registered.
     root.identity.appId !== root.topology.registry.root.appId ||
     root.identity.appId !== childRegistry.root.appId ||
-    root.identity.origin !== plan.identity.origin ||
+    (plan.schemaVersion === 4
+      ? root.schemaVersion !== 4 || deploymentOrigin === undefined || rootOrigin !== deploymentOrigin ||
+        rootWorkerFinalUrl !== `${deploymentOrigin}${root.identity.serviceWorkerUrl}`
+      : root.schemaVersion === 4 || root.identity.origin !== plan.identity.origin) ||
     root.identity.environment !== plan.identity.environment
   ) {
     return check("release-order", [diagnostic("verify.root-plan-not-shared-origin", "/deployedRootPlan/topology")]);
@@ -82,7 +86,7 @@ export function verifyReleaseOrder(plan: PwaPlan, deployedRootPlan: unknown): Pw
   return check("release-order", diagnostics);
 }
 
-function matchesRegistryIdentity(entry: PwaRegistryEntry, identity: PwaIdentity): boolean {
+function matchesRegistryIdentity(entry: PwaRegistryEntry, identity: PwaDeploymentIdentity): boolean {
   return (
     entry.appId === identity.appId &&
     entry.scope === identity.scope &&
@@ -103,7 +107,7 @@ function registryEntriesEqual(left: PwaRegistryEntry, right: PwaRegistryEntry): 
 }
 
 /** Field-by-field comparison, independent of key order: neither side is guaranteed to have passed through zod. */
-function registriesEqual(left: PwaOriginRegistry, right: PwaOriginRegistry): boolean {
+function registriesEqual(left: PwaOriginRegistry | PwaPortableOriginRegistry, right: PwaOriginRegistry | PwaPortableOriginRegistry): boolean {
   return (
     left.schemaVersion === right.schemaVersion &&
     left.registryVersion === right.registryVersion &&

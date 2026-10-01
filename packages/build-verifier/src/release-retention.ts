@@ -8,18 +8,23 @@ import {
   type PwaPlan,
 } from "@pwa-platform/contracts";
 import { check, type PwaVerificationCheck } from "./report.js";
+import { isReleaseOrigin } from "./deployment.js";
 
 const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type PwaReleaseRetentionSnapshot = {
   readonly releasedAtMs: number;
   readonly plan: unknown;
+  /** Required for portable history: the origin whose release line produced this snapshot. */
+  readonly origin?: string;
 };
 
 export type PwaReleaseRetentionInput = {
   readonly asOfMs: number;
   readonly previous: readonly PwaReleaseRetentionSnapshot[];
   readonly available: readonly string[];
+  /** Required for portable history: the actual target origin of this release line. */
+  readonly origin?: string;
 };
 
 type ValidatedSnapshot = {
@@ -41,9 +46,12 @@ export function verifyReleaseRetention(plan: PwaPlan, input: PwaReleaseRetention
   if (!isTimestamp(asOfMs) || !Array.isArray(inputValue.previous)) {
     return invalidHistory();
   }
+  if (plan.schemaVersion === 4 && !isReleaseOrigin(inputValue.origin)) {
+    return invalidHistory();
+  }
 
   const available = readAvailable(inputValue.available);
-  const previous = readPrevious(plan, inputValue.previous, asOfMs);
+  const previous = readPrevious(plan, inputValue.previous, asOfMs, inputValue.origin);
   if (previous === undefined) return invalidHistory();
 
   const required = new Map<string, PwaContractPath>();
@@ -74,11 +82,12 @@ function readAvailable(value: unknown): ReadonlySet<string> {
   return new Set(value);
 }
 
-function readPrevious(plan: PwaPlan, value: readonly unknown[], asOfMs: number): readonly ValidatedSnapshot[] | undefined {
+function readPrevious(plan: PwaPlan, value: readonly unknown[], asOfMs: number, origin: unknown): readonly ValidatedSnapshot[] | undefined {
   const snapshots: ValidatedSnapshot[] = [];
   for (const entry of value) {
     if (!isRecord(entry) || !isTimestamp(entry.releasedAtMs) || entry.releasedAtMs > asOfMs) return undefined;
     const validated = validatePlan(entry.plan);
+    if (plan.schemaVersion === 4 && entry.origin !== origin) return undefined;
     if (!validated.ok || !sameReleaseLine(plan, validated.value)) return undefined;
 
     const preceding = snapshots.at(-1);
@@ -91,7 +100,9 @@ function readPrevious(plan: PwaPlan, value: readonly unknown[], asOfMs: number):
 function sameReleaseLine(candidate: PwaPlan, historical: PwaPlan): boolean {
   return (
     candidate.identity.appId === historical.identity.appId &&
-    candidate.identity.origin === historical.identity.origin &&
+    (candidate.schemaVersion === 4
+      ? historical.schemaVersion === 4
+      : historical.schemaVersion !== 4 && candidate.identity.origin === historical.identity.origin) &&
     candidate.identity.environment === historical.identity.environment
   );
 }

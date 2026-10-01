@@ -4,7 +4,7 @@
 // would mean asking the app to write the same name, colours and icons a second time, in a second format — and two
 // copies of one fact drift apart. So the platform writes it, and the app never repeats itself.
 import type {
-  PwaIdentity,
+  PwaDeploymentIdentity,
   PwaInstallIcon,
   PwaInstallMetadata,
   PwaInstallScreenshot,
@@ -78,7 +78,7 @@ export function createWebManifest(plan: PwaPlan): PwaWebManifest | null {
   return install === null ? null : fromInstall(install, identity);
 }
 
-function fromInstall(install: PwaInstallMetadata, identity: PwaIdentity): PwaWebManifest {
+function fromInstall(install: PwaInstallMetadata, identity: PwaDeploymentIdentity): PwaWebManifest {
   return {
     // `id` and `scope` come from the identity, not from the install metadata: they are what the browser uses to
     // decide whether this is the same installed app as last time, and the platform owns that (ADR-0004).

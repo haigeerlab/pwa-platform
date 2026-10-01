@@ -16,7 +16,7 @@
 | <code>schema.invalid-value</code> | 构建失败 | 值不在允许范围：空字符串、枚举之外（包括策略的 <code>schemaVersion</code> 不是 1、2、3）、数字越界、非法 <code>sizes</code> 等 | 对照字段参考里该字段的“取值规则” | [字段参考](/guide/configuration#field-reference) |
 | <code>schema.missing-field</code> | 构建失败 | 必填字段没写 | 补上；“默认”为“无”的都是必填 | [字段参考](/guide/configuration#field-reference) |
 | <code>schema.unknown-field</code> | 构建失败 | 对象里有契约之外的字段（包括拼错的字段名） | 删掉或改正拼写；不要往配置里塞平台不认识的字段 | [字段参考](/guide/configuration#field-reference) |
-| <code>schema.unsupported-version</code> | 构建失败 | 共享 origin 登记表的 <code>schemaVersion</code> 不是 1（策略的 <code>schemaVersion</code> 写错报的是 <code>schema.invalid-value</code>） | 登记表写 <code>schemaVersion: 1</code> | [同源多应用](/operations/release#同源多应用) |
+| <code>schema.unsupported-version</code> | 构建失败 | 共享 origin 登记表版本不符合部署模式（固定域名用 v1，可移植用 v2；策略版本错误报 <code>schema.invalid-value</code>） | 按部署模式选择登记表版本，不改变旧 v1 的含义 | [同源多应用](/operations/release#同源多应用) |
 | <code>value.not-serializable</code> | 构建失败 | 配置里含不是纯 JSON 的值（函数、类实例、循环引用等） | 配置只写纯数据 | [策略只声明意图](/guide/configuration#策略只声明意图) |
 | <code>path.invalid</code> | 构建失败 | 路径不是规范形式：不以 <code>/</code> 开头、含 <code>//</code>、反斜杠、查询串或 <code>.</code>／<code>..</code> 段；<code>scope</code> 没有以 <code>/</code> 结尾；<code>pathPrefix</code> 以 <code>/</code> 结尾或含 <code>*</code> | 改成规范路径；<code>scope</code> 以 <code>/</code> 结尾，<code>pathPrefix</code> 不以 <code>/</code> 结尾且无通配符 | [构建期身份校验](/guide/configuration#构建期身份校验)、[资源规则的写法约束](/guide/configuration#资源规则的写法约束) |
 | <code>extensions.invalid-namespace</code> | 构建失败 | 策略的 <code>extensions</code> 键没有命名空间前缀 | 键写成 <code>vendor.feature</code> 这种带命名空间的形式 | — |
@@ -93,7 +93,7 @@
 
 ## 发布检查（build-verifier）
 
-这些码只出现在你的发布脚本调用 <code>verifyRelease</code> 之后；省略输入就跳过对应检查，所以要同时核对必需检查是否全部执行。总览见[部署与发布](/operations/release#平台提供的机器检查)。
+这些码只出现在你的发布脚本调用 <code>verifyRelease</code> 之后；固定模式省略输入会跳过对应检查，可移植模式缺部署证据会失败。两者都要同时核对必需检查是否全部执行。总览见[部署与发布](/operations/release#平台提供的机器检查)。
 
 | 码 | 严重度 | 何时出现 | 怎么改 | 详见 |
 | --- | --- | --- | --- | --- |
@@ -103,8 +103,13 @@
 | <code>verify.baseline-missing</code> | 发布检查失败 | 没有提供发布基线；首次发布或迁移需要人工批准 | 传入存档的生产身份基线；首次发布按流程由审批人确认 | [发布门禁](/operations/release#发布门禁) |
 | <code>verify.baseline-invalid</code> | 发布检查失败 | 存档的基线不是有效的身份 | 修复存档 | [发布门禁](/operations/release#发布门禁) |
 | <code>verify.baseline-mismatch</code> | 发布检查失败 | 候选身份与基线不同，路径 <code>/identity/&lt;字段&gt;</code> 指出哪个字段变了 | 改回基线值；确需变更属于身份迁移，需要 ADR 与迁移计划 | [字段参考](/guide/configuration#field-reference) |
+| <code>verify.baseline-origin-mismatch</code> | 发布检查失败 | 可移植基线属于另一个实际部署域名 | 读取本域名的独立基线 | [可移植部署](/guide/portable-deployment) |
 | <code>verify.retention-history-invalid</code> | 发布检查失败 | 提供的发布历史无法建立有效的保留线 | 修复发布历史记录 | [更新与旧资源保留](/operations/release#更新与旧资源保留) |
 | <code>verify.retention-missing</code> | 发布检查失败 | 保留窗口内要求的旧指纹资源已经取不到 | 恢复这些资源；发布 R 时 R、R-1、R-2 的指纹资源都要可获取，更早版本至少保留 7 天 | [更新与旧资源保留](/operations/release#更新与旧资源保留) |
+| <code>verify.deployment-origin-invalid</code> | 发布检查失败 | v4 计划缺本次目标 origin，或该值不是规范 HTTPS origin（本地 loopback 可用 HTTP） | 由编排器传入实际目标域名与响应证据 | [可移植部署](/guide/portable-deployment) |
+| <code>verify.deployment-response-missing</code> | 发布检查失败 | v4 必需平台路径缺最终响应 URL、整数 HTTP 状态码或响应头 | 请求本域名的缺失路径并保存结果 | [可移植部署](/guide/portable-deployment) |
+| <code>verify.deployment-response-mismatch</code> | 发布检查失败 | 跟随重定向后的最终响应 URL 不在本次域名或不再是要求的路径 | 修正重定向／部署目标，重新采集本域名响应 | [可移植部署](/guide/portable-deployment) |
+| <code>verify.deployment-response-unsuccessful</code> | 发布检查失败 | 必需平台路径的最终响应状态码不是 200 | 修复该域名上的部署或路由后重新采集 | [可移植部署](/guide/portable-deployment) |
 
 ## 同源多应用（共享 origin）
 
@@ -124,7 +129,7 @@
 | <code>compile.start-url-in-child-scope</code> | 构建失败 | 安装 <code>startUrl</code> 落进子应用 scope | 改到子 scope 之外 | [同源多应用](/operations/release#同源多应用) |
 | <code>compile.shortcut-url-in-child-scope</code> | 构建失败 | 快捷方式 <code>url</code> 落进子应用 scope | 改到子 scope 之外 | [其他可选安装字段](/guide/configuration#其他可选安装字段) |
 | <code>compile.host-file-in-child-scope</code> | 警告 | 根应用的构建产物里有文件落在子 scope 内；这些文件不会进入预缓存 | 通常无需处理；确认子应用文件不由根应用发布 | [同源多应用](/operations/release#同源多应用) |
-| <code>verify.root-plan-not-shared-origin</code> | 发布检查失败 | 线上根应用的计划不是共享 origin 拓扑，或它的 <code>origin</code>／<code>environment</code> 不同 | 先按共享 origin 发布根应用 | [同源多应用](/operations/release#同源多应用) |
+| <code>verify.root-plan-not-shared-origin</code> | 发布检查失败 | 线上根应用的计划不是对应模式的共享 origin 根计划，或固定模式的 <code>origin</code>／<code>environment</code> 不同；可移植模式还会检查根记录和 worker 最终 URL 属于本域名 | 先在本域名发布对应模式的根应用，并采集真实根 worker 响应 | [同源多应用](/operations/release#同源多应用) |
 | <code>verify.root-plan-missing-exclude</code> | 发布检查失败 | 线上根计划没有覆盖这个子应用 scope 的排除规则 | 先发布带排除规则的根应用，再发布子应用 | [同源多应用](/operations/release#同源多应用) |
 | <code>verify.root-registry-older</code> | 发布检查失败 | 线上根计划的登记表版本比本次的旧 | 先发布新版本登记表对应的根应用 | [同源多应用](/operations/release#同源多应用) |
 | <code>verify.root-registry-child-mismatch</code> | 发布检查失败 | 线上根计划的登记表里没有与本子应用身份匹配的项 | 同步登记表后先发布根应用 | [同源多应用](/operations/release#同源多应用) |

@@ -4,6 +4,8 @@
 
 平台控制的身份包括 `appId`、`manifestId`、origin、scope、Service Worker URL、manifest URL、挂载路径、环境和缓存命名空间种子。生产身份字段不可变；变更它们属于迁移，而不是普通配置修改。
 
+[ADR-0050](../adr/0050-portable-deployment.md) 的可移植模式仅在 Vite 显式写 `deployment: { kind: "portable" }` 时使用 `PwaPortableIdentity`（无 origin）。固定身份和计划 v1–v3 的 origin 语义不变；可移植计划为 v4，策略版本为 v3。共享源的可移植登记表为 schema v2（无 origin），固定登记表 v1 不变。实际 origin 在每次发布的响应证据和按源保存的基线中绑定，而不进入可复用的浏览器产物。
+
 安装元数据是独立校验的契约：`startUrl`、`display`、名称、短名称、主题/背景色和必需图标变体，以及可选的 `description`、`categories`、`orientation`、`displayOverride`、`screenshots`、`shortcuts`（[ADR-0037](../adr/0037-install-metadata-manifest-members.md)、[接入说明](../guides/manifest-fields.md)）。身份控制 URL 所有权；产品配置只能在平台校验规则内提供展示元数据。契约层只校验数据形状；Vite 构建适配器另按 [ADR-0040](../adr/0040-validate-manifest-icons-during-vite-build.md) 用最终产物字节检查主图标存在性、常用位图 MIME 与固有尺寸。
 
 ## PwaPolicy

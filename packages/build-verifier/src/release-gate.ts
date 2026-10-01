@@ -48,6 +48,6 @@ export function verifyReleaseGateCoverage(
  */
 export function requiredReleaseChecks(plan: PwaPlan): readonly PwaVerificationCheckName[] {
   const child = isSharedOriginChild(plan);
-  return VERIFICATION_CHECKS.filter((name) => name !== "release-order" || child);
+  return VERIFICATION_CHECKS.filter((name) =>
+    (name !== "release-order" || child) && (name !== "deployment-origin" || plan.schemaVersion === 4));
 }
-

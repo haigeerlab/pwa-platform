@@ -34,7 +34,7 @@ export function findManifestLinks(html: string): readonly ManifestLinkMatch[] {
  */
 export function resolveManifestLinkAction(
   html: string,
-  identityOrigin: string,
+  identityOrigin: string | null,
   manifestUrl: string,
   entryLabel: string,
 ): ManifestLinkAction {
@@ -58,7 +58,7 @@ export function resolveManifestLinkAction(
 /** Ensures the emitted HTML contains the link that transformIndexHtml was meant to leave behind. */
 export function assertFinalManifestLink(
   html: string,
-  identityOrigin: string,
+  identityOrigin: string | null,
   manifestUrl: string,
   entryLabel: string,
 ): void {
@@ -89,8 +89,9 @@ function isManifestRel(rel: string | undefined): boolean {
   return rel?.split(/\s+/).some((token) => token.toLowerCase() === "manifest") ?? false;
 }
 
-function isAcceptedManifestHref(href: string, identityOrigin: string, manifestUrl: string): boolean {
+function isAcceptedManifestHref(href: string, identityOrigin: string | null, manifestUrl: string): boolean {
   if (href.startsWith("/")) return href === manifestUrl;
+  if (identityOrigin === null) return false;
   if (!URL.canParse(href)) return false;
 
   const url = new URL(href);

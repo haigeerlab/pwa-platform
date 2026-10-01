@@ -15,6 +15,20 @@ export type PwaIdentity = {
   readonly cacheNamespaceSeed: string;
 };
 
+/** Only a deployment explicitly marked portable may use this identity. */
+export type PwaPortableIdentity = {
+  readonly appId: string;
+  readonly manifestId: AbsolutePath;
+  readonly scope: AbsolutePath;
+  readonly serviceWorkerUrl: AbsolutePath;
+  readonly manifestUrl: AbsolutePath;
+  readonly mountPath: AbsolutePath;
+  readonly environment: string;
+  readonly cacheNamespaceSeed: string;
+  readonly origin?: never;
+};
+export type PwaDeploymentIdentity = PwaIdentity | PwaPortableIdentity;
+
 export const INSTALL_DISPLAY_MODES = [
   "standalone",
   "minimal-ui",

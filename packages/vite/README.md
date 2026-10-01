@@ -126,6 +126,7 @@ instead install their framework binding, which owns the client facade for the ap
 | Option | Meaning |
 | --- | --- |
 | `identity` | Immutable app id, origin, mount, scope, manifest URL, worker URL, environment and cache namespace seed. |
+| `deployment` | Omitted or `{ kind: "fixed" }`: existing fixed-origin identity. `{ kind: "portable" }`: explicit domain-independent build with `PwaPortableIdentity` (no origin) and a v3 policy. |
 | `policy` | Install flag, update mode, offline fallback, timeout, precache rules and optional explicit runtime-cache/offline-write rules. |
 | `install` | Manifest metadata. Pass `null` for an application that must not be installable; no manifest is emitted. |
 | `topology` | `{ kind: "standalone-origin" }` or a validated shared-origin registry. |
@@ -149,6 +150,7 @@ plus `PWA_PLUGIN_NAME` and option/artifact types. `@pwa-platform/vite/virtual` i
 - Use deterministic minification/obfuscation. Identical inputs must produce identical bytes and hashed URLs.
 - Publish the application files, worker, manifest and plan from one build as a unit. Do not mix releases.
 - Changing identity, scope, worker URL or cache namespace is a migration, not a routine configuration edit.
+- Portable builds use root-absolute same-origin platform URLs and reject full-URL manifest links and cross-origin Vite bases. Their plan is v4; fixed plans v1–v3 keep their existing semantics. The release orchestrator must verify final response URLs and headers separately at every actual HTTPS origin, with per-origin baselines, history and shared-root release order. See [portable deployment](https://github.com/haigeerlab/pwa-platform/blob/main/website/guide/portable-deployment.md).
 - `install: null` disables manifest emission; it does not by itself disable the worker or caching policy.
 
 See [configuration](https://github.com/haigeerlab/pwa-platform/blob/main/website/guide/configuration.md),

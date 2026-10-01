@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
-import { cacheNamespacePrefix, type PwaPlan } from "@pwa-platform/contracts";
+import { cacheNamespacePrefix, type PwaPlanV1 } from "@pwa-platform/contracts";
 import { describe, expect, it } from "vitest";
 import { verifyReleaseRetention } from "../src/release-retention.js";
 
-const storefront = JSON.parse(readFileSync(new URL("./fixtures/storefront.plan.json", import.meta.url), "utf8")) as PwaPlan;
+const storefront = JSON.parse(readFileSync(new URL("./fixtures/storefront.plan.json", import.meta.url), "utf8")) as PwaPlanV1;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function planWith(asset: `/${string}`, changes: Partial<PwaPlan["identity"]> = {}): PwaPlan {
+function planWith(asset: `/${string}`, changes: Partial<PwaPlanV1["identity"]> = {}): PwaPlanV1 {
   const identity = { ...storefront.identity, ...changes };
   return {
     ...storefront,

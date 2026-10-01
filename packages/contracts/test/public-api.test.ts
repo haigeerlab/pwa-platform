@@ -22,7 +22,7 @@ const PUBLIC_MODULES = [
 ] as const;
 
 describe("public exports", () => {
-  it("exposes exactly the documented v1 runtime API", () => {
+  it("exposes exactly the documented runtime API", () => {
     expect(Object.keys(contracts).sort()).toEqual([
       "CACHE_KINDS",
       "CACHE_STRATEGIES",
@@ -50,6 +50,8 @@ describe("public exports", () => {
       "validateOriginRegistry",
       "validatePlan",
       "validatePolicy",
+      "validatePortableIdentity",
+      "validatePortableOriginRegistry",
     ]);
   });
 

@@ -6,6 +6,8 @@
 
 一个 origin 和 scope 对应一个 PWA 身份，是最直接的部署方式。部署时确保 Vite <code>base</code>、身份中的 <code>origin</code> 与 <code>scope</code>、manifest 和 worker 的实际 URL 相符。worker 应从 HTTPS 同源地址提供；发布时核查 HTML、worker 和指纹资产的缓存头。完整的头部规则、Nginx 与 Cloudflare 示例见[服务器与 CDN 配置](/operations/hosting)。
 
+同一份构建产物需要部署到构建时未知的多个域名时，使用显式的[可移植部署模式](/guide/portable-deployment)。每个域名都是独立的发布线：分别收集实际响应、核对身份基线、完整历史、旧资源和首次发布批准。
+
 ## 线上响应头
 
 构建报告无法证明 CDN 或源站实际返回的响应头。发布时应逐类请求线上 URL，并按下表核对 `Cache-Control`：
@@ -20,11 +22,12 @@
 
 ### 平台提供的机器检查
 
-<code>@pwa-platform/build-verifier</code> 提供六项检查，名称固定为 `artifacts`（计划引用的文件都已发布）、`response-headers`（worker、manifest 与指纹资源的缓存头）、`html-headers`（公开 HTML 的缓存头）、`identity-baseline`（生产身份与存档基线一致）、`release-retention`（旧指纹资源仍可获取）和 `release-order`（共享 origin 的子应用发布前，根应用已排除其 scope）。它们是纯判断函数，**输入由你的发布系统采集**：
+<code>@pwa-platform/build-verifier</code> 对固定域名计划提供六项检查，名称固定为 `artifacts`（计划引用的文件都已发布）、`response-headers`（worker、manifest 与指纹资源的缓存头）、`html-headers`（公开 HTML 的缓存头）、`identity-baseline`（生产身份与存档基线一致）、`release-retention`（旧指纹资源仍可获取）和 `release-order`（共享 origin 的子应用发布前，根应用已排除其 scope）。可移植 v4 计划额外要求 `deployment-origin`，核对每条平台资源的最终响应 URL 属于本次目标域名。它们是纯判断函数，**输入由你的发布系统采集**：
 
 - `release-retention` 需要你提供发布历史记录（每个历史版本的计划与发布时间）和线上当前可获取的路径清单；
 - `release-order` 只适用于共享 origin 的子应用，要求根应用的线上计划已经先排除子 scope（根先、子后）；
-- 省略某项输入即跳过该项检查，所以门禁要同时核对必需检查是否全部执行。
+- 固定模式省略某项输入会跳过该项检查；可移植模式的响应头、HTML 头与部署源检查即使缺证据也会失败。两种模式都要同时核对必需检查覆盖与报告结果。
+- 可移植模式传入 `deployment: { targetOrigin, responses }`，其中每个响应都含跟随重定向后的 `finalUrl` 和 `headers`；发布系统须实际请求本次域名并保存采集引用，不能拿域名字符串或另一域名的响应充当证据。
 
 调用方式与示例见[服务器与 CDN 配置](/operations/hosting#自检)。
 
@@ -35,6 +38,8 @@
 ## 同源多应用
 
 同一 origin 上可以有根应用与固定子路径应用，各自持有独立 manifest 和 worker；这不是跨 origin 隔离，存储仍同源共享。目前仅支持 Vite 接入。
+
+可移植模式的根、子应用都用无 `origin` 的 v2 共享登记表；相同的产物可部署在多个域名，但每个域名都须先验证并发布根排除规则，再发布该域名的子应用。固定模式的 v1 登记表和原有 origin 校验保持不变。
 
 根应用需要一份受版本控制的登记表，并从中生成子 scope 的排除规则：不能预缓存子应用文件、接管子路径请求或替子应用返回根离线页。**先发布根应用的排除规则，再发布子应用**；移除时反向执行。发布子应用前还要核对线上根应用的计划已经包含相应排除。
 

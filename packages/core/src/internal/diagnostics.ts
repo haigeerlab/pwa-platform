@@ -10,6 +10,7 @@ import type {
 /** Field names of `PwaCompileInput`; diagnostic paths are built only from these and array indices. */
 export type InputField =
   | "identity"
+  | "deployment"
   | "install"
   | "policy"
   | "topology"

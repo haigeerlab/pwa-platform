@@ -3,14 +3,18 @@
 import {
   TOPOLOGY_KINDS,
   validateIdentity,
+  validatePortableIdentity,
   validateInstallMetadata,
   validateOriginRegistry,
+  validatePortableOriginRegistry,
   validatePolicy,
   type PwaDiagnostic,
   type PwaIdentity,
+  type PwaPortableIdentity,
   type PwaInstallMetadata,
   type PwaPolicy,
   type PwaTopology,
+  type PwaPortableTopology,
   type PwaValidationResult,
 } from "@pwa-platform/contracts";
 import type { PwaOfflinePageLocale, PwaOfflinePageMessages } from "./offline-page.js";
@@ -28,16 +32,22 @@ export type PwaViteOfflinePageOptions = {
   readonly css?: string;
 };
 
-export type PwaViteOptions = {
-  readonly identity: PwaIdentity;
+type PwaViteCommonOptions = {
   readonly policy: PwaPolicy;
   /** `null` when the app does not offer installation; the plugin then emits no manifest. */
   readonly install: PwaInstallMetadata | null;
-  readonly topology: PwaTopology;
   /** Enables the platform default offline page. Requires `policy.offlineFallback.enabled === true` — set without
    *  it, the build fails (`vite.offline-page-without-fallback`) rather than silently doing nothing. */
   readonly offlinePage?: PwaViteOfflinePageOptions;
 };
+
+export type PwaFixedViteOptions = PwaViteCommonOptions & {
+  readonly deployment?: { readonly kind: "fixed" }; readonly identity: PwaIdentity; readonly topology: PwaTopology;
+};
+export type PwaPortableViteOptions = PwaViteCommonOptions & {
+  readonly deployment: { readonly kind: "portable" }; readonly identity: PwaPortableIdentity; readonly topology: PwaPortableTopology;
+};
+export type PwaViteOptions = PwaFixedViteOptions | PwaPortableViteOptions;
 
 /** The same three fields `offlinePage` may carry, each already checked and defaulted. */
 export type PwaViteOfflinePageValidated = {
@@ -47,12 +57,17 @@ export type PwaViteOfflinePageValidated = {
 };
 
 /** The same four fields, each already checked. `compilePlan` still validates everything again at build time. */
-export type PwaValidatedOptions = {
-  readonly identity: PwaIdentity;
+type PwaValidatedFields = {
   readonly policy: PwaPolicy;
   readonly install: PwaInstallMetadata | null;
-  readonly topology: PwaTopology;
 };
+export type PwaFixedValidatedOptions = PwaValidatedFields & {
+  readonly deployment?: { readonly kind: "fixed" }; readonly identity: PwaIdentity; readonly topology: PwaTopology;
+};
+export type PwaPortableValidatedOptions = PwaValidatedFields & {
+  readonly deployment: { readonly kind: "portable" }; readonly identity: PwaPortableIdentity; readonly topology: PwaPortableTopology;
+};
+export type PwaValidatedOptions = PwaFixedValidatedOptions | PwaPortableValidatedOptions;
 
 /**
  * Validates the plugin options, throwing for anything the platform would reject later.
@@ -60,13 +75,24 @@ export type PwaValidatedOptions = {
  * Messages name diagnostic codes and contract paths only. An option's value can be an origin, a scope or an app id,
  * and build logs are routinely pasted into issues — so nothing from the input is echoed back.
  */
+export function validateOptions(options: PwaFixedViteOptions): PwaFixedValidatedOptions;
+export function validateOptions(options: PwaPortableViteOptions): PwaPortableValidatedOptions;
+export function validateOptions(options: PwaViteOptions): PwaValidatedOptions;
 export function validateOptions(options: PwaViteOptions): PwaValidatedOptions {
   if (options === null || typeof options !== "object") {
     throw new TypeError("The pwa plugin requires an options object");
   }
 
-  const identity = take("identity", validateIdentity(options.identity));
+  const requestedDeployment = (options as { readonly deployment?: unknown }).deployment;
+  const deployment = requestedDeployment === undefined ? undefined : readDeployment(requestedDeployment);
+  const portable = deployment?.kind === "portable";
+  const identity = portable
+    ? take("identity", validatePortableIdentity(options.identity))
+    : take("identity", validateIdentity(options.identity));
   const policy = take("policy", validatePolicy(options.policy));
+  if (portable && policy.schemaVersion !== 3) {
+    throw new TypeError("The pwa plugin's portable deployment requires policy schemaVersion 3");
+  }
 
   // contracts publishes no validateTopology function: `kind` membership is checked here against the exported
   // `TOPOLOGY_KINDS` constant, and — for `shared-origin` — the registry itself is fully validated below, the same
@@ -86,15 +112,29 @@ export function validateOptions(options: PwaViteOptions): PwaValidatedOptions {
   // scope or a duplicated worker URL should fail while the developer is looking at vite.config (ADR-0019). Whether
   // this app's identity matches exactly one registry entry is the compiler's check — it needs the identity and the
   // registry together, and compilePlan already runs it.
-  const normalized: PwaTopology =
+  const normalized =
     topology.kind === "standalone-origin"
       ? { kind: "standalone-origin" }
       : {
           kind: "shared-origin",
-          registry: take("topology/registry", validateOriginRegistry((topology as { readonly registry?: unknown }).registry)),
+          registry: portable
+            ? take("topology/registry", validatePortableOriginRegistry((topology as { readonly registry?: unknown }).registry))
+            : take("topology/registry", validateOriginRegistry((topology as { readonly registry?: unknown }).registry)),
         };
 
-  return { identity, policy, install, topology: normalized };
+  return portable
+    ? { deployment: { kind: "portable" }, identity: identity as PwaPortableIdentity, policy, install, topology: normalized as PwaPortableTopology }
+    : { ...(deployment === undefined ? {} : { deployment: { kind: "fixed" as const } }), identity: identity as PwaIdentity, policy, install, topology: normalized as PwaTopology };
+}
+
+function readDeployment(value: unknown): { readonly kind: "fixed" | "portable" } {
+  if (value === null || typeof value !== "object" || Array.isArray(value) ||
+      Reflect.ownKeys(value).length !== 1 ||
+      !Object.hasOwn(value, "kind") ||
+      ((value as { kind?: unknown }).kind !== "fixed" && (value as { kind?: unknown }).kind !== "portable")) {
+    throw new TypeError("The pwa plugin's deployment must explicitly have kind fixed or portable");
+  }
+  return { kind: (value as { kind: "fixed" | "portable" }).kind };
 }
 
 function isTopologyKind(kind: unknown): kind is PwaTopology["kind"] {
