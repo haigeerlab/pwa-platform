@@ -1,5 +1,7 @@
 # 诊断码索引
 
+本页也收录当前工作区的待发布诊断码：npm `0.2.5` 不支持可移植部署，且尚无 `worker-mime` 检查。按实际安装的包版本判断诊断码是否可用。
+
 构建日志、发布检查和入口恢复的诊断信息都以**诊断码**加**字段路径**的形式给出，例如 <code>identity.invalid-origin at /identity/origin</code>。信息里只有码和路径，不回显你的配置值。路径是指向配置的 JSON Pointer：<code>/identity/scope</code>、<code>/install/icons/0/src</code>、<code>/policy/resources/2/pathPrefix</code>，数字是数组下标。先按前缀找到分组，再按码查“怎么改”；字段本身的取值规则见[字段参考](/guide/configuration#field-reference)。
 
 “严重度”一栏：**构建失败**表示 <code>vite build</code> 直接报错退出；**警告**只打印，不阻断构建；**发布检查失败**指 <code>build-verifier</code> 的发布检查报告 <code>ok: false</code>（由你的发布脚本采集输入，见[自检](/operations/hosting#自检)）；**运行时**指页面里的入口恢复调用，它们不抛异常，只体现在返回的 <code>diagnostics</code> 数组里。

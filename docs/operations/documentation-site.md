@@ -1,6 +1,6 @@
 # 文档站构建与部署
 
-`website/` 是面向业务开发者的 VitePress 文档站。它是独立的静态站点，不接入本仓库的 PWA worker，也不复用 React、Vue 演示站的 Cloudflare Pages 项目。
+`website/` 是面向业务开发者的 VitePress 文档站。它是独立的静态站点，不接入本仓库的 PWA worker，也不复用 React、Vue 演示站的 Cloudflare Pages 项目。CI 除了构建文档，还运行 `pnpm docs:check-public-api`：读取 npm `latest` 的公开 tarball 类型声明，核对网站声明的正式版本，以及 portable/worker MIME 页面是否标明对应版本的发布状态。该检查需要访问 npm registry；它验证的是这两项新增 API 的版本边界，不替代全部文档行为测试。
 
 公开站点：[pwa-platform-docs.pages.dev](https://pwa-platform-docs.pages.dev/)；源仓库为 [`haigeerlab/pwa-platform`](https://github.com/haigeerlab/pwa-platform)。Cloudflare Pages 项目名为 `pwa-platform-docs`，连接本仓库；日常合并到 `main` 不会自动部署文档。首次部署记录：提交 `16c715cfdfa3279cdd3e663b39c7a7f792c4a6ba`，部署 ID `1e9cbb2d-1661-4f89-b3f7-695272038cb8`。2026-09-25 集中发布记录：版本分支 `docs/v2026.09.25`，提交 `6659becac3c4d5bee46225f189c25ab9aa63522c`，生产部署 ID `2ebacb42-abff-4f59-b2bd-5f697c0a792c`；首页、包选择、Vue／React 接入页、搜索和 404 页面已在线核验。
 

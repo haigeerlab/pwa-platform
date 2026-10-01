@@ -6,7 +6,7 @@
 
 一个 origin 和 scope 对应一个 PWA 身份，是最直接的部署方式。部署时确保 Vite <code>base</code>、身份中的 <code>origin</code> 与 <code>scope</code>、manifest 和 worker 的实际 URL 相符。worker 应从 HTTPS 同源地址提供；发布时核查 HTML、worker 和指纹资产的缓存头。完整的头部规则、Nginx 与 Cloudflare 示例见[服务器与 CDN 配置](/operations/hosting)。
 
-同一份构建产物需要部署到构建时未知的多个域名时，使用显式的[可移植部署模式](/guide/portable-deployment)。每个域名都是独立的发布线：分别收集实际响应、核对身份基线、完整历史、旧资源和首次发布批准。
+同一份构建产物需要部署到构建时未知的多个域名时，当前工作区提供显式的[可移植部署模式](/guide/portable-deployment)；**npm `0.2.5` 尚不支持，首个支持版本待发布**。每个域名都是独立的发布线：分别收集实际响应、核对身份基线、完整历史、旧资源和首次发布批准。
 
 ## 线上响应头
 

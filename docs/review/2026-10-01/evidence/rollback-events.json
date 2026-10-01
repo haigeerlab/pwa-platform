@@ -1,0 +1,30 @@
+[
+  {
+    "target": "a",
+    "toVersion": "v1",
+    "fromDeploymentId": "9607b9c2-2f63-4f01-9964-aa696b2d2d4e",
+    "toDeploymentId": "60b2c9b2-0d63-4184-821c-f12c926c6e6d",
+    "at": "2026-10-01T15:04:24.650Z"
+  },
+  {
+    "target": "b",
+    "toVersion": "v1",
+    "fromDeploymentId": "df0c3bd7-95c7-4294-98bb-76c7b95361f4",
+    "toDeploymentId": "331fa378-56d7-4dcb-bf83-1e0b6524c9f9",
+    "at": "2026-10-01T15:04:36.429Z"
+  },
+  {
+    "target": "a",
+    "toVersion": "v2",
+    "fromDeploymentId": "60b2c9b2-0d63-4184-821c-f12c926c6e6d",
+    "toDeploymentId": "9607b9c2-2f63-4f01-9964-aa696b2d2d4e",
+    "at": "2026-10-01T15:05:41.784Z"
+  },
+  {
+    "target": "b",
+    "toVersion": "v2",
+    "fromDeploymentId": "331fa378-56d7-4dcb-bf83-1e0b6524c9f9",
+    "toDeploymentId": "df0c3bd7-95c7-4294-98bb-76c7b95361f4",
+    "at": "2026-10-01T15:05:51.701Z"
+  }
+]

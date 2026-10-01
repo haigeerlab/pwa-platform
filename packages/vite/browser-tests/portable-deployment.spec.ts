@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { readRegistration, startFixtureServer, waitForControllerChange } from "@pwa-platform/browser-test-harness";
 import {
-  PORTABLE_FIXTURE_SITE, SITE_PORTABLE_V1_OUT, SHELL_URL, WORKER_URL, MANIFEST_URL,
+  PORTABLE_DOCS_FIXTURE_SITE, PORTABLE_FIXTURE_SITE, SITE_PORTABLE_V1_OUT, SHELL_URL, WORKER_URL, MANIFEST_URL,
 } from "./fixture-site.js";
 import { cacheNames, deployAndWait, installAndControl, pageApplyUpdate, pageRegister, urlIsInAnyCache } from "./page-probe.js";
 
@@ -13,6 +13,30 @@ function outputFiles(directory: string, prefix = ""): readonly string[] {
     return entry.isDirectory() ? outputFiles(join(directory, entry.name), `${relative}/`) : [relative];
   });
 }
+
+test("the portable guide configuration serves its generated offline page on an uncached navigation", async ({ browser, request }) => {
+  const server = await startFixtureServer(PORTABLE_DOCS_FIXTURE_SITE);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    const manifest = await request.get(server.url("/manifest.webmanifest"));
+    expect(manifest.ok()).toBe(true);
+    expect(await manifest.json()).toMatchObject({ id: "/", start_url: "/" });
+    await installAndControl(page, server, "/", "/sw.js");
+    expect(await urlIsInAnyCache(page, server.url("/offline.html"))).toBe(true);
+
+    server.goOffline();
+    await page.goto(server.url("/never-visited"));
+    await expect(page.locator(".pwa-offline__heading")).toBeVisible();
+    await expect(page.locator("#shell")).toHaveCount(0);
+    await page.goto(server.url("/"));
+    await expect(page.locator("#shell")).toBeVisible();
+  } finally {
+    server.goOnline();
+    await context.close();
+    await server.close();
+  }
+});
 
 test("one portable dist stays byte-identical and isolated across two local origins", async ({ browser, request }) => {
   test.setTimeout(120_000);
