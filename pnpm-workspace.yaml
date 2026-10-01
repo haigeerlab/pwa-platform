@@ -27,4 +27,4 @@ allowBuilds:
   esbuild@0.28.2: false
   # Wrangler's Direct Upload only sends prebuilt static assets. workerd is needed for local Worker emulation,
   # which this repository does not use for Pages smoke deployment.
-  workerd@1.20260917.1: false
+  workerd@1.20260926.1: false
