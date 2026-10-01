@@ -170,6 +170,21 @@ R2–R4 可以按 Vue／React 场景分别执行，但同一公开测试槽的�
 **依赖：** 以 USB 连接并开启 USB 调试的实体 Android 设备。
 **预计范围：** M（harness 连接层 + 各包接入与取证）。
 
+### R9：真机 iPhone Safari 自动化证据（2026-10-01）
+
+**描述：** 按 [ADR-0049](../../docs/adr/0049-iphone-real-device-safari-automation.md) 在 harness 中新增真机 iPhone 模式（复用 ADR-0047 的 WebDriver 适配层 + 局域网 HTTPS 转发），在 iPhone 16 Pro（iOS 27.0.1）的真实 Safari 上运行现有浏览器用例，补齐矩阵 iPhone 列。不改变 ADR-0041 的渐进兼容结论。
+
+**验收标准：**
+
+- harness 在 `PWA_IOS_UDID`／`PWA_IOS_LAN_IP`／`PWA_IOS_TLS_DIR` 下连接真机 Safari，fixture 服务器经局域网 HTTPS 转发访问，断网时得到网络错误；会话总是正常结束；每个测试结束清理该来源的 worker、缓存与存储；Chrome 门禁与 R7 真实浏览器运行不受影响。
+- 接入 `test:browser` 的各包在真机上运行，跳过与“无法验证”逐条写明原因。
+- 结果写入 verification.md，跨平台测试证据页 iPhone 列按实际结果更新。
+
+**验证：** `pnpm test:browser`（Chrome，阻塞）；`test:browser:ios` 各包在真机上运行两次；R7 Safari／Firefox 回归；文档构建。
+
+**依赖：** 经 USB 连接、开启远程自动化并信任测试根证书的实体 iPhone，与 Mac 同一 Wi‑Fi。
+**预计范围：** M。
+
 ### 检查点
 
 - **R1 后：** 文档构建通过，任务清单和原始证据一致，再开始任何新真机写入。

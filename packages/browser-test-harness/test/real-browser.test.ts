@@ -201,6 +201,7 @@ describe("page.request", () => {
 describe("browser error page", () => {
   it("recognises the page Safari's driver lands on after a failed navigation", () => {
     expect(isBrowserErrorPage("safari-resource:/ErrorPage.html")).toBe(true);
+    expect(isBrowserErrorPage("data:text/html,")).toBe(true);
     expect(isBrowserErrorPage("http://localhost:1/app/")).toBe(false);
   });
 });

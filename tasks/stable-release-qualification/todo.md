@@ -82,3 +82,10 @@
 - [x] R8.1 harness：`PWA_ANDROID_SERIAL` 真机模式（adb forward + connectOverCDP、独立上下文、自动 adb reverse）、`test:browser:android` 脚本；harness 自身用例在真机通过
 - [x] R8.2 各包 `browser-tests`（sw-runtime、client-runtime、examples-browser-e2e 含更新提示 UI、vite、entry-resilience、nuxt）在真机运行
 - [x] R8.3 记录 verification.md、更新跨平台测试证据页 Android 列，开 PR
+
+## 2026-10-01 真机 iPhone Safari 自动化（R9，ADR-0049）
+
+- [x] R9.1 harness：`PWA_IOS_UDID` 真机模式（WebDriver iOS 会话、局域网 HTTPS 转发、正常结束会话与逐测试清理）、`test:browser:ios` 脚本；harness 自身用例在真机通过
+- [x] R9.2 各包 `browser-tests`（含更新提示 UI）在真机运行
+- [ ] R9.3 记录 verification.md、更新跨平台测试证据页 iPhone 列，开 PR；提醒项目所有者删除测试根证书
+

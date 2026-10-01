@@ -5,7 +5,7 @@
 // which keeps Cache Storage isolated between tests without any manual cleanup.
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { exposeToAndroid } from "@pwa-platform/browser-test-harness";
+import { exposeServer } from "@pwa-platform/browser-test-harness";
 
 export type RuntimeRouteInfo = {
   /** Decoded path without the query string, exactly as registered with `route`. */
@@ -81,9 +81,10 @@ export async function startRuntimeServer(): Promise<RuntimeServer> {
     });
   });
   const port = (server.address() as AddressInfo).port;
-  // Android run (ADR-0048): the phone reaches this port through `adb reverse`; otherwise this maps nothing.
-  const unexpose = await exposeToAndroid(port);
-  const origin = `http://localhost:${port}`;
+  // Android (ADR-0048) maps the port with `adb reverse`, an iPhone (ADR-0049) reaches it through an HTTPS proxy; otherwise
+  // this is `http://localhost:<port>`.
+  const exposed = await exposeServer(port);
+  const origin = exposed.origin;
 
   return {
     origin,
@@ -102,7 +103,7 @@ export async function startRuntimeServer(): Promise<RuntimeServer> {
       return new Promise<void>((resolveClose, rejectClose) => {
         server.close((error) => (error ? rejectClose(error) : resolveClose()));
         server.closeAllConnections();
-      }).finally(unexpose);
+      }).finally(() => exposed.release());
     },
   };
 }

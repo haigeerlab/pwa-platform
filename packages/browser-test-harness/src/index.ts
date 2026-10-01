@@ -1,4 +1,6 @@
 export { ANDROID_SERIAL_ENV, describeAndroid, exposeToAndroid, isAndroidRun, readAndroidSerial } from "./android.js";
+export { exposeServer } from "./expose.js";
+export type { ExposeOptions } from "./expose.js";
 export { expect } from "@playwright/test";
 export { expectCacheControl } from "./cache-control.js";
 export type { CacheControlExpectation, ResponseHeaders } from "./cache-control.js";
@@ -8,6 +10,8 @@ export { cacheNames, createCaches, snapshotCaches } from "./caches.js";
 export type { CacheSpec } from "./caches.js";
 export { contrastRatio } from "./contrast.js";
 export { fixturePath, MINIMAL_PAGE_MARKER } from "./fixtures.js";
+export { IOS_LAN_IP_ENV, IOS_TLS_DIR_ENV, IOS_UDID_ENV, isIosRun, readIosDevice } from "./ios.js";
+export type { ExposedServer, IosDevice } from "./ios.js";
 export { CHROME_PATH_ENV } from "./launch.js";
 export { expectFromServiceWorker, expectNavigationStatus, recordUnverifiable, UNVERIFIABLE_ANNOTATION } from "./navigation.js";
 export { expectLifecycleSequence } from "./lifecycle.js";

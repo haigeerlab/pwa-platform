@@ -178,6 +178,8 @@ test.describe("maxEntries", () => {
 });
 
 test.describe("quota", () => {
+  test.skip(({ browserName }) => browserName !== "chromium", "Storage.overrideQuotaForOrigin is a Chromium DevTools Protocol command");
+
   test("an oversized write does not affect the page response; it purges every runtime cache but leaves an unmanaged cache intact", async ({
     page,
     context,

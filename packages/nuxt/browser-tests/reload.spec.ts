@@ -21,7 +21,7 @@
 // `experimental.emitRouteChunkError: "automatic"` back into its own nuxt.config.ts (site/nuxt.config.ts, read from
 // NUXT_E2E_AUTO_RELOAD — see its comment for why an app-level override, not loadNuxt's `overrides`, is required to
 // exercise the module's "was this explicitly set" check).
-import { expect, test } from "@pwa-platform/browser-test-harness";
+import { expect, readRealBrowserKind, test } from "@pwa-platform/browser-test-harness";
 import { cacheName } from "@pwa-platform/contracts";
 import type { Page } from "@playwright/test";
 import { publicDir, serverEntry } from "./global-setup.js";
@@ -32,6 +32,7 @@ import {
   documentMark,
   installAndControl,
   markDocument,
+  waitForDocumentUrl,
 } from "./page.js";
 import { readShippedPrecache } from "./release.js";
 import { IDENTITY } from "./site/pwa-config.js";
@@ -61,6 +62,10 @@ async function forgetChunks(page: Page, paths: readonly string[]): Promise<void>
 }
 
 test.describe("auto-reload on a chunk-load failure", () => {
+  // `clearHttpCache` is a CDP command (Network.clearBrowserCache) with no WebDriver counterpart; without it Safari answers the
+  // chunk from its own HTTP cache, the navigation resolves and the scenario does not happen.
+  test.skip(readRealBrowserKind(process.env) !== undefined, "WebDriver cannot clear the browser HTTP cache (CDP Network.clearBrowserCache), so the chunk-load failure cannot be produced");
+
   let server: NuxtServer;
 
   test.afterEach(async () => {
@@ -85,7 +90,7 @@ test.describe("auto-reload on a chunk-load failure", () => {
     // level); the window mark and the document's own URL are the browser-level proof that nothing reloaded it.
     expect(await documentMark(page)).toBe(mark);
     expect(page.url()).toBe(server.url(SHELL_URL));
-    await expect(page.locator("h1")).toHaveText("home");
+    await expect.poll(() => page.locator("h1").textContent()).toBe("home");
   });
 
   test("an app that explicitly opts back into automatic reload does reload", async ({ page }) => {
@@ -100,7 +105,7 @@ test.describe("auto-reload on a chunk-load failure", () => {
     await page.locator("#go-lazy").click();
     // reloadAppAtPath (Nuxt's own nuxt:chunk-reload plugin) navigates the whole browser to the failed route's own
     // path — a real, state-based condition to wait on instead of a fixed sleep.
-    await page.waitForURL(server.url(LAZY_URL), { timeout: 15_000 });
+    await waitForDocumentUrl(page, server.url(LAZY_URL));
 
     // A fresh document has no mark: the reload really happened, not merely a successful client-side navigation.
     expect(await documentMark(page)).toBeNull();

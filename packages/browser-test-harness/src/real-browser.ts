@@ -1,5 +1,31 @@
 import { test } from "@playwright/test";
 import type { APIResponse, Browser, BrowserContext, Page, Response } from "@playwright/test";
+import { spawnSync } from "node:child_process";
+import {
+  CLEANUP_PATH,
+  describeIosSafari,
+  iosCleanupScript,
+  liveIosOrigins,
+  prepareIosOriginForCleanup,
+  readIosDevice,
+  readIosSessionTests,
+  remoteAutomationHint,
+  closeReleasedIosProxies,
+  IOS_PORT_POOL,
+  markIosStorageFailed,
+  readIosRestartEvery,
+  restartIosSafari,
+  restartReason,
+  takeIosStorageFailed,
+  iosStorageProbeScript,
+  setIosNetworkOffline,
+  setIosSessionOpen,
+  startIosProxy,
+  storageHealthError,
+  trustIosTestCa,
+  type StorageReport,
+  type CleanupReport,
+} from "./ios.js";
 import {
   correctedWindowSize,
   describeBrowser,
@@ -200,6 +226,19 @@ export class RealApiRequestContext {
   }
 }
 
+/** True when `target` differs from `current` only by its fragment, which navigates without creating a new document. */
+function sameDocumentFragment(current: string, target: string): boolean {
+  try {
+    const a = new URL(current);
+    const b = new URL(target);
+    a.hash = "";
+    b.hash = "";
+    return a.href === b.href && new URL(target).hash !== "";
+  } catch {
+    return false;
+  }
+}
+
 type Size = { readonly width: number; readonly height: number };
 
 /** The `Page` subset the specs use, on one tab of a WebDriver session. */
@@ -273,6 +312,11 @@ class RealPage {
    */
   async setViewportSize(size: Size): Promise<void> {
     const measure = (): Promise<Size> => this.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+    // iOS Safari has no window to resize (`setWindowRect: false`): report the size it has, like a browser with a minimum size.
+    if (this.session.capabilities["setWindowRect"] === false) {
+      this.viewport = await measure();
+      return;
+    }
     let outer = await this.session.windowRect(this.handle);
     let inner = await measure();
     for (let attempt = 0; attempt < VIEWPORT_ATTEMPTS && (inner.width !== size.width || inner.height !== size.height); attempt += 1) {
@@ -295,6 +339,11 @@ class RealPage {
    * `status()`, `ok()`, `url()` and `fromServiceWorker()` only, taken from the loaded document's Navigation Timing entry.
    */
   async goto(url: string): Promise<Response> {
+    // iOS Safari answers a navigation that a controlling worker fails closed by keeping the previous document, with no
+    // error page and no error from the driver. A new document has a new `timeOrigin`; one that did not change (and is
+    // not a mere fragment navigation) means the navigation never happened, which Playwright reports as a rejection.
+    const ios = this.session.capabilities["platformName"] === "iOS";
+    const before = ios ? await this.evaluate(() => ({ origin: performance.timeOrigin, href: location.href })) : undefined;
     this.lastUrl = await this.inWindow(async () => {
       await this.session.navigate(url);
       return this.session.url();
@@ -310,6 +359,10 @@ class RealPage {
     // Playwright rejects a navigation that fails to load; Safari's driver reports success and shows its error page
     // (whose URL only the page itself reports: Get Current URL still names the failed address).
     if (isBrowserErrorPage(evidence.url)) throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser showed its error page)`);
+    if (before !== undefined && !sameDocumentFragment(before.href, url)) {
+      const after = await this.evaluate(() => performance.timeOrigin);
+      if (after === before.origin) throw new Error(`page.goto: net::ERR_FAILED at ${url} (the browser kept the previous document)`);
+    }
     return new RealResponse(this.kind, evidence).toPlaywright();
   }
 
@@ -410,6 +463,15 @@ export class RealContext {
     private readonly session: WebDriverSession,
   ) {}
 
+  /**
+   * `context.setOffline` on an iPhone run only: the network is cut at the HTTPS proxies (see `setIosNetworkOffline`),
+   * not in the browser, so `navigator.onLine` does not change. Elsewhere WebDriver has no such command.
+   */
+  async setOffline(offline: boolean): Promise<void> {
+    if (readIosDevice(process.env) === undefined) throw new Error(unsupportedMessage(this.kind, "context.setOffline"));
+    setIosNetworkOffline(offline);
+  }
+
   /** Adopts the session's initial tab as the first page. */
   async firstPage(): Promise<Page> {
     const page = new RealPage(this.kind, this.session, this.session.currentHandle(), this);
@@ -440,23 +502,56 @@ export class RealContext {
 export class RealBrowser {
   constructor(
     readonly kind: RealBrowserKind,
-    private readonly driver: DriverProcess,
+    private driver: DriverProcess,
     readonly identity: BrowserIdentity,
     private readonly capabilities: Record<string, unknown>,
+    /** iPhone runs: the single WebDriver session every test of this worker shares. */
+    private shared?: WebDriverSession | undefined,
   ) {}
+
+  /** Tests finished on the current shared session (see `PWA_IOS_SESSION_TESTS`). */
+  private testsOnSession = 0;
+
+  /** Tests finished since the phone's Safari was last restarted (see `PWA_IOS_RESTART_EVERY`). */
+  private testsSinceRestart = 0;
+
+  /** Set when the phone's storage stayed broken after a restart: every later test fails with it at once. */
+  private broken: Error | undefined;
 
   /** Starts the driver and reads the browser's identity from a short-lived probe session. */
   static async start(kind: RealBrowserKind, env: Readonly<Record<string, string | undefined>>): Promise<RealBrowser> {
+    const device = readIosDevice(env);
+    if (device !== undefined) {
+      // A fresh Safari for every package run (no session and no driver exist yet, as the restart requires).
+      console.log("[browser-test-harness] restarting iPhone Safari (worker start, 0 tests since the last restart)");
+      await restartIosSafari(device);
+    }
     const driver = await startDriver(kind);
     try {
       const capabilities = requestedCapabilities(kind, env);
       const probe = await WebDriverSession.create(driver.baseUrl, capabilities);
-      const identity = describeBrowser(kind, probe.capabilities);
-      await probe.quit();
-      return new RealBrowser(kind, driver, identity, capabilities);
+      const ios = readIosDevice(env);
+      const identity = ios === undefined ? describeBrowser(kind, probe.capabilities) : describeIosSafari(probe.capabilities);
+      if (ios === undefined) {
+        await probe.quit();
+        return new RealBrowser(kind, driver, identity, capabilities);
+      }
+      // iPhone: the probe session becomes the worker's one session (see `test.ts`); `close` ends it.
+      trackForExit(probe);
+      trustIosTestCa(ios);
+      try {
+        await checkStorage(probe, ios);
+      } catch (error) {
+        takeIosStorageFailed();
+        await probe.quit().catch(() => undefined);
+        untrackForExit(probe);
+        throw error;
+      }
+      return new RealBrowser(kind, driver, identity, capabilities, probe);
     } catch (error) {
       await driver.stop();
-      throw error;
+      const hint = error instanceof Error ? remoteAutomationHint(error.message) : undefined;
+      throw hint === undefined ? error : new Error(`${(error as Error).message} -- ${hint}`, { cause: error });
     }
   }
 
@@ -470,14 +565,111 @@ export class RealBrowser {
     return { name: () => playwrightEngineName(this.kind) };
   }
 
+  /** Sessions started and not yet ended; ended before the driver stops, because iOS turns Remote Automation off otherwise. */
+  private readonly open = new Set<WebDriverSession>();
+
   /** Starts a new session (one browser instance state) with a context and its first page. */
   async openSession(): Promise<RealSession> {
-    const session = await WebDriverSession.create(this.driver.baseUrl, this.capabilities);
+    if (this.broken !== undefined) throw this.broken;
+    const session = this.shared ?? (await WebDriverSession.create(this.driver.baseUrl, this.capabilities));
+    if (this.shared === undefined) {
+      this.open.add(session);
+      trackForExit(session);
+    }
     const context = new RealContext(this.kind, session);
-    return { context: context.toPlaywright(), page: await context.firstPage(), quit: () => session.quit() };
+    const ios = readIosDevice(process.env) !== undefined;
+    if (ios) setIosSessionOpen(true);
+    return {
+      context: context.toPlaywright(),
+      page: await context.firstPage(),
+      cleanupOrigins: async (origins = liveIosOrigins()) => {
+        await cleanupOrigins(session, origins);
+        await closeReleasedIosProxies();
+      },
+      quit: async () => {
+        if (this.shared !== undefined) {
+          // The worker's session stays open for the next test; `close` ends it.
+          setIosSessionOpen(false);
+          await closeReleasedIosProxies();
+          this.testsOnSession += 1;
+          this.testsSinceRestart += 1;
+          const reason = restartReason({ testsSinceRestart: this.testsSinceRestart, every: readIosRestartEvery(process.env), storageFailed: takeIosStorageFailed() });
+          if (reason !== undefined) await this.restartPhoneSafari(reason, this.shared);
+          else if (this.testsOnSession >= readIosSessionTests(process.env)) await this.recycle(this.shared);
+          return;
+        }
+        this.open.delete(session);
+        try {
+          await session.quit();
+        } finally {
+          untrackForExit(session);
+        }
+      },
+    };
+  }
+
+  /**
+   * Between tests: ends the session, stops the driver, restarts the phone's Safari, starts a new driver and session and
+   * re-runs the storage health check. A test that failed before this stays failed (nothing is retried). If storage is
+   * still broken after the restart the owner has to act, and every later test fails with that message.
+   */
+  private async restartPhoneSafari(reason: string, old: WebDriverSession): Promise<void> {
+    const device = readIosDevice(process.env);
+    if (device === undefined) throw new Error("restartPhoneSafari outside an iPhone run");
+    console.log(`[browser-test-harness] restarting iPhone Safari (${reason}, ${this.testsSinceRestart} tests since the last restart)`);
+    this.shared = undefined;
+    try {
+      await old.quit();
+    } finally {
+      untrackForExit(old);
+    }
+    await this.driver.stop();
+    try {
+      await restartIosSafari(device);
+      this.driver = await startDriver(this.kind);
+      const next = await WebDriverSession.create(this.driver.baseUrl, this.capabilities);
+      trackForExit(next);
+      try {
+        await checkStorage(next, device);
+      } catch (error) {
+        takeIosStorageFailed();
+        await next.quit().catch(() => undefined);
+        untrackForExit(next);
+        throw error;
+      }
+      this.shared = next;
+      this.testsOnSession = 0;
+      this.testsSinceRestart = 0;
+    } catch (error) {
+      this.broken = error instanceof Error ? error : new Error(String(error));
+      throw error;
+    }
+  }
+
+  /** Ends the shared session and starts a fresh one in its place (the old one is always deleted first). */
+  private async recycle(old: WebDriverSession): Promise<void> {
+    this.shared = undefined;
+    try {
+      await old.quit();
+    } finally {
+      untrackForExit(old);
+    }
+    const next = await WebDriverSession.create(this.driver.baseUrl, this.capabilities);
+    trackForExit(next);
+    this.shared = next;
+    this.testsOnSession = 0;
   }
 
   async close(): Promise<void> {
+    for (const session of this.open) await session.quit().catch(() => undefined);
+    this.open.clear();
+    if (this.shared !== undefined) {
+      try {
+        await this.shared.quit();
+      } finally {
+        untrackForExit(this.shared);
+      }
+    }
     await this.driver.stop();
   }
 
@@ -486,4 +678,87 @@ export class RealBrowser {
   }
 }
 
-export type RealSession = { readonly context: BrowserContext; readonly page: Page; quit(): Promise<void> };
+export type RealSession = {
+  readonly context: BrowserContext;
+  readonly page: Page;
+  /**
+   * iPhone runs (ADR-0049): closes every tab but one, then, in each origin (default: every origin with a proxy right
+   * now), unregisters all service workers and deletes all caches, localStorage, sessionStorage and IndexedDB, throwing
+   * if anything is left. Run before `quit` so the owner's Safari keeps nothing from a test.
+   */
+  cleanupOrigins(origins?: readonly string[]): Promise<void>;
+  quit(): Promise<void>;
+};
+
+const unended = new Set<WebDriverSession>();
+let exitHookInstalled = false;
+
+/**
+ * Last resort for a worker that dies with a session open: an `exit` handler may only run synchronous code, so it
+ * sends the DELETE with curl. iOS switches Remote Automation off after a session that was not ended (ADR-0049).
+ */
+function trackForExit(session: WebDriverSession): void {
+  unended.add(session);
+  if (exitHookInstalled) return;
+  exitHookInstalled = true;
+  process.on("exit", () => {
+    for (const open of unended) spawnSync("/usr/bin/curl", ["-s", "--max-time", "10", "-X", "DELETE", open.endpoint()], { stdio: "ignore" });
+  });
+}
+
+function untrackForExit(session: WebDriverSession): void {
+  unended.delete(session);
+}
+
+/** See `RealSession.cleanupOrigins`. */
+async function cleanupOrigins(session: WebDriverSession, origins: readonly string[]): Promise<void> {
+  const handles = await session.handles();
+  const keep = handles.includes(session.currentHandle()) ? session.currentHandle() : handles[0];
+  if (keep === undefined) throw new Error("iPhone cleanup: the session has no tab left");
+  for (const handle of handles) {
+    if (handle === keep) continue;
+    await session.switchTo(handle);
+    await session.closeWindow();
+  }
+  await session.switchTo(keep);
+  const noop = (): void => undefined;
+  for (const origin of origins) {
+    prepareIosOriginForCleanup(origin);
+    await session.inWindow(keep, () => session.navigate(`${origin}${CLEANUP_PATH}`));
+    const left = (await session.evaluate(keep, serializePageScript(iosCleanupScript, undefined), noop)) as CleanupReport;
+    if (left.registrations !== 0 || left.caches !== 0) {
+      throw new Error(`iPhone cleanup of ${origin} left ${left.registrations} service worker registration(s) and ${left.caches} cache(s)`);
+    }
+    // Ports are reused across tests, so a worker or cache of this test must be gone for good before the next test
+    // reaches the same origin: look again on a fresh load after a short pause.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await session.inWindow(keep, () => session.navigate(`${origin}${CLEANUP_PATH}`));
+    const again = (await session.evaluate(keep, serializePageScript(iosCleanupScript, undefined), noop)) as CleanupReport;
+    if (again.registrations !== 0 || again.caches !== 0) {
+      throw new Error(`iPhone cleanup of ${origin} found ${again.registrations} service worker registration(s) and ${again.caches} cache(s) again after it finished`);
+    }
+    // Storage that cannot be written would otherwise surface as a cascade of unrelated failures in later tests.
+    if (origin === origins[origins.length - 1]) await assertStorageHealthy(session, keep);
+  }
+  await session.inWindow(keep, () => session.navigate("about:blank"));
+}
+
+/** Runs the storage probe in the session's current tab (which must be at a proxied origin) and throws if storage is broken. */
+async function assertStorageHealthy(session: WebDriverSession, handle: string): Promise<void> {
+  const report = (await session.evaluate(handle, serializePageScript(iosStorageProbeScript, undefined), () => undefined)) as StorageReport;
+  const problem = storageHealthError(report);
+  if (problem !== undefined) {
+    markIosStorageFailed();
+    throw new Error(problem);
+  }
+}
+
+/** Storage health check at worker start: cleans a short-lived proxy origin (no upstream is needed), which probes storage there. */
+async function checkStorage(session: WebDriverSession, device: NonNullable<ReturnType<typeof readIosDevice>>): Promise<void> {
+  const proxy = await startIosProxy(device, 1, { hostname: "localhost", ports: IOS_PORT_POOL });
+  try {
+    await cleanupOrigins(session, [proxy.origin]);
+  } finally {
+    await proxy.release();
+  }
+}

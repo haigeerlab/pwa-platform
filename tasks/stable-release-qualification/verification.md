@@ -526,3 +526,37 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 - 执行代理运行中 `adb reverse` 曾一次报 `cannot bind listener: Operation not permitted`，harness 增加一次 500 ms 后重试后未再出现。
 
 **结论：** Android 列所有 ○ 关闭，由真机自动化补齐（▲），其余行在人工观察之外新增真机自动化证据。单台设备、单一 Chrome 版本（N），不能填作 `desktop+android` 通道的 N/N-1 通过证据（ADR-0030）。
+
+## R9 真机 iPhone Safari 自动化（2026-10-01）
+
+按 ADR-0049，iPhone 16 Pro（iOS 27.0.1，Safari 27.0.1，build 24A446）经 USB 连接，macOS 自带 `safaridriver` 以 `platformName: "iOS"` 驱动真实 Safari；每个 fixture 服务器前加一层只监听 Mac 局域网 IP 的 HTTPS 转发（固定端口池 8441–8448），证书链到项目所有者在 iPhone 上安装并开启完全信任的测试根证书（有效期一天，私钥只在维护者本机临时目录）。fixture 服务器断网时转发层断开客户端连接，iPhone 得到真正的网络错误。代码 @ `cb1cbd4`，产品代码（各包 `src`）未改动。
+
+**过程中的问题与处理：**
+
+- Cloudflare 临时隧道被自动模式按“对外入站隧道”拦截，且隧道在源站断开时返回 HTTP 502 而非网络错误，改用局域网 HTTPS（项目所有者选择）。
+- 安装描述文件后“完全信任”开关未开时，Safari 报“此服务器的证书无效”；开启后自动化与手动访问均正常。自动化模式下配置描述文件的下载提示被屏蔽，改由项目所有者在普通 Safari 中打开下载地址。
+- 会话未正常结束（直接结束 `safaridriver`）会使 iOS 关闭“远程自动化”；harness 改为任何情况下先删除会话再停止驱动。
+- 同一 Safari 进程连续新建约 150–250 个会话后，IndexedDB 与 Cache Storage 写入失败（`Unable to open database file on disk` / `Failed writing data to the file system`），重启 Safari 后恢复；与站点数量无关（固定端口池下最多 9 个来源仍复现）。多个测试共用一个会话会使约一半的 worker 安装失败，因此保持每个测试一个新会话。经项目所有者授权，harness 在每个包开始前、每 100 个测试、以及存储健康检查失败时，用 `xcrun devicectl` 只结束 `/MobileSafari.app/MobileSafari` 进程后重启；每个测试结束注销该来源的 worker、清空缓存与存储并复核为空。
+
+执行代理完成一轮后，维护会话独立复跑一遍，结果一致（Safari 每个包开始前重启一次，共 10 次，未触发存储故障）：
+
+| 套件 | 真机 iPhone Safari 27.0.1 |
+|---|---|
+| browser-test-harness | 17 通过／6 跳过 |
+| sw-runtime | 62 通过／7 跳过 |
+| client-runtime | 22 通过 |
+| examples-browser-e2e | 61 通过／2 跳过 |
+| 更新提示 UI | 26 通过／2 跳过 |
+| vite | 30 通过／5 跳过 |
+| entry-resilience | 17 通过／5 跳过 |
+| engine-workbox | 13 通过／1 跳过 |
+| nuxt（未发布） | 9 通过（3 项跳过） |
+| push（未发布） | 1 通过／8 跳过 |
+
+同次全仓 `pnpm test:browser`（Chrome 154）全部通过；共享 harness 改动后 R7 真实 Safari 18.6（17／6）与 Firefox 157（19／4）回归一致。
+
+**跳过与无法验证：** 与 macOS Safari 相同（WebDriver 无响应头与导航状态、`page.request`、favicon 请求时机、worker 转发与网络无法区分、CDP 推送／配额／控制台、`beforeinstallprompt`、`Page.getAppManifest`、导航不能加请求头）；亮／暗主题只运行与系统外观一致的浅色一半；视口不可调整（`setWindowRect` 不支持），320px 未验证；nuxt 两个依赖 CDP 清除 HTTP 缓存的重载场景。
+
+**观察到的 iOS 差异：** 导航失败的错误页为 `data:text/html,`；受控 worker 以关闭方式拒绝导航时 iOS 保留上一页面、不报错（harness 的 `goto` 已按 Playwright 语义拒绝）；Safari 标签页没有 `PushManager`，`getPushState` 为 `unsupported`（新增用例确认）；**未发布的 Nuxt 适配中，断网导航到预渲染子页 `/app/about` 在 iPhone 上不提交、请求不到达服务器（Chrome 与 sw-runtime 的预渲染子页用例均正常），原因未查明，该用例在 iPhone 上以此原因跳过，待 Nuxt 公开前调查。**
+
+**结论：** iPhone 列的 ○（定时检查更新、页面已是新代码判定、`served-from-cache`、运行时缓存超时、登出清理、同源多应用隔离、可访问性、离线写、Nuxt）由真机自动化补齐，其余人工观察行新增真机自动化证据；Web Push 在 Safari 标签页不可用、主屏幕网页 App 形态仍只有人工观察。按 ADR-0041 维持渐进兼容，不构成 Apple 发布通道证据。

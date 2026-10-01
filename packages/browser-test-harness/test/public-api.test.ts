@@ -33,6 +33,7 @@ describe("package manifest", () => {
       "test:browser": "playwright test",
       "test:browser:real": "playwright test --config playwright.real.config.ts",
       "test:browser:android": "playwright test --config playwright.android.config.ts",
+      "test:browser:ios": "playwright test --config playwright.ios.config.ts",
     });
   });
 });

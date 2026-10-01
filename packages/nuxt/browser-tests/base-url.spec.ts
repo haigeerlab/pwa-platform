@@ -11,7 +11,7 @@
 // baseURL on that page reads back "/app/", not "/other/", even after the override). /app/news is rendered fresh by
 // the live server on every request, so it correctly picks up the overridden base — site/app/pages/news.vue carries
 // the same <PwaShell> this scenario needs, and this suite uses /other/news instead of /other/ for that reason.
-import { expect, test } from "@pwa-platform/browser-test-harness";
+import { expect, readRealBrowserKind, recordUnverifiable, test } from "@pwa-platform/browser-test-harness";
 import { serverEntry } from "./global-setup.js";
 import { hasAnyRegistration } from "./page.js";
 import { RUNTIME_BASE_URL_MISMATCH_CODE } from "../src/runtime/binding.js";
@@ -33,14 +33,19 @@ test.describe("runtime baseURL override", () => {
 
   test("register() rejects with nuxt.runtime-base-url-mismatch, warns once, and nothing ever registers", async ({ page }) => {
     const warnings: string[] = [];
-    page.on("console", (message) => {
-      if (message.type() === "warning") warnings.push(message.text());
-    });
+    // WebDriver delivers no console messages, so the warn-once half of this scenario is unverifiable there.
+    const real = readRealBrowserKind(process.env) !== undefined;
+    if (!real) {
+      page.on("console", (message) => {
+        if (message.type() === "warning") warnings.push(message.text());
+      });
+    }
 
     await page.goto(server.url(OTHER_BASE_NEWS));
-    await expect(page.locator("#register-error")).toHaveText(new RegExp(`^${RUNTIME_BASE_URL_MISMATCH_CODE}:`));
+    await expect.poll(() => page.locator("#register-error").textContent()).toMatch(new RegExp(`^${RUNTIME_BASE_URL_MISMATCH_CODE}:`));
 
-    await expect.poll(() => warnings.some((line) => line.includes(RUNTIME_BASE_URL_MISMATCH_CODE))).toBe(true);
+    if (real) recordUnverifiable(`warns once with ${RUNTIME_BASE_URL_MISMATCH_CODE}: WebDriver exposes no console messages`);
+    else await expect.poll(() => warnings.some((line) => line.includes(RUNTIME_BASE_URL_MISMATCH_CODE))).toBe(true);
     expect(await hasAnyRegistration(page)).toBe(false);
   });
 });
