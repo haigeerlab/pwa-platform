@@ -14,8 +14,12 @@ import {
   INSTALL,
   POLICY,
   POLICY_WITH_DEFAULT_OFFLINE,
+  PORTABLE_DOCS_IDENTITY,
+  PORTABLE_DOCS_POLICY,
+  PORTABLE_DOCS_PUBLIC,
   PORTABLE_IDENTITY,
   PORTABLE_POLICY,
+  SITE_PORTABLE_DOCS_ROOT,
   SITE_PORTABLE_V1_OUT,
   SITE_PORTABLE_V2_OUT,
   SHELL_URL,
@@ -39,6 +43,19 @@ export default async function globalSetup(): Promise<void> {
 
   await buildVersion(SITE_V1_OUT);
   await buildPortableVersion(SITE_PORTABLE_V1_OUT);
+
+  // The guide's root-mount option combination, with a host-owned manifest and no authored
+  // offline page. The plugin must generate and precache /offline.html without an asset rule for that path.
+  await cp(join(APP_ROOT, "public"), PORTABLE_DOCS_PUBLIC, { recursive: true });
+  await rm(join(PORTABLE_DOCS_PUBLIC, "offline.html"));
+  await writeFile(join(PORTABLE_DOCS_PUBLIC, "manifest.webmanifest"),
+    '{"id":"/","start_url":"/","name":"Documentation fixture","display":"standalone"}\n');
+  await build({
+    configFile: false, root: APP_ROOT, base: "/", envDir: false, publicDir: PORTABLE_DOCS_PUBLIC, logLevel: "error",
+    build: { outDir: SITE_PORTABLE_DOCS_ROOT, emptyOutDir: true, minify: false, sourcemap: false },
+    plugins: [pwa({ deployment: { kind: "portable" }, identity: PORTABLE_DOCS_IDENTITY,
+      policy: PORTABLE_DOCS_POLICY, install: null, topology: { kind: "standalone-origin" }, offlinePage: {} })],
+  });
 
   // v2 differs in the app shell's content, so its asset hash changes and the browser sees a genuinely new worker:
   // the precache manifest injected into it lists a different URL. Editing the source and restoring it afterwards

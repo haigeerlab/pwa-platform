@@ -101,6 +101,27 @@ export const PORTABLE_FIXTURE_SITE: FixtureServerOptions = {
   versions: { v1: SITE_PORTABLE_V1_ROOT, v2: SITE_PORTABLE_V2_ROOT }, initialVersion: "v1",
 };
 
+/** Mirrors website/guide/portable-deployment.md: root mount, no install UI, generated offline page. */
+export const PORTABLE_DOCS_IDENTITY: PwaPortableIdentity = {
+  appId: "businessapp", manifestId: "/", scope: "/",
+  serviceWorkerUrl: "/sw.js", manifestUrl: "/manifest.webmanifest",
+  mountPath: "/", environment: "production", cacheNamespaceSeed: "r1",
+};
+export const PORTABLE_DOCS_POLICY: PwaPolicyV3 = {
+  schemaVersion: 3, install: { enabled: false }, updateMode: "prompt",
+  offlineFallback: { enabled: true, path: "/offline.html" },
+  resources: [
+    { pathPrefix: "/", resourceClass: "navigation-public-static", cache: "network-first" },
+    { pathPrefix: "/index.html", resourceClass: "asset", cache: "cache-first" },
+    { pathPrefix: "/assets", resourceClass: "asset", cache: "cache-first" },
+  ],
+  offlineWrites: { enabled: false, maxEntries: 0, maxTotalBodyBytes: 0, targets: [] },
+  runtimeCache: { enabled: false, maxEntries: 0, maxEntryBytes: 0, maxAgeSeconds: 0 },
+};
+export const SITE_PORTABLE_DOCS_ROOT: string = here("../browser-build/site-portable-docs/");
+export const PORTABLE_DOCS_PUBLIC: string = here("../browser-build/public-portable-docs/");
+export const PORTABLE_DOCS_FIXTURE_SITE: FixtureServerOptions = { versions: { v1: SITE_PORTABLE_DOCS_ROOT } };
+
 /** Two deployed versions of the same app, both produced by the plugin. */
 export const FIXTURE_SITE: FixtureServerOptions = {
   versions: { v1: SITE_V1_ROOT, v2: SITE_V2_ROOT },
