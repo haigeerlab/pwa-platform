@@ -582,5 +582,6 @@ iPhone 16 Pro（iOS 27.0.1，Safari 27.0.1），USB WebDriver + 局域网 HTTPS 
 | nuxt `offline.spec.ts --repeat-each 3`（仅 `goto` 修复） | 8 通过／1 失败（清理阶段 `no such window`） |
 | nuxt `offline.spec.ts --repeat-each 3`（`goto` 与清理修复） | 9／9 通过，预渲染子页用例 3／3 |
 | sw-runtime `offline.spec.ts`（`goto` 与清理修复） | 11／11 通过；“关闭离线回退时拒绝导航”约 8 秒（含 5 秒等待），仍按预期拒绝 |
+| PR #121 头提交 `7db7706`（rebase 到 `main` @ `ec78996` 后）：nuxt `offline.spec.ts --repeat-each 3` 与 sw-runtime `offline.spec.ts` | 9／9 与 11／11 通过；预渲染子页用例 3／3，“关闭离线回退时拒绝导航”8.0 秒 |
 
 本机：harness 单元测试 141／141、nuxt 单元测试 85／85、类型检查与 lint 通过；桌面 Chrome 下 nuxt 浏览器用例 12／12、harness 浏览器用例 23／23。
