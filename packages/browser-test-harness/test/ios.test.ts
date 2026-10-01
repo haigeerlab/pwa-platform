@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { readAndroidSerial } from "../src/android.js";
 import { exposeServer } from "../src/expose.js";
-import { CLEANUP_PATH, closeReleasedIosProxies, describeIosSafari, iosCapabilities, readIosDevice, remoteAutomationHint, setIosSessionOpen, startIosProxy } from "../src/ios.js";
+import { CLEANUP_PATH, closeReleasedIosProxies, describeIosSafari, iosCapabilities, readIosDevice, readIosSessionTests, remoteAutomationHint, setIosNetworkOffline, setIosSessionOpen, startIosProxy, storageHealthError, trustIosTestCa } from "../src/ios.js";
 import { readRealBrowserKind, requestedCapabilities } from "../src/webdriver.js";
 
 const ENV = { PWA_IOS_UDID: "00008140-001E51203A81801C", PWA_IOS_LAN_IP: "192.168.100.71", PWA_IOS_TLS_DIR: "/tmp/tls" };
@@ -179,6 +179,23 @@ describe("iPhone HTTPS proxy", () => {
     }
   });
 
+  it("cuts the network at every proxy for setIosNetworkOffline and restores it", async () => {
+    const proxy = await startIosProxy({ udid: "U", lanIp: "127.0.0.1", tlsDir: directory }, upstreamPort, { hostname: "localhost" });
+    try {
+      setIosNetworkOffline(true);
+      await expect(get(proxy.origin, "/page")).rejects.toThrow();
+      setIosNetworkOffline(false);
+      expect((await get(proxy.origin, "/page")).status).toBe(200);
+    } finally {
+      setIosNetworkOffline(false);
+      await proxy.release();
+    }
+  });
+
+  it("trusts the test CA in Node when ca.crt is next to server.crt", () => {
+    expect(trustIosTestCa({ udid: "U", lanIp: "127.0.0.1", tlsDir: join(directory, "missing") })).toBe(false);
+  });
+
   it("keeps a released proxy up while a session is open, until the session has cleaned its origin", async () => {
     const proxy = await startIosProxy({ udid: "U", lanIp: "127.0.0.1", tlsDir: directory }, upstreamPort, { hostname: "localhost" });
     setIosSessionOpen(true);
@@ -191,5 +208,28 @@ describe("iPhone HTTPS proxy", () => {
 
   it("explains an unreadable certificate directory", async () => {
     await expect(startIosProxy({ udid: "U", lanIp: "127.0.0.1", tlsDir: join(directory, "missing") }, upstreamPort, { hostname: "localhost" })).rejects.toThrow(/Cannot read .*server\.key \(PWA_IOS_TLS_DIR\)/);
+  });
+});
+
+describe("readIosSessionTests", () => {
+  it("is 1 (a session per test) when unset or empty and a positive integer otherwise", () => {
+    expect(readIosSessionTests({})).toBe(1);
+    expect(readIosSessionTests({ PWA_IOS_SESSION_TESTS: "" })).toBe(1);
+    expect(readIosSessionTests({ PWA_IOS_SESSION_TESTS: "1" })).toBe(1);
+    expect(readIosSessionTests({ PWA_IOS_SESSION_TESTS: "25" })).toBe(25);
+    for (const bad of ["0", "-1", "2.5", "many"]) expect(() => readIosSessionTests({ PWA_IOS_SESSION_TESTS: bad })).toThrow(/positive integer/);
+  });
+});
+
+describe("storageHealthError", () => {
+  it("is undefined when both storage kinds work", () => {
+    expect(storageHealthError({ indexedDb: null, cacheStorage: null })).toBeUndefined();
+  });
+
+  it("names each failed storage kind and tells the owner what to do", () => {
+    expect(storageHealthError({ indexedDb: "UnknownError: Unable to open database file on disk", cacheStorage: null })).toBe(
+      "iPhone Safari storage is broken — force-quit Safari on the phone: IndexedDB (UnknownError: Unable to open database file on disk) failed",
+    );
+    expect(storageHealthError({ indexedDb: "a", cacheStorage: "b" })).toContain("IndexedDB (a) and Cache Storage (b) failed");
   });
 });

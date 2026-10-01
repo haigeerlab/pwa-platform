@@ -8,9 +8,16 @@ import {
   liveIosOrigins,
   prepareIosOriginForCleanup,
   readIosDevice,
+  readIosSessionTests,
   remoteAutomationHint,
   closeReleasedIosProxies,
+  iosStorageProbeScript,
+  setIosNetworkOffline,
   setIosSessionOpen,
+  startIosProxy,
+  storageHealthError,
+  trustIosTestCa,
+  type StorageReport,
   type CleanupReport,
 } from "./ios.js";
 import {
@@ -450,6 +457,15 @@ export class RealContext {
     private readonly session: WebDriverSession,
   ) {}
 
+  /**
+   * `context.setOffline` on an iPhone run only: the network is cut at the HTTPS proxies (see `setIosNetworkOffline`),
+   * not in the browser, so `navigator.onLine` does not change. Elsewhere WebDriver has no such command.
+   */
+  async setOffline(offline: boolean): Promise<void> {
+    if (readIosDevice(process.env) === undefined) throw new Error(unsupportedMessage(this.kind, "context.setOffline"));
+    setIosNetworkOffline(offline);
+  }
+
   /** Adopts the session's initial tab as the first page. */
   async firstPage(): Promise<Page> {
     const page = new RealPage(this.kind, this.session, this.session.currentHandle(), this);
@@ -483,7 +499,12 @@ export class RealBrowser {
     private readonly driver: DriverProcess,
     readonly identity: BrowserIdentity,
     private readonly capabilities: Record<string, unknown>,
+    /** iPhone runs: the single WebDriver session every test of this worker shares. */
+    private shared?: WebDriverSession | undefined,
   ) {}
+
+  /** Tests finished on the current shared session (see `PWA_IOS_SESSION_TESTS`). */
+  private testsOnSession = 0;
 
   /** Starts the driver and reads the browser's identity from a short-lived probe session. */
   static async start(kind: RealBrowserKind, env: Readonly<Record<string, string | undefined>>): Promise<RealBrowser> {
@@ -491,9 +512,23 @@ export class RealBrowser {
     try {
       const capabilities = requestedCapabilities(kind, env);
       const probe = await WebDriverSession.create(driver.baseUrl, capabilities);
-      const identity = readIosDevice(env) === undefined ? describeBrowser(kind, probe.capabilities) : describeIosSafari(probe.capabilities);
-      await probe.quit();
-      return new RealBrowser(kind, driver, identity, capabilities);
+      const ios = readIosDevice(env);
+      const identity = ios === undefined ? describeBrowser(kind, probe.capabilities) : describeIosSafari(probe.capabilities);
+      if (ios === undefined) {
+        await probe.quit();
+        return new RealBrowser(kind, driver, identity, capabilities);
+      }
+      // iPhone: the probe session becomes the worker's one session (see `test.ts`); `close` ends it.
+      trackForExit(probe);
+      trustIosTestCa(ios);
+      try {
+        await checkStorage(probe, ios);
+      } catch (error) {
+        await probe.quit().catch(() => undefined);
+        untrackForExit(probe);
+        throw error;
+      }
+      return new RealBrowser(kind, driver, identity, capabilities, probe);
     } catch (error) {
       await driver.stop();
       const hint = error instanceof Error ? remoteAutomationHint(error.message) : undefined;
@@ -516,9 +551,11 @@ export class RealBrowser {
 
   /** Starts a new session (one browser instance state) with a context and its first page. */
   async openSession(): Promise<RealSession> {
-    const session = await WebDriverSession.create(this.driver.baseUrl, this.capabilities);
-    this.open.add(session);
-    trackForExit(session);
+    const session = this.shared ?? (await WebDriverSession.create(this.driver.baseUrl, this.capabilities));
+    if (this.shared === undefined) {
+      this.open.add(session);
+      trackForExit(session);
+    }
     const context = new RealContext(this.kind, session);
     const ios = readIosDevice(process.env) !== undefined;
     if (ios) setIosSessionOpen(true);
@@ -530,23 +567,49 @@ export class RealBrowser {
         await closeReleasedIosProxies();
       },
       quit: async () => {
+        if (this.shared !== undefined) {
+          // The worker's session stays open for the next test; `close` ends it.
+          setIosSessionOpen(false);
+          await closeReleasedIosProxies();
+          this.testsOnSession += 1;
+          const limit = readIosSessionTests(process.env);
+          if (this.testsOnSession >= limit) await this.recycle(this.shared);
+          return;
+        }
         this.open.delete(session);
         try {
           await session.quit();
         } finally {
           untrackForExit(session);
-          if (ios) {
-            setIosSessionOpen(false);
-            await closeReleasedIosProxies();
-          }
         }
       },
     };
   }
 
+  /** Ends the shared session and starts a fresh one in its place (the old one is always deleted first). */
+  private async recycle(old: WebDriverSession): Promise<void> {
+    this.shared = undefined;
+    try {
+      await old.quit();
+    } finally {
+      untrackForExit(old);
+    }
+    const next = await WebDriverSession.create(this.driver.baseUrl, this.capabilities);
+    trackForExit(next);
+    this.shared = next;
+    this.testsOnSession = 0;
+  }
+
   async close(): Promise<void> {
     for (const session of this.open) await session.quit().catch(() => undefined);
     this.open.clear();
+    if (this.shared !== undefined) {
+      try {
+        await this.shared.quit();
+      } finally {
+        untrackForExit(this.shared);
+      }
+    }
     await this.driver.stop();
   }
 
@@ -606,6 +669,25 @@ async function cleanupOrigins(session: WebDriverSession, origins: readonly strin
     if (left.registrations !== 0 || left.caches !== 0) {
       throw new Error(`iPhone cleanup of ${origin} left ${left.registrations} service worker registration(s) and ${left.caches} cache(s)`);
     }
+    // Storage that cannot be written would otherwise surface as a cascade of unrelated failures in later tests.
+    if (origin === origins[origins.length - 1]) await assertStorageHealthy(session, keep);
   }
   await session.inWindow(keep, () => session.navigate("about:blank"));
+}
+
+/** Runs the storage probe in the session's current tab (which must be at a proxied origin) and throws if storage is broken. */
+async function assertStorageHealthy(session: WebDriverSession, handle: string): Promise<void> {
+  const report = (await session.evaluate(handle, serializePageScript(iosStorageProbeScript, undefined), () => undefined)) as StorageReport;
+  const problem = storageHealthError(report);
+  if (problem !== undefined) throw new Error(problem);
+}
+
+/** Storage health check at worker start: cleans a short-lived proxy origin (no upstream is needed), which probes storage there. */
+async function checkStorage(session: WebDriverSession, device: NonNullable<ReturnType<typeof readIosDevice>>): Promise<void> {
+  const proxy = await startIosProxy(device, 1, { hostname: "localhost" });
+  try {
+    await cleanupOrigins(session, [proxy.origin]);
+  } finally {
+    await proxy.release();
+  }
 }

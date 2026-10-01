@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { request as httpRequest } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { connect, isIPv4, type AddressInfo, type Socket } from "node:net";
 import { join } from "node:path";
+import { getCACertificates, setDefaultCACertificates } from "node:tls";
 
 /** Environment variables that run the browser suites in the Safari of a USB-connected iPhone (ADR-0049). */
 export const IOS_UDID_ENV = "PWA_IOS_UDID";
@@ -35,6 +36,23 @@ export function readIosDevice(env: Env): IosDevice | undefined {
   return { udid, lanIp, tlsDir };
 }
 
+/**
+ * Tests run on one WebDriver session before it is ended and a new one starts; default 1 (a session per test). Sharing
+ * one session across tests made the next test's service worker install fail in about every other test (the worker was
+ * dropped right after installing, observed in sw-runtime and vite on the phone), presumably because a worker that was
+ * just unregistered at another port of the same IP still interferes; a fresh session starts with a fresh data store.
+ */
+export const IOS_SESSION_TESTS_ENV = "PWA_IOS_SESSION_TESTS";
+export const IOS_DEFAULT_SESSION_TESTS = 1;
+
+/** Reads `PWA_IOS_SESSION_TESTS`: a positive integer, `IOS_DEFAULT_SESSION_TESTS` when unset or empty; anything else is an error. */
+export function readIosSessionTests(env: Env): number {
+  const value = env[IOS_SESSION_TESTS_ENV] ?? "";
+  if (value === "") return IOS_DEFAULT_SESSION_TESTS;
+  if (!/^[1-9]\d*$/.test(value)) throw new Error(`${IOS_SESSION_TESTS_ENV} must be a positive integer, got "${value}"`);
+  return Number(value);
+}
+
 /** True when this run drives the Safari of an iPhone; specs use it for precise `test.skip` reasons. */
 export function isIosRun(): boolean {
   return readIosDevice(process.env) !== undefined;
@@ -56,6 +74,19 @@ export function describeIosSafari(capabilities: Readonly<Record<string, unknown>
   const build = text("safari:platformBuildVersion");
   const platform = `iOS ${text("safari:platformVersion") ?? "unknown"}${build === undefined ? "" : ` build ${build}`}`;
   return { version, label: `${device} Safari ${version} (${platform}, USB WebDriver, LAN HTTPS)` };
+}
+
+/**
+ * Makes this Node process trust the test CA, so requests the specs make from Node (`fetch`, `page.request`) to a proxied
+ * origin verify. Reads the public `ca.crt` if it sits next to `server.crt` in the TLS directory (the private key is never
+ * read); without it those requests fail certificate verification and only the specs that make them are affected.
+ * Returns whether a CA was added.
+ */
+export function trustIosTestCa(device: IosDevice): boolean {
+  const file = join(device.tlsDir, "ca.crt");
+  if (!existsSync(file)) return false;
+  setDefaultCACertificates([...getCACertificates("default"), readFileSync(file, "utf8")]);
+  return true;
 }
 
 /** Message added to a failed session creation when iOS turned Remote Automation off; retrying cannot fix it. */
@@ -115,7 +146,51 @@ export async function iosCleanupScript(): Promise<CleanupReport> {
   return { registrations, caches };
 }
 
-type Exposure = { readonly origin: string; readonly prepareCleanup: () => void };
+/** What `iosStorageProbeScript` found: an error text per storage kind, or `null` when it worked. */
+export type StorageReport = { readonly indexedDb: string | null; readonly cacheStorage: string | null };
+
+/**
+ * Runs in a page at a proxied origin: opens and deletes an IndexedDB database, and opens, writes to and deletes a
+ * cache, leaving nothing behind. Safari on the iPhone once lost the ability to do either after many sessions.
+ */
+export async function iosStorageProbeScript(): Promise<StorageReport> {
+  const failure = (error: unknown): string => (error instanceof Error ? `${error.name}: ${error.message}` : String(error));
+  let indexedDb: string | null = null;
+  let cacheStorage: string | null = null;
+  try {
+    const name = `pwa-harness-health-${Date.now()}`;
+    await new Promise<void>((done, fail) => {
+      const request = indexedDB.open(name, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("health");
+      request.onerror = () => fail(request.error);
+      request.onsuccess = () => {
+        request.result.close();
+        const removal = indexedDB.deleteDatabase(name);
+        removal.onsuccess = () => done();
+        removal.onerror = () => fail(removal.error);
+      };
+    });
+  } catch (error) {
+    indexedDb = failure(error);
+  }
+  try {
+    const name = `pwa-harness-health-${Date.now()}`;
+    const cache = await self.caches.open(name);
+    await cache.put("/pwa-harness-health", new Response("ok"));
+    await self.caches.delete(name);
+  } catch (error) {
+    cacheStorage = failure(error);
+  }
+  return { indexedDb, cacheStorage };
+}
+
+/** The error to raise for a failed storage probe, or `undefined` when both storage kinds work. */
+export function storageHealthError(report: StorageReport): string | undefined {
+  const failed = [report.indexedDb === null ? undefined : `IndexedDB (${report.indexedDb})`, report.cacheStorage === null ? undefined : `Cache Storage (${report.cacheStorage})`].filter((part) => part !== undefined);
+  return failed.length === 0 ? undefined : `iPhone Safari storage is broken — force-quit Safari on the phone: ${failed.join(" and ")} failed`;
+}
+
+type Exposure = { readonly origin: string; readonly prepareCleanup: () => void; setOffline(offline: boolean): void };
 const liveExposures = new Set<Exposure>();
 
 /** Origins that currently have an HTTPS proxy, for the per-test cleanup of `RealSession.cleanupOrigins`. */
@@ -125,7 +200,20 @@ export function liveIosOrigins(): readonly string[] {
 
 /** Puts the server behind `origin` into a state where the cleanup document can load (back online, stalls released). */
 export function prepareIosOriginForCleanup(origin: string): void {
-  for (const exposure of liveExposures) if (exposure.origin === origin) exposure.prepareCleanup();
+  for (const exposure of liveExposures) {
+    if (exposure.origin !== origin) continue;
+    exposure.setOffline(false);
+    exposure.prepareCleanup();
+  }
+}
+
+/**
+ * The iPhone stand-in for `context.setOffline`: cuts (or restores) the network at every proxy. Open connections are
+ * destroyed and new ones are dropped before a byte is read, so the phone gets network errors in the page and in
+ * workers alike. Unlike Playwright's, `navigator.onLine` and the `online`/`offline` events stay as they are.
+ */
+export function setIosNetworkOffline(offline: boolean): void {
+  for (const exposure of liveExposures) exposure.setOffline(offline);
 }
 
 let sessionOpen = false;
@@ -167,6 +255,7 @@ export async function startIosProxy(device: IosDevice, port: number, options: Pr
   const upstreamHost = `${options.hostname}:${port}`;
   let origin = "";
   const sockets = new Set<Socket>();
+  let offline = false;
 
   const proxy = createHttpsServer(tls, (request, response) => {
     if (request.url?.split("?", 1)[0] === CLEANUP_PATH) {
@@ -191,6 +280,10 @@ export async function startIosProxy(device: IosDevice, port: number, options: Pr
   });
 
   proxy.on("connection", (socket: Socket) => {
+    if (offline) {
+      socket.destroy();
+      return;
+    }
     sockets.add(socket);
     socket.once("close", () => sockets.delete(socket));
   });
@@ -216,7 +309,14 @@ export async function startIosProxy(device: IosDevice, port: number, options: Pr
     });
   });
   origin = `https://${device.lanIp}:${(proxy.address() as AddressInfo).port}`;
-  const exposure: Exposure = { origin, prepareCleanup: options.prepareCleanup ?? (() => undefined) };
+  const exposure: Exposure = {
+    origin,
+    prepareCleanup: options.prepareCleanup ?? (() => undefined),
+    setOffline(next) {
+      offline = next;
+      if (next) for (const socket of sockets) socket.destroy();
+    },
+  };
   liveExposures.add(exposure);
 
   const close = async (): Promise<void> => {

@@ -106,8 +106,14 @@ type RealBrowserTestFixtures = { readonly context: BrowserContext; readonly page
  * (measured on macOS), so a new session per test gives true isolation of service workers, caches and storage
  * without any cleanup script, and quitting the session closes every tab the test opened.
  * With `PWA_IOS_UDID`, `PWA_IOS_LAN_IP` and `PWA_IOS_TLS_DIR` (ADR-0049) the session is a Safari on a USB-connected
- * iPhone (about 1.7 s per session, measured), still one per test; the phone's Safari keeps its data after a session
- * ends, so each test also unregisters every worker and clears every cache and storage of the origins it used.
+ * iPhone. There a session costs about 1.7 s and the phone's Safari lost IndexedDB and Cache Storage writes until it was
+ * force-quit after about 250 sessions in a day, so the session is a worker-level resource that `PWA_IOS_SESSION_TESTS=N`
+ * can share across N tests. The default is 1 (a fresh session per test) because sharing one session across tests made
+ * the next test's service worker install fail in about every other test (sw-runtime, vite), while a fresh session
+ * starts with a fresh data store. Either way every test ends with strict cleanup (extra tabs closed; in each proxied
+ * origin every worker unregistered and every cache, storage, IndexedDB and cookie cleared and verified empty) and a
+ * storage health check that fails fast with "force-quit Safari on the phone" if storage is broken. A session is always
+ * deleted before the driver stops, because iOS switches Remote Automation off otherwise.
  * Unset, `test` is exactly the Chrome `test` above.
  */
 export const test: TestType<HarnessTestArgs, HarnessWorkerArgs> =
