@@ -32,7 +32,7 @@ test.describe("private page caching", () => {
     // worker entirely, which the assertions below could not otherwise rule out (评审第 6 项, modelled on
     // sw-runtime's offline.spec.ts "denied navigations online" case).
     expect(response?.fromServiceWorker()).toBe(true);
-    await expect(page.locator("h1")).toHaveText("account");
+    await expect.poll(() => page.locator("h1").textContent()).toBe("account");
 
     // Exactly one request for it reached the server: the worker fetched it once and passed the response through,
     // it did not also let some other, uncontrolled request through for the same URL.

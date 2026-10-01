@@ -32,6 +32,7 @@ import {
   documentMark,
   installAndControl,
   markDocument,
+  waitForDocumentUrl,
 } from "./page.js";
 import { readShippedPrecache } from "./release.js";
 import { IDENTITY } from "./site/pwa-config.js";
@@ -85,7 +86,7 @@ test.describe("auto-reload on a chunk-load failure", () => {
     // level); the window mark and the document's own URL are the browser-level proof that nothing reloaded it.
     expect(await documentMark(page)).toBe(mark);
     expect(page.url()).toBe(server.url(SHELL_URL));
-    await expect(page.locator("h1")).toHaveText("home");
+    await expect.poll(() => page.locator("h1").textContent()).toBe("home");
   });
 
   test("an app that explicitly opts back into automatic reload does reload", async ({ page }) => {
@@ -100,7 +101,7 @@ test.describe("auto-reload on a chunk-load failure", () => {
     await page.locator("#go-lazy").click();
     // reloadAppAtPath (Nuxt's own nuxt:chunk-reload plugin) navigates the whole browser to the failed route's own
     // path — a real, state-based condition to wait on instead of a fixed sleep.
-    await page.waitForURL(server.url(LAZY_URL), { timeout: 15_000 });
+    await waitForDocumentUrl(page, server.url(LAZY_URL));
 
     // A fresh document has no mark: the reload really happened, not merely a successful client-side navigation.
     expect(await documentMark(page)).toBeNull();

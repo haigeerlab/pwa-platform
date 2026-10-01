@@ -28,14 +28,14 @@ test.describe("offline navigation", () => {
       server.clearRequests();
 
       await page.goto(server.url(SHELL_URL));
-      await expect(page.locator("h1")).toHaveText("home");
+      await expect.poll(() => page.locator("h1").textContent()).toBe("home");
 
       // ADR-0012 (T4b): a navigation without a trailing slash also tries the same route's index.html.
       await page.goto(server.url(ABOUT_URL));
-      await expect(page.locator("h1")).toHaveText("about");
+      await expect.poll(() => page.locator("h1").textContent()).toBe("about");
 
       await page.goto(server.url(ABOUT_SLASH_URL));
-      await expect(page.locator("h1")).toHaveText("about");
+      await expect.poll(() => page.locator("h1").textContent()).toBe("about");
 
       expect(server.requests()).toEqual([]);
     } finally {
@@ -49,7 +49,7 @@ test.describe("offline navigation", () => {
     await context.setOffline(true);
     try {
       await page.goto(server.url(NEWS_URL));
-      await expect(page.locator("#offline")).toHaveText("You are offline");
+      await expect.poll(() => page.locator("#offline").textContent()).toBe("You are offline");
       // The offline page's route rule strips its script (design section 3), so it never hydrates and never
       // rewrites the address bar to its own route (T1 deviation C).
       expect(page.url()).toBe(server.url(NEWS_URL));
@@ -67,7 +67,7 @@ test.describe("offline navigation", () => {
     await context.setOffline(true);
     try {
       await page.goto(server.url(ACCOUNT_URL));
-      await expect(page.locator("#offline")).toHaveText("You are offline");
+      await expect.poll(() => page.locator("#offline").textContent()).toBe("You are offline");
       expect(page.url()).toBe(server.url(ACCOUNT_URL));
     } finally {
       await context.setOffline(false);

@@ -1,7 +1,7 @@
 // Page-side helpers shared by the specs, adapted from examples-browser-e2e/browser-tests/page.ts for a NuxtServer
 // (servers.ts) instead of a FixtureServer: the interface (#registered, #apply-update, ...) is observed where it
 // shows state; worker state nothing in the interface shows is read from navigator.serviceWorker directly.
-import { expect, waitForController } from "@pwa-platform/browser-test-harness";
+import { expect, readRealBrowserKind, waitForController } from "@pwa-platform/browser-test-harness";
 import type { CDPSession, Page } from "@playwright/test";
 import type { NuxtServer } from "./servers.js";
 import { SHELL_URL, WORKER_URL } from "./urls.js";
@@ -24,11 +24,11 @@ export async function waitForActivatedWorker(page: Page, timeout = 15_000): Prom
  */
 export async function installAndControl(page: Page, server: NuxtServer): Promise<void> {
   await page.goto(server.url(SHELL_URL));
-  await expect(page.locator("#registered")).toHaveText("registered", { timeout: 15_000 });
+  await expect.poll(() => page.locator("#registered").textContent(), { timeout: 15_000 }).toBe("registered");
   await waitForActivatedWorker(page);
   await page.reload();
   await waitForController(page, server.url(WORKER_URL));
-  await expect(page.locator("#registered")).toHaveText("registered");
+  await expect.poll(() => page.locator("#registered").textContent()).toBe("registered");
 }
 
 /** A value stashed on `window`; a reload builds a new window, so reading it back proves the document survived. */
@@ -67,6 +67,22 @@ export async function checkForUpdate(page: Page): Promise<void> {
   await page.evaluate(async () => {
     await (await navigator.serviceWorker.getRegistration())?.update();
   });
+}
+
+/** Resolves once the page's document is at `url`; `page.waitForURL` where it exists, a poll of `location.href` over WebDriver. */
+export async function waitForDocumentUrl(page: Page, url: string, timeout = 15_000): Promise<void> {
+  if (readRealBrowserKind(process.env) === undefined) {
+    await page.waitForURL(url, { timeout });
+    return;
+  }
+  const deadline = Date.now() + timeout;
+  for (;;) {
+    // A document being replaced may refuse scripts for a moment.
+    const href = await page.evaluate(() => location.href).catch(() => "");
+    if (href === url) return;
+    if (Date.now() >= deadline) throw new Error(`Timeout ${timeout}ms exceeded waiting for ${url}, last at ${href}`);
+    await page.waitForTimeout(100);
+  }
 }
 
 /** Number of entries in one cache of the page's origin; `null` when no such cache exists. */
@@ -151,6 +167,9 @@ export function loadedNuxtChunkPaths(page: Page): Promise<string[]> {
  * reaching the (now-redeployed) origin instead of being answered from either cache.
  */
 export async function clearHttpCache(page: Page): Promise<void> {
+  // WebDriver has no command for the browser's HTTP cache. A real browser run goes on without clearing: the spec only
+  // passes if the re-request really reached the redeployed origin (a cached chunk would resolve the navigation).
+  if (readRealBrowserKind(process.env) !== undefined) return;
   const session: CDPSession = await page.context().newCDPSession(page);
   try {
     await session.send("Network.clearBrowserCache");

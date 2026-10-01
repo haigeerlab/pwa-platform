@@ -21,12 +21,12 @@ test.describe("update prompt", () => {
 
   test("a new deployment waits for confirmation; the old worker stays active until then", async ({ page }) => {
     await installAndControl(page, server);
-    await expect(page.locator("#apply-update")).toHaveCount(0);
+    await expect.poll(() => page.locator("#apply-update").count()).toBe(0);
     await markController(page);
 
     await server.deploy(serverEntry("manual", "v2"));
     await checkForUpdate(page);
-    await expect(page.locator("#apply-update")).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => page.locator("#apply-update").isVisible(), { timeout: 15_000 }).toBe(true);
 
     const registration = await readRegistration(page, server.url(SHELL_URL));
     expect(registration?.waiting).toBe(server.url(WORKER_URL));
@@ -35,7 +35,7 @@ test.describe("update prompt", () => {
     // sw.js never changes address across versions, so the two checks above cannot by themselves tell v1's worker
     // apart from v2's — both witnesses below can (评审第 7 项). A reload would have replaced the document with
     // v2's and handed control to the new worker; neither happened.
-    await expect(page.locator("#version")).toHaveText("v1");
+    await expect.poll(() => page.locator("#version").textContent()).toBe("v1");
     expect(await isSameController(page)).toBe(true);
   });
 
@@ -45,7 +45,7 @@ test.describe("update prompt", () => {
 
     await server.deploy(serverEntry("manual", "v2"));
     await checkForUpdate(page);
-    await expect(page.locator("#apply-update")).toBeVisible({ timeout: 15_000 });
+    await expect.poll(() => page.locator("#apply-update").isVisible(), { timeout: 15_000 }).toBe(true);
 
     const after = await waitForControllerChange(page, async () => {
       await page.locator("#apply-update").click();
@@ -55,6 +55,6 @@ test.describe("update prompt", () => {
 
     // A reload would have loaded v2 and discarded window state; both witnesses say it did not.
     expect(await documentMark(page)).toBe(mark);
-    await expect(page.locator("#version")).toHaveText("v1");
+    await expect.poll(() => page.locator("#version").textContent()).toBe("v1");
   });
 });
