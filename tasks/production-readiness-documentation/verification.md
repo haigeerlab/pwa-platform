@@ -85,3 +85,14 @@
 - 最后一次 `git diff --check`：通过。
 - 生产就绪结论保持保守：正式包和桌面 Chrome 通道可供采用，Android／iPhone 仍不写成完整生产门禁通过。
 - 本模块文档基线已更新为 `verified`；这只代表本次文档交付完成，不提升其他模块的业务发布状态。
+
+## 增量：运维响应头证据页（2026-10-01）
+
+- 在文档站“参考与发布”导航新增 `website/operations/header-evidence.md`，可单独转发运维；逐资源列出最终响应头、对应功能、本地对照结果与未验证项。配置示例仍由 `hosting.md` 提供，发布门禁与公开 npm 版本由 `release.md` 说明。
+- 证据来自 `tasks/examples-browser-e2e/header-causality-verification.md`：桌面 Chrome 154 本地对照 23 项通过；Vue/React 六项发布报告用例各通过一次。页面明确区分本地自动化、线上 CDN 和原生安装元数据更新；npm registry 的十个公开包 `latest` 均为 `0.2.5`，已下载的 `@pwa-platform/build-verifier@0.2.5` 归档中检查名及导出无 `worker-mime`，仓库待发布源码才包含。
+- 修正旧站文“长缓存 worker 必然一天无更新”的过度断言，给 Nginx worker 位置补显式 JavaScript MIME，并把自检改为 GET 最终响应；历史 Nginx 演练只证明改动前配置，新增 MIME 两行未被该次演练复测。
+- `pnpm docs:build` 退出 0；本地预览中从“服务器与 CDN 配置”进入新页，再进入“部署与发布”均成功。Chrome 在 1280px 和 375px 视口分别看到两个表格及版本边界，375px 页面无整页横向溢出（表格可横向滑动）；`git diff --check` 通过。
+- 同步修订文档站的当前 npm 版本与安装命令为已核实的 `0.2.5`；标明 2026-09 的 `0.2.4` 测试矩阵与工具对照仍是当时证据，不视作 0.2.5 的新验收。最终修改后再次执行 `pnpm docs:build` 与 `git diff --check`，均通过。
+- 用户复核后，将运维清单拆为“应配置或核对”“避免配置或出现”两列；补充四条 GET 仅为核心抽样、不足以证明所有服务端与 PWA 条件，并解释 `dist/` 内无 `app/` 目录时公开 URL 仍可映射到 `/app/`。表格加页内横向滚动及列宽，在本地预览 741px 视口核对页面无整页横向溢出，表格内部可滚动；重建与 `git diff --check` 通过。重启本地预览后复核新版页面。
+- Spec Guard 只读文档核验为 `ready`，`attention` 为空；产物结构核验为 3 通过、1 条既有结构警告（15 个已完成模块有 Plan 而无 todo.md）、0 失败。它不代表远端站点已发布。
+- 仅更新文档站源文件；未建立文档版本分支、上传 Pages 或发布 npm。站点上线仍须走 `docs/operations/documentation-site.md` 的独立流程。

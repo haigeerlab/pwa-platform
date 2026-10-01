@@ -1,10 +1,10 @@
 # 服务器与 CDN 配置
 
-本页面向自己部署 PWA 的业务团队：哪些文件要返回什么响应头、怎样在 Nginx 与 CDN 上配置、按什么顺序上传、出事故时怎样回退，以及怎样自检。发布流程与门禁见[部署与发布](/operations/release)。
+本页面向自己部署 PWA 的业务团队：哪些文件要返回什么响应头、怎样在 Nginx 与 CDN 上配置、按什么顺序上传、出事故时怎样回退，以及怎样自检。每个字段为什么要这样配、浏览器正反例和未验证项见[响应头配置实测依据](/operations/header-evidence)；发布流程与门禁见[部署与发布](/operations/release)。
 
 ## 为什么需要服务端配合
 
-构建只能生成文件，浏览器最终看到的是服务器和 CDN 返回的响应。Service Worker 的更新完全依赖“浏览器每次都能拿到最新的 worker 脚本”；如果 CDN 把 <code>sw.js</code> 缓存了一天，用户就一天收不到更新，恢复 worker 也无法替换到位。反过来，带内容指纹的资源改了内容就会换文件名，可以放心长期缓存。所以：**会被原地覆盖的文件必须每次重新验证，文件名带指纹的文件可以永久缓存。**
+构建只能生成文件，浏览器最终看到的是服务器和 CDN 返回的响应。更新检查需要取得 worker 的新脚本字节；长缓存是否挡住某一次检查，取决于浏览器的 `updateViaCache` 模式和中间缓存行为。本地实验中，默认 `imports` 模式仍发现了更新，显式 `all` 模式的长缓存反例未发现更新。为使同名覆盖的文件可再验证，本项目要求 worker、manifest 与公开 HTML 返回 <code>no-cache</code>。带内容指纹的资源改了内容就会换文件名，可以长期缓存，但旧文件还须按发布保留窗口继续提供。详见[对照记录](/operations/header-evidence#实测时发生了什么)。
 
 另外两条浏览器层面的前提：
 
@@ -13,17 +13,17 @@
 
 ## 响应头总表
 
-下表中“必须”和“不得”指发布检查（<code>build-verifier</code>）实际判断的内容；“建议”是平台不检查、但按同一道理应当遵守的配置。
+下表中 worker、manifest、公开 HTML 和带指纹资产的“必须”“不得”是发布检查（<code>build-verifier</code>）对 <code>Cache-Control</code> 实际判断的内容；标为“建议”的项及私有响应需人工核对。<code>no-cache</code> 是**本项目发布约定**，不是所有 PWA 的规范硬性条件。请按实际 URL 的最终响应判断，不能只检查配置文件。
 
 | 资源 | Cache-Control 必须包含 | Cache-Control 不得包含 | 原因 |
 | --- | --- | --- | --- |
 | 入口 HTML（挂载路径、安装的 <code>startUrl</code>）、离线页、其他进入预缓存的 HTML | <code>no-cache</code> | <code>immutable</code> | HTML 的文件名不变，内容随每次发布变化 |
-| <code>sw.js</code>（即 <code>serviceWorkerUrl</code>） | <code>no-cache</code> | <code>immutable</code> | 浏览器靠比较脚本字节发现新版本 |
+| <code>sw.js</code>（即 <code>serviceWorkerUrl</code>） | <code>no-cache</code> | <code>immutable</code> | 更新检查须取得新脚本字节；长缓存的影响取决于检查模式，本项目要求可再验证 |
 | <code>pwa-recovery-worker.js</code> | 建议 <code>no-cache</code>（不检查） | <code>immutable</code> | 事故时要被复制到 <code>sw.js</code> 的位置；部署工具通常要求两者规则一致 |
-| <code>manifest.webmanifest</code> | <code>no-cache</code> | <code>immutable</code> | 同上，内容随发布变化 |
+| <code>manifest.webmanifest</code> | <code>no-cache</code> | <code>immutable</code> | 安装元数据可在同一路径更新；长缓存使本次页面读取继续得到旧名称，原生安装记录的更新周期另算 |
 | 带指纹的资源（文件名形如 <code>name-&lt;8 个字符&gt;.&lt;扩展名&gt;</code>，例如 <code>assets/index-BGTT0tj4.js</code>） | <code>immutable</code> 和**正数**的 <code>max-age</code>（如 <code>max-age=31536000</code>） | <code>no-cache</code>、<code>no-store</code> | 内容变了文件名就变，可永久缓存；<code>max-age=0, immutable</code> 是常见的错误配置，检查会判为失败 |
 | <code>public/</code> 目录复制出来的文件（含图标） | 建议 <code>no-cache</code> 或较短的 <code>max-age</code>（不检查） | 不要 <code>immutable</code> | 文件名由人起，即使名字里恰好有 8 个字符的后缀，平台也不把它当作指纹文件；覆盖同名文件后，长期缓存会让用户一直看到旧版 |
-| 私有 HTML 与 API | <code>private</code> 或 <code>no-store</code> | <code>public</code> | **不在机器检查范围内**，需人工核对 |
+| 私有 HTML 与 API | <code>private, no-store</code> | <code>public</code>、<code>immutable</code> | **不在机器检查范围内**，需人工核对；单独的 <code>private</code> 不禁止浏览器私有缓存 |
 
 指纹文件的判定依据是文件名末尾恰好 8 个 <code>[A-Za-z0-9_-]</code> 字符再接扩展名，也就是 Vite 默认的输出名。如果你改了 Vite 的输出命名规则，平台可能不再把它们识别为指纹文件。
 
@@ -38,7 +38,7 @@
 
 | 项目 | 要求 |
 | --- | --- |
-| <code>Content-Type</code> | <code>sw.js</code> 必须是 JavaScript MIME 类型（如 <code>text/javascript</code>）。这是浏览器的硬性规则，平台不检查，配错则 worker 注册失败。manifest 建议使用 <code>application/manifest+json</code>（推荐，不是硬性要求） |
+| <code>Content-Type</code> | <code>sw.js</code> 必须是 JavaScript MIME 类型（推荐 <code>text/javascript</code>；现有 <code>application/javascript</code> 也合格），配错可使 worker 注册失败。npm <code>0.2.5</code> 尚无这项机器检查，须人工核对；仓库待发布源码已增加独立的 <code>worker-mime</code>。manifest 建议使用 <code>application/manifest+json</code>，当前不做 MIME 发布检查 |
 | <code>HEAD</code> 请求 | <code>sw.js</code> 的 <code>HEAD</code> 请求必须返回 2xx：离线页在断网时用它探测网络是否恢复，返回非 2xx 页面就不会自动重新加载 |
 | <code>Vary</code> | 只有启用公共读取缓存时相关：运行时缓存只接受 <code>Vary</code> 中仅含 <code>Accept</code> 与 <code>Accept-Encoding</code> 的响应，CDN 或开发服务器额外加的 <code>Vary: Origin</code> 会让响应不被缓存 |
 
@@ -57,15 +57,19 @@ server {
 
     root /var/www/app;
 
-    # Service Worker：每次都要重新验证。精确匹配优先于下面的 location /，
+    # Service Worker：每次都要重新验证，并明确返回 JavaScript MIME。精确匹配优先于下面的 location /，
     # 所以不会被 SPA 回退接住；文件不存在就是 404，不能返回 index.html。
     location = /sw.js {
+        types { }
+        default_type text/javascript;
         add_header Cache-Control "no-cache" always;
         try_files $uri =404;
     }
 
     # 恢复 worker：与 sw.js 相同的规则。
     location = /pwa-recovery-worker.js {
+        types { }
+        default_type text/javascript;
         add_header Cache-Control "no-cache" always;
         try_files $uri =404;
     }
@@ -113,14 +117,14 @@ server {
 - **`/assets/` 下不要放手写命名的文件**：放在 <code>public/assets/</code> 里的文件会被当成指纹资源缓存一年。
 
 ::: tip 本地验证记录（2026-09-29）
-这份配置的 <code>/app/</code> 子路径版本（见下节）已在 nginx 1.31.6 上用平台 React 示例的生产构建验证：各类资源的 <code>Cache-Control</code> 与 <code>Content-Type</code> 用 <code>curl -I</code> 逐项核对；<code>verifyRelease</code> 的 <code>artifacts</code>、<code>response-headers</code>、<code>html-headers</code> 三项通过；缺失的 worker、图标和指纹资源返回 404，深层路由回退到 <code>index.html</code>，<code>/app</code> 301 到 <code>/app/</code>。使用的是自签名证书，因此**没有**在浏览器里验证 worker 注册。它不在本仓库 CI 中运行（仓库自己的测试部署使用 Cloudflare Pages）；上线前仍请在你自己的环境里按[自检](#自检)核对。
+此前配置的 <code>/app/</code> 子路径版本（见下节）已在 nginx 1.31.6 上用平台 React 示例的生产构建验证：各类资源的 <code>Cache-Control</code> 与 <code>Content-Type</code> 用 <code>curl -I</code> 逐项核对；<code>verifyRelease</code> 的 <code>artifacts</code>、<code>response-headers</code>、<code>html-headers</code> 三项通过；缺失的 worker、图标和指纹资源返回 404，深层路由回退到 <code>index.html</code>，<code>/app</code> 301 到 <code>/app/</code>。上方新增的显式 MIME 两行尚未在该次 Nginx 演练中复测；使用的是自签名证书，因此**没有**在浏览器里验证 worker 注册。它不在本仓库 CI 中运行（仓库自己的测试部署使用 Cloudflare Pages）；上线前仍请在你自己的环境里按[自检](#自检)核对。
 
-示例假设外层 <code>http</code> 块像 Nginx 默认配置一样 <code>include mime.types</code>，<code>sw.js</code> 才会得到 <code>application/javascript</code>。
+精确匹配的 worker 位置用 <code>types { }</code> 和 <code>default_type</code> 固定 MIME；其他静态文件仍依赖外层 <code>http</code> 块的 <code>include mime.types</code>。Nginx 这两个指令的行为见[官方文档](https://nginx.org/en/docs/http/ngx_http_core_module.html#types)。
 :::
 
 ### 挂载在子路径 `/app/`
 
-应用挂载在 <code>/app/</code> 时，Vite <code>base</code>、身份的 <code>scope</code> 与 <code>serviceWorkerUrl</code>（<code>/app/sw.js</code>）都要按 <code>/app/</code> 配置，构建输出放在 <code>/var/www/site/app/</code>。Nginx 中把上面每个 <code>location</code> 的路径加上 <code>/app</code> 前缀（<code>location = /app/sw.js</code>、<code>location ^~ /app/assets/</code>、扩展名正则改为 <code>~* ^/app/.+\.(?:js|…)$</code>、<code>location /app/</code>，回退改为 <code>/app/index.html</code>），根目录仍是 <code>/var/www/site</code>，并增加一条重定向：
+应用挂载在 <code>/app/</code> 时，Vite <code>base</code>、身份的 <code>scope</code>、<code>mountPath</code> 与 <code>serviceWorkerUrl</code>（<code>/app/sw.js</code>）都要按公开 URL <code>/app/</code> 配置。<code>dist/</code> 顶层不需要有 <code>app/</code>：把构建输出的**内容**放到 <code>/var/www/site/app/</code>，Nginx 的 <code>root</code> 仍为 <code>/var/www/site</code>，浏览器就能访问 <code>/app/sw.js</code>。Nginx 中把上面每个 <code>location</code> 的路径加上 <code>/app</code> 前缀（<code>location = /app/sw.js</code>、<code>location ^~ /app/assets/</code>、扩展名正则改为 <code>~* ^/app/.+\.(?:js|…)$</code>、<code>location /app/</code>，回退改为 <code>/app/index.html</code>），并增加一条重定向：
 
 ```nginx
 location = /app { return 301 /app/; }
@@ -153,12 +157,14 @@ Cloudflare Pages 用发布目录里的 <code>_headers</code> 文件配置响应�
 
 其中 <code>/app/offline</code> 是因为 Cloudflare Pages 会把 <code>offline.html</code> 重定向到无扩展名的地址，最终响应也要带头。发布检查看的是最终响应。
 
+这段 <code>_headers</code> 只列缓存规则；<code>sw.js</code> 的实收 <code>Content-Type</code> 仍须单独核对。Pages 静态资产若已返回 <code>application/javascript</code>，无需改成另一种合法 JavaScript MIME；若返回 <code>text/plain</code>，可在 <code>_headers</code> 的 <code>/app/sw.js</code> 规则下明确设置 <code>Content-Type: text/javascript</code>，重新部署后以 GET 复核。Pages 的 <code>_headers</code> 只作用于静态资产响应；Functions／Worker 路由须在实际处理响应的代码中设置，详见[Cloudflare Pages 文档](https://developers.cloudflare.com/pages/configuration/headers/)。
+
 通用 CDN 与其他托管的规则：
 
-- **让 CDN 遵从源站的 `Cache-Control`**。如果 CDN 的规则会覆盖或忽略源站的 <code>no-cache</code>，就必须在**每次发布时清除**这些路径的缓存：<code>sw.js</code>、<code>pwa-recovery-worker.js</code>、manifest、入口 HTML 和离线页。
+- **让 CDN 遵从源站的 `Cache-Control`**。如果 CDN 的规则覆盖或忽略源站的 <code>no-cache</code>，先修正 CDN 规则，再核对实际出口响应；发布时清除被错误缓存的 <code>sw.js</code>、恢复 worker、manifest、入口 HTML 和离线页。一次清除不能代替后续每次请求的可再验证规则。
 - **指纹资源不要依赖清除**：它们文件名唯一，可以永久缓存；发布流程不应假设“上传后清一次缓存”能修复它们。
 - **不要让 CDN 改写 `sw.js`**：关闭对它的压缩缩小、脚本注入（如各家的 auto-minify、Rocket Loader 一类功能）等重写功能。任何字节变化都会让 worker 内容与构建产物不一致。
-- 不要给 <code>sw.js</code>、manifest 或 HTML 加长时间的边缘缓存（<code>s-maxage</code>），除非发布时一定清除。
+- 不要用 <code>max-age=0</code> 搭配长时间的 <code>s-maxage</code> 代替 <code>no-cache</code>，也不要让 CDN 平台规则忽略源站的 <code>no-cache</code>。若此前已缓存旧响应，修正规则时清除旧副本并重新核对出口 GET；后续发布仍须满足响应头基线。
 
 ## 部署顺序
 
@@ -217,7 +223,7 @@ const report = verifyRelease({
   published: ["/index.html", "/offline.html", "/sw.js", "/manifest.webmanifest", "/assets/index-BGTT0tj4.js"],
   // 线上 worker、manifest 与指纹资源的最终响应头，键为绝对路径，头名小写
   observed: {
-    "/sw.js": { "cache-control": "no-cache" },
+    "/sw.js": { "cache-control": "no-cache", "content-type": "text/javascript" },
     "/manifest.webmanifest": { "cache-control": "no-cache" },
     "/assets/index-BGTT0tj4.js": { "cache-control": "public, max-age=31536000, immutable" },
   },
@@ -245,23 +251,24 @@ if (!report.ok || !coverage.ok) {
 
 - 所有输入都是省略即跳过：<code>published</code>、<code>observed</code>、<code>htmlObserved</code>、<code>baseline</code>、<code>retention</code>（以及子应用的 <code>deployedRootPlan</code>）。所以要同时使用 <code>requiredReleaseChecks(plan)</code> 和 <code>verifyReleaseGateCoverage</code>：前者按拓扑给出必需检查（共享 origin 子应用多一项 <code>release-order</code>），后者确认报告里真的有这些检查。
 - <code>ok</code> 与“覆盖完整”是两件事，门禁要同时满足。
+- 上述示例适用于已发布的 npm <code>0.2.5</code>。该版 <code>response-headers</code> 不判断 worker 的 <code>Content-Type</code>，须另外人工确认是 JavaScript MIME；仓库待发布的 <code>worker-mime</code> 检查不能在 <code>0.2.5</code> 中调用。其对应的本地功能正反例见[实测依据](/operations/header-evidence#实测时发生了什么)。
 - 私有 HTML 与 API 的响应头不在检查内，需人工确认。
 
-**手工用 curl 核对**（<code>-L</code> 跟随重定向，看最终响应）：
+**手工用 curl 核对**（使用 GET；<code>-L</code> 跟随重定向，看输出中最后一个 HTTP 响应块）：
 
 ```sh
 # worker、恢复 worker、manifest、入口页、离线页：应有 no-cache，不应有 immutable
-curl -sIL https://app.example.com/sw.js | grep -i -E '^(HTTP|content-type|cache-control)'
-curl -sIL https://app.example.com/pwa-recovery-worker.js | grep -i -E '^(HTTP|cache-control)'
-curl -sIL https://app.example.com/manifest.webmanifest | grep -i -E '^(HTTP|content-type|cache-control)'
-curl -sIL https://app.example.com/ | grep -i -E '^(HTTP|cache-control)'
-curl -sIL https://app.example.com/offline.html | grep -i -E '^(HTTP|cache-control)'
+curl -sS -L -D - -o /dev/null https://app.example.com/sw.js
+curl -sS -L -D - -o /dev/null https://app.example.com/pwa-recovery-worker.js
+curl -sS -L -D - -o /dev/null https://app.example.com/manifest.webmanifest
+curl -sS -L -D - -o /dev/null https://app.example.com/
+curl -sS -L -D - -o /dev/null https://app.example.com/offline.html
 
 # 指纹资源：应有 immutable 和正数的 max-age
-curl -sIL https://app.example.com/assets/index-BGTT0tj4.js | grep -i -E '^(HTTP|cache-control)'
+curl -sS -L -D - -o /dev/null https://app.example.com/assets/index-BGTT0tj4.js
 
 # 离线页用 HEAD 探测 sw.js：必须是 2xx
 curl -sI https://app.example.com/sw.js -o /dev/null -w '%{http_code}\n'
 ```
 
-<code>curl -I</code> 本身就发 <code>HEAD</code>，最后一条只是把状态码单独打印出来。
+最后一条单独使用 <code>HEAD</code>，是为了确认离线页恢复探测能得到 2xx；上面的 GET 才用来核对浏览器实际会取得的资源响应头。
