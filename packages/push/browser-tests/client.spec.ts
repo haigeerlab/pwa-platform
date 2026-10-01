@@ -7,7 +7,7 @@
 // CLAUDE.md forbids reaching one) rather than hanging or silently succeeding.
 import { createECDH } from "node:crypto";
 import type { Page } from "@playwright/test";
-import { expect, registerWorker, test, waitForWorkerState } from "@pwa-platform/browser-test-harness";
+import { expect, isIosRun, registerWorker, test, waitForWorkerState } from "@pwa-platform/browser-test-harness";
 import { APP_SCOPE, FIXTURE_SITE, OTHER_SCOPE, OTHER_WORKER_URL, SHELL_URL, WORKER_URL } from "./fixture-site.js";
 
 test.use({ fixtureSite: FIXTURE_SITE });
@@ -81,7 +81,21 @@ function toBase64Url(bytes: Buffer): string {
   return bytes.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+test.describe("push client on an iPhone Safari tab", () => {
+  test("PushManager is absent outside a Home Screen web app: getPushState resolves unsupported", async ({ page, fixtureServer }) => {
+    test.skip(!isIosRun(), "iPhone only: Safari on iOS exposes PushManager to Home Screen web apps, not to a Safari tab");
+    await openFixture(page, fixtureServer);
+    expect(await page.evaluate(() => "PushManager" in window)).toBe(false);
+    expect(await getState(page, APP_SCOPE)).toBe("unsupported");
+  });
+});
+
 test.describe("push client, real registration", () => {
+  // The permission grants, the denied/prompt state and the subscribe failure below are Chromium behaviours (and
+  // `context.grantPermissions` is a Playwright call). On an iPhone Safari tab PushManager does not exist at all, which the
+  // describe above verifies.
+  test.skip(({ browserName }) => browserName !== "chromium", "Chromium push behaviour: permission grants and PushManager.subscribe against Chrome's own push service");
+
   test("no worker registered: getPushState resolves no-registration", async ({ page, fixtureServer }) => {
     await openFixture(page, fixtureServer);
     expect(await getState(page, APP_SCOPE)).toBe("no-registration");
