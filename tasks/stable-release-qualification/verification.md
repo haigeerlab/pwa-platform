@@ -557,6 +557,31 @@ iPhone 16 Pro，iOS 27.0，React Drill 主屏幕网页 App（`standalone=true`�
 
 **跳过与无法验证：** 与 macOS Safari 相同（WebDriver 无响应头与导航状态、`page.request`、favicon 请求时机、worker 转发与网络无法区分、CDP 推送／配额／控制台、`beforeinstallprompt`、`Page.getAppManifest`、导航不能加请求头）；亮／暗主题只运行与系统外观一致的浅色一半；视口不可调整（`setWindowRect` 不支持），320px 未验证；nuxt 两个依赖 CDP 清除 HTTP 缓存的重载场景。
 
-**观察到的 iOS 差异：** 导航失败的错误页为 `data:text/html,`；受控 worker 以关闭方式拒绝导航时 iOS 保留上一页面、不报错（harness 的 `goto` 已按 Playwright 语义拒绝）；Safari 标签页没有 `PushManager`，`getPushState` 为 `unsupported`（新增用例确认）；**未发布的 Nuxt 适配中，断网导航到预渲染子页 `/app/about` 在 iPhone 上不提交、请求不到达服务器（Chrome 与 sw-runtime 的预渲染子页用例均正常），原因未查明，该用例在 iPhone 上以此原因跳过，待 Nuxt 公开前调查。**
+**观察到的 iOS 差异：** 导航失败的错误页为 `data:text/html,`；受控 worker 以关闭方式拒绝导航时 iOS 保留上一页面、不报错（harness 的 `goto` 已按 Playwright 语义拒绝）；Safari 标签页没有 `PushManager`，`getPushState` 为 `unsupported`（新增用例确认）；未发布的 Nuxt 适配中，断网导航到预渲染子页 `/app/about` 在 iPhone 上曾报“保留上一页面”并跳过；后经查明是 harness 误判，不是平台或 iOS 行为，见下节“R9 补充”。
 
 **结论：** iPhone 列的 ○（定时检查更新、页面已是新代码判定、`served-from-cache`、运行时缓存超时、登出清理、同源多应用隔离、可访问性、离线写、Nuxt）由真机自动化补齐，其余人工观察行新增真机自动化证据；Web Push 在 Safari 标签页不可用、主屏幕网页 App 形态仍只有人工观察。按 ADR-0041 维持渐进兼容，不构成 Apple 发布通道证据。
+
+### R9 补充：Nuxt 预渲染子页离线用例的 iPhone 失败是 harness 误判（2026-10-01）
+
+iPhone 16 Pro（iOS 27.0.1，Safari 27.0.1），USB WebDriver + 局域网 HTTPS 转发（ADR-0049），测试根证书由项目所有者重新签发并信任。真机运行均由持有手机的维护会话在项目所有者同意后执行。
+
+**排查（四轮真机诊断）：**
+
+- 断网时 worker 对 `/app/about/index.html` 的子资源请求返回 200（1359 字节）；iframe 导航到 `/app/about`、`/app/about/`、`/app/about/index.html` 均显示 about；预缓存条目为 200、`basic`、未重定向、`text/html`。worker 与 Nuxt 适配的离线回退正确。
+- 顶层导航之间停顿 2 秒以上时全部成功；“导航到当前同一网址”的假设被否定（第 3 轮 42 步全部成功）。
+- 第 4 轮：上一页面 `/app/` 尚未完成 Nuxt 挂载（`mounted:false`，约 230 ms）时立即 `goto /app/about`，驱动的 Navigate To 在 73–88 ms 返回，此时仍是旧页面，harness 据旧 `timeOrigin` 报“保留上一页面”；3 秒后的快照显示新页面已提交（`timeOrigin` 比旧页面晚约 270 ms，标题 about）。停顿 500 ms／2000 ms 与无脚本的离线页对照均正常。桌面 Chrome 与 Playwright WebKit 不复现。
+
+**根因：** iOS Safari 的 WebDriver Navigate To 在上一页面仍在初始化时会早于新文档提交返回（约 200 ms）。harness 的 iOS `goto` 在返回后立即比较 `timeOrigin`，因而误判；每个测试结束的 iPhone 清理（`cleanupOrigins`）同样在跳转清理页后立即执行脚本，赶上页面替换时得到 `no such window`（第 4 轮修复前与第一次确认运行各出现一次）。
+
+**修复（`@pwa-platform/browser-test-harness`）：** iOS `goto` 在驱动返回后最多等 5 秒出现新的已加载文档，再读取导航证据，仍是旧页面才拒绝；清理跳转后最多等 30 秒清理页加载完成再执行脚本。单元测试以模拟 iOS 驱动复现两种早返回，修复前失败（错误与真机一致）、修复后通过。Nuxt `offline.spec.ts` 的 iPhone 跳过已删除。sw-runtime 与 Nuxt 适配产品代码未改动。
+
+**确认：**
+
+| 运行 | 结果 |
+|---|---|
+| nuxt `offline.spec.ts --repeat-each 3`（仅 `goto` 修复） | 8 通过／1 失败（清理阶段 `no such window`） |
+| nuxt `offline.spec.ts --repeat-each 3`（`goto` 与清理修复） | 9／9 通过，预渲染子页用例 3／3 |
+| sw-runtime `offline.spec.ts`（`goto` 与清理修复） | 11／11 通过；“关闭离线回退时拒绝导航”约 8 秒（含 5 秒等待），仍按预期拒绝 |
+| PR #121 头提交 `7db7706`（rebase 到 `main` @ `ec78996` 后）：nuxt `offline.spec.ts --repeat-each 3` 与 sw-runtime `offline.spec.ts` | 9／9 与 11／11 通过；预渲染子页用例 3／3，“关闭离线回退时拒绝导航”8.0 秒 |
+
+本机：harness 单元测试 141／141、nuxt 单元测试 85／85、类型检查与 lint 通过；桌面 Chrome 下 nuxt 浏览器用例 12／12、harness 浏览器用例 23／23。

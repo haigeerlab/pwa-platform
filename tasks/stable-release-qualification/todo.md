@@ -88,4 +88,5 @@
 - [x] R9.1 harness：`PWA_IOS_UDID` 真机模式（WebDriver iOS 会话、局域网 HTTPS 转发、正常结束会话与逐测试清理）、`test:browser:ios` 脚本；harness 自身用例在真机通过
 - [x] R9.2 各包 `browser-tests`（含更新提示 UI）在真机运行
 - [x] R9.3 记录 verification.md、更新跨平台测试证据页 iPhone 列，开 PR（#116 合并，文档站 2026-10-01 第二次发布）；提醒项目所有者删除测试根证书
+- [x] R9.4 查明 Nuxt 预渲染子页离线用例的 iPhone 失败：harness 误判（iOS 导航命令早于新页面提交返回），修复 `goto` 与清理、删除跳过，真机确认 nuxt 9／9、sw-runtime 11／11
 

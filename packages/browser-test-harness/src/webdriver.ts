@@ -375,6 +375,26 @@ export class WebDriverSession {
   }
 
   /**
+   * Resolves `true` once a document other than the one whose `timeOrigin` is `origin` has loaded in window `handle`,
+   * or `false` after `timeoutMs` without one. iOS Safari's Navigate To can return before the new document commits (measured
+   * on iPhone Safari 27.0.1: ~200 ms early when the previous document was still hydrating), so the old document still
+   * answering right after it is not yet proof that the navigation failed.
+   */
+  async waitForNewDocument(handle: string, origin: number, timeoutMs: number): Promise<boolean> {
+    const ignore = (): void => undefined;
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      try {
+        if (await this.evaluate(handle, serializePageScript(reloadFinished, origin), ignore)) return true;
+      } catch {
+        // The document is being replaced; the driver may refuse scripts until the new one exists.
+      }
+      if (Date.now() >= deadline) return false;
+      await new Promise((resolve) => setTimeout(resolve, RELOAD_POLL));
+    }
+  }
+
+  /**
    * Runs `step` (one or more commands) with `handle` as the current window, after every earlier `inWindow` step has
    * finished. Steps of different pages can therefore overlap in the caller without one switching windows under another.
    */
