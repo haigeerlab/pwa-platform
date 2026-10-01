@@ -12,8 +12,12 @@
 | `vue-drill` | 同一 Vue Pages 项目的 `drill` 预览分支，不是 Git 分支 | Vue 源码，独立 `--slot=drill` 构建 | `build/cloudflare/vue/drill/site/` | `https://drill.pwa-platform-vue-demo.pages.dev` | `pwavuedrill`、`/app/` scope；`vue-drill` 基线 | 同上；当前 v2 |
 | `react-smoke` | Pages，既有 `pwa-t15-mobile-smoke` | 现有 `pnpm build:pages:react` | `packages/examples-browser-e2e/browser-build/react/v1/` | `main`；`https://pwa-t15-mobile-smoke.pages.dev` | 现有共享 `.invalid` fixture 身份，只作冒烟；不作为新站身份基线 | 已存在，维持原职责 |
 | `nuxt-ssr` | Worker，候选 `pwa-platform-nuxt-ssr` | `packages/nuxt/browser-tests/site/`；`cloudflare` preset 可构建 | `.output/public` 与 `.output/server/index.mjs`；本地 Worker 启动报 `No such module: node:buffer`，开启 `nodejs_compat` 仍失败 | 无；可行性门禁未通过 | 独立源；不复用 Vite 示例身份 | 门禁不通过，未创建、未部署 |
+| `portable-a6-a` | Pages Direct Upload，`pwa-platform-portable-a6-a` | `packages/vite/browser-tests/fixture-site.ts` 的 portable v1/v2 | `packages/vite/browser-build/a6-portable/<version>/site/` | `main`；`https://pwa-platform-portable-a6-a.pages.dev`（Cloudflare 创建后读回） | portable `vitefixture`、`/app/` scope；[独立基线](portable-a6-baseline-a.json) | A6 v1/v2 已通过；当前 v2，详见[演练结果](../review/2026-10-01/a6-https-drill-result.md) |
+| `portable-a6-b` | Pages Direct Upload，`pwa-platform-portable-a6-b` | 与 A 同一份 portable v1/v2 | 与 A 相同上传根 | `main`；`https://pwa-platform-portable-a6-b.pages.dev`（Cloudflare 创建后读回） | 与 A 同一可移植计划；[独立基线](portable-a6-baseline-b.json) | A6 v1/v2 已通过；当前 v2，详见[演练结果](../review/2026-10-01/a6-https-drill-result.md) |
 
 Next、TanStack Start 和同源多 PWA 目前没有本表的发布目标。它们不随 React/Vue 项目附带上传。
+
+A6 仅按[专项预检与结果](../review/2026-10-01/a6-https-drill-result.md)执行；现有 `deploy-cloudflare-site.mjs` 只接受 React/Vue，不应用于这两个目标。两个实际项目名与域名均在创建后用 Pages API 读回并登记；v1 的逐源机器门禁与浏览器检查通过后才上传 v2。A6 专用入口为 `scripts/portable-a6-cloudflare.mjs`、`scripts/verify-portable-a6.mjs`，原生回滚复测入口为 `scripts/portable-a6-switch.mjs`；输入白名单与版本摘要锁定本次演练，不是通用业务发布器。
 
 **2026-09-28 当前隔离槽（两站）：** 两站 `drill` 均为 npm `0.2.1`（`main` @ `f59b251`）构建的正常 v2 部署——React `dc17d0c2-c158-4f9c-bfcf-79999d449f7e`，私有 R2 发布包 SHA-256 `7a3bca366053c60248568a65a3ca4a318d71bb1f7405c7ab8e8f8796924c97dd`；Vue `d61ca91c-2b1f-4371-9ead-308c2f2813cd`，SHA-256 `8c5db002e9e8a2109c3dc72faa6f20a44d1659216c90fe059da12fa6054cab0d`。每次部署均经预检、上传后自动写索引并归档。当日经 v1、v2、recovery、修复后 v2 与一次 React R9 修复构建的完整序列见[真机验证记录](../../tasks/stable-release-qualification/verification.md)。本地运营状态当日从 R2 取回（`r2:cloudflare:bundle --mode=download`、`restore:cloudflare:site --mode=restore`、`archive:cloudflare:site`、`r2:cloudflare:index --mode=check`），`drill` 可照此在任一机器上恢复。`main` 未变。
 
@@ -29,7 +33,7 @@ Next、TanStack Start 和同源多 PWA 目前没有本表的发布目标。它�
 
 Nuxt Worker 仍未创建；不要为测试站启用 Workers Paid、Argo、Cache Reserve 或其他未评估的付费产品。新增 Cloudflare 产品前先核对其正式名称、账户方案和计费维度。
 
-下一轮先使用现有部署证据：相关部署满七个自然日后分别对 React/Vue 运行只读留存审计，再在真正的第二台机器上按[恢复流程](#从-r2-恢复运营状态)验证两站当前 `main`。这两项不需要新建 Pages 部署或 R2 对象；只有代码变更或明确演练目标时，才按免费额度门禁集中安排下一次上传。文档站的版本分支发布节奏单独管理，不改变测试站 `main`／`drill` 槽位的已冻结身份。执行顺序见[模块计划](../../tasks/cloudflare-test-deployment/plan.md)。
+七日留存 F2 已于 2026-09-30 对 React/Vue 通过只读审计；下一步是在真正的第二台机器上按[恢复流程](#从-r2-恢复运营状态)验证两站当前 `main`。该演练不需要新建 Pages 部署或 R2 对象；只有代码变更或明确演练目标时，才按免费额度门禁集中安排下一次上传。文档站的版本分支发布节奏单独管理，不改变测试站 `main`／`drill` 槽位的已冻结身份。执行顺序见[模块计划](../../tasks/cloudflare-test-deployment/plan.md)。
 
 ## 名称、身份与槽位
 
@@ -133,13 +137,13 @@ pnpm r2:cloudflare:index --target=react --slot=main --sha256=<历史 SHA-256> --
 
 1. 构建后、Pages 上传前，将完整 `site/`、`build.json`、冻结身份基线和文件摘要清单打成内容寻址的候选制品；先上传私有存储，再重新下载核对字节摘要，失败则停止 Pages 发布。对象键包含宿主、槽位和制品 SHA-256，已有键不得覆盖。
 2. Pages 上传后，以实际完整部署 ID 写入从部署到候选制品摘要的索引，保存记录时间、origin 和线上文件字节核验结果。当前十七个实际部署已有索引；`main` 的上传后索引、资产归档和保留审计已经自动串行，React/Vue 显示名隔离部署与当前更新横幅部署均返回 `postDeployIndexedAndArchived: true` 与 `retentionAudited: true`。`drill` 的上传后索引与归档也已自动串行，React `drill` 实测返回 `postDeployIndexedAndArchived: true`；每次发布仍须记录执行人及浏览器现场结果。索引写入／读回失败即暂停下一次发布并进入恢复流程。`main` 与 `drill` 的记录互不替代。
-3. 保留审计从 Pages 官方部署列表分页读取成功的 `main` 生产历史，选取当前 canonical、按创建时间最新三次（R/R-1/R-2）及滚动七天内所有成功部署的并集；再从 R2 下载每个索引、manifest 与 tarball，验证摘要链、身份、回执和当前线上文件，并逐项请求并集中的指纹资源。React/Vue 当前各四次生产部署均被选中并通过。这个结果证明**当前**滚动窗口选择与对象可用性，因这些部署尚未经历完整七个自然日，不能写成已经存活七天。暂不设置自动删除生命周期规则。归档是**恢复输入**，不能把 R2 对象直接当成 Pages 对外静态资源。
+3. 保留审计从 Pages 官方部署列表分页读取成功的 `main` 生产历史，选取当前 canonical、按创建时间最新三次（R/R-1/R-2）及滚动七天内所有成功部署的并集；再从 R2 下载每个索引、manifest 与 tarball，验证摘要链、身份、回执和当前线上文件，并逐项请求并集中的指纹资源。2026-09-22 的首次审计选中了 React/Vue 各四次生产部署并通过，当时仅证明滚动窗口选择与对象可用性；跨七日存活另于 2026-09-30 经 F2 只读审计通过。暂不设置自动删除生命周期规则。归档是**恢复输入**，不能把 R2 对象直接当成 Pages 对外静态资源。
 4. 存储凭据与 Pages 凭据分开：建议使用 [R2 官方说明的仅限该 bucket 的 Object Read & Write S3 凭据](https://developers.cloudflare.com/r2/api/tokens/)；不写入仓库、staging、构建回执或日志。Cloudflare 文档说明这种桶级权限适用于 S3 API，不能直接当成 REST API Token 使用。
 5. 回滚先验证目标生产部署 ID、其完整制品和仍需保留的**当前版**指纹资源。Cloudflare [原生回滚 API](https://developers.cloudflare.com/api/resources/pages/subresources/projects/subresources/deployments/methods/rollback/)只作用于先前成功的生产部署；旧部署不可能预先包含未来版本的指纹资源，因此原生回滚后还须检查这些资源是否可访问。本次 React/Vue v2 资源在回滚 v1 后仍返回正确字节，但这一观察不是未来版本的可用性保证；若缺失，立即用已归档的旧版 shell 与新旧指纹资源组合重新 Direct Upload。恢复 worker 清缓存是另一条独立操作。两站测试站已各完成一次 v2→v1→v2 原生回滚与桌面页面核验；此结果只支持测试站重复部署，不代表正式生产发布门禁通过。
 
 实际回滚顺序：先对当前版运行 `r2:cloudflare:index --mode=check`，对目标历史版运行 `--mode=history`；由项目所有者通过 Pages 控制台或官方 `POST /accounts/{account_id}/pages/projects/{project_name}/deployments/{deployment_id}/rollback` 切换生产部署。随后以 Pages 项目 API 的 `canonical_deployment.id` 确认指向目标，运行目标版索引 `--mode=check` 并逐项请求仍需保留的新旧指纹资源，最后在桌面浏览器确认页面版本。需要恢复新版本时，对它的历史索引先运行 `--mode=history`，再调用同一回滚 API 指向新部署；恢复后重新验证 `canonical_deployment`、线上文件和浏览器。`wrangler pages deployment list` 仍按创建时间排序，回滚后列表第一条不代表当前生效部署，不能用它作放行依据。API Token 只从本机钥匙串或环境变量注入，不写进 URL、命令行参数或日志。
 
-私有存储与十七个实际部署的制品、部署 ID 索引读回已运行；两站 Pages 原生生产槽位回滚及恢复也已演练。两站当前成功生产历史的滚动七天与 R/R-1/R-2 审计通过，缺失对象 404 与本地损坏制品拒绝反例通过；完整七日的时间跨度仍需自然经过后重跑。后续正式发布仍需独立机器恢复演练和真实设备证据；React `drill` 的发布索引／归档自动化已实测。
+私有存储与十七个实际部署的制品、部署 ID 索引读回已运行；两站 Pages 原生生产槽位回滚及恢复也已演练。两站当前成功生产历史的滚动七天与 R/R-1/R-2 审计通过，缺失对象 404 与本地损坏制品拒绝反例通过；完整七日的时间跨度于 2026-09-30 经 F2 只读审计通过。后续正式发布仍需独立机器恢复演练和真实设备证据；React `drill` 的发布索引／归档自动化已实测。
 
 ## 机器发布门禁（上线后核验，仅用于演练）
 
@@ -200,6 +204,8 @@ pnpm recover:cloudflare:site --target=react   # 或 vue；槽位固定为 main
 - 只恢复当前部署的发布包；上线前后核验需要的历史发布包可按需用 `r2:cloudflare:bundle --mode=download` 逐个取回。`drill` 按原流程重新部署即可恢复。
 - 2026-09-22 在本机临时目录的全新克隆中演练（**同机隔离模拟，不等于独立机器**），两站均恢复成功且与主目录逐字节一致，随后构建的新候选通过 `deploy --mode=check`；见[验证记录](../../tasks/cloudflare-test-deployment/verification.md)。
 
+F3 第二台机器取证：先记录机器标识（不含凭据）、操作系统、仓库提交、Node/pnpm 版本和执行时间，并确认该机器未复制本机 `build/cloudflare/` 状态。按[免费额度门禁](#免费额度与云端写入)核对只读 R2 请求余量后，为 React/Vue 分别保存上述恢复命令的原始输出；记录每站的 `deploymentId`、`bundleSha256`、`retainedAssets` 和 `indexVerified`，并与当时 Pages 的 `canonical_deployment.id`、R2 发布索引及线上旧指纹资源比对。记录失败项和执行者，凭据值只留在第二台机器的安全存储中，不写入证据。两站均在真正不同的机器上通过才勾选 F3；同机克隆、容器或沙箱不能作为 F3 证据。
+
 ## 凭据与回滚边界
 
 沿用[既有 Pages 冒烟站](pages-smoke-deploy.md)的最小权限 API Token 与本机钥匙串／环境变量注入方式。部署脚本不得回显 Token、账户 ID 或 Wrangler 登录缓存。Nuxt Workers 需要独立核对所需权限，不借用 Pages Token 假定可用。
@@ -225,7 +231,7 @@ Cloudflare 原生 Pages 回滚只接受先前成功的**生产**部署，不能�
 | 桌面 Chrome 原生安装、独立窗口、唯一显示名 | 已取得 | 用户配置中的 React/Vue 安装已核对；已安装窗口断网重载：Vue 在用户配置中，React/Vue 另在独立配置经 CDP 安装后复测 |
 | macOS Safari 渐进兼容（在线、受控、离线重载与离线兜底） | 已取得 | Safari 18.6 经 WebDriver；更新提示与“添加到程序坞”未测 |
 | 私有 R2 制品、部署索引、R/R-1/R-2 与滚动七天选择审计 | 已取得 | 十七个部署索引；`main` 后置步骤自动化 |
-| 完整七个自然日的制品存活 | **pending** | 相关部署自然满七日后重跑 `audit:cloudflare:retention` |
+| 完整七个自然日的制品存活 | 已取得 | 2026-09-30 两站 F2 只读审计通过；见[验证记录](../../tasks/cloudflare-test-deployment/verification.md) |
 | 独立机器下载、校验与事故恢复 | **pending** | 一条命令恢复脚本已交付；2026-09-22 在同机全新克隆中隔离模拟通过（不等于独立机器）；真正的第二台机器尚未验证 |
 | `drill` 上传后索引、归档与审计自动化 | 已取得（审计除外） | 2026-09-22 起上传前预检与上传后索引、归档自动完成，React `drill` 部署 `ae41ddfd…` 实测；`drill` 按规格不做保留审计 |
 | Nuxt SSR Worker | **不通过** | 本地启动门禁失败；不得宣称支持 |

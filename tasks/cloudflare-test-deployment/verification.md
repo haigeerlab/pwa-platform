@@ -324,3 +324,15 @@ React/Vue 项目、实际 origin、线上静态响应头与桌面 Chrome 首次�
 ## worker MIME 门禁接线（2026-10-01，本地验证）
 
 上线前和上线后组装复用已有的 worker 响应头，把 `workerMimeObserved` 传给 build-verifier；当前必需集增加 `worker-mime`。`pnpm test` 全仓通过，其中 examples-browser-e2e 249 项。核验工具的本地 HTTP 反例把 worker `Content-Type` 改为 `text/plain`，报告中 `response-headers` 通过、`worker-mime` 失败且结论未通过；没有为这项验证新增云端部署或改动生产响应头。F3、T5 与文档交付的既有状态不因此改变。
+
+## A6 可移植双真实 HTTPS Origin 演练（2026-10-01）
+
+项目所有者专项授权两个专用 Pages Direct Upload 项目与最多四次无业务数据的 v1/v2 公开部署。实际创建、两份相同制品的树摘要、A/B 各 v1/v2 部署 ID、逐路径实收最终 URL/头/字节、`verifyRelease` 与必需覆盖、各自恰好两次成功生产部署的历史读回，以及 headless 桌面 Chromium 153 的注册、离线未访问导航、缓存隔离、waiting、用户接管和刷新后 v2 断言，均记录在[演练报告与原始证据](../../docs/review/2026-10-01/a6-https-drill-result.md)。A/B 最终 canonical 部署均为 v2；原生回滚仅用于重做浏览器更新序列，没有增加部署次数。React/Vue 固定身份测试站未改。**流程偏差：** v1 上传前登记了实际 origin，但独立基线文件在初次核验后才冻结；v2 追溯比对通过，不等于首次发布前已完成该步骤，A6b 仍待补。A6 的实体手机、业务接入、固定→portable 迁移及正式 npm 发行仍未验证；本模块原有的独立机器恢复 F3/T5 状态不因 A6 改变。
+
+## A6b 本地上传门禁复核（2026-10-01）
+
+`node --test scripts/portable-a6-cloudflare.test.mjs` 在临时根目录解出归档 v1 候选，用无效测试用户运行，3/3 通过：正确冻结基线放行本地检查；缺失、origin 或 scope 漂移的基线，以及上传 HTML 字节篡改均在读取 Cloudflare 凭据前被拒绝。该测试已加入 CI quality job；尚无远端 CI 运行结果。`pnpm lint`、`pnpm docs:check-evidence`、`pnpm docs:build`、`git diff --check` 通过；`pnpm docs:check-public-api` 首次在沙箱内因 npm 域名解析失败，随后在允许网络的权限下只读重跑通过，确认文档与 npm 已发布 `0.2.5` 的 portable/worker MIME 状态一致。它验证的是当前脚本门禁，不能补造本次首次上传前基线已冻结的时间事实，A6b 保持未完成。本轮没有新增 Pages 部署、R2 写入或测试站身份变更。
+
+文档基线复核起初因当前模块 Spec 缺少 `update-notice-ui`、`capability-comparison`、`production-readiness-documentation` 三项决策而返回 `invalid`。补齐三项 `follow` 声明，并把基线中已过期的 F2 状态改为 2026-09-30 只读审计通过后，Spec Guard `documentation_impact` 为 `valid`、`documentation_verification` 为 `attention`；唯一待交付声明是独立机器恢复未完成的 `cloudflare-test-deployment: pending`。`verify-artifacts` 为 3 通过、1 项历史 Plan 缺 todo 警告、0 失败；阶段仍为 `BUILDING`。
+
+项目所有者随后决定 F3 暂时不做；第二台机器恢复证据仍缺，F3、T5、F4 与模块文档交付均不据此勾选或提升状态。本轮审查报告可独立提交评审，模块收口等待 F3 恢复执行。

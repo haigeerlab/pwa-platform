@@ -1,0 +1,68 @@
+{
+  "browser": "Chromium",
+  "version": "153.0.8010.12",
+  "origins": [
+    "https://pwa-platform-portable-a6-a.pages.dev",
+    "https://pwa-platform-portable-a6-b.pages.dev"
+  ],
+  "checkedAt": "2026-10-01T15:05:01.648Z",
+  "v1": [
+    {
+      "target": "a",
+      "state": {
+        "scope": "https://pwa-platform-portable-a6-a.pages.dev/app/",
+        "installing": null,
+        "active": "https://pwa-platform-portable-a6-a.pages.dev/app/sw.js",
+        "activeState": "activated",
+        "waiting": null,
+        "controlled": true,
+        "caches": [
+          "pwa:vitefixture:production:r1:precache"
+        ]
+      },
+      "cssVersion": "\" v1\"",
+      "manifestUrl": "https://pwa-platform-portable-a6-a.pages.dev/app/manifest.webmanifest",
+      "manifestErrors": [],
+      "crossOriginCached": false,
+      "offlineUnvisitedNavigation": true
+    },
+    {
+      "target": "b",
+      "state": {
+        "scope": "https://pwa-platform-portable-a6-b.pages.dev/app/",
+        "installing": null,
+        "active": "https://pwa-platform-portable-a6-b.pages.dev/app/sw.js",
+        "activeState": "activated",
+        "waiting": null,
+        "controlled": true,
+        "caches": [
+          "pwa:vitefixture:production:r1:precache"
+        ]
+      },
+      "cssVersion": "\" v1\"",
+      "manifestUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/manifest.webmanifest",
+      "manifestErrors": [],
+      "crossOriginCached": false,
+      "offlineUnvisitedNavigation": true
+    }
+  ],
+  "v2": [
+    {
+      "target": "a",
+      "waiting": "https://pwa-platform-portable-a6-a.pages.dev/app/sw.js",
+      "oldCssVersion": "\" v1\"",
+      "applied": true,
+      "active": "https://pwa-platform-portable-a6-a.pages.dev/app/sw.js",
+      "newCssVersion": "\" v2\""
+    },
+    {
+      "target": "b",
+      "waiting": "https://pwa-platform-portable-a6-b.pages.dev/app/sw.js",
+      "oldCssVersion": "\" v1\"",
+      "applied": true,
+      "active": "https://pwa-platform-portable-a6-b.pages.dev/app/sw.js",
+      "newCssVersion": "\" v2\""
+    }
+  ],
+  "completedAt": "2026-10-01T15:05:58.421Z"
+}

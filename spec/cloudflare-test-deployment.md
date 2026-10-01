@@ -1,5 +1,11 @@
 # 规格：cloudflare-test-deployment
 
+## 2026-10-01 增补：A6 可移植部署隔离演练
+
+项目所有者授权在当前账户建立两个专用 Pages Direct Upload 项目 `pwa-platform-portable-a6-a`、`pwa-platform-portable-a6-b`，仅用于同一份无业务数据的 Vite portable v1/v2 夹具。两个项目均使用 `main` 生产分支、`/app/` scope，上传根固定为 `packages/vite/browser-build/a6-portable/<version>/site/`。项目创建后须读取实际项目名与生产 URL，并在第一次上传前登记；不得使用 React/Vue 项目、槽位、身份基线或部署脚本。
+
+每次上传前校验登记目标、版本、上传根文件白名单和预检 SHA-256；v2 仅在两个 origin 各自的 v1 逐路径字节、最终 URL、响应头和完整机器发布门禁通过后上传。两个 origin 必须独立采样、独立记录部署 ID 和发布历史。首次无历史的 v1 和各自以 v1 为前版的 v2 仅作为本演练历史，不得并入 React/Vue 发布历史。任一云端步骤结果不明时停止，不自动重试写入；浏览器和手机结论按实测范围标注。
+
 ## 目标
 
 为 PWA Platform 的宿主示例建立可重复的 Cloudflare 测试部署约定，在真实 HTTPS origin 上取得桌面浏览器证据，同时保持各宿主的 PWA 身份、构建产物、发布记录和恢复演练相互隔离。本模块是测试基础设施，不是新的公开 npm 包，也不代表业务生产发布门禁通过。
@@ -425,6 +431,9 @@
 | push-module | follow | 本模块不改变该事实源或既有验收结论。 |
 | cloudflare-test-deployment | create | 新增目标登记、操作手册与验证记录。 |
 | public-read-cache | follow | 本模块不改变该基线的权威文档或验收结论。 |
+| update-notice-ui | follow | 本模块仅验证测试站更新流程，不修改默认更新提示的权威文档。 |
+| capability-comparison | follow | 本模块的测试部署证据不改变公开能力对比的权威文档。 |
+| production-readiness-documentation | follow | 本模块的部署验证记录不改变生产就绪审核的独立验收结论。 |
 
 ## 修订：复用 worker 响应头执行 MIME 发布检查（2026-10-01）
 

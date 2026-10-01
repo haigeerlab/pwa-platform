@@ -1,0 +1,273 @@
+{
+  "target": "b",
+  "version": "v2",
+  "project": "pwa-platform-portable-a6-b",
+  "origin": "https://pwa-platform-portable-a6-b.pages.dev",
+  "deploymentId": "df0c3bd7-95c7-4294-98bb-76c7b95361f4",
+  "releasedAtMs": 1790866977281,
+  "successfulProductionDeploymentIds": [
+    "df0c3bd7-95c7-4294-98bb-76c7b95361f4",
+    "331fa378-56d7-4dcb-bf83-1e0b6524c9f9"
+  ],
+  "planSha256": "64b0052961e74c415ce660086c10a54fe8f58a5be67fd14870a556fc09c06cc9",
+  "treeSha256": "bf65617a4dfe7ccfb9eca6e543885c94a3f3a7227522d5f01f828699e22e542d",
+  "checkedAt": "2026-10-01T15:12:04.342Z",
+  "paths": [
+    {
+      "path": "/app/sw.js",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/sw.js",
+      "status": 200,
+      "headers": {
+        "content-type": "application/javascript",
+        "cache-control": "no-cache",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "d5805505ee8ffd8d3a5e230f4be42a34bdd2f7845d5fd02df5ab53101705b9b8",
+      "expectedSha256": "d5805505ee8ffd8d3a5e230f4be42a34bdd2f7845d5fd02df5ab53101705b9b8",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/manifest.webmanifest",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/manifest.webmanifest",
+      "status": 200,
+      "headers": {
+        "content-type": "application/manifest+json",
+        "cache-control": "no-cache",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "c71eed0ba8cc6f652e4bcf1f9208da8ee3adddff350b611580a8e5fd42ae8b27",
+      "expectedSha256": "c71eed0ba8cc6f652e4bcf1f9208da8ee3adddff350b611580a8e5fd42ae8b27",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/pwa-recovery-worker.js",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/pwa-recovery-worker.js",
+      "status": 200,
+      "headers": {
+        "content-type": "application/javascript",
+        "cache-control": "no-cache",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "4c696b90db8c1e099a10a13cd17af1057eb06de60bb377302121044588c4d8a4",
+      "expectedSha256": "4c696b90db8c1e099a10a13cd17af1057eb06de60bb377302121044588c4d8a4",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "be00c55d1f67d8c0453e86b0702ed34327e5da2a28a62d8e1edbe2406de65e43",
+      "expectedSha256": "be00c55d1f67d8c0453e86b0702ed34327e5da2a28a62d8e1edbe2406de65e43",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/assets/index-BmH43AN4.css",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/assets/index-BmH43AN4.css",
+      "status": 200,
+      "headers": {
+        "content-type": "text/css; charset=utf-8",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "9d57115ae0e139af69a4b1101182d839fafdc14bd9e432ce7e8d09752dd8646c",
+      "expectedSha256": "9d57115ae0e139af69a4b1101182d839fafdc14bd9e432ce7e8d09752dd8646c",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/assets/index-hsQdSHAR.js",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/assets/index-hsQdSHAR.js",
+      "status": 200,
+      "headers": {
+        "content-type": "application/javascript",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "3d6bbb070ed653adf656dddd9a07bcb7b8299dbe154657ba2a9442ed356397d1",
+      "expectedSha256": "3d6bbb070ed653adf656dddd9a07bcb7b8299dbe154657ba2a9442ed356397d1",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/index.html",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/index.html",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "be00c55d1f67d8c0453e86b0702ed34327e5da2a28a62d8e1edbe2406de65e43",
+      "expectedSha256": "be00c55d1f67d8c0453e86b0702ed34327e5da2a28a62d8e1edbe2406de65e43",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/offline.html",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/offline.html",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "cache-control": "no-cache",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "114d21b73f05e2e3f16170277465ddb4f22aa1ceb4b34914a991d4782b5b679a",
+      "expectedSha256": "114d21b73f05e2e3f16170277465ddb4f22aa1ceb4b34914a991d4782b5b679a",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/assets/index-C9LxKNc3.js",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/assets/index-C9LxKNc3.js",
+      "status": 200,
+      "headers": {
+        "content-type": "application/javascript",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "3d6bbb070ed653adf656dddd9a07bcb7b8299dbe154657ba2a9442ed356397d1",
+      "expectedSha256": "3d6bbb070ed653adf656dddd9a07bcb7b8299dbe154657ba2a9442ed356397d1",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/assets/index-D9tTKZML.css",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/assets/index-D9tTKZML.css",
+      "status": 200,
+      "headers": {
+        "content-type": "text/css; charset=utf-8",
+        "cache-control": "public, max-age=31536000, immutable",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "b694e7d31eb1bec6b29632719a39c346aeafbb1113b6a3f63ac9aa460984836a",
+      "expectedSha256": "b694e7d31eb1bec6b29632719a39c346aeafbb1113b6a3f63ac9aa460984836a",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/icons/192-maskable.png",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/icons/192-maskable.png",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "d16b3928f8dbca86d0219047c60764bfc2fb91a301048611080f487914304e90",
+      "expectedSha256": "d16b3928f8dbca86d0219047c60764bfc2fb91a301048611080f487914304e90",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/icons/192.png",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/icons/192.png",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "e2082cf071b4a26ca07846ab491de62d64ddc6e066d445579a4cf77828e0fe5d",
+      "expectedSha256": "e2082cf071b4a26ca07846ab491de62d64ddc6e066d445579a4cf77828e0fe5d",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/icons/512-maskable.png",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/icons/512-maskable.png",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "648b3c6cc2afd2d4d1da3488db0909faaeca7a396d069f464347b086d16c3b43",
+      "expectedSha256": "648b3c6cc2afd2d4d1da3488db0909faaeca7a396d069f464347b086d16c3b43",
+      "bytesMatch": true
+    },
+    {
+      "path": "/app/icons/512.png",
+      "finalUrl": "https://pwa-platform-portable-a6-b.pages.dev/app/icons/512.png",
+      "status": 200,
+      "headers": {
+        "content-type": "image/png",
+        "cache-control": "public, max-age=0, must-revalidate",
+        "content-security-policy": null,
+        "x-content-type-options": "nosniff",
+        "x-robots-tag": "noindex"
+      },
+      "sha256": "34a8150261a2dbb244fd14e323efeae1c8b348c2782a33a90ec1fec397de5f95",
+      "expectedSha256": "34a8150261a2dbb244fd14e323efeae1c8b348c2782a33a90ec1fec397de5f95",
+      "bytesMatch": true
+    }
+  ],
+  "report": {
+    "ok": true,
+    "checks": [
+      {
+        "name": "artifacts",
+        "ok": true,
+        "diagnostics": []
+      },
+      {
+        "name": "response-headers",
+        "ok": true,
+        "diagnostics": []
+      },
+      {
+        "name": "identity-baseline",
+        "ok": true,
+        "diagnostics": []
+      },
+      {
+        "name": "release-retention",
+        "ok": true,
+        "diagnostics": []
+      },
+      {
+        "name": "html-headers",
+        "ok": true,
+        "diagnostics": []
+      },
+      {
+        "name": "deployment-origin",
+        "ok": true,
+        "diagnostics": []
+      },
+      {
+        "name": "worker-mime",
+        "ok": true,
+        "diagnostics": []
+      }
+    ],
+    "diagnostics": []
+  },
+  "coverage": {
+    "ok": true,
+    "missing": []
+  },
+  "ok": true
+}

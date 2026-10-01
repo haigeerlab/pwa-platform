@@ -1,0 +1,13 @@
+{
+  "origin": "https://pwa-platform-portable-a6-b.pages.dev",
+  "identity": {
+    "appId": "vitefixture",
+    "manifestId": "/app/",
+    "scope": "/app/",
+    "serviceWorkerUrl": "/app/sw.js",
+    "manifestUrl": "/app/manifest.webmanifest",
+    "mountPath": "/app/",
+    "environment": "production",
+    "cacheNamespaceSeed": "r1"
+  }
+}

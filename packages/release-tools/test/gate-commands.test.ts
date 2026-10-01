@@ -38,6 +38,12 @@ const CI_RUN_EXCLUSIONS: ReadonlySet<string> = new Set([
   "microsoft-edge --version",
   // Documentation publishing is a CI check, but it is outside the PWA package release gate.
   "pnpm docs:build",
+  // Documentation and audit-evidence checks run in CI, but do not change the package release gate contract.
+  "node --test scripts/check-doc-public-api.test.mjs",
+  "pnpm docs:check-public-api",
+  "node --test scripts/check-feature-evidence.test.mjs",
+  "pnpm docs:check-evidence",
+  "node --test scripts/portable-a6-cloudflare.test.mjs",
   // Installs the engine-smoke browsers with their Linux system libraries; the gate's own command downloads the same
   // browsers without system packages (ADR-0042).
   "pnpm --filter @pwa-platform/sw-runtime exec playwright install --with-deps webkit firefox",

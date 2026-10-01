@@ -59,6 +59,21 @@ jobs:
       - name: Build documentation site
         run: pnpm docs:build
 
+      - name: Test documentation API status checker
+        run: node --test scripts/check-doc-public-api.test.mjs
+
+      - name: Check documentation against published npm API
+        run: pnpm docs:check-public-api
+
+      - name: Test feature evidence checker
+        run: node --test scripts/check-feature-evidence.test.mjs
+
+      - name: Check feature evidence ledger
+        run: pnpm docs:check-evidence
+
+      - name: Check A6 upload preflight isolation
+        run: node --test scripts/portable-a6-cloudflare.test.mjs
+
       - name: Test
         run: pnpm test
 
@@ -211,4 +226,3 @@ jobs:
 
       - name: Push network suite
         run: pnpm test:browser:network
-
