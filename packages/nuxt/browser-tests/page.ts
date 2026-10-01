@@ -167,9 +167,6 @@ export function loadedNuxtChunkPaths(page: Page): Promise<string[]> {
  * reaching the (now-redeployed) origin instead of being answered from either cache.
  */
 export async function clearHttpCache(page: Page): Promise<void> {
-  // WebDriver has no command for the browser's HTTP cache. A real browser run goes on without clearing: the spec only
-  // passes if the re-request really reached the redeployed origin (a cached chunk would resolve the navigation).
-  if (readRealBrowserKind(process.env) !== undefined) return;
   const session: CDPSession = await page.context().newCDPSession(page);
   try {
     await session.send("Network.clearBrowserCache");

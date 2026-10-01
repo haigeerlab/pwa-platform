@@ -21,7 +21,7 @@
 // `experimental.emitRouteChunkError: "automatic"` back into its own nuxt.config.ts (site/nuxt.config.ts, read from
 // NUXT_E2E_AUTO_RELOAD — see its comment for why an app-level override, not loadNuxt's `overrides`, is required to
 // exercise the module's "was this explicitly set" check).
-import { expect, test } from "@pwa-platform/browser-test-harness";
+import { expect, readRealBrowserKind, test } from "@pwa-platform/browser-test-harness";
 import { cacheName } from "@pwa-platform/contracts";
 import type { Page } from "@playwright/test";
 import { publicDir, serverEntry } from "./global-setup.js";
@@ -62,6 +62,10 @@ async function forgetChunks(page: Page, paths: readonly string[]): Promise<void>
 }
 
 test.describe("auto-reload on a chunk-load failure", () => {
+  // `clearHttpCache` is a CDP command (Network.clearBrowserCache) with no WebDriver counterpart; without it Safari answers the
+  // chunk from its own HTTP cache, the navigation resolves and the scenario does not happen.
+  test.skip(readRealBrowserKind(process.env) !== undefined, "WebDriver cannot clear the browser HTTP cache (CDP Network.clearBrowserCache), so the chunk-load failure cannot be produced");
+
   let server: NuxtServer;
 
   test.afterEach(async () => {

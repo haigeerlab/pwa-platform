@@ -1,6 +1,6 @@
 // Scenario 5 (tasks/ssr-adapters/plan.md, T7): the private page's SSR response is never cached, online or off —
 // scenario 4 (offline.spec.ts) already covers the offline half; this covers the online visit itself.
-import { expect, test } from "@pwa-platform/browser-test-harness";
+import { expect, expectFromServiceWorker, expectNavigationStatus, test } from "@pwa-platform/browser-test-harness";
 import { cacheName } from "@pwa-platform/contracts";
 import { serverEntry } from "./global-setup.js";
 import { allCachedUrls, cacheContents, installAndControl } from "./page.js";
@@ -27,11 +27,11 @@ test.describe("private page caching", () => {
     server.clearRequests();
 
     const response = await page.goto(server.url(ACCOUNT_URL));
-    expect(response?.status()).toBe(200);
+    expectNavigationStatus(response, 200);
     // The worker answered this navigation itself, from its own network request — not the browser bypassing the
     // worker entirely, which the assertions below could not otherwise rule out (评审第 6 项, modelled on
     // sw-runtime's offline.spec.ts "denied navigations online" case).
-    expect(response?.fromServiceWorker()).toBe(true);
+    expectFromServiceWorker(response, true);
     await expect.poll(() => page.locator("h1").textContent()).toBe("account");
 
     // Exactly one request for it reached the server: the worker fetched it once and passed the response through,
