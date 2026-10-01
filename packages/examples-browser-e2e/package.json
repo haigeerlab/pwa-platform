@@ -9,6 +9,7 @@
     "test:browser:engines": "playwright install webkit firefox && playwright test --config playwright.engines.config.ts",
     "test:browser:real": "playwright test --config playwright.real.config.ts && playwright test --config playwright.ui.real.config.ts",
     "test:browser:android": "playwright test --config playwright.android.config.ts && playwright test --config playwright.ui.android.config.ts",
+    "test:browser:ios": "playwright test --config playwright.ios.config.ts && playwright test --config playwright.ui.ios.config.ts",
     "test:browser:network": "playwright test --config playwright.network.config.ts",
     "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.app.json && tsc --noEmit --project release-verifier/tsconfig.json && tsc --noEmit --project push-tools/tsconfig.json",
     "push:keys": "node push-tools/keys.ts",

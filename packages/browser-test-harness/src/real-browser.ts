@@ -1,5 +1,18 @@
 import { test } from "@playwright/test";
 import type { APIResponse, Browser, BrowserContext, Page, Response } from "@playwright/test";
+import { spawnSync } from "node:child_process";
+import {
+  CLEANUP_PATH,
+  describeIosSafari,
+  iosCleanupScript,
+  liveIosOrigins,
+  prepareIosOriginForCleanup,
+  readIosDevice,
+  remoteAutomationHint,
+  closeReleasedIosProxies,
+  setIosSessionOpen,
+  type CleanupReport,
+} from "./ios.js";
 import {
   correctedWindowSize,
   describeBrowser,
@@ -273,6 +286,11 @@ class RealPage {
    */
   async setViewportSize(size: Size): Promise<void> {
     const measure = (): Promise<Size> => this.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight }));
+    // iOS Safari has no window to resize (`setWindowRect: false`): report the size it has, like a browser with a minimum size.
+    if (this.session.capabilities["setWindowRect"] === false) {
+      this.viewport = await measure();
+      return;
+    }
     let outer = await this.session.windowRect(this.handle);
     let inner = await measure();
     for (let attempt = 0; attempt < VIEWPORT_ATTEMPTS && (inner.width !== size.width || inner.height !== size.height); attempt += 1) {
@@ -451,12 +469,13 @@ export class RealBrowser {
     try {
       const capabilities = requestedCapabilities(kind, env);
       const probe = await WebDriverSession.create(driver.baseUrl, capabilities);
-      const identity = describeBrowser(kind, probe.capabilities);
+      const identity = readIosDevice(env) === undefined ? describeBrowser(kind, probe.capabilities) : describeIosSafari(probe.capabilities);
       await probe.quit();
       return new RealBrowser(kind, driver, identity, capabilities);
     } catch (error) {
       await driver.stop();
-      throw error;
+      const hint = error instanceof Error ? remoteAutomationHint(error.message) : undefined;
+      throw hint === undefined ? error : new Error(`${(error as Error).message} -- ${hint}`, { cause: error });
     }
   }
 
@@ -470,14 +489,42 @@ export class RealBrowser {
     return { name: () => playwrightEngineName(this.kind) };
   }
 
+  /** Sessions started and not yet ended; ended before the driver stops, because iOS turns Remote Automation off otherwise. */
+  private readonly open = new Set<WebDriverSession>();
+
   /** Starts a new session (one browser instance state) with a context and its first page. */
   async openSession(): Promise<RealSession> {
     const session = await WebDriverSession.create(this.driver.baseUrl, this.capabilities);
+    this.open.add(session);
+    trackForExit(session);
     const context = new RealContext(this.kind, session);
-    return { context: context.toPlaywright(), page: await context.firstPage(), quit: () => session.quit() };
+    const ios = readIosDevice(process.env) !== undefined;
+    if (ios) setIosSessionOpen(true);
+    return {
+      context: context.toPlaywright(),
+      page: await context.firstPage(),
+      cleanupOrigins: async (origins = liveIosOrigins()) => {
+        await cleanupOrigins(session, origins);
+        await closeReleasedIosProxies();
+      },
+      quit: async () => {
+        this.open.delete(session);
+        try {
+          await session.quit();
+        } finally {
+          untrackForExit(session);
+          if (ios) {
+            setIosSessionOpen(false);
+            await closeReleasedIosProxies();
+          }
+        }
+      },
+    };
   }
 
   async close(): Promise<void> {
+    for (const session of this.open) await session.quit().catch(() => undefined);
+    this.open.clear();
     await this.driver.stop();
   }
 
@@ -486,4 +533,57 @@ export class RealBrowser {
   }
 }
 
-export type RealSession = { readonly context: BrowserContext; readonly page: Page; quit(): Promise<void> };
+export type RealSession = {
+  readonly context: BrowserContext;
+  readonly page: Page;
+  /**
+   * iPhone runs (ADR-0049): closes every tab but one, then, in each origin (default: every origin with a proxy right
+   * now), unregisters all service workers and deletes all caches, localStorage, sessionStorage and IndexedDB, throwing
+   * if anything is left. Run before `quit` so the owner's Safari keeps nothing from a test.
+   */
+  cleanupOrigins(origins?: readonly string[]): Promise<void>;
+  quit(): Promise<void>;
+};
+
+const unended = new Set<WebDriverSession>();
+let exitHookInstalled = false;
+
+/**
+ * Last resort for a worker that dies with a session open: an `exit` handler may only run synchronous code, so it
+ * sends the DELETE with curl. iOS switches Remote Automation off after a session that was not ended (ADR-0049).
+ */
+function trackForExit(session: WebDriverSession): void {
+  unended.add(session);
+  if (exitHookInstalled) return;
+  exitHookInstalled = true;
+  process.on("exit", () => {
+    for (const open of unended) spawnSync("/usr/bin/curl", ["-s", "--max-time", "10", "-X", "DELETE", open.endpoint()], { stdio: "ignore" });
+  });
+}
+
+function untrackForExit(session: WebDriverSession): void {
+  unended.delete(session);
+}
+
+/** See `RealSession.cleanupOrigins`. */
+async function cleanupOrigins(session: WebDriverSession, origins: readonly string[]): Promise<void> {
+  const handles = await session.handles();
+  const keep = handles.includes(session.currentHandle()) ? session.currentHandle() : handles[0];
+  if (keep === undefined) throw new Error("iPhone cleanup: the session has no tab left");
+  for (const handle of handles) {
+    if (handle === keep) continue;
+    await session.switchTo(handle);
+    await session.closeWindow();
+  }
+  await session.switchTo(keep);
+  const noop = (): void => undefined;
+  for (const origin of origins) {
+    prepareIosOriginForCleanup(origin);
+    await session.inWindow(keep, () => session.navigate(`${origin}${CLEANUP_PATH}`));
+    const left = (await session.evaluate(keep, serializePageScript(iosCleanupScript, undefined), noop)) as CleanupReport;
+    if (left.registrations !== 0 || left.caches !== 0) {
+      throw new Error(`iPhone cleanup of ${origin} left ${left.registrations} service worker registration(s) and ${left.caches} cache(s)`);
+    }
+  }
+  await session.inWindow(keep, () => session.navigate("about:blank"));
+}

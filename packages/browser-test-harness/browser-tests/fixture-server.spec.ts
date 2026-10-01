@@ -1,10 +1,11 @@
-import { MINIMAL_PAGE_MARKER, expect, fixturePath, readRealBrowserKind, test } from "../src/index.js";
+import { MINIMAL_PAGE_MARKER, expect, fixturePath, isIosRun, readRealBrowserKind, test } from "../src/index.js";
 
-test("serves the minimal page from a secure localhost origin without registering a worker", async ({
+test("serves the minimal page from a secure origin without registering a worker", async ({
   page,
   fixtureServer,
 }) => {
-  expect(fixtureServer.origin).toMatch(/^http:\/\/localhost:\d+$/);
+  // An iPhone reaches the server through an HTTPS proxy on the Mac's LAN address (ADR-0049).
+  expect(fixtureServer.origin).toMatch(isIosRun() ? /^https:\/\/\d+\.\d+\.\d+\.\d+:\d+$/ : /^http:\/\/localhost:\d+$/);
 
   await page.goto(fixtureServer.url("/"));
 
@@ -36,5 +37,16 @@ test.describe("with an overridden fixture site", () => {
 
     expect(fixtureServer.version).toBe("minimal");
     expect(response?.headers()["cache-control"]).toBe("no-cache");
+  });
+});
+
+test.describe("with a directory in the site", () => {
+  test.use({ fixtureSite: { versions: { root: fixturePath("pages", "..") } } });
+
+  test("a directory path redirects to its trailing slash on the origin the page was loaded from, keeping the query", async ({ page, fixtureServer }) => {
+    await page.goto(fixtureServer.url("/pages?marker=1"));
+
+    expect(await page.evaluate(() => `${location.origin}${location.pathname}${location.search}`)).toBe(`${fixtureServer.origin}/pages/?marker=1`);
+    expect(await page.locator(MINIMAL_PAGE_MARKER).textContent()).toBe("ready");
   });
 });

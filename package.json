@@ -31,6 +31,7 @@
     "test:browser:engines": "node scripts/run-workspace.mjs test:browser:engines",
     "test:browser:real": "node scripts/run-workspace.mjs test:browser:real",
     "test:browser:android": "node scripts/run-workspace.mjs test:browser:android",
+    "test:browser:ios": "node scripts/run-workspace.mjs test:browser:ios",
     "test:browser:network": "node scripts/run-workspace.mjs test:browser:network",
     "typecheck": "node scripts/run-workspace.mjs typecheck",
     "check:publish": "node scripts/check-package-distribution.mjs",

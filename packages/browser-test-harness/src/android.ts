@@ -4,6 +4,7 @@ import type { AddressInfo } from "node:net";
 import { promisify } from "node:util";
 import { chromium } from "@playwright/test";
 import type { Browser } from "@playwright/test";
+import { readIosDevice } from "./ios.js";
 import { REAL_BROWSER_ENV } from "./webdriver.js";
 
 /** Environment variable that runs the browser suites in the Chrome of a USB-connected Android phone (ADR-0048). */
@@ -23,6 +24,8 @@ export function readAndroidSerial(env: Env): string | undefined {
   if (real !== undefined && real !== "") {
     throw new Error(`${ANDROID_SERIAL_ENV} and ${REAL_BROWSER_ENV} cannot be combined: choose one browser target per run`);
   }
+  // Throws when an iPhone target is set as well.
+  readIosDevice(env);
   return value;
 }
 

@@ -19,6 +19,7 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "test:browser:android": "playwright test --config playwright.android.config.ts",
+    "test:browser:ios": "playwright test --config playwright.ios.config.ts",
     "typecheck": "tsc --noEmit --project tsconfig.json"
   },
   "peerDependencies": {

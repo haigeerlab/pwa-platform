@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createServer } from "node:net";
+import { iosCapabilities, readIosDevice } from "./ios.js";
 
 /** Environment variable that swaps Playwright's browser fixtures for a real system browser (ADR-0047). */
 export const REAL_BROWSER_ENV = "PWA_REAL_BROWSER";
@@ -8,8 +9,12 @@ export const REAL_BROWSER_HEADED_ENV = "PWA_REAL_BROWSER_HEADED";
 
 export type RealBrowserKind = "safari" | "firefox";
 
-/** Reads `PWA_REAL_BROWSER`; `undefined` when unset, an error for any value other than `safari` or `firefox`. */
+/**
+ * Reads `PWA_REAL_BROWSER`; `undefined` when unset, an error for any value other than `safari` or `firefox`. An iPhone
+ * run (`PWA_IOS_*`, ADR-0049) is a real Safari too: it reports `safari`, so every Safari based skip applies.
+ */
 export function readRealBrowserKind(env: Readonly<Record<string, string | undefined>>): RealBrowserKind | undefined {
+  if (readIosDevice(env) !== undefined) return "safari";
   const value = env[REAL_BROWSER_ENV];
   if (value === undefined || value === "") return undefined;
   if (value === "safari" || value === "firefox") return value;
@@ -26,7 +31,10 @@ export function requestedCapabilities(
   kind: RealBrowserKind,
   env: Readonly<Record<string, string | undefined>>,
 ): Record<string, unknown> {
-  if (kind === "safari") return { browserName: "safari" };
+  if (kind === "safari") {
+    const ios = readIosDevice(env);
+    return ios === undefined ? { browserName: "safari" } : iosCapabilities(ios);
+  }
   const headed = env[REAL_BROWSER_HEADED_ENV] === "1";
   return { browserName: "firefox", "moz:firefoxOptions": { args: headed ? [] : ["-headless"] } };
 }
@@ -286,13 +294,19 @@ export class WebDriverSession {
   }
 
   static async create(baseUrl: string, capabilities: Record<string, unknown>): Promise<WebDriverSession> {
-    const created = (await send(baseUrl, "POST", "/session", { capabilities: { alwaysMatch: capabilities } })) as {
+    const created = (await createSessionRequest(baseUrl, capabilities)) as {
       sessionId: string;
       capabilities: Record<string, unknown>;
     };
     const session = new WebDriverSession(baseUrl, created.sessionId, created.capabilities, "");
-    await session.command("POST", "/timeouts", { script: SCRIPT_TIMEOUT, pageLoad: PAGE_LOAD_TIMEOUT });
-    session.current = (await session.command("GET", "/window")) as string;
+    try {
+      await session.command("POST", "/timeouts", { script: SCRIPT_TIMEOUT, pageLoad: PAGE_LOAD_TIMEOUT });
+      session.current = (await session.command("GET", "/window")) as string;
+    } catch (error) {
+      // A session left open makes iOS switch Remote Automation off (ADR-0049): end it before reporting the failure.
+      await session.quit().catch(() => undefined);
+      throw error;
+    }
     return session;
   }
 
@@ -305,6 +319,11 @@ export class WebDriverSession {
     if (handle === this.current) return;
     await this.command("POST", "/window", { handle });
     this.current = handle;
+  }
+
+  /** The DELETE endpoint that ends this session; used to end it from a process `exit` handler. */
+  endpoint(): string {
+    return `${this.baseUrl}/session/${this.id}`;
   }
 
   currentHandle(): string {
@@ -421,6 +440,27 @@ export class WebDriverSession {
 
   async quit(): Promise<void> {
     await this.command("DELETE", "");
+  }
+}
+
+/** Pause and attempts for a device that is momentarily busy right after the previous session ended. */
+const DEVICE_BUSY_PAUSE_MS = 2_000;
+const DEVICE_BUSY_ATTEMPTS = 3;
+
+/**
+ * POST /session. An iPhone that has just ended a session may answer "Some devices were found, but could not be used" for
+ * a moment (seen once in a back-to-back run, ADR-0049); only that answer is retried, a few times. Any other failure,
+ * above all "Remote Automation is turned off", is reported at once: retrying cannot fix it.
+ */
+async function createSessionRequest(baseUrl: string, capabilities: Record<string, unknown>): Promise<unknown> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      return await send(baseUrl, "POST", "/session", { capabilities: { alwaysMatch: capabilities } });
+    } catch (error) {
+      const busy = error instanceof Error && error.message.includes("could not be used") && !/Remote Automation|remote control/i.test(error.message);
+      if (!busy || attempt >= DEVICE_BUSY_ATTEMPTS) throw error;
+      await new Promise((resolve) => setTimeout(resolve, DEVICE_BUSY_PAUSE_MS));
+    }
   }
 }
 

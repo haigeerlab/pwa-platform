@@ -7,7 +7,7 @@
 // `getByRole` and no web-first matchers; the fake clock and the `load` event are replaced by a shortened timer and a
 // marker on the document; screenshots (artifacts, not assertions) are not taken; and what a WebDriver session cannot
 // make is recorded with `recordUnverifiable`.
-import { contrastRatio, expect, exposeToAndroid, readRealBrowserKind, recordUnverifiable, test } from "@pwa-platform/browser-test-harness";
+import { contrastRatio, expect, exposeServer, readRealBrowserKind, recordUnverifiable, test } from "@pwa-platform/browser-test-harness";
 import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { createServer, type ViteDevServer } from "vite";
@@ -62,9 +62,11 @@ test.beforeAll(async () => {
   await server.listen();
   const address = server.httpServer?.address();
   if (address === null || typeof address === "string" || address === undefined) throw new Error("Vite did not listen");
-  // Android run (ADR-0048): the phone reaches the dev server through `adb reverse`; otherwise this maps nothing.
-  unexpose = await exposeToAndroid(address.port);
-  origin = `http://127.0.0.1:${address.port}`;
+  // Android (ADR-0048) maps the port with `adb reverse`, an iPhone (ADR-0049) reaches it through an HTTPS proxy; otherwise
+  // this is `http://127.0.0.1:<port>`.
+  const exposed = await exposeServer(address.port, { hostname: "127.0.0.1" });
+  unexpose = exposed.release;
+  origin = exposed.origin;
 });
 
 test.afterAll(async () => {
