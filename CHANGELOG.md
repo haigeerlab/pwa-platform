@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 (2026-10-02)
+
+Upgrade all ten public `@pwa-platform/*` packages together. This release adds an explicit portable deployment mode for Vite hosts and a separate worker MIME release check; existing fixed-origin configurations and v1–v3 plans retain their meaning.
+
+- **Portable deployment (`@pwa-platform/vite`, `contracts`, `core`, `build-verifier`):** `deployment: { kind: "portable" }` accepts a `PwaPortableIdentity` without a build-time origin. One byte-identical build can be deployed to multiple HTTPS origins. The v4 plan and origin-registry v2 use root-absolute paths; each origin needs its own identity baseline, response evidence, release history and browser acceptance. Full URLs in platform paths and a cross-origin Vite base are rejected. A missing `origin` does not opt a fixed configuration into portable mode. See [the deployment guide](website/guide/portable-deployment.md) and [ADR-0050](docs/adr/0050-portable-deployment.md).
+- **Worker script MIME release check (`@pwa-platform/build-verifier`):** `worker-mime` checks the observed main worker `Content-Type` against JavaScript MIME types. `requiredReleaseChecks(plan)` now includes it for every topology; callers must supply `workerMimeObserved` for fixed plans or the target origin's response evidence for portable plans. Missing evidence fails release-gate coverage. See [ADR-0051](docs/adr/0051-worker-script-mime-release-check.md).
+
+Publishing these packages does not certify a consuming application's production deployment. In particular, a fixed-origin application needs an explicit migration plan before changing its existing PWA identity or worker scope.
+
 ## 0.2.5 (2026-09-30)
 
 - **The onboarding checklist self-checks the production build before handing over (`@pwa-platform/vite`, ai-onboarding S7/S8):** a new step 6 has the assistant open the production build with `vite preview` (on the port of the identity's `origin`) and confirm a single manifest link, worker registration and control, and that the app shell and the offline page still load offline; onboarding counts as complete only when all of them pass, and deployment checks follow as step 7. The self-check uses a separate browser profile, not the person's everyday browser, and unregisters the worker and clears the site's data afterwards. Found by a scenario evaluation in which two assistants stopped at a green build (`tasks/ai-onboarding/verification.md`).

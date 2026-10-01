@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ordered = ['contracts', 'core', 'engine-workbox', 'build-verifier', 'sw-runtime', 'client-runtime', 'vite', 'entry-resilience', 'vue', 'react'];
 const expected = new Set(ordered.map((name) => `@pwa-platform/${name}`));
-const version = '0.2.5';
+const version = '0.3.0';
 const license = readFileSync(join(root, 'packages', 'contracts', 'LICENSE'), 'utf8');
 const published = new Set();
 for (const name of ordered) {
