@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.2 (2026-10-02)
+
+Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, or cache policy changes.
+
+- **Unicode public asset paths (`@pwa-platform/vite`):** public file paths are encoded as URL paths before build-output validation, so Chinese and other non-ASCII filenames can be used without renaming business assets. Literal `@` remains usable in names such as `ç» 2 10@2x.png`; URL-significant `?` and `#` are escaped.
+- **Late Vite bundle changes (`@pwa-platform/vite`):** the platform's `generateBundle` hook now uses Rollup's `post` order, allowing it to validate the later bundle shape. A Vite 5 + Vue 3.4 host build with Chinese `.svga` filenames and a temporary `ç» 2 10@2x.png` asset passed using the packaged `0.3.2` release candidate, without changing business source code.
+
 ## 0.3.1 (2026-10-02)
 
 Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, or cache policy changes.
