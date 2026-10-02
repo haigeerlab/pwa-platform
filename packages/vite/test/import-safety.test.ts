@@ -1,10 +1,11 @@
+import { isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 /** Reads a file relative to this test (or an absolute path) through TypeScript's host, avoiding Node typings. */
 function read(location: string): string {
-  const text = ts.sys.readFile(fileURLToPath(new URL(location, import.meta.url)));
+  const text = ts.sys.readFile(isAbsolute(location) ? location : fileURLToPath(new URL(location, import.meta.url)));
   if (text === undefined) throw new Error(`Cannot read ${location}`);
   return text;
 }
