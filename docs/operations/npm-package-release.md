@@ -17,7 +17,7 @@ git push -u origin HEAD
 
 以下代码块在同一个交互终端中继续执行，以保留 `version`、`out` 和 `names`；换终端时先恢复这三个值。发布负责人对整批发包授权一次，循环中不再逐包请求操作许可。
 
-创建命令会获取最新 `origin/main`，确认十包原版本一致、工作区干净且分支名未占用，然后创建 `release/npm-<版本>` 并改写版本元数据。提交后核对 `git diff origin/main...HEAD --name-only` 只包含上述版本文件；发布时记录 `main` 基点与发布提交 SHA。无需为这次纯版本改动先开 PR、再跑一遍完整 CI。发布后的元数据、文档与发布记录合成**一次 PR** 回到 `main`，该 PR 自身仍遵守 main 的合并门禁。
+创建命令会获取最新 `origin/main`，确认十包原版本一致、工作区干净且分支名未占用，然后创建 `release/npm-<版本>` 并改写版本元数据。提交后核对 `git diff origin/main...HEAD --name-only` 只包含上述版本文件；发布时记录 `main` 基点与发布提交 SHA。无需为这次纯版本改动先开 PR、再跑一遍完整 CI。发布后的版本元数据、仓库 README／CHANGELOG 与发布记录合成**一次 PR** 回到 `main`，该 PR 自身仍遵守 main 的合并门禁。文档站内容与部署不自动加入该 PR，由项目所有者另行决定。
 
 ## 一次本地候选检查
 
@@ -38,7 +38,7 @@ ls "$out"/*.tgz
 shasum -a 256 "$out"/*.tgz
 ```
 
-发布前只读确认本地 npm 登录账号有组织发布权限、十个目标版本尚未占用，并检查本批 tarball 数量、名称、SHA-256 与发布提交。`@pwa-platform/vite` 随包 skill 的文档链接必须仍可访问；若 `website/` 与线上生产文档不同，先按[文档站流程](documentation-site.md)上线相关内容。网站的“当前 npm 版本”可以在包公开后更新，不因此阻塞包发布。
+发布前只读确认本地 npm 登录账号有组织发布权限、十个目标版本尚未占用，并检查本批 tarball 数量、名称、SHA-256 与发布提交。`@pwa-platform/vite` 随包 skill 的文档链接及其接入所需内容必须在线可用；若本版新增必需文档而线上缺失，先解决该缺口。单纯的网站版本展示差异不触发[文档站发布](documentation-site.md)，也不阻塞包发布。
 
 ## 批量提交，再集中验证
 
@@ -58,7 +58,7 @@ npm stage list
 
 依赖层次为 `contracts`；`core`、`engine-workbox`、`build-verifier`；`sw-runtime`；`client-runtime`；`vite`；`entry-resilience`、`vue`、`react`。
 
-待整批提交和所需批准完成后，一次性核对十个包的版本、`dist-tags.latest`、tarball HTTP 200 与下载内容，并从全新消费项目安装、导入全部公开入口。失败时记录已公开项和待处理项；已发布的同一版本不可覆盖，也不以 `unpublish` 当回滚。最后更新网站当前版本、README、CHANGELOG 与发布记录，合成一次 PR，待 main CI 通过后按文档站流程部署。npm 包全部可安装即为本流程的发布完成点，文档收口单独计时。
+待整批提交和所需批准完成后，一次性核对十个包的版本、`dist-tags.latest`、tarball HTTP 200 与下载内容，并从全新消费项目安装、导入全部公开入口。失败时记录已公开项和待处理项；已发布的同一版本不可覆盖，也不以 `unpublish` 当回滚。随后更新仓库 README、CHANGELOG 与发布记录，并将版本元数据一并通过 PR 合入 `main`。npm 包全部可安装即为本流程的发布完成点。文档站是否更新内容、何时部署，由项目所有者单独决定；不把它作为每次 npm 发版的固定步骤。
 
 ## 适用边界
 

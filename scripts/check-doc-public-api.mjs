@@ -113,8 +113,7 @@ function registryDeclarations(version) {
 
 function main() {
   const version = publishedVersion();
-  const latest = JSON.parse(execFileSync('npm', ['view', '@pwa-platform/vite', 'dist-tags.latest', '--json'], { encoding: 'utf8' }));
-  if (latest !== version) throw new Error(`website says npm ${version}, registry latest is ${latest}`);
+  // The website can document an older published release until its owner schedules an update.
   const available = detectAvailability(registryDeclarations(version));
   const errors = validateDocs(version, available, markdownFiles(join(root, 'website')));
   if (errors.length > 0) throw new Error(errors.join('\n'));

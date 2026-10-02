@@ -4,7 +4,7 @@ pageClass: platform-test-matrix
 
 # 跨平台测试证据
 
-本页按功能列出每个平台、每个浏览器做过什么验证。核查日期 **2026-10-02**。下表的逐平台证据基线仍为十个公开包 **0.2.5**；`0.3.2` 源码基点的 Node 22／24、Chrome、Edge 和引擎冒烟 CI 已通过，中文静态资源文件名另在 Vite 5 宿主临时副本构建验证，见[0.3.2 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.2.md)。此前的 [0.3.1 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.1.md) 和[0.3.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.0.md) 分别保留 Windows 构建、可移植部署与 worker MIME 的证据。PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`。每一格只依据仓库里的测试记录；没有记录一律标 ○，不按"代码支持"推断。
+本页按功能列出每个平台、每个浏览器做过什么验证。核查日期 **2026-10-02**。下表的逐平台证据基线仍为十个公开包 **0.2.5**；`0.3.1` 的 Node 22／24、Chrome、Edge 和引擎冒烟发布 CI 已通过，见[0.3.1 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.1.md)。可移植部署与 worker MIME 的新增浏览器用例见[0.3.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.0.md)。PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`。每一格只依据仓库里的测试记录；没有记录一律标 ○，不按"代码支持"推断。
 
 ## 符号与证据等级
 
@@ -107,7 +107,6 @@ pageClass: platform-test-matrix
 
 ## 原始记录
 
-- [0.3.2 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.2.md)
 - [0.3.1 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.1.md)
 - [0.3.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.0.md)
 - [0.2.5 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.2.5.md)

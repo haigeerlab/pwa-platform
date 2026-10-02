@@ -6,7 +6,7 @@
 
 一个 origin 和 scope 对应一个 PWA 身份，是最直接的部署方式。部署时确保 Vite <code>base</code>、身份中的 <code>origin</code> 与 <code>scope</code>、manifest 和 worker 的实际 URL 相符。worker 应从 HTTPS 同源地址提供；发布时核查 HTML、worker 和指纹资产的缓存头。完整的头部规则、Nginx 与 Cloudflare 示例见[服务器与 CDN 配置](/operations/hosting)。
 
-同一份构建产物需要部署到构建时未知的多个域名时，npm `0.3.2` **已支持**显式的[可移植部署模式](/guide/portable-deployment)。每个域名都是独立的发布线：分别收集实际响应、核对身份基线、完整历史、旧资源和首次发布批准。
+同一份构建产物需要部署到构建时未知的多个域名时，npm `0.3.1` **已支持**显式的[可移植部署模式](/guide/portable-deployment)。每个域名都是独立的发布线：分别收集实际响应、核对身份基线、完整历史、旧资源和首次发布批准。
 
 ## 线上响应头
 
@@ -20,18 +20,18 @@
 
 除上表列出的指令外，响应可以带其他指令，检查不会因此失败；检查的是跟随重定向之后的最终响应。私有 HTML 按私有响应对待，不因它是 HTML 而套用公开 HTML 规则，但**它不在机器检查范围内**，需要人工核对。记录实际访问 URL、响应头和检查时间；不要把令牌、响应体或用户数据写入发布记录。
 
-另用 GET 核对 worker 主脚本的 `Content-Type`：必须是 JavaScript MIME，例如 `text/javascript` 或 `application/javascript`。`text/plain` 在本地正反例中导致注册与离线启动失败。manifest 建议返回 `application/manifest+json`。npm `0.3.2` 的 `worker-mime` 检查**已支持**核对 worker 主脚本 MIME；manifest MIME 仍需单独记录。
+另用 GET 核对 worker 主脚本的 `Content-Type`：必须是 JavaScript MIME，例如 `text/javascript` 或 `application/javascript`。`text/plain` 在本地正反例中导致注册与离线启动失败。manifest 建议返回 `application/manifest+json`。npm `0.3.1` 的 `worker-mime` 检查**已支持**核对 worker 主脚本 MIME；manifest MIME 仍需单独记录。
 
 ### 平台提供的机器检查
 
-已发布的 npm <code>0.3.2</code> 中，<code>@pwa-platform/build-verifier</code> 提供八种检查名：`artifacts`（计划引用的文件都已发布）、`response-headers`（worker、manifest 与指纹资源的缓存头）、`html-headers`（公开 HTML 的缓存头）、`worker-mime`（worker 主脚本的 JavaScript MIME）、`identity-baseline`（生产身份与存档基线一致）、`release-retention`（旧指纹资源仍可获取）、`release-order`（共享 origin 的子应用发布前，根应用已排除其 scope）和 `deployment-origin`（可移植模式的平台资源最终响应 URL 属于本次目标域名）。它们是纯判断函数，**输入由你的发布系统采集**：
+已发布的 npm <code>0.3.1</code> 中，<code>@pwa-platform/build-verifier</code> 提供八种检查名：`artifacts`（计划引用的文件都已发布）、`response-headers`（worker、manifest 与指纹资源的缓存头）、`html-headers`（公开 HTML 的缓存头）、`worker-mime`（worker 主脚本的 JavaScript MIME）、`identity-baseline`（生产身份与存档基线一致）、`release-retention`（旧指纹资源仍可获取）、`release-order`（共享 origin 的子应用发布前，根应用已排除其 scope）和 `deployment-origin`（可移植模式的平台资源最终响应 URL 属于本次目标域名）。它们是纯判断函数，**输入由你的发布系统采集**：
 
 - `release-retention` 需要你提供发布历史记录（每个历史版本的计划与发布时间）和线上当前可获取的路径清单；
 - `release-order` 只适用于共享 origin 的子应用，要求根应用的线上计划已经先排除子 scope（根先、子后）；
 - 固定模式省略某项输入会跳过该项检查；可移植模式的响应头、HTML 头与部署源检查即使缺证据也会失败。两种模式都要同时核对必需检查覆盖与报告结果。
 - 可移植模式传入 `deployment: { targetOrigin, responses }`，其中每个响应都含跟随重定向后的 `finalUrl` 和 `headers`；发布系统须实际请求本次域名并保存采集引用，不能拿域名字符串或另一域名的响应充当证据。
 
-npm `0.3.2` **已包含**独立的 `worker-mime` 检查与本地反例测试。固定域名模式的发布脚本应把已采集的 worker 响应头同时传给 `workerMimeObserved`，可移植模式则从该目标域名的 `deployment.responses` 判断，并用 `requiredReleaseChecks(plan)` 核对必需项。不要只凭旧报告的 `ok: true` 当作 MIME 已检查。
+npm `0.3.1` **已包含**独立的 `worker-mime` 检查与本地反例测试。固定域名模式的发布脚本应把已采集的 worker 响应头同时传给 `workerMimeObserved`，可移植模式则从该目标域名的 `deployment.responses` 判断，并用 `requiredReleaseChecks(plan)` 核对必需项。不要只凭旧报告的 `ok: true` 当作 MIME 已检查。
 
 调用方式与示例见[服务器与 CDN 配置](/operations/hosting#自检)。
 

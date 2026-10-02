@@ -36,7 +36,7 @@ pageClass: application-comparison
 
 ## 关键判定说明
 
-- **本平台**：`0.3.2` 正式包提供稳定 manifest ID、预缓存、离线回退、显式公共读取缓存、默认拒绝、用户确认更新、恢复 worker、快捷方式、可移植部署、worker MIME 发布检查和浏览器自动化。Push 仍是工作区实现；主动检查是页面 API，不是 Periodic Sync；没有 Share Target、File Handlers 或 Launch Handler。
+- **本平台**：`0.3.1` 正式包提供稳定 manifest ID、预缓存、离线回退、显式公共读取缓存、默认拒绝、用户确认更新、恢复 worker、快捷方式、可移植部署、worker MIME 发布检查和浏览器自动化。Push 仍是工作区实现；主动检查是页面 API，不是 Periodic Sync；没有 Share Target、File Handlers 或 Launch Handler。
 - **Elk**：使用 `injectManifest`、Workbox 预缓存和按路由缓存，包含自定义安装提示、等待更新、每小时页面定时 `registration.update()`、Push 与 Share Target。该定时器不是 Periodic Sync 标准 API；动态 manifest 的稳定 `id` 未从 reviewed sources 确认。
 - **Home Assistant**：构建生成 Service Worker，预缓存壳并缓存静态资源、品牌图和地图瓦片，API／auth 走网络，支持 Push。其最后一条同源路由使用 Stale-While-Revalidate，因此不满足本表“未分类请求默认不缓存”的严格定义。
 - **Proton Pass**：网页应用有独立 Service Worker、离线模式、fetch controller 和 polling 代码，但 reviewed sources 没有确认 web manifest、安装引导、标准后台同步或由用户确认的更新 UI。浏览器扩展的 Manifest V3 worker 不计入网页 PWA。

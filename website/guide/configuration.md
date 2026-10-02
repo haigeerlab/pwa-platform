@@ -6,7 +6,7 @@
 
 接入时需要提交三组信息：<code>PwaIdentity</code> 确定应用及 URL 所有权，<code>PwaInstallMetadata</code> 确定安装展示，<code>PwaPolicy</code> 声明缓存与更新意图。下面是部署在域名根路径的起点，需替换域名、名称与图标文件。
 
-同一份构建产物需要部署到构建时未知的多个 HTTPS 域名时，npm `0.3.2` **已支持**[显式可移植部署](/guide/portable-deployment)：`deployment: { kind: "portable" }`、不含 origin 的 `PwaPortableIdentity` 和 v3 策略。未写 `deployment` 仍是本页的固定域名模式，必须填写并校验 `origin`。
+同一份构建产物需要部署到构建时未知的多个 HTTPS 域名时，npm `0.3.1` **已支持**[显式可移植部署](/guide/portable-deployment)：`deployment: { kind: "portable" }`、不含 origin 的 `PwaPortableIdentity` 和 v3 策略。未写 `deployment` 仍是本页的固定域名模式，必须填写并校验 `origin`。
 
 ~~~ts
 // pwa.config.ts

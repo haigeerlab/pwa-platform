@@ -1,6 +1,6 @@
 # Vite + Vue 接入
 
-适用范围：Vite 5／8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本（Vite 8 的要求；平台包声明 <code>>=22.0.0</code>）。先按[包选择](/start/choose)安装 0.3.2，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
+适用范围：Vite 5／8、Vue 3.4 及以上且低于 4，构建环境为 Node.js 22.12 或更高版本（Vite 8 的要求；平台包声明 <code>>=22.0.0</code>）。先按[包选择](/start/choose)安装 0.3.1，再完成以下步骤。示例以部署在域名根路径为例；若部署到 <code>/app/</code>，需要同时调整 Vite <code>base</code>、身份中的路径和安装资源 URL。
 
 ::: warning Vue 3.4 不会在应用卸载时释放 facade
 <code>app.onUnmount</code> 是 Vue 应用唯一的卸载钩子，Vue 3.5 才引入；3.4 的 <code>App</code> 接口没有任何卸载回调注册点，因此 <code>createPwa()</code> 创建的 facade 在 Vue 3.4 下**不会**被释放。普通场景（应用启动时挂载一次、页面生命周期内不再卸载）不受影响；只有反复挂载/卸载同一应用（例如微前端宿主）才需要升级到 Vue 3.5+ 以避免逐次泄漏。
