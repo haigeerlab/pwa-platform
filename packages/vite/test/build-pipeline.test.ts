@@ -82,14 +82,14 @@ function app(publicFiles: Record<string, string> = {}): string {
  * own bundle object, and with `write: false` the `writeBundle` hook never runs at all — an in-memory build can
  * observe neither.
  */
-async function runBuild(root: string, installEnabled: boolean, afterPwa?: Plugin): Promise<string[]> {
+async function runBuild(root: string, installEnabled: boolean, afterPwa?: Plugin, assetsDir = "assets"): Promise<string[]> {
   const names: string[] = [];
   await build({
     configFile: false,
     root,
     base: "/app/",
     logLevel: "silent",
-    build: { write: true, outDir: join(root, "dist"), emptyOutDir: true },
+    build: { write: true, outDir: join(root, "dist"), emptyOutDir: true, assetsDir },
     plugins: [
       pwa({
         identity,
@@ -112,6 +112,15 @@ async function runBuild(root: string, installEnabled: boolean, afterPwa?: Plugin
 }
 
 describe("the plugin inside a real build", () => {
+  it("builds CSS with an assetsDir containing a subdirectory", async () => {
+    const root = app();
+    writeFileSync(join(root, "src/style.css"), "body{color:red}\n");
+    writeFileSync(join(root, "src/main.js"), 'import "./style.css"; export const boot = () => 1;\n');
+
+    const names = await runBuild(root, true, undefined, "static/assets");
+    expect(names.map((name) => name.replaceAll("\\", "/")).some((name) => /^static\/assets\/.*\.css$/.test(name))).toBe(true);
+  });
+
   it("writes the manifest itself when the app enables installation", async () => {
     const names = await runBuild(app(), true);
     expect(names).toContain("manifest.webmanifest");

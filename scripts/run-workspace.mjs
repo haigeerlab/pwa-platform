@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const OPERATIONS = new Set(["build", "test", "test:browser", "test:browser:engines", "test:browser:network", "test:browser:real", "test:browser:android", "test:browser:ios", "typecheck"]);
 const [operation, ...rest] = process.argv.slice(2);
@@ -40,7 +40,7 @@ function readFilter(args) {
 }
 
 function run(args) {
-  const result = spawnSync("pnpm", args, { stdio: "inherit" });
+  const result = spawnPnpm(args, { stdio: "inherit" });
   if (result.error) process.stderr.write(`Failed to run pnpm ${args.join(" ")}: ${result.error.message}\n`);
   if (result.status !== 0) process.exit(result.status ?? 1);
 }

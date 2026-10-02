@@ -8,7 +8,7 @@ import {
   createClientConfigFromOptions,
   serializeClientConfigModule,
 } from "./client-config.js";
-import { assertUnchangedBundleFiles, bundleSourceFiles, hashBundleFiles, type PwaBundle } from "./host-output.js";
+import { assertUnchangedBundleFiles, bundleFilePath, bundleSourceFiles, hashBundleFiles, type PwaBundle } from "./host-output.js";
 import { validateManifestIcons } from "./manifest-icons.js";
 import { assertFinalManifestLink, resolveManifestLinkAction } from "./manifest-link.js";
 import { renderOfflinePage } from "./offline-page.js";
@@ -228,19 +228,19 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
       }
 
       for (const output of Object.values(bundle)) {
-        if (output.type !== "asset" || !htmlEntryFiles.has(output.fileName)) continue;
+        if (output.type !== "asset" || !htmlEntryFiles.has(bundleFilePath(output.fileName))) continue;
         const html = typeof output.source === "string" ? output.source : new TextDecoder().decode(output.source);
         assertFinalManifestLink(
           html,
           validated.identity.origin ?? null,
           validated.identity.manifestUrl,
-          `/${output.fileName}`,
+          `/${bundleFilePath(output.fileName)}`,
         );
       }
 
       // Files copied from the public directory never enter the bundle at any stage, so they are added from what
       // was read off disk. Precache entries pointing at them would otherwise all report as missing.
-      const published = [...Object.keys(bundle).map((fileName) => `${base}${fileName}`), ...publicPaths];
+      const published = [...Object.keys(bundle).map((fileName) => `${base}${bundleFilePath(fileName)}`), ...publicPaths];
 
       assertPwaArtifacts(planForCheck, published);
     },

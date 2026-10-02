@@ -4,6 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { relative, resolve } from "node:path";
 import { URL } from "node:url";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const projects = { react: "pwa-platform-react-demo", vue: "pwa-platform-vue-demo" };
 const args = Object.fromEntries(process.argv.slice(2).map((item) => {
@@ -152,7 +153,7 @@ if (mode === "preview-candidate") {
     "pages", "deployment", "list", `--project-name=${projects[target]}`, "--environment=preview", "--json",
   ], env).filter((entry) => entry.Branch === "candidate");
   const before = new Set(listCandidateDeployments().map((entry) => entry.Id));
-  const upload = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+  const upload = spawnPnpm([
     "exec", "wrangler", "pages", "deploy", site, `--project-name=${projects[target]}`, "--branch=candidate",
   ], { cwd: root, env, stdio: "inherit" });
   if (upload.error) throw upload.error;
@@ -202,7 +203,7 @@ if (mode === "preview-candidate") {
         `--deployment-id=${activeDeploymentId}`, "--mode=check"],
       ["audit:cloudflare:retention", `--target=${target}`],
     ]) {
-      const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, { cwd: root, encoding: "utf8" });
+      const result = spawnPnpm(command, { cwd: root, encoding: "utf8" });
       if (result.error || result.status !== 0) throw new Error(`Repeat production upload failed ${command[0]} preflight`);
     }
   }
@@ -220,13 +221,13 @@ if (mode === "preview-candidate") {
       JSON.stringify(JSON.parse(unpack.stdout)) !== JSON.stringify({ ...receipt, uploadDirectory: "site" })) {
       throw new Error("Candidate R2 artifact does not match the validated Pages staging receipt");
     }
-    const verify = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+    const verify = spawnPnpm([
       "r2:cloudflare:bundle", `--target=${target}`, "--slot=drill", `--sha256=${candidate}`, "--mode=verify",
     ], { cwd: root, encoding: "utf8" });
     if (verify.error || verify.status !== 0) throw new Error("Drill deployment preflight failed r2:cloudflare:bundle");
   }
   if (mode === "deploy") {
-    const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+    const result = spawnPnpm([
       "exec", "wrangler", "pages", "deploy", site, `--project-name=${projects[target]}`, `--branch=${branch}`,
     ], { cwd: root, env, stdio: "inherit" });
     if (result.error) throw result.error;
@@ -244,7 +245,7 @@ if (mode === "preview-candidate") {
         ["archive:cloudflare:site", `--target=${target}`, `--slot=${slot}`, `--deployment-id=${publishedId}`],
         ["audit:cloudflare:retention", `--target=${target}`],
       ]) {
-        const post = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, {
+        const post = spawnPnpm(command, {
           cwd: root, env, stdio: "inherit",
         });
         if (post.error || post.status !== 0) {
@@ -275,7 +276,7 @@ if (mode === "preview-candidate") {
           `--deployment-id=${publishedId}`, "--mode=record"],
         ["archive:cloudflare:site", `--target=${target}`, "--slot=drill", `--deployment-id=${publishedId}`],
       ]) {
-        const post = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, {
+        const post = spawnPnpm(command, {
           cwd: root, env, stdio: "inherit",
         });
         if (post.error || post.status !== 0) {
@@ -322,7 +323,7 @@ function keychain(service) {
 }
 
 function wrangler(command, env) {
-  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", ["exec", "wrangler", ...command], {
+  const result = spawnPnpm(["exec", "wrangler", ...command], {
     cwd: root, env, encoding: "utf8",
   });
   if (result.error || result.status !== 0) throw new Error(`Cloudflare read failed: ${command.slice(0, 3).join(" ")}`);

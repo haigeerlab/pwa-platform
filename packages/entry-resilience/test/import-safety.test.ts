@@ -1,9 +1,10 @@
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 /** Reads a file relative to this test (or an absolute path) through TypeScript's host, avoiding Node typings. */
 function read(location: string): string {
-  const text = ts.sys.readFile(decodeURIComponent(new URL(location, import.meta.url).pathname));
+  const text = ts.sys.readFile(fileURLToPath(new URL(location, import.meta.url)));
   if (text === undefined) throw new Error(`Cannot read ${location}`);
   return text;
 }
@@ -11,7 +12,7 @@ function read(location: string): string {
 type SourceFiles = ReadonlyMap<string, string>;
 
 function sourceFiles(): SourceFiles {
-  const root = decodeURIComponent(new URL("../src/", import.meta.url).pathname);
+  const root = fileURLToPath(new URL("../src/", import.meta.url));
   return new Map(ts.sys.readDirectory(root, [".ts"]).map((file) => [file.slice(root.length), read(file)]));
 }
 
@@ -47,15 +48,14 @@ function imports(fileName: string, text: string): readonly ImportRecord[] {
 const SMUGGLED = /\bprocess\s*\.\s*(?:getBuiltinModule|binding)\b|\bcreateRequire\b|\bModule\s*\.\s*_load\b/;
 
 /**
- * `src/` must run unmodified in Node 24 and in browsers, so no file anywhere in it may reach for a `node:`
- * builtin (see ADR-0018, "src/ 环境中立: 不导入 node: 模块"). This is what lets the same verification code run
- * inside a unit test today and inside a Vite plugin / browser bundle without a fork.
+ * Browser-facing source must remain environment-neutral. The build-only entry-page resolver uses `node:url` to
+ * turn its own file URL into a native path; no other source may import a Node builtin (ADR-0018).
  */
 function nodeBuiltinOffenders(file: string, text: string): readonly string[] {
   return ts
     .preProcessFile(text, true, true)
     .importedFiles.map(({ fileName }) => fileName)
-    .filter((specifier) => specifier.startsWith("node:"))
+    .filter((specifier) => specifier.startsWith("node:") && !(file === "vite/entry-page.ts" && specifier === "node:url"))
     .map((specifier) => `${file}: ${specifier}`);
 }
 
@@ -77,6 +77,7 @@ const DIRECTORY_RULES: ReadonlyMap<string, DirectoryRule> = new Map([
 ]);
 
 function ruleFor(file: string): DirectoryRule {
+  if (file === "vite/entry-page.ts") return { runtime: ["node:url"], type: [] };
   for (const [prefix, rule] of DIRECTORY_RULES) {
     if (file.startsWith(prefix)) return rule;
   }
@@ -127,7 +128,7 @@ describe("dependency boundaries", () => {
     expect(files.has("index.ts")).toBe(true);
   });
 
-  it("imports no node: builtin anywhere in src/", () => {
+  it("imports no node: builtin outside the build-only file URL resolver", () => {
     const found = [...files].flatMap(([file, text]) => nodeBuiltinOffenders(file, text));
     expect(found).toEqual([]);
   });
@@ -157,6 +158,10 @@ describe("dependency boundaries", () => {
     ]);
 
     expect([...probe].flatMap(([file, text]) => nodeBuiltinOffenders(file, text))).toEqual(["index.ts: node:fs"]);
+    expect(nodeBuiltinOffenders("vite/entry-page.ts", "import { fileURLToPath } from 'node:url'; import 'node:fs';")).toEqual([
+      "vite/entry-page.ts: node:fs",
+    ]);
+    expect(nodeBuiltinOffenders("vite/index.ts", "import 'node:url';")).toEqual(["vite/index.ts: node:url"]);
 
     // Catches both offenders in the probe's `index.ts`: `bareSpecifierOffenders` does not special-case `node:`
     // specifiers, so a builtin is "just" a bare specifier no directory's rule allows, same as a package would be.

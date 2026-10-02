@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { devNull, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { matchesLivePagesFile } from "./live-pages-file.mjs";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const projects = { react: "pwa-platform-react-demo", vue: "pwa-platform-vue-demo" };
 const bucket = "pwa-platform-release-artifacts";
@@ -133,7 +134,7 @@ function keychain(service) {
   } catch { return undefined; }
 }
 function runPnpm(command) {
-  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, { cwd: root, encoding: "utf8" });
+  const result = spawnPnpm(command, { cwd: root, encoding: "utf8" });
   if (result.error || result.status !== 0) throw new Error(`Release bundle check failed: ${command[0]}`);
 }
 function runTar(command) {
@@ -142,14 +143,14 @@ function runTar(command) {
   return result.stdout;
 }
 function wrangler(command) {
-  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", ["exec", "wrangler", ...command], {
+  const result = spawnPnpm(["exec", "wrangler", ...command], {
     cwd: root, env: { ...process.env, CLOUDFLARE_API_TOKEN: pagesToken, CLOUDFLARE_ACCOUNT_ID: accountId }, encoding: "utf8",
   });
   if (result.error || result.status !== 0) throw new Error("Could not read current Pages deployments");
   try { return JSON.parse(result.stdout); } catch { throw new Error("Pages deployment list was not JSON"); }
 }
 function request(method, endpoint, file) {
-  const command = ["-q", "-K", "-", "--silent", "--show-error", "--output", method === "GET" ? file : "/dev/null",
+  const command = ["-q", "-K", "-", "--silent", "--show-error", "--output", method === "GET" ? file : devNull,
     "--write-out", "%{http_code}", "--request", method];
   if (method === "PUT") command.push("--data-binary", `@${file}`, "--header", "Content-Type: application/json", "--header", "If-None-Match: *");
   command.push(endpoint);

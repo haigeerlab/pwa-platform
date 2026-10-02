@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { spawnSync } from "node:child_process";
 import { join, resolve } from "node:path";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const projects = { react: "pwa-platform-react-demo", vue: "pwa-platform-vue-demo" };
 const args = Object.fromEntries(process.argv.slice(2).map((item) => {
@@ -57,6 +57,6 @@ try {
 }
 
 function run(command, step) {
-  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, { cwd: root, stdio: "inherit" });
+  const result = spawnPnpm(command, { cwd: root, stdio: "inherit" });
   if (result.error || result.status !== 0) throw new Error(`Recovery stopped at ${step}: ${command[0]} exited with status ${result.status ?? result.error?.message}`);
 }

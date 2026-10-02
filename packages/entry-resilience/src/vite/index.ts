@@ -13,7 +13,7 @@ import type { EntryDiagnostic } from "../diagnostics.js";
 import { mergeEntryPageMessages } from "../page/messages.js";
 import type { PwaEntryPageLocale, PwaEntryPageMessages } from "../page/messages.js";
 import { DEFAULT_RECOVERY_PAGE_STYLE } from "./default-style.js";
-import { resolveEntryPageId } from "./entry-page.js";
+import { resolveEntryPageId, urlFileName } from "./entry-page.js";
 import { failWithDiagnostic, validatePwaEntryResilienceOptions } from "./options.js";
 import type { PwaEntryResilienceOptions } from "./options.js";
 
@@ -193,7 +193,7 @@ export function pwaEntryResilience(options: PwaEntryResilienceOptions): Plugin {
         "</head>\n" +
         "<body>\n" +
         '<main id="pwa-entry"></main>\n' +
-        `<script type="module" src="${base}${entryPageFileName}"></script>\n` +
+        `<script type="module" src="${base}${urlFileName(entryPageFileName)}"></script>\n` +
         "</body>\n" +
         "</html>\n";
       this.emitFile({ type: "asset", fileName: RECOVERY_PAGE_ASSET_NAME, source: html });
@@ -210,7 +210,7 @@ export function pwaEntryResilience(options: PwaEntryResilienceOptions): Plugin {
       const closure = collectStaticImportClosure(bundle, entryPageFileName);
       const requiredUrls = [
         `${base}${RECOVERY_PAGE_ASSET_NAME}`,
-        ...[...closure].map((fileName) => `${base}${fileName}`),
+        ...[...closure].map((fileName) => `${base}${urlFileName(fileName)}`),
       ];
       const missing = requiredUrls.some((url) => !plan.precache.some((entry) => entry.url === url));
       if (missing) throw new Error(formatDiagnostics([diagnostic("entry.recovery-page-not-precached", "/precache")]));

@@ -1,8 +1,9 @@
 import { Buffer } from "node:buffer";
 import { createHash } from "node:crypto";
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, readFileSync, existsSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const projects = { react: "pwa-platform-react-demo", vue: "pwa-platform-vue-demo" };
 const args = Object.fromEntries(process.argv.slice(2).map((item) => {
@@ -39,7 +40,7 @@ if (prior && prior.deploymentId === deploymentId) throw new Error("Deployment is
 const token = process.env.CLOUDFLARE_API_TOKEN || keychain("PWA Platform Cloudflare Pages");
 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || keychain("PWA Platform Cloudflare Pages Account ID");
 if (!token || !accountId) throw new Error("Cloudflare credentials are unavailable");
-const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+const result = spawnPnpm([
   "exec", "wrangler", "pages", "deployment", "list", `--project-name=${receipt.project}`, `--environment=${environment}`, "--json",
 ], { cwd: root, env: { ...process.env, CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: accountId }, encoding: "utf8" });
 if (result.error || result.status !== 0) throw new Error("Cannot read production deployment list");

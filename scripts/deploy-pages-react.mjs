@@ -1,5 +1,6 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const keychainServices = {
   token: "PWA Platform Cloudflare Pages",
@@ -70,8 +71,7 @@ function readKeychain(service) {
 }
 
 function run(args) {
-  const command = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
-  const result = spawnSync(command, args, { env: environment, stdio: "inherit" });
+  const result = spawnPnpm(args, { env: environment, stdio: "inherit" });
   if (result.error) process.stderr.write(`Failed to run pnpm ${args.join(" ")}: ${result.error.message}\n`);
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
