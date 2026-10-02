@@ -90,7 +90,7 @@ jobs:
 
   windows-build:
     # Real Windows path handling is required for nested Vite assetsDir values and pnpm subprocesses.
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     name: Windows build (Node 24)
     runs-on: windows-latest
     timeout-minutes: 30
