@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { PwaIdentity, PwaInstallMetadata, PwaPolicy } from "@pwa-platform/contracts";
@@ -156,14 +156,37 @@ describe("the plugin inside a real build", () => {
     expect(names).toContain("manifest.webmanifest");
   });
 
+  it("builds with a Unicode public filename without changing the copied file", async () => {
+    const root = app({ "assets/中奖了.svga": "gift", "assets/ç» 2 10@2x.png": "image" });
+
+    await expect(runBuild(root, true)).resolves.toBeDefined();
+    expect(readFileSync(join(root, "dist/assets/中奖了.svga"), "utf8")).toBe("gift");
+    expect(readFileSync(join(root, "dist/assets/ç» 2 10@2x.png"), "utf8")).toBe("image");
+  });
+
+  it("compiles after default generateBundle hooks that finalize chunks", async () => {
+    const root = app();
+    await expect(runBuild(root, true, {
+      name: "fixture-vite-finalizer",
+      enforce: "post",
+      generateBundle(_options, bundle) {
+        const chunk = Object.values(bundle).find((output) => output.type === "chunk");
+        if (chunk?.type === "chunk") chunk.code += "\n/* finalized */\n";
+      },
+    })).resolves.toBeDefined();
+  });
+
   it("fails when a later plugin changes a chunk after the precache plan is compiled", async () => {
     const root = app();
     await expect(runBuild(root, true, {
       name: "fixture-late-obfuscator",
       enforce: "post",
-      generateBundle(_options, bundle) {
-        const chunk = Object.values(bundle).find((output) => output.type === "chunk");
-        if (chunk?.type === "chunk") chunk.code += "\n/* changed later */\n";
+      generateBundle: {
+        order: "post",
+        handler(_options, bundle) {
+          const chunk = Object.values(bundle).find((output) => output.type === "chunk");
+          if (chunk?.type === "chunk") chunk.code += "\n/* changed later */\n";
+        },
       },
     })).rejects.toThrow(/changed .* after the PWA plan was compiled/);
   });

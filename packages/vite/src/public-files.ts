@@ -9,10 +9,10 @@
 // So the bundle alone is not the whole truth about a build, and this module reads the rest of it. Everything else
 // in the package stays a pure function of what it is handed; the import guard pins `node:fs` to this file.
 import { readdirSync, readFileSync } from "node:fs";
-import { join, posix, sep } from "node:path";
+import { join, posix } from "node:path";
 
 export type PwaPublicFile = {
-  /** POSIX path relative to the public directory, matching how bundle entries name themselves. */
+  /** URL-canonical path relative to the public directory; the on-disk name is unchanged. */
   readonly path: string;
   readonly content: Uint8Array;
 };
@@ -49,13 +49,18 @@ function collect(directory: string, prefix: string, into: PwaPublicFile[]): void
 
   for (const entry of entries) {
     const full = join(directory, entry.name);
-    // Paths are joined with POSIX separators regardless of platform: they become URLs further down, and a
-    // backslash from a Windows build would produce a path no browser ever requests.
+    // Keep the disk path for reading, but encode each segment for the browser URL recorded in the plan.
+    // encodeURI leaves path characters such as @ intact; Vite serves the literal @ but not its %40 spelling.
+    // Query and fragment delimiters still need escaping so they remain part of the file name.
     const relative = prefix === "" ? entry.name : posix.join(prefix, entry.name);
     if (entry.isDirectory()) {
       collect(full, relative, into);
     } else if (entry.isFile()) {
-      into.push({ path: relative.split(sep).join(posix.sep), content: readFileSync(full) });
+      const urlPath = relative
+        .split(posix.sep)
+        .map((segment) => encodeURI(segment).replaceAll("#", "%23").replaceAll("?", "%3F"))
+        .join(posix.sep);
+      into.push({ path: urlPath, content: readFileSync(full) });
     }
   }
 }
