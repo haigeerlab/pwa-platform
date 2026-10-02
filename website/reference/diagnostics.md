@@ -1,6 +1,6 @@
 # 诊断码索引
 
-npm `0.3.0` **已支持**可移植部署和独立的 `worker-mime` 检查；本页也标明尚未公开的私有模块诊断码。按实际安装的包版本判断诊断码是否可用。
+npm `0.3.1` **已支持**可移植部署和独立的 `worker-mime` 检查；本页也标明尚未公开的私有模块诊断码。按实际安装的包版本判断诊断码是否可用。
 
 构建日志、发布检查和入口恢复的诊断信息都以**诊断码**加**字段路径**的形式给出，例如 <code>identity.invalid-origin at /identity/origin</code>。信息里只有码和路径，不回显你的配置值。路径是指向配置的 JSON Pointer：<code>/identity/scope</code>、<code>/install/icons/0/src</code>、<code>/policy/resources/2/pathPrefix</code>，数字是数组下标。先按前缀找到分组，再按码查“怎么改”；字段本身的取值规则见[字段参考](/guide/configuration#field-reference)。
 
