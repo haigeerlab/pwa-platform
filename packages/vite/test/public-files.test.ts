@@ -55,6 +55,20 @@ describe("readPublicFiles", () => {
     expect(file?.path).not.toContain("\\");
   });
 
+  it("records Unicode and reserved public filenames as canonical URL paths", () => {
+    const root = publicDir({
+      "static/images/live/gifts/中奖了.svga": "gift",
+      "static/images/live/gifts/space #?%.svga": "reserved",
+    });
+    const files = readPublicFiles(root, true);
+
+    expect(files.map(({ path }) => path).sort()).toEqual([
+      "static/images/live/gifts/%E4%B8%AD%E5%A5%96%E4%BA%86.svga",
+      "static/images/live/gifts/space%20%23%3F%25.svga",
+    ]);
+    expect(files.map(({ content }) => decode(content)).sort()).toEqual(["gift", "reserved"]);
+  });
+
   it("reads nothing when the directory is disabled", () => {
     // Vite resolves `publicDir: false` and `publicDir: ""` both to an empty string. Nothing is copied, so nothing
     // may appear in the manifest either — a file listed but never published is a release check failure waiting.

@@ -57,7 +57,7 @@ export function pwa(options: PwaViteOptions): Plugin;
 
 四个字段与 `PwaCompileInput` 一一对应，唯独缺 `hostBuildOutput`——那一项由插件采集，应用不填，也无从填对。
 
-插件 `enforce: "post"`：它必须在应用的其他插件产出全部文件之后才能采集清单。原始实现的 `apply: "build"` 已在本页 2026-09-26 修订中移除，以便开发服务解析页面配置；产物钩子依然只在构建时运行。
+插件 `enforce: "post"`：它必须在应用的其他插件产出全部文件之后才能采集清单。`generateBundle` 另设 `order: "post"`，等 Vite 5 的默认顺序钩子完成 JS 改写后再记录预缓存字节；更晚的后置改写仍由 `writeBundle` 的哈希校验拒绝。原始实现的 `apply: "build"` 已在本页 2026-09-26 修订中移除，以便开发服务解析页面配置；产物钩子依然只在构建时运行。
 
 ### 构建期的执行顺序
 
@@ -69,7 +69,7 @@ export function pwa(options: PwaViteOptions): Plugin;
    - `path`：条目的 `fileName`（相对 `outDir` 的 POSIX 路径）；
    - `contentHash`：内容的 sha256，以 URL-safe base64 截断到 43 字符（落在契约要求的 8–128 位内）；
    - `fingerprinted`：文件名是否匹配 Vite 的指纹模式。
-   **其二，`publicDir`**：Vite 把该目录原样复制到输出，这些文件不进 bundle，因此由 `public-files.ts` 递归读盘补齐。它们一律记为 `fingerprinted: false`——文件名是人写的，其中的 `-<hash>` 与内容无关，判成带指纹会让 `revision` 变为 `null`，文件更新后 worker 永不重取。`publicDir` 为空串（目录被禁用）或 `build.copyPublicDir` 为 `false` 时不采集：Vite 此时不复制，清单也不能声称它发布了。public 文件与 bundle 条目同名时构建失败——Vite 会让一方覆盖另一方且不报错，而同一 URL 两份字节正是计划要排除的分叉。
+   **其二，`publicDir`**：Vite 把该目录原样复制到输出，这些文件不进 bundle，因此由 `public-files.ts` 递归读盘补齐。磁盘文件名保持原样；清单里的相对路径逐段做 URL 编码，使中文、空格、`%` 等文件名成为浏览器实际请求的规范 URL。它们一律记为 `fingerprinted: false`——文件名是人写的，其中的 `-<hash>` 与内容无关，判成带指纹会让 `revision` 变为 `null`，文件更新后 worker 永不重取。`publicDir` 为空串（目录被禁用）或 `build.copyPublicDir` 为 `false` 时不采集：Vite 此时不复制，清单也不能声称它发布了。public 文件与 bundle 条目同名时构建失败——Vite 会让一方覆盖另一方且不报错，而同一 URL 两份字节正是计划要排除的分叉。
 
    `publicPath` 取 `config.base`，`serviceWorkerFile` 与 `manifestFile` 由身份的 `serviceWorkerUrl`、`manifestUrl` 去掉 `publicPath` 前缀得到。
 2. **编译计划**：`compilePlan({ identity, install, policy, topology, hostBuildOutput })`。失败则构建失败，错误列出诊断码与路径，不回显输入值。

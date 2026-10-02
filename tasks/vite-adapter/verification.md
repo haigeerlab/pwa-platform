@@ -332,3 +332,10 @@ Android 16 + Chrome 153 打开中文 Vite 夹具时，运行环境已是 `isSecu
 - **V5-4 真实业务项目验收**：移交宿主仓库，按接入作业单与项目 Skill 执行，证据记在宿主侧。本模块没有取得任何宿主源码、部署域名或生产响应头，因此**不宣称**任何业务仓库已完成接入或上线。
 - **正式发包门禁**：原计划在宿主验收后再决定 beta 版本。此后项目改为发布正式版，干净工作树与 CI 门禁分别在 [0.1.0](../stable-release-qualification/release-0.1.0.md) 与 [0.2.0](../package-distribution/release-0.2.0.md) 发布中执行并留有记录；“宿主验收之后”这一前提未满足。
 
+## 修复：public 中文文件名与 Vite 5 产物钩子顺序（2026-10-02）
+
+真实 Vite 5 宿主的 33 个 `public/` 中文素材名触发 `compile.invalid-host-output`。适配器现在只对进入构建清单的相对 URL 逐段编码；Vite 复制的磁盘文件名和宿主源码不变。回归测试先在旧实现中复现该诊断，修复后通过；临时宿主构建保留全部中文素材并成功输出，preview 对一个百分号编码素材 URL 返回 HTTP 200，返回字节与原素材的 SHA-256 相同。
+
+同一次宿主验证还暴露出 Vite 5 的默认顺序 `generateBundle` 钩子会在平台编译计划后改写 JS。平台钩子改为 `order: "post"`；测试同时验证默认顺序的改写被纳入计划，以及更晚的后置改写仍被 `writeBundle` 拒绝。宿主使用本地平台包、业务源码不变时，生产构建通过。
+
+验证：`@pwa-platform/vite` 287 项单测、38 项 Chrome 浏览器测试、`typecheck` 与 `build` 通过；全仓 `lint`、`docs:build` 和 `git diff --check` 通过。单测首次运行受本机 npm 缓存目录权限影响，改用 `/tmp` 缓存后全过。宿主现有 PurgeCSS 仍输出 CSS 语法警告与无效 CSS，此项不由路径修复解决；尚未发布新 npm 包，也未做生产部署验收。

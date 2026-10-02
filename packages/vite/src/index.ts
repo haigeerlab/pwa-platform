@@ -46,9 +46,8 @@ export type PwaPluginApi = {
    * Returns the plan compiled for this build; a deeply frozen copy the caller cannot mutate.
    *
    * Ready only after this plugin's own `generateBundle` has compiled a plan successfully, and only until the next
-   * `buildStart`. Before that point — including during another plugin's `generateBundle`, since this plugin runs
-   * `enforce: "post"` — and whenever compilation fails, this returns `null`. Callers should read it from
-   * `writeBundle` or a later hook.
+   * `buildStart`. Before this plugin's own `generateBundle` handler runs, and whenever compilation fails, this
+   * returns `null`. Callers should read it from `writeBundle` or a later hook.
    */
   getPlan(): PwaPlan | null;
 };
@@ -60,7 +59,8 @@ export type PwaPluginApi = {
  * developer is still looking at `vite.config`.
  *
  * The virtual client config is available in both development and builds. Bundle hooks only run during builds;
- * the plugin runs last (`enforce: "post"`) so it reads the finished bundle before collecting the precache list.
+ * `enforce: "post"` and `generateBundle.order: "post"` let it read finalized build output before collecting the
+ * precache list.
  */
 export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
   const validated = validateOptions(options);
@@ -137,83 +137,87 @@ export function pwa(options: PwaViteOptions): Plugin<PwaPluginApi> {
       return [{ tag: "link", attrs: { rel: "manifest", href: validated.identity.manifestUrl }, injectTo: "head" }];
     },
 
-    async generateBundle(_outputOptions, bundle) {
-      // Collected before anything is emitted, so the plan is compiled against what the app itself produced.
-      bundleHashesForCheck = hashBundleFiles(bundle as unknown as PwaBundle);
-      const publicFiles = readPublicFiles(publicDir, copyPublicDir);
-      publicPaths = publicFiles.map((file) => `${base}${file.path}`);
+    // Vite 5 finalizes dynamic import preload code in a later default-order generateBundle hook.
+    generateBundle: {
+      order: "post",
+      async handler(_outputOptions, bundle) {
+        // Collected before anything is emitted, so the plan is compiled against what the app itself produced.
+        bundleHashesForCheck = hashBundleFiles(bundle as unknown as PwaBundle);
+        const publicFiles = readPublicFiles(publicDir, copyPublicDir);
+        publicPaths = publicFiles.map((file) => `${base}${file.path}`);
 
-      // Public files are merged in here: Vite copies them at write time, so they never enter the bundle.
-      const files = bundleSourceFiles(bundle as unknown as PwaBundle, publicFiles);
+        // Public files are merged in here: Vite copies them at write time, so they never enter the bundle.
+        const files = bundleSourceFiles(bundle as unknown as PwaBundle, publicFiles);
 
-      // The manifest's main icons decide whether Chrome offers installation at all. Validate their published
-      // bytes here, while both bundle assets and publicDir files are available; contracts can only validate the
-      // metadata text and build-verifier receives paths rather than file contents.
-      const iconWarnings = validateManifestIcons(
-        validated.policy.install.enabled ? validated.install : null,
-        base,
-        files,
-      );
-      for (const warning of iconWarnings) this.warn(warning);
+        // The manifest's main icons decide whether Chrome offers installation at all. Validate their published
+        // bytes here, while both bundle assets and publicDir files are available; contracts can only validate the
+        // metadata text and build-verifier receives paths rather than file contents.
+        const iconWarnings = validateManifestIcons(
+          validated.policy.install.enabled ? validated.install : null,
+          base,
+          files,
+        );
+        for (const warning of iconWarnings) this.warn(warning);
 
-      // The default offline page, when enabled — spec/vite-adapter.md's "修订：平台默认离线页". Added to `files`
-      // before `buildPwaArtifacts` compiles the plan, so the page is a host build output file like any other and
-      // enters the precache the same way a business-authored offline page would (OP3's plan: "在 buildPwaArtifacts
-      // 之前才加入 files"). validateOfflinePageOption (options.ts, run at plugin creation) already guarantees
-      // offlineFallback is enabled whenever offlinePage is set, so the `enabled` branch below always matches.
-      if (offlinePage !== undefined && validated.policy.offlineFallback.enabled) {
-        // `offlineFallback.path` is mount-relative, and this package treats Vite's `base` and `identity.mountPath` as
-        // the same served root (host-output.ts's `relativeTo` assumes it for the worker and manifest URLs too), so
-        // the output file name is that path without its leading slash. Core resolves the same path against
-        // `mountPath` when it compiles the precache; should the two roots ever differ, the build fails there with
-        // compile.offline-fallback-not-built rather than precaching a page that is not where the plan says.
-        const offlinePageFileName = validated.policy.offlineFallback.path.slice(1);
-        if (files.some((file) => file.path === offlinePageFileName)) {
-          // Covers both sources a conflicting file could come from: a business-authored bundle output (an HTML
-          // file Vite itself emitted at that path) and a public-directory file (already merged into `files` by
-          // bundleSourceFiles above) — one check, because both already ended up in the same list.
-          failOfflinePageDiagnostic("vite.offline-page-conflict", "/policy/offlineFallback/path");
+        // The default offline page, when enabled — spec/vite-adapter.md's "修订：平台默认离线页". Added to `files`
+        // before `buildPwaArtifacts` compiles the plan, so the page is a host build output file like any other and
+        // enters the precache the same way a business-authored offline page would (OP3's plan: "在 buildPwaArtifacts
+        // 之前才加入 files"). validateOfflinePageOption (options.ts, run at plugin creation) already guarantees
+        // offlineFallback is enabled whenever offlinePage is set, so the `enabled` branch below always matches.
+        if (offlinePage !== undefined && validated.policy.offlineFallback.enabled) {
+          // `offlineFallback.path` is mount-relative, and this package treats Vite's `base` and `identity.mountPath` as
+          // the same served root (host-output.ts's `relativeTo` assumes it for the worker and manifest URLs too), so
+          // the output file name is that path without its leading slash. Core resolves the same path against
+          // `mountPath` when it compiles the precache; should the two roots ever differ, the build fails there with
+          // compile.offline-fallback-not-built rather than precaching a page that is not where the plan says.
+          const offlinePageFileName = validated.policy.offlineFallback.path.slice(1);
+          if (files.some((file) => file.path === offlinePageFileName)) {
+            // Covers both sources a conflicting file could come from: a business-authored bundle output (an HTML
+            // file Vite itself emitted at that path) and a public-directory file (already merged into `files` by
+            // bundleSourceFiles above) — one check, because both already ended up in the same list.
+            failOfflinePageDiagnostic("vite.offline-page-conflict", "/policy/offlineFallback/path");
+          }
+
+          const rendered = await renderOfflinePage({
+            locale: offlinePage.locale,
+            ...(offlinePage.messages !== undefined ? { messages: offlinePage.messages } : {}),
+            ...(offlinePage.css !== undefined ? { css: offlinePage.css } : {}),
+            appName: validated.install?.name ?? null,
+          });
+          files.push({ path: offlinePageFileName, content: rendered.html });
+          // `files` only feeds `buildPwaArtifacts`' plan compilation (what the precache is allowed to name); it is
+          // not written to disk on its own. The page still has to reach the actual build output, the same as any
+          // other file this plugin emits below.
+          this.emitFile({ type: "asset", fileName: offlinePageFileName, source: rendered.html });
+
+          // CSP hashes for the page's inline blocks, logged and never written to a file — same convention
+          // packages/entry-resilience/src/vite/index.ts uses for the recovery page's own inline style.
+          this.info(`${offlinePageFileName} style (default): ${rendered.hashes.defaultStyle}`);
+          if (rendered.hashes.hostStyle !== null) {
+            this.info(`${offlinePageFileName} style (host css): ${rendered.hashes.hostStyle}`);
+          }
+          this.info(`${offlinePageFileName} script: ${rendered.hashes.script}`);
         }
 
-        const rendered = await renderOfflinePage({
-          locale: offlinePage.locale,
-          ...(offlinePage.messages !== undefined ? { messages: offlinePage.messages } : {}),
-          ...(offlinePage.css !== undefined ? { css: offlinePage.css } : {}),
-          appName: validated.install?.name ?? null,
-        });
-        files.push({ path: offlinePageFileName, content: rendered.html });
-        // `files` only feeds `buildPwaArtifacts`' plan compilation (what the precache is allowed to name); it is
-        // not written to disk on its own. The page still has to reach the actual build output, the same as any
-        // other file this plugin emits below.
-        this.emitFile({ type: "asset", fileName: offlinePageFileName, source: rendered.html });
+        const built = await buildPwaArtifacts({ ...validated, publicPath: base, files });
 
-        // CSP hashes for the page's inline blocks, logged and never written to a file — same convention
-        // packages/entry-resilience/src/vite/index.ts uses for the recovery page's own inline style.
-        this.info(`${offlinePageFileName} style (default): ${rendered.hashes.defaultStyle}`);
-        if (rendered.hashes.hostStyle !== null) {
-          this.info(`${offlinePageFileName} style (host css): ${rendered.hashes.hostStyle}`);
+        // The compiler's warnings reach the build output (codes and contract paths only, never values). Until the
+        // shared-origin module this plugin dropped them; a root app's child-scope files kept out of the precache
+        // (`compile.host-file-in-child-scope`, ADR-0019) are exactly the kind of thing a developer has to see.
+        for (const warning of built.warnings) {
+          this.warn(`${warning.code} at ${warning.path === "" ? "(root)" : warning.path}`);
         }
-        this.info(`${offlinePageFileName} script: ${rendered.hashes.script}`);
-      }
 
-      const built = await buildPwaArtifacts({ ...validated, publicPath: base, files });
+        // Order follows PwaArtifactResult's contract: the manifest (when present), the platform worker, the recovery
+        // worker. The platform worker goes to the address the identity registers; the recovery worker goes beside it
+        // under a name the release process renames onto that address when a drill or an incident calls for it.
+        for (const file of built.files) {
+          this.emitFile({ type: "asset", fileName: file.path, source: file.content });
+        }
 
-      // The compiler's warnings reach the build output (codes and contract paths only, never values). Until the
-      // shared-origin module this plugin dropped them; a root app's child-scope files kept out of the precache
-      // (`compile.host-file-in-child-scope`, ADR-0019) are exactly the kind of thing a developer has to see.
-      for (const warning of built.warnings) {
-        this.warn(`${warning.code} at ${warning.path === "" ? "(root)" : warning.path}`);
-      }
-
-      // Order follows PwaArtifactResult's contract: the manifest (when present), the platform worker, the recovery
-      // worker. The platform worker goes to the address the identity registers; the recovery worker goes beside it
-      // under a name the release process renames onto that address when a drill or an incident calls for it.
-      for (const file of built.files) {
-        this.emitFile({ type: "asset", fileName: file.path, source: file.content });
-      }
-
-      planForCheck = built.plan;
-      exposedPlan = deepFreeze(structuredClone(built.plan));
+        planForCheck = built.plan;
+        exposedPlan = deepFreeze(structuredClone(built.plan));
+      },
     },
 
     writeBundle(_outputOptions, bundle) {
