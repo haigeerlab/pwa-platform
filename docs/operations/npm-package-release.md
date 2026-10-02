@@ -8,11 +8,12 @@
 
 ```bash
 # 目标版本已核对为 0.3.1，且最终 main 提交已通过本次发布门禁
-git switch main
-git pull --ff-only origin main
-git switch -c release/npm-0.3.1
+pnpm release:branch npm --version 0.3.1
+pnpm release:branch npm --version 0.3.1 --create
 git push -u origin HEAD
 ```
+
+创建命令会获取最新 `origin/main`，核对十个公开包的版本号都等于目标版本，并检查工作区及同名分支。它只建立本地分支；推送、npm 候选门禁与正式发布仍按下文执行。
 
 ## 候选门禁
 

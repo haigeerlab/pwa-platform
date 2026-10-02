@@ -396,3 +396,14 @@ G1 → 确认 → G2 → G3 → G4 → G5。G2 与 G3 的实现派给 `executor`
 - Draft PR 的跳过 job 在 GitHub 可显示成功：Draft 不可合并；ready_for_review 与后续 synchronize 必须重新运行，规则以 Ready PR 的真实结果为准。
 - PR 检查通过与合并提交 SHA 不同：任何正式发布前通过 workflow_dispatch 对最终 main SHA 再跑完整矩阵；运行 SHA 不符时不得发布。
 - GitHub Actions 用量与 Cloudflare 发布无直接关系；本任务不调用 Cloudflare 部署或 R2 写入。
+
+## 修订计划：发布分支命名工具（2026-10-02）
+
+依据 [platform-governance 规格](../../spec/platform-governance.md#修订发布分支命名工具2026-10-02)，按以下顺序实施：
+
+1. 写 Node 原生测试，覆盖文档同日次数、版本分支、npm 版本与错误输入；验证：当前缺少实现时测试失败。
+2. 实现纯命名函数和只读 CLI；验证：聚焦测试通过，示例命令给出预期名称。
+3. 实现显式创建路径：检查干净工作区与本地、远端重名，从新取得的 `origin/main` 建本地分支；用临时 Git 仓库集成测试成功和拒绝路径。
+4. 把命令接入根 `package.json`、CI 和两份发布手册；验证：聚焦测试、lint、`git diff --check` 通过，PR 必需 CI 通过。发布提醒在脚本进入 `main` 后使用该命令生成分支名。
+
+本修订不执行实际发布，也不改历史分支。验收点是可复用的命名与建分支命令进入 `main`；若网络或发布次数无法确认，创建动作应停在错误信息处。
