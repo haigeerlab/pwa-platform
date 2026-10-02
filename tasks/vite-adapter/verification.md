@@ -341,3 +341,5 @@ Android 16 + Chrome 153 打开中文 Vite 夹具时，运行环境已是 `isSecu
 验证：`@pwa-platform/vite` 287 项单测、38 项 Chrome 浏览器测试、`typecheck` 与 `build` 通过；全仓 `lint`、`docs:build` 和 `git diff --check` 通过。单测首次运行受本机 npm 缓存目录权限影响，改用 `/tmp` 缓存后全过。宿主现有 PurgeCSS 仍输出 CSS 语法警告与无效 CSS，此项不由路径修复解决；尚未发布新 npm 包，也未做生产部署验收。
 
 追加素材名验证：原宿主没有 `ç» 2 10@2x.png` 文件，也没有该完整文件名的静态代码引用。仅在临时宿主副本中把一张 PNG 改成该名。初次 Build 虽通过，但 `%40` URL 的 Vite 预览返回 HTML 回退页；将适配器改为保留路径中的 `@` 后，回归测试先红后绿，临时宿主再次 Build 成功，编码中文及空格、保留 `@` 的 URL 返回 HTTP 200 `image/png`，响应与源文件及输出文件的 SHA-256 一致。宿主策略将 `/static/images` 排除缓存，因此该图不会列入预缓存；这不影响资源 URL 的可访问性。
+
+发布准备复测：在同一临时宿主副本中暂时移除 `assetFileNames: 'static/assets/[hash][extname]'` 规避设置，使用 Vite 默认资产文件名再次 Build 成功，特殊名称 PNG 仍在输出。测试结束后配置已恢复，且与原项目配置逐字节一致。宿主现有 PurgeCSS 的 CSS 语法警告仍然出现；原业务目录未修改。
