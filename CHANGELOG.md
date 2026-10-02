@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 (2026-10-02)
+
+Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, or cache policy changes.
+
+- **Windows Vite builds (`@pwa-platform/vite`, `@pwa-platform/entry-resilience`):** bundle paths now use URL separators in generated asset references and precache checks, while Rollup's original bundle keys remain available for drift checks. The entry recovery plugin resolves its page entry from a `file:` URL as a native filesystem path. This fixes builds with nested `assetsDir` values on Windows.
+- **Windows release and deployment commands:** workspace scripts launch pnpm through its CLI path on Windows, including standalone `pnpm.exe`; the Windows CI job builds the workspace and tests the path handling. These scripts are repository tooling and do not change published runtime APIs.
+
 ## 0.3.0 (2026-10-02)
 
 Upgrade all ten public `@pwa-platform/*` packages together. This release adds an explicit portable deployment mode for Vite hosts and a separate worker MIME release check; existing fixed-origin configurations and v1–v3 plans retain their meaning.
