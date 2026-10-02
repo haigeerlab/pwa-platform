@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,10 +53,12 @@ function createBranch(name, { kind, version }) {
   git(['fetch', '--no-tags', 'origin', 'main']);
   git(['check-ref-format', '--branch', name]);
   if (kind === 'npm') {
+    let currentVersion;
     for (const packageName of publicPackages) {
       const manifest = JSON.parse(git(['show', `origin/main:packages/${packageName}/package.json`]).stdout);
-      if (manifest.version !== version) {
-        throw new Error(`${manifest.name} version ${manifest.version} on origin/main differs from ${version}`);
+      if (currentVersion === undefined) currentVersion = manifest.version;
+      if (manifest.version !== currentVersion) {
+        throw new Error(`${manifest.name} version ${manifest.version} on origin/main differs from ${currentVersion}`);
       }
     }
   }
@@ -66,6 +69,20 @@ function createBranch(name, { kind, version }) {
     throw new Error(`${name} already exists on origin`);
   }
   git(['switch', '-c', name, 'origin/main']);
+  if (kind === 'npm') {
+    for (const packageName of publicPackages) {
+      const path = `packages/${packageName}/package.json`;
+      const source = readFileSync(path, 'utf8');
+      const updated = source.replace(/("version"\s*:\s*")[^"]+(")/, (_, before, after) => `${before}${version}${after}`);
+      if (updated === source && JSON.parse(source).version !== version) throw new Error(`missing version in ${path}`);
+      writeFileSync(path, updated);
+    }
+    const skillPath = 'packages/vite/skills/pwa-onboarding/SKILL.md';
+    const skill = readFileSync(skillPath, 'utf8');
+    const updatedSkill = skill.replace(/(metadata:\s*\n\s*version:\s*")[^"]+(")/, (_, before, after) => `${before}${version}${after}`);
+    if (updatedSkill === skill && !skill.includes(`version: "${version}"`)) throw new Error(`missing metadata.version in ${skillPath}`);
+    writeFileSync(skillPath, updatedSkill);
+  }
   return git(['rev-parse', '--short', 'HEAD']).stdout.trim();
 }
 
@@ -94,7 +111,7 @@ function main() {
   const name = releaseBranchName(options);
   if (create) {
     const sha = createBranch(name, options);
-    process.stdout.write(`Created ${name} from origin/main @ ${sha}\n`);
+    process.stdout.write(`Created ${name} from origin/main @ ${sha}${options.kind === 'npm' ? '; updated package and skill versions (commit before publishing)' : ''}\n`);
   } else {
     process.stdout.write(`${name}\n`);
   }

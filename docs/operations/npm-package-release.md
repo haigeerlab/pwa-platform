@@ -1,54 +1,65 @@
 # npm 包发布流程
 
-本流程只处理库包分发，不替代[业务应用生产发布门禁](release-and-incident-runbook.md)。首批范围与版本见[规格](../../spec/package-distribution.md)和[ADR-0028](../adr/0028-npm-prerelease-distribution.md)。首批九包已于 2026-09-20 发布，实际结果见[发布记录](../../tasks/package-distribution/release-2026-09-20.md)；后续的 [beta.1](../../tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](../../tasks/package-distribution/release-2026-09-26-beta2.md) 各有发布记录。`0.1.0` 正式版增加 `entry-resilience`，十包实际发布与读回结果见[正式版发布记录](../../tasks/stable-release-qualification/release-0.1.0.md)，验收依据[正式版规格](../../spec/stable-release-qualification.md)和[验证记录](../../tasks/stable-release-qualification/verification.md)。`0.2.0` 的发布与核对结果见[0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)，后续见 [0.2.1](../../tasks/package-distribution/release-0.2.1.md) 与 [0.2.3](../../tasks/package-distribution/release-0.2.3.md) 发布记录（0.2.2 已准备但未发布）。以下门禁用于后续版本。
+本流程只处理 `@pwa-platform/*` 库包分发，不替代[业务应用生产发布门禁](release-and-incident-runbook.md)。历史版本的证据见 `tasks/package-distribution/release-*.md`。十个公开包共享一个版本；下面是代码已合入 `main` 后的常规正式版路径。
 
-## 合并后的发布准备
+## 快速路径：复用 main 的验证
 
-公开 npm 包有更新并合入 `main` 后，提醒发布负责人准备下一版本；若新版本号尚未写入并统一到本次公开包，先确定版本，不猜测分支名。目标版本确定后，从通过发布门禁的最终 `main` 提交创建唯一的 `release/npm-<新版本号>` 分支（例如 `release/npm-0.3.1`），核对远端同名分支未被其他候选占用。后续构建、打包、逐包发布与读回均从该固定提交按下文流程执行；提醒与建分支都不等于批准实际 npm 发布。历史 `release/<版本号>` 分支保持原名。
+目标是从**已通过完整 CI 的 `main` 提交**到十包可安装约十分钟；npm 服务延迟与交互式 2FA 会影响实际时间。先核对该提交的完整 CI 结果和 SHA；若最新 `main` 尚未通过，等待它完成。版本分支只含十包版本号和 Vite 随包 skill 版本，不改运行时代码。若还要改源码或公开契约，先经正常 PR 与完整 CI 合入 `main`。
 
 ```bash
-# 目标版本已核对为 0.3.1，且最终 main 提交已通过本次发布门禁
-pnpm release:branch npm --version 0.3.1
-pnpm release:branch npm --version 0.3.1 --create
+version=0.3.2  # 换成本次确定的目标版本
+pnpm release:branch npm --version "$version" --create
+git diff -- packages/*/package.json packages/vite/skills/pwa-onboarding/SKILL.md
+git add packages/*/package.json packages/vite/skills/pwa-onboarding/SKILL.md
+git commit -m "chore(release): prepare $version packages"
 git push -u origin HEAD
 ```
 
-创建命令会获取最新 `origin/main`，核对十个公开包的版本号都等于目标版本，并检查工作区及同名分支。它只建立本地分支；推送、npm 候选门禁与正式发布仍按下文执行。
+以下代码块在同一个交互终端中继续执行，以保留 `version`、`out` 和 `names`；换终端时先恢复这三个值。发布负责人对整批发包授权一次，循环中不再逐包请求操作许可。
 
-## 候选门禁
+创建命令会获取最新 `origin/main`，确认十包原版本一致、工作区干净且分支名未占用，然后创建 `release/npm-<版本>` 并改写版本元数据。提交后核对 `git diff origin/main...HEAD --name-only` 只包含上述版本文件；发布时记录 `main` 基点与发布提交 SHA。无需为这次纯版本改动先开 PR、再跑一遍完整 CI。发布后的元数据、文档与发布记录合成**一次 PR** 回到 `main`，该 PR 自身仍遵守 main 的合并门禁。
 
-1. 确认本地 npm 身份为组织有权发布的账号，组织方案允许公开包，2FA 可用于发布；不要把令牌或 `.npmrc` 写入仓库。
-2. 从干净副本执行 `pnpm install --frozen-lockfile`、`pnpm lint`、`pnpm build`、`pnpm typecheck`、`pnpm test`、`pnpm test:browser`、`pnpm test:onboarding-smoke`、`pnpm test:browser:engines`（不阻塞，ADR-0042）、`pnpm test:browser:network`（不阻塞，需联网）和 `pnpm audit --ignore-registry-errors`，记录环境、退出码与跳过项。浏览器测试需要本机回环端口。
-3. 执行 `pnpm check:publish`。逐包 `pnpm pack --pack-destination <临时目录>`，检查包内 `package.json`、README、LICENSE、所有 `exports` 路径与依赖版本；扫描敏感信息与多余文件。从独立项目安装全部 tarball，再导入公开入口。
-4. 确认本次目标版本（如 `@pwa-platform/*@0.1.0`）未在 registry 存在，审核最终 tarball 哈希和包列表。若任何包失败，停止整批发布并记录已发布项；同一版本不可覆盖，不用 `unpublish` 当回滚。
-5. 正式版发布使用 `pnpm publish --access public --tag latest`，按下列依赖顺序逐包执行并完成 2FA；不要直接从工作区运行 `npm publish`，因为 `workspace:*` 需要 pnpm 打包转换。发布源码必须是已审核的干净提交；若本次确有不提交 Git 的明确要求，才从与审核源码一致的临时副本使用 `--no-git-checks`，并记录两者差异核对。每步查询 registry，确认 tarball 版本与标签符合记录。
-6. **逐包等待可下载再发下一包**（2026-09-28 补充，见 [0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)）：registry 登记是异步的，0.2.0 中 `sw-runtime` 报告成功后约 5 分钟才可下载，而依赖它的包已经发布并把 `latest` 指向新版本，窗口内安装失败。每个包 `publish` 后，先确认 `https://registry.npmjs.org/@pwa-platform/<包>/-/<包>-<版本>.tgz` 返回 200，再发布依赖它的下一个包。发布循环开始前还要检查克隆中的版本号等于目标版本，否则不开始。
-7. **暂存发布需要逐包批准**（2026-09-28 补充，见 [0.2.1 发布记录](../../tasks/package-distribution/release-0.2.1.md)）：npm 可能把 `publish` 先作为暂存版本，发布者在 npm 上认证批准后才公开；`Published package` 的输出不代表已公开，暂存期间 tarball 为 404。**按上面的依赖顺序批准**，公开顺序由批准顺序决定。已暂存的版本不能再次 `publish`（409），只能批准；不要为提速中断后重发。
-8. **暂存状态的三种报错都表示“已提交过”**（2026-09-28 补充，见 [0.2.3 发布记录](../../tasks/package-distribution/release-0.2.3.md)）：非交互 shell 中 `pnpm publish` 报 `ERR_PNPM_OTP_NON_INTERACTIVE` 时版本可能已进入暂存；之后再发会得到 `409 ... previously staged`，批准后再发得到 `403 ... previously published`。遇到这三种情况都去 npm 批准或跳过该包，不要重发。发布须在交互终端中进行，以便完成 2FA。
-9. **批量提交时，批准顺序就是公开顺序**（同上）：为提速可先把各包提交进暂存、再统一批准，但这放弃了第 6 条的逐包等待。此时必须严格按下方依赖顺序批准，且在被依赖的包可下载之前不要批准依赖它的包；0.2.3 中 `vite`、`vue`、`react` 先于 `sw-runtime` 公开，造成约 9 分钟 `npm install` 失败；0.2.4（约 4 分钟）与 0.2.5（约 2 分钟，`core` 最后公开）再次出现。**一次只批准一层**：批准后等该层每个包的 tarball 返回 200，再批准下一层（层次即下方“顺序”的六组）；不要在 npm 页面上一次性全部批准。
-10. **引导 skill 的版本要跟着包走**（[ADR-0045](../adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)）：升级 `@pwa-platform/vite` 的版本号时，同一提交里修改 `packages/vite/skills/pwa-onboarding/SKILL.md` 的 `metadata.version`，使两者相等；忘记时 `pnpm test` 里 `packages/vite` 的 skill 版本测试会变红。`pnpm check:publish` 还会核对只有 `@pwa-platform/vite` 的 `files` 含 `skills`、其余包与所有 `exports` 都不暴露它。
-11. **文档站先于 `@pwa-platform/vite` 上线**（2026-09-29，[ai-onboarding](../../spec/ai-onboarding.md)）：清单只带文档站链接，文档不随包发布（离线时助手改读仓库副本，见 ADR-0045 的 2026-09-30 增补），文档站是助手与安装说明读者的首要来源，而文档站不随合并自动部署（见[文档站构建与部署](documentation-site.md)）。发布 `vite` 之前逐项核对，任一不满足就先按文档站流程从本次发布提交建立新的 `release/docs-…` 发布分支并部署，不发布 `vite`：
-    - 当前文档站生产分支与本次发布提交的 `website/` 没有差异；
-    - `SKILL.md` 里的每个文档站链接返回 200；
-    - 线上《选择接入包》含"用 AI 引导接入"一节（`id="ai-onboarding"`）。
+## 一次本地候选检查
 
-    ```bash
-    # DOCS_BRANCH 为文档站当前生产分支，可能是历史 docs/v... 或新的 release/docs-...
-    git diff --stat "origin/$DOCS_BRANCH" HEAD -- website/
-    grep -oE 'https://pwa-platform-docs\.pages\.dev/[a-z/-]+' packages/vite/skills/pwa-onboarding/SKILL.md | sort -u \
-      | while read -r url; do echo "$(curl -s -o /dev/null -w '%{http_code}' "$url") $url"; done
-    curl -s https://pwa-platform-docs.pages.dev/start/choose | grep -c 'id="ai-onboarding"'
-    ```
+在干净的发布提交上执行以下命令。构建是为了产生要上传的 `dist`；归档安装冒烟会从 `pnpm pack` 生成的 tarball 安装公开入口，覆盖 `workspace:*` 改写、`files` 和 `exports`。`main` CI 已覆盖的 lint、全仓单测、typecheck、Chrome/Edge/WebKit/Firefox、联网套件及审计不在这里重复。
 
-    第一条输出为空、第二条全是 200、第三条不为 0 才算通过，结果写进本次发布记录。
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pnpm check:publish
+pnpm test:onboarding-smoke
+
+out="$(mktemp -d)"
+names=(contracts core engine-workbox build-verifier sw-runtime client-runtime vite entry-resilience vue react)
+for name in "${names[@]}"; do
+  pnpm --filter "@pwa-platform/$name" pack --pack-destination "$out"
+done
+ls "$out"/*.tgz
+shasum -a 256 "$out"/*.tgz
+```
+
+发布前只读确认本地 npm 登录账号有组织发布权限、十个目标版本尚未占用，并检查本批 tarball 数量、名称、SHA-256 与发布提交。`@pwa-platform/vite` 随包 skill 的文档链接必须仍可访问；若 `website/` 与线上生产文档不同，先按[文档站流程](documentation-site.md)上线相关内容。网站的“当前 npm 版本”可以在包公开后更新，不因此阻塞包发布。
+
+## 批量提交，再集中验证
+
+先连续提交全部十包，**中途不逐包查询版本或 `latest`**。使用已由 `pnpm pack` 改写依赖的 tarball，不从工作区直接运行 `npm publish`。以下以 npm 暂存发布为例；这是 0.3.1 实际采用的路径。若其中一个提交失败，停止循环，记录已提交项，先只读查明状态，不对未知结果盲目重发。
+
+```bash
+for name in "${names[@]}"; do
+  npm stage publish "$out/pwa-platform-$name-$version.tgz" --access public --tag latest || break
+done
+# 整批提交结束后，再查看暂存状态和十个归档的提交结果。
+npm stage list
+```
+
+暂存版本要通过 `npm stage approve <stage-id>` 才公开。十包全部暂存后，按下方六层依赖顺序批准；每层批准后只确认该层 tarball 返回 HTTP 200，再批准下一层，避免上层已公开而下层尚不可下载。完整版本与 `latest` 检查仍留到整批结束。npm 官方要求**每个**暂存批准都做 2FA；本地登录或一次操作授权不能免除它。若使用直接 `npm publish <tarball>`，也保持同一批量提交顺序，并在全部命令结束后集中验证；直接发布可能产生短暂依赖可下载窗口。
 
 ## 顺序
 
-1. `contracts`
-2. `core`、`engine-workbox`、`build-verifier`
-3. `sw-runtime`
-4. `client-runtime`
-5. `vite`
-6. `entry-resilience`、`vue`、`react`
+依赖层次为 `contracts`；`core`、`engine-workbox`、`build-verifier`；`sw-runtime`；`client-runtime`；`vite`；`entry-resilience`、`vue`、`react`。
 
-此前 beta 使用 `next`，而 npm `latest` 曾指向旧 beta。正式版逐包读回时要确认 `latest` 改指本次版本，`next` 的历史含义保持可追溯。真实项目生产接入前，仍须按发布通道（[ADR-0030](../adr/0030-desktop-release-channel.md)）补齐该通道的浏览器 N/N-1、原生安装、真实域名响应头、部署回滚和恢复演练证据：`desktop` 通道为 Chrome 桌面端，`desktop+android` 通道另加 Chrome Android。未经这些证据，不宣称业务应用已具备生产发布证据；在首次以 `desktop+android` 通道发布之前，不宣称 Android 是已通过门禁的支持平台。
+待整批提交和所需批准完成后，一次性核对十个包的版本、`dist-tags.latest`、tarball HTTP 200 与下载内容，并从全新消费项目安装、导入全部公开入口。失败时记录已公开项和待处理项；已发布的同一版本不可覆盖，也不以 `unpublish` 当回滚。最后更新网站当前版本、README、CHANGELOG 与发布记录，合成一次 PR，待 main CI 通过后按文档站流程部署。npm 包全部可安装即为本流程的发布完成点，文档收口单独计时。
+
+## 适用边界
+
+预发布版须按目标 dist-tag 另行核对，不照抄上面的 `latest`。首次公开新包、发布范围变化、依赖或打包规则变化，以及 `main` CI 证据缺失时，按实际差异补做相应验证。业务应用的生产接入仍按 [ADR-0030](../adr/0030-desktop-release-channel.md) 完成对应通道的浏览器、原生安装、真实响应头、部署回滚和恢复演练证据；npm 包可安装不表示业务应用已通过这些门禁。
