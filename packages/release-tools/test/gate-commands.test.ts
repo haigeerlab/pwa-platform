@@ -43,6 +43,8 @@ const CI_RUN_EXCLUSIONS: ReadonlySet<string> = new Set([
   "pnpm docs:check-public-api",
   "node --test scripts/check-feature-evidence.test.mjs",
   "pnpm docs:check-evidence",
+  // Release branch naming is checked in CI, but it does not change the package release gate.
+  "pnpm test:release-branch",
   "node --test scripts/portable-a6-cloudflare.test.mjs",
   // Installs the engine-smoke browsers with their Linux system libraries; the gate's own command downloads the same
   // browsers without system packages (ADR-0042).
