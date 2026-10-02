@@ -2,7 +2,7 @@
 name: pwa-onboarding
 description: "把现有 Vite + Vue / React 项目接入 PWA Platform 的接入清单：检查能不能接、清理冲突、配置并构建、上线前后怎么验证。适用于接入 PWA、Service Worker、离线、安装、更新提示。A short checklist for onboarding a Vite + Vue/React project to PWA Platform."
 metadata:
-  version: "0.3.1"
+  version: "0.3.2"
 ---
 
 # PWA 接入清单
