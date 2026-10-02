@@ -2,6 +2,18 @@
 
 本流程只处理库包分发，不替代[业务应用生产发布门禁](release-and-incident-runbook.md)。首批范围与版本见[规格](../../spec/package-distribution.md)和[ADR-0028](../adr/0028-npm-prerelease-distribution.md)。首批九包已于 2026-09-20 发布，实际结果见[发布记录](../../tasks/package-distribution/release-2026-09-20.md)；后续的 [beta.1](../../tasks/package-distribution/release-2026-09-24.md) 与 [beta.2](../../tasks/package-distribution/release-2026-09-26-beta2.md) 各有发布记录。`0.1.0` 正式版增加 `entry-resilience`，十包实际发布与读回结果见[正式版发布记录](../../tasks/stable-release-qualification/release-0.1.0.md)，验收依据[正式版规格](../../spec/stable-release-qualification.md)和[验证记录](../../tasks/stable-release-qualification/verification.md)。`0.2.0` 的发布与核对结果见[0.2.0 发布记录](../../tasks/package-distribution/release-0.2.0.md)，后续见 [0.2.1](../../tasks/package-distribution/release-0.2.1.md) 与 [0.2.3](../../tasks/package-distribution/release-0.2.3.md) 发布记录（0.2.2 已准备但未发布）。以下门禁用于后续版本。
 
+## 合并后的发布准备
+
+公开 npm 包有更新并合入 `main` 后，提醒发布负责人准备下一版本；若新版本号尚未写入并统一到本次公开包，先确定版本，不猜测分支名。目标版本确定后，从通过发布门禁的最终 `main` 提交创建唯一的 `release/npm-<新版本号>` 分支（例如 `release/npm-0.3.1`），核对远端同名分支未被其他候选占用。后续构建、打包、逐包发布与读回均从该固定提交按下文流程执行；提醒与建分支都不等于批准实际 npm 发布。历史 `release/<版本号>` 分支保持原名。
+
+```bash
+# 目标版本已核对为 0.3.1，且最终 main 提交已通过本次发布门禁
+git switch main
+git pull --ff-only origin main
+git switch -c release/npm-0.3.1
+git push -u origin HEAD
+```
+
 ## 候选门禁
 
 1. 确认本地 npm 身份为组织有权发布的账号，组织方案允许公开包，2FA 可用于发布；不要把令牌或 `.npmrc` 写入仓库。
@@ -14,13 +26,13 @@
 8. **暂存状态的三种报错都表示“已提交过”**（2026-09-28 补充，见 [0.2.3 发布记录](../../tasks/package-distribution/release-0.2.3.md)）：非交互 shell 中 `pnpm publish` 报 `ERR_PNPM_OTP_NON_INTERACTIVE` 时版本可能已进入暂存；之后再发会得到 `409 ... previously staged`，批准后再发得到 `403 ... previously published`。遇到这三种情况都去 npm 批准或跳过该包，不要重发。发布须在交互终端中进行，以便完成 2FA。
 9. **批量提交时，批准顺序就是公开顺序**（同上）：为提速可先把各包提交进暂存、再统一批准，但这放弃了第 6 条的逐包等待。此时必须严格按下方依赖顺序批准，且在被依赖的包可下载之前不要批准依赖它的包；0.2.3 中 `vite`、`vue`、`react` 先于 `sw-runtime` 公开，造成约 9 分钟 `npm install` 失败；0.2.4（约 4 分钟）与 0.2.5（约 2 分钟，`core` 最后公开）再次出现。**一次只批准一层**：批准后等该层每个包的 tarball 返回 200，再批准下一层（层次即下方“顺序”的六组）；不要在 npm 页面上一次性全部批准。
 10. **引导 skill 的版本要跟着包走**（[ADR-0045](../adr/0045-ai-onboarding-skill-shipped-in-vite-package.md)）：升级 `@pwa-platform/vite` 的版本号时，同一提交里修改 `packages/vite/skills/pwa-onboarding/SKILL.md` 的 `metadata.version`，使两者相等；忘记时 `pnpm test` 里 `packages/vite` 的 skill 版本测试会变红。`pnpm check:publish` 还会核对只有 `@pwa-platform/vite` 的 `files` 含 `skills`、其余包与所有 `exports` 都不暴露它。
-11. **文档站先于 `@pwa-platform/vite` 上线**（2026-09-29，[ai-onboarding](../../spec/ai-onboarding.md)）：清单只带文档站链接，文档不随包发布（离线时助手改读仓库副本，见 ADR-0045 的 2026-09-30 增补），文档站是助手与安装说明读者的首要来源，而文档站不随合并自动部署（见[文档站构建与部署](documentation-site.md)）。发布 `vite` 之前逐项核对，任一不满足就先按文档站流程从本次发布提交建立新的 `docs/v…` 版本分支并部署，不发布 `vite`：
+11. **文档站先于 `@pwa-platform/vite` 上线**（2026-09-29，[ai-onboarding](../../spec/ai-onboarding.md)）：清单只带文档站链接，文档不随包发布（离线时助手改读仓库副本，见 ADR-0045 的 2026-09-30 增补），文档站是助手与安装说明读者的首要来源，而文档站不随合并自动部署（见[文档站构建与部署](documentation-site.md)）。发布 `vite` 之前逐项核对，任一不满足就先按文档站流程从本次发布提交建立新的 `release/docs-…` 发布分支并部署，不发布 `vite`：
     - 当前文档站生产分支与本次发布提交的 `website/` 没有差异；
     - `SKILL.md` 里的每个文档站链接返回 200；
     - 线上《选择接入包》含"用 AI 引导接入"一节（`id="ai-onboarding"`）。
 
     ```bash
-    # DOCS_BRANCH 为文档站当前生产分支，如 docs/v2026.09.27-2
+    # DOCS_BRANCH 为文档站当前生产分支，可能是历史 docs/v... 或新的 release/docs-...
     git diff --stat "origin/$DOCS_BRANCH" HEAD -- website/
     grep -oE 'https://pwa-platform-docs\.pages\.dev/[a-z/-]+' packages/vite/skills/pwa-onboarding/SKILL.md | sort -u \
       | while read -r url; do echo "$(curl -s -o /dev/null -w '%{http_code}' "$url") $url"; done
