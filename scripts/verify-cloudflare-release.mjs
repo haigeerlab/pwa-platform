@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 // Same two-step shape as build-cloudflare-site.mjs and its siblings: build the example package's workspace
 // dependencies from source first (it consumes them through their built `dist`), then run the CLI from inside the
@@ -17,7 +18,7 @@ if (cli.error) throw cli.error;
 process.exit(cli.status ?? 1);
 
 function run(command) {
-  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, { cwd: root, stdio: "inherit" });
+  const result = spawnPnpm(command, { cwd: root, stdio: "inherit" });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`Build command failed with exit code ${result.status ?? 1}`);
 }

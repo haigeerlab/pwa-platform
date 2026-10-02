@@ -60,6 +60,10 @@ ADR-0033 把清单的取得与验真交给业务应用，本 ADR 的交付边界
 - 结构、文案、按钮行为与返回路径校验均不变；页面文案仍写死中文，多语言留待后续。
 - **恢复页可跟随宿主应用的主题设置，靠的是一个存储键而不是一次函数调用。** 它是独立文档，应用的运行时调用到不了它；同源的 `localStorage` 在首次渲染前同步可读，因此偏好写入 `pwa:theme:<appId>:<environment>`，恢复页读到后在根元素设 `data-theme`。**公开契约是这个键**：恢复页不依赖 `client-runtime` 或任何平台包，将来其他平台界面读同一个键即可。写入用的 `setPwaTheme` 放在 `@pwa-platform/entry-resilience/client`，因为应用已经从那里导入页面侧 API；代价是未接入入口恢复的应用暂时拿不到这个设置入口，若将来确有需要再迁往更通用的位置。
 
+## 2026-10-02 修订：Windows 构建入口路径
+
+恢复页的 Vite 插件只在 Node 构建期运行。其 `vite/entry-page.ts` 需要把自身的 `file:` URL 转为原生文件路径；读取 URL 的 `pathname` 在 Windows 会留下 `/C:/` 前缀，不能作为 Rollup chunk 的本地入口。因此仅此文件允许导入 `node:url` 的 `fileURLToPath`。浏览器侧源码和其他构建源码仍不得导入 Node 内建模块，导入守卫按文件限定这一例外。bundle 文件名用于 HTML 与预缓存 URL 时也转成正斜杠；bundle 内部引用保留原名。
+
 ## 影响
 
 - **应用必须接入。** 不调用 `checkEntryRecovery()` 的应用不会展示任何入口，平台不会替应用改写界面或导航。

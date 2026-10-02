@@ -88,6 +88,37 @@ jobs:
         continue-on-error: true
         run: pnpm audit --ignore-registry-errors
 
+  windows-build:
+    # Real Windows path handling is required for nested Vite assetsDir values and pnpm subprocesses.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+    name: Windows build (Node 24)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm and Node.js, install with frozen lockfile
+        uses: pnpm/setup@703c52620218391530e48b9e8870d5c0082e1b9b # v2.1.0
+        with:
+          runtime: node@24
+          cache: true
+          require-lockfile: true
+
+      - name: Build workspace
+        run: pnpm build
+
+      - name: Test Windows bundle paths
+        run: pnpm --filter @pwa-platform/vite test
+
+      - name: Test Windows entry recovery
+        run: pnpm --filter @pwa-platform/entry-resilience test
+
+      - name: Test pnpm subprocess launch
+        run: node --test scripts/spawn-pnpm.test.mjs
+
   browser:
     # Gating jobs: every non-draft PR, every push to main, manual runs; not the nightly schedule.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)

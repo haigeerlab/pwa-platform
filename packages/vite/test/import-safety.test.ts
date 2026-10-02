@@ -1,9 +1,11 @@
+import { isAbsolute } from "node:path";
+import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
 /** Reads a file relative to this test (or an absolute path) through TypeScript's host, avoiding Node typings. */
 function read(location: string): string {
-  const text = ts.sys.readFile(decodeURIComponent(new URL(location, import.meta.url).pathname));
+  const text = ts.sys.readFile(isAbsolute(location) ? location : fileURLToPath(new URL(location, import.meta.url)));
   if (text === undefined) throw new Error(`Cannot read ${location}`);
   return text;
 }
@@ -11,7 +13,7 @@ function read(location: string): string {
 type SourceFiles = ReadonlyMap<string, string>;
 
 function sourceFiles(): SourceFiles {
-  const root = decodeURIComponent(new URL("../src/", import.meta.url).pathname);
+  const root = fileURLToPath(new URL("../src/", import.meta.url));
   return new Map(ts.sys.readDirectory(root, [".ts"]).map((file) => [file.slice(root.length), read(file)]));
 }
 

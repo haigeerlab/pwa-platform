@@ -169,10 +169,10 @@ pnpm verify:cloudflare:release --target=react --slot=main --history=<仓库外�
 
 ```bash
 # 1. 只读预检（与原流程相同）
-node scripts/deploy-cloudflare-site.mjs --target=react --slot=main --mode=check
+pnpm deploy:cloudflare:site --target=react --slot=main --mode=check
 
 # 2. 上传到预览分支 candidate（Cloudflare 写操作，只写预览环境；需项目所有者同意）
-node scripts/deploy-cloudflare-site.mjs --target=react --slot=main --mode=preview-candidate
+pnpm deploy:cloudflare:site --target=react --slot=main --mode=preview-candidate
 
 # 3. 带凭据导出生产历史（同上一节第 1 步）
 node scripts/audit-cloudflare-retention.mjs --target=react --export-history=<仓库外目录>/history-react.json

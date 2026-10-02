@@ -101,7 +101,9 @@ describe("DT1 skill packaging", () => {
 
   it("lists skills in files and ships SKILL.md in the packed tarball", () => {
     expect(pkg.files).toContain("skills");
-    const output = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], { cwd: packageDir, encoding: "utf8" });
+    const output = execFileSync(process.platform === "win32" ? "npm.cmd" : "npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
+      cwd: packageDir, encoding: "utf8", shell: process.platform === "win32",
+    });
     const packed = (JSON.parse(output) as Array<{ files: Array<{ path: string }> }>)[0];
     const paths = (packed?.files ?? []).map((file) => file.path);
     expect(paths).toContain("skills/pwa-onboarding/SKILL.md");

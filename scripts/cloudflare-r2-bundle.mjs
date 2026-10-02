@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { devNull, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const projects = { react: "pwa-platform-react-demo", vue: "pwa-platform-vue-demo" };
 const bucket = "pwa-platform-release-artifacts";
@@ -72,7 +73,7 @@ try {
       !readFileSync(remoteManifest).equals(readFileSync(manifestPath))) throw new Error("R2 read-back differs from the local release bundle");
   }
   validate(tarPath, manifestPath);
-  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", [
+  const result = spawnPnpm([
     "restore:cloudflare:site", `--target=${target}`, `--slot=${slot}`, `--sha256=${digest}`, "--mode=check",
   ], { cwd: root, encoding: "utf8" });
   if (result.error || result.status !== 0) throw new Error("Downloaded release bundle failed the local restore check");
@@ -82,7 +83,7 @@ try {
 }
 
 function request(method, url, file, contentType) {
-  const command = ["-q", "-K", "-", "--silent", "--show-error", "--output", method === "GET" ? file : "/dev/null",
+  const command = ["-q", "-K", "-", "--silent", "--show-error", "--output", method === "GET" ? file : devNull,
     "--write-out", "%{http_code}", "--request", method];
   if (method === "PUT") command.push("--data-binary", `@${file}`, "--header", `Content-Type: ${contentType}`, "--header", "If-None-Match: *");
   command.push(url);

@@ -16,6 +16,11 @@ type BundleEntry =
 
 export type PwaBundle = Readonly<Record<string, BundleEntry>>;
 
+/** Rollup bundle keys are output paths; on Windows they may contain native separators. */
+export function bundleFilePath(fileName: string): string {
+  return fileName.replaceAll("\\", "/");
+}
+
 /**
  * Vite's default output names end in `-<hash>` before the extension (`assets/index-BGTT0tj4.js`), where the hash is
  * base64url. Matching that shape is what marks a file as fingerprinted, and `compilePlan` turns that flag into the
@@ -48,7 +53,7 @@ export function bundleSourceFiles(
   publicFiles: readonly PwaPublicFile[] = [],
 ): PwaArtifactSourceFile[] {
   const files: PwaArtifactSourceFile[] = Object.entries(bundle).map(([fileName, entry]) => ({
-    path: fileName,
+    path: bundleFilePath(fileName),
     content: entry.type === "chunk" ? entry.code : entry.source,
   }));
 

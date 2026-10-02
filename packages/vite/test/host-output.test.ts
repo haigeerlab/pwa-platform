@@ -42,6 +42,23 @@ describe("collectHostOutput", () => {
     ]);
   });
 
+  it("uses URL separators for Windows bundle keys before compiling the host output", () => {
+    const output = collectHostOutput(bundle({
+      "static\\assets\\sidecar-B_hd9E1T.css": { type: "asset", source: "body{color:red}" },
+    }), "/app/", identity);
+
+    expect(byPath(output, "static/assets/sidecar-B_hd9E1T.css")?.fingerprinted).toBe(true);
+    expect(compilePlanFor(output).precache.some(({ url }) => url === "/app/static/assets/sidecar-B_hd9E1T.css")).toBe(true);
+  });
+
+  it("detects a public file collision after normalizing a Windows bundle key", () => {
+    expect(() => collectHostOutput(bundle({
+      "static\\assets\\logo.svg": { type: "asset", source: "bundle" },
+    }), "/app/", identity, [
+      { path: "static/assets/logo.svg", content: new TextEncoder().encode("public") },
+    ])).toThrow(/same name as a build output/);
+  });
+
   it("hashes a Uint8Array source as readily as a string one", () => {
     // A real build produces both: CSS arrives as text, an SVG over the inline limit as bytes.
     const output = collectHostOutput(bundle(), "/app/", identity);

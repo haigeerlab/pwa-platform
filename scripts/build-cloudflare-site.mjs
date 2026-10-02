@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
-import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { resolve, relative } from "node:path";
 import { URL, pathToFileURL } from "node:url";
+import { spawnPnpm } from "./spawn-pnpm.mjs";
 
 const targets = {
   react: { project: "pwa-platform-react-demo", appId: "pwareactdemo" },
@@ -187,7 +187,7 @@ function listFiles(directory) {
 }
 
 function run(command, extraEnv = {}) {
-  const result = spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", command, {
+  const result = spawnPnpm(command, {
     cwd: root, env: { ...process.env, ...extraEnv }, stdio: "inherit",
   });
   if (result.error) throw result.error;
