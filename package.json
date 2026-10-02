@@ -37,6 +37,8 @@
     "test:browser:network": "node scripts/run-workspace.mjs test:browser:network",
     "typecheck": "node scripts/run-workspace.mjs typecheck",
     "check:publish": "node scripts/check-package-distribution.mjs",
+    "release:branch": "node scripts/release-branch.mjs",
+    "test:release-branch": "node --test scripts/release-branch.test.mjs",
     "gate:local": "node packages/release-tools/dist/bin.js"
   },
   "devDependencies": {

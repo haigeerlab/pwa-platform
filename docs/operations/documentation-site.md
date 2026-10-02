@@ -44,21 +44,22 @@ pnpm docs:preview
 
 新的文档发布分支统一命名为 `release/docs-<版本号>`；没有独立文档版本号时，以马来西亚当地发布日期命名为 `release/docs-YYYY-MM-DD`。同日首次使用不带后缀的日期名，第二次使用 `release/docs-YYYY-MM-DD-1`，之后依次为 `-2`、`-3`；当天已完成的旧命名发布也计入次数。创建前核对当天发布记录和远端同名分支；若名称已被未完成的候选占用，先核实该候选状态，不能仅靠递增后缀绕过。已有 `docs/v...` 分支是历史发布记录，不改名。发布顺序如下：
 
+用 `pnpm release:branch docs --completed-today <次数>` 预览名称；`--create` 才会获取最新 `origin/main`，核对工作区干净且本地、远端没有同名分支，然后从 `origin/main` 创建本地分支。次数应按当天已完成的 Pages 部署记录人工核对，不能把现存分支数当成已发布次数。有独立文档版本时改用 `pnpm release:branch docs --version <版本号> --create`。
+
 1. 在本地运行 `pnpm docs:build`、`pnpm docs:preview`，检查首页、接入页、搜索、代码复制和 404；Ready PR 的三个 CI job 通过后再合入 `main`。
 2. 确认最终 `main` 提交的 GitHub Actions `CI` 中 Node 22／24、浏览器任务全部通过且运行 SHA 与目标提交相同；若该提交没有完整运行，则手动触发。确认 Pages 项目的 **Enable automatic production branch deployments** 为关闭、**Preview branch** 为 **None**；再从该提交创建并推送唯一的 `release/docs-...` 发布分支。分支推送不应触发 Pages 部署。
 3. 发布前核对账户仍使用 Pages Free、当月部署余量、静态产物文件数与单文件大小，确认没有 Functions、`_worker.js` 或新的付费绑定。无法确认时停止上传，先保留已验证的版本分支。
 4. 在 Pages 项目设置中把 **Production branch** 切换为该发布分支，保持生产和预览自动部署关闭；重新读取设置并确认线上部署 ID 未变化。在发布分支检出目录重新构建，然后用 Wrangler 指定同一个 `--branch=release/docs-...` 手动上传一次 `website/.vitepress/dist/`。上线后核验公开站点并记录发布分支、提交 SHA 和部署 ID。
 
 ```bash
-# 示例：从已验证的 main 建立某日首次文档发布分支；实际名称按当天发布次数选择
-git switch main
-git pull --ff-only origin main
-git switch -c release/docs-2026-10-03
+# 示例：当天尚未完成文档站发布；先核对部署记录和最终 main 的 CI
+pnpm release:branch docs --completed-today 0
+pnpm release:branch docs --completed-today 0 --create
 git push -u origin HEAD
 pnpm docs:build
 # 完成免费额度及 Pages 分支设置核验后，凭据由系统钥匙串或密钥管理器注入
 pnpm exec wrangler pages deploy website/.vitepress/dist \
-  --project-name=pwa-platform-docs --branch=release/docs-2026-10-03
+  --project-name=pwa-platform-docs --branch="$(git branch --show-current)"
 ```
 
 本项目在 2026-09-25 已通过 Pages API 关闭生产分支自动部署，并把预览分支设为 `none`；项目仍连接 `haigeerlab/pwa-platform`，设置变更没有创建部署。Pages 的 `Production branch` 当前指向 `docs/v2026.10.02-0.3.0`，上线后生产和预览自动部署仍保持关闭。每次推送或发布前重新核对这些控制项；Build watch paths 仍为 include `*`、exclude 空，它不是此流程的部署门禁。来源：[Git 集成与手动部署](https://developers.cloudflare.com/pages/configuration/git-integration/)、[分支部署控制](https://developers.cloudflare.com/pages/configuration/branch-build-controls/)与[Wrangler 生产分支参数](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)。

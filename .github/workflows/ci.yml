@@ -71,6 +71,9 @@ jobs:
       - name: Check feature evidence ledger
         run: pnpm docs:check-evidence
 
+      - name: Test release branch rules
+        run: pnpm test:release-branch
+
       - name: Check A6 upload preflight isolation
         run: node --test scripts/portable-a6-cloudflare.test.mjs
 
