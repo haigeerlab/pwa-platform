@@ -1,6 +1,6 @@
 # npm 发布记录：0.3.1
 
-> 状态：十个 npm 包已发布并完成公开读回；文档站更新待合入与部署。执行顺序见[本次计划](release-0.3.1-plan.md)。
+> 状态：十个 npm 包已发布并完成公开读回，文档站已更新。执行顺序见[本次计划](release-0.3.1-plan.md)。
 
 ## 范围
 
@@ -63,4 +63,6 @@
 
 批准完全部十包后统一从公共 registry 读回：十包 `dist-tags.latest` 均为 `0.3.1`，十个 tarball 均返回 200，SHA-1 与 registry 元数据一致，下载归档与上表对应的本地归档逐字节相同。全新临时消费项目以 `npm install --ignore-scripts` 从公共 registry 安装十包，十个根入口导入成功，依赖树中的平台包全部为 `0.3.1`，无嵌套旧版。
 
-文档站发布后补记版本分支、部署 ID 和线上核验结果。业务应用生产验收仍由各通道独立执行。
+发布后的文档更新经 [PR #132](https://github.com/haigeerlab/pwa-platform/pull/132) 合入；最终 `main` 提交 `8df7334c58d79bca80186894b9778ff8cf005af6` 的 [CI](https://github.com/haigeerlab/pwa-platform/actions/runs/36975033393) 七项任务全部成功。从该提交固定 `release/docs-2026-10-02-2` 分支，构建 122 个静态文件、3,847,657 字节，最大文件 434,659 字节，无 Functions、`_worker.js` 或 `_routes.json`。Cloudflare 账户订阅为 Workers Free，未登记付款方式，本月 Billable usage 未显示可计费数据；文档站项目在上传前有 32 条部署记录。切换生产分支后线上部署未变，三个自动部署开关仍关闭。
+
+Wrangler 4.144.0 手动上传后，Pages 生产部署 ID 为 `ce26793c-f003-4a00-8bde-19d4893dac24`，提交 SHA 与固定分支一致，状态 `success`。公开域名的首页、包选择、Vue／React 接入、可移植部署、发布流程、包参考均返回 200 并显示 `0.3.1`；未知路径返回 404。随包 onboarding skill 的首页及 12 个文档链接均返回 200，包选择页仍含 `id="ai-onboarding"`；浏览器中搜索 `0.3.1` 返回结果，安装命令的复制按钮显示 `Copied`。生产与预览自动部署保持关闭。业务应用生产验收仍由各通道独立执行。

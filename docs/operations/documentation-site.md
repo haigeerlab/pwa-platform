@@ -24,6 +24,8 @@
 
 2026-10-02 的 0.3.0 最终文档发布：版本分支 `docs/v2026.10.02-0.3.0` 固定于 [PR #125](https://github.com/haigeerlab/pwa-platform/pull/125) 合并提交 `f70bb9ef2b03ad558fcaf499889b195974685e3b`；[最终 main 手动 CI](https://github.com/haigeerlab/pwa-platform/actions/runs/36898142394) 六项全部成功。产物 122 个文件、3,846,289 字节，最大文件 434,207 字节，没有 Functions、`_worker.js` 或 `_routes.json`。推送固定分支后线上仍为先行部署；切换 Production branch 并独立读回后，三个自动部署开关仍为 `false`／`none`／`false`，也未产生自动部署。随后以 Wrangler 4.144.0 一次手动上传，生产部署 ID `7a914cfa-2bf2-48f2-b021-97018f4d80d0`，部署 SHA 与固定分支一致，状态成功。公开域名上的首页、包选择、Vue／React 接入、可移植部署、发布流程、服务器配置与包参考均返回 200；页面显示 npm `0.3.0`、worker MIME 和可移植部署已发布，未知路径返回 404。随包 onboarding skill 中 12 个文档链接均返回 200，包选择页含 `id="ai-onboarding"`；上线后自动部署开关保持关闭。
 
+2026-10-02 的 0.3.1 文档发布：版本分支 `release/docs-2026-10-02-2` 固定于 [PR #132](https://github.com/haigeerlab/pwa-platform/pull/132) 合并提交 `8df7334c58d79bca80186894b9778ff8cf005af6`；该提交的 [最终 main CI](https://github.com/haigeerlab/pwa-platform/actions/runs/36975033393) 七项全部成功。上传前在 Cloudflare Billing 确认 Workers Free、未登记付款方式且本月 Billable usage 未显示可计费数据；本站此前共有 32 条部署记录。产物有 122 个静态文件、3,847,657 字节，最大文件 434,659 字节，没有 Functions、`_worker.js` 或 `_routes.json`。推送固定分支后未自动部署；切换 Production branch 并独立读回后，线上仍为 0.3.0 部署，三个自动部署开关仍为 `false`／`none`／`false`。随后以 Wrangler 4.144.0 一次手动上传，生产部署 ID `ce26793c-f003-4a00-8bde-19d4893dac24`，部署 SHA 与固定分支一致，状态成功。公开域名的首页、包选择、Vue／React 接入、可移植部署、发布流程与包参考均返回 200 并显示 npm `0.3.1`；未知路径返回 404，随包 onboarding skill 的首页及 12 个文档链接均返回 200，包选择页含 `id="ai-onboarding"`；浏览器中搜索 `0.3.1` 返回结果，安装命令的复制按钮显示 `Copied`。上线后自动部署开关保持关闭。
+
 ## 本地检查
 
 在仓库根目录运行：
@@ -38,7 +40,7 @@ pnpm docs:preview
 
 ## 免费额度与集中发布
 
-本站按 **Cloudflare Pages Free** 使用。Cloudflare 当前公布的 Free 限额为每月 500 次 Pages 部署、同一时间 1 次构建、单站最多 20,000 个文件及单文件最多 25 MiB；纯静态资源请求免费且不限次数。最近一次本地构建有 122 个文件、总计 3,846,289 字节，最大文件 434,207 字节；产物中没有 Pages Functions 或 `_worker.js`。这些数字只说明当前产物符合静态站条件，不代表账户余量。文档站不使用 R2、Workers、Pages Functions 或付费附加功能；若以后引入，须先重新核对计费边界。来源：[Pages 限额](https://developers.cloudflare.com/pages/platform/limits/)、[Pages 静态资源计费](https://developers.cloudflare.com/pages/functions/pricing/)。
+本站按 **Cloudflare Pages Free** 使用。Cloudflare 当前公布的 Free 限额为每月 500 次 Pages 部署、同一时间 1 次构建、单站最多 20,000 个文件及单文件最多 25 MiB；纯静态资源请求免费且不限次数。最近一次本地构建有 122 个文件、总计 3,847,657 字节，最大文件 434,659 字节；产物中没有 Pages Functions 或 `_worker.js`。这些数字只说明当前产物符合静态站条件，不代表账户余量。文档站不使用 R2、Workers、Pages Functions 或付费附加功能；若以后引入，须先重新核对计费边界。来源：[Pages 限额](https://developers.cloudflare.com/pages/platform/limits/)、[Pages 静态资源计费](https://developers.cloudflare.com/pages/functions/pricing/)。
 
 为减少部署次数，文档与功能改动通过 Ready PR 合并到 `main`；合并后若 `website/` 相对当前线上部署有更新，应提醒发布负责人准备文档站发布。决定发布时，先确认最终 `main` 提交的完整 CI 已通过，再从验证过的同一提交建立发布分支。提醒本身不创建分支或部署。每个发布分支固定指向一次发布候选；后续修改先进入 `main`，再建立新的发布分支。
 
@@ -62,7 +64,7 @@ pnpm exec wrangler pages deploy website/.vitepress/dist \
   --project-name=pwa-platform-docs --branch="$(git branch --show-current)"
 ```
 
-本项目在 2026-09-25 已通过 Pages API 关闭生产分支自动部署，并把预览分支设为 `none`；项目仍连接 `haigeerlab/pwa-platform`，设置变更没有创建部署。Pages 的 `Production branch` 当前指向 `docs/v2026.10.02-0.3.0`，上线后生产和预览自动部署仍保持关闭。每次推送或发布前重新核对这些控制项；Build watch paths 仍为 include `*`、exclude 空，它不是此流程的部署门禁。来源：[Git 集成与手动部署](https://developers.cloudflare.com/pages/configuration/git-integration/)、[分支部署控制](https://developers.cloudflare.com/pages/configuration/branch-build-controls/)与[Wrangler 生产分支参数](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)。
+本项目在 2026-09-25 已通过 Pages API 关闭生产分支自动部署，并把预览分支设为 `none`；项目仍连接 `haigeerlab/pwa-platform`，设置变更没有创建部署。Pages 的 `Production branch` 当前指向 `release/docs-2026-10-02-2`，上线后生产和预览自动部署仍保持关闭。每次推送或发布前重新核对这些控制项；Build watch paths 仍为 include `*`、exclude 空，它不是此流程的部署门禁。来源：[Git 集成与手动部署](https://developers.cloudflare.com/pages/configuration/git-integration/)、[分支部署控制](https://developers.cloudflare.com/pages/configuration/branch-build-controls/)与[Wrangler 生产分支参数](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)。
 
 2026-09-25 后续审计发现：只关闭生产与预览的细分自动部署开关时，GitHub 推送仍留下 `is_skipped=true`、状态为 `idle` 的预览记录；这些记录不是新的成功站点发布，不能直接当作每月构建次数。为减少这种记录，已同时将 Pages Git source 的总开关 `deployments_enabled` 设为 `false`，并经独立 API GET 核对三个开关为 `false`／`false`／`none`；生产部署 ID 保持 `69f08e16-03d4-4cdf-a9e1-427ca8a7fc79`。该总开关在 Cloudflare API 中标记为 deprecated，后续仍应以细分开关和实际部署记录共同核验；审计记录分支 `codex/cloudflare-free-audit-2026-09-25` 的正常推送后，部署记录总数仍为 22、最新记录 ID 未变；合并到 `main` 后再复核一次，不为核验而额外推送。来源：[Pages API 配置字段](https://developers.cloudflare.com/api/resources/pages/)。
 
