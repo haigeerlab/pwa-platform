@@ -9,7 +9,7 @@
 // Cloudflare credentials and is exercised only by the real run in P5, never here.
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -19,6 +19,18 @@ const scriptPath = resolve(repoRoot, "scripts", "deploy-cloudflare-site.mjs");
 const source = readFileSync(scriptPath, "utf8");
 // The public repository starts from a clean snapshot, so the pre-drill commit is stored as a fixture.
 const beforeDrillSource = readFileSync(new URL("./fixtures/deploy-cloudflare-site.4594f56.mjs.txt", import.meta.url), "utf8");
+// The historical comparison tests concern release flow. Undo only the mechanical Windows launcher substitution
+// before comparing source lines with the pre-drill fixture.
+const sourceWithLegacyLauncher = source
+  .replace('import { spawnPnpm } from "./spawn-pnpm.mjs";\n', "")
+  .replaceAll('spawnPnpm(', 'spawnSync(process.platform === "win32" ? "pnpm.cmd" : "pnpm", ');
+
+function copyScript(scriptsDir: string): string {
+  const copiedScript = join(scriptsDir, "deploy-cloudflare-site.mjs");
+  writeFileSync(copiedScript, source);
+  copyFileSync(resolve(repoRoot, "scripts", "spawn-pnpm.mjs"), join(scriptsDir, "spawn-pnpm.mjs"));
+  return copiedScript;
+}
 
 /**
  * Copies the real script into a fresh, empty temp root at "<root>/scripts/deploy-cloudflare-site.mjs" and runs it
@@ -28,8 +40,7 @@ function runCopyInEmptyRoot(args: readonly string[]) {
   const root = mkdtempSync(join(tmpdir(), "pwa-deploy-script-safety-"));
   const scriptsDir = join(root, "scripts");
   mkdirSync(scriptsDir, { recursive: true });
-  const copiedScript = join(scriptsDir, "deploy-cloudflare-site.mjs");
-  writeFileSync(copiedScript, source);
+  const copiedScript = copyScript(scriptsDir);
   const env = { ...process.env, CLOUDFLARE_API_TOKEN: "not-a-real-token", CLOUDFLARE_ACCOUNT_ID: "not-a-real-account-id" };
   const result = spawnSync(process.execPath, [copiedScript, ...args], { encoding: "utf8", env });
   return { root, result };
@@ -164,7 +175,7 @@ describe("deploy-cloudflare-site.mjs drill artifact requirement is refused befor
     try {
       const scriptsDir = join(root, "scripts");
       mkdirSync(scriptsDir, { recursive: true });
-      writeFileSync(join(scriptsDir, "deploy-cloudflare-site.mjs"), source);
+      copyScript(scriptsDir);
       writeDrillPreCredentialFixture(root);
       const env = { ...process.env, CLOUDFLARE_API_TOKEN: "not-a-real-token", CLOUDFLARE_ACCOUNT_ID: "not-a-real-account-id" };
       const result = spawnSync(process.execPath, [
@@ -212,7 +223,7 @@ describe("deploy-cloudflare-site.mjs drill post-deploy block (static checks)", (
 
   it("keeps every line from baseline 4594f56 unchanged: DR2 only inserted new lines, it never removed or edited one", () => {
     const headLines = beforeDrillSource.split("\n");
-    const currentLines = source.split("\n");
+    const currentLines = sourceWithLegacyLauncher.split("\n");
     let cursor = 0;
     for (const line of currentLines) {
       if (cursor < headLines.length && line === headLines[cursor]) cursor++;
@@ -228,7 +239,7 @@ describe("deploy-cloudflare-site.mjs drill post-deploy block (static checks)", (
     expect(headStart).toBeGreaterThan(-1);
     expect(headEnd).toBeGreaterThan(headStart);
     const headBlock = headSource.slice(headStart, headEnd);
-    expect(source).toContain(headBlock);
+    expect(sourceWithLegacyLauncher).toContain(headBlock);
   });
 
   it("main's post-deploy block is byte-identical to baseline 4594f56", () => {
@@ -239,7 +250,7 @@ describe("deploy-cloudflare-site.mjs drill post-deploy block (static checks)", (
     expect(headStart).toBeGreaterThan(-1);
     expect(headEnd).toBeGreaterThan(headStart);
     const headBlock = headSource.slice(headStart, headEnd);
-    expect(source).toContain(headBlock);
+    expect(sourceWithLegacyLauncher).toContain(headBlock);
   });
 });
 
@@ -268,7 +279,7 @@ describe("deploy-cloudflare-site.mjs --slot=main upload file allowlist (static, 
     const realRoot = realpathSync(root);
     const scriptsDir = join(realRoot, "scripts");
     mkdirSync(scriptsDir, { recursive: true });
-    writeFileSync(join(scriptsDir, "deploy-cloudflare-site.mjs"), source);
+    copyScript(scriptsDir);
 
     const baselineDirectory = resolve(realRoot, "packages", "examples-browser-e2e", "apps", "shared", "release-baseline");
     mkdirSync(baselineDirectory, { recursive: true });

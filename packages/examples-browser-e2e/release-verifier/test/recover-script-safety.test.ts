@@ -9,7 +9,7 @@
 // step-failure/no-cleanup behavior, need a real R2 index and real Cloudflare credentials and are exercised only by
 // the real, isolated-clone run (RC3), never here.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -17,6 +17,13 @@ import { describe, expect, it } from "vitest";
 const repoRoot = resolve(import.meta.dirname, "..", "..", "..", "..");
 const scriptPath = resolve(repoRoot, "scripts", "recover-cloudflare-site.mjs");
 const source = readFileSync(scriptPath, "utf8");
+
+function copyScript(scriptsDir: string): string {
+  const copiedScript = join(scriptsDir, "recover-cloudflare-site.mjs");
+  writeFileSync(copiedScript, source);
+  copyFileSync(resolve(repoRoot, "scripts", "spawn-pnpm.mjs"), join(scriptsDir, "spawn-pnpm.mjs"));
+  return copiedScript;
+}
 
 const fakeCredentialEnv = {
   ...process.env,
@@ -34,8 +41,7 @@ function runCopyInEmptyRoot(args: readonly string[]) {
   const root = mkdtempSync(join(tmpdir(), "pwa-recover-script-safety-"));
   const scriptsDir = join(root, "scripts");
   mkdirSync(scriptsDir, { recursive: true });
-  const copiedScript = join(scriptsDir, "recover-cloudflare-site.mjs");
-  writeFileSync(copiedScript, source);
+  const copiedScript = copyScript(scriptsDir);
   const result = spawnSync(process.execPath, [copiedScript, ...args], { encoding: "utf8", env: fakeCredentialEnv });
   return { root, result };
 }
@@ -108,7 +114,7 @@ function withExistingState(relative: string) {
   const root = mkdtempSync(join(tmpdir(), "pwa-recover-script-safety-state-"));
   const scriptsDir = join(root, "scripts");
   mkdirSync(scriptsDir, { recursive: true });
-  writeFileSync(join(scriptsDir, "recover-cloudflare-site.mjs"), source);
+  copyScript(scriptsDir);
   mkdirSync(resolve(root, "build", "cloudflare", "react", relative), { recursive: true });
   const result = spawnSync(process.execPath, [join(scriptsDir, "recover-cloudflare-site.mjs"), "--target=react"], {
     encoding: "utf8", env: fakeCredentialEnv,
@@ -142,7 +148,7 @@ describe("recover-cloudflare-site.mjs stays read-only (static checks)", () => {
 
   it("the state guard appears before the first subprocess call", () => {
     const guardIndex = source.indexOf("Operational state already exists");
-    const firstSpawnIndex = source.indexOf("spawnSync(");
+    const firstSpawnIndex = source.indexOf("spawnPnpm(");
     expect(guardIndex).toBeGreaterThan(-1);
     expect(firstSpawnIndex).toBeGreaterThan(-1);
     expect(guardIndex).toBeLessThan(firstSpawnIndex);

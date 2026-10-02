@@ -46,6 +46,10 @@ const CI_RUN_EXCLUSIONS: ReadonlySet<string> = new Set([
   // Release branch naming is checked in CI, but it does not change the package release gate.
   "pnpm test:release-branch",
   "node --test scripts/portable-a6-cloudflare.test.mjs",
+  // Windows compatibility checks exercise platform-specific paths and process launch, outside the release gate.
+  "pnpm --filter @pwa-platform/vite test",
+  "pnpm --filter @pwa-platform/entry-resilience test",
+  "node --test scripts/spawn-pnpm.test.mjs",
   // Installs the engine-smoke browsers with their Linux system libraries; the gate's own command downloads the same
   // browsers without system packages (ADR-0042).
   "pnpm --filter @pwa-platform/sw-runtime exec playwright install --with-deps webkit firefox",

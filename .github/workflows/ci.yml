@@ -110,10 +110,11 @@ jobs:
       - name: Build workspace
         run: pnpm build
 
-      - name: Test Windows bundle paths and entry recovery
-        run: |
-          pnpm --filter @pwa-platform/vite test
-          pnpm --filter @pwa-platform/entry-resilience test
+      - name: Test Windows bundle paths
+        run: pnpm --filter @pwa-platform/vite test
+
+      - name: Test Windows entry recovery
+        run: pnpm --filter @pwa-platform/entry-resilience test
 
       - name: Test pnpm subprocess launch
         run: node --test scripts/spawn-pnpm.test.mjs
