@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ordered = ['contracts', 'core', 'engine-workbox', 'build-verifier', 'sw-runtime', 'client-runtime', 'vite', 'entry-resilience', 'vue', 'react'];
 const expected = new Set(ordered.map((name) => `@pwa-platform/${name}`));
-const version = '0.3.1';
+const version = JSON.parse(readFileSync(join(root, 'packages', 'contracts', 'package.json'), 'utf8')).version;
+if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/.test(version)) {
+  throw new Error(`Invalid public package version: ${version}`);
+}
 const license = readFileSync(join(root, 'packages', 'contracts', 'LICENSE'), 'utf8');
 const published = new Set();
 for (const name of ordered) {
@@ -23,6 +26,12 @@ for (const name of ordered) {
   const shipsSkills = pkg.files.includes('skills');
   if (name === 'vite' ? !shipsSkills || !existsSync(join(directory, 'skills', 'pwa-onboarding', 'SKILL.md')) : shipsSkills) {
     throw new Error(`Unexpected skills packaging: ${name}`);
+  }
+  if (name === 'vite') {
+    const skill = readFileSync(join(directory, 'skills', 'pwa-onboarding', 'SKILL.md'), 'utf8');
+    if (skill.match(/metadata:\s*\n\s*version:\s*"([^"]+)"/)?.[1] !== version) {
+      throw new Error(`Vite onboarding skill version differs from ${version}`);
+    }
   }
   if (JSON.stringify(pkg.exports ?? {}).includes('skills')) {
     throw new Error(`Skills must not be exported: ${name}`);

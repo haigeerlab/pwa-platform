@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
@@ -49,23 +49,40 @@ test('creates a local branch at fetched origin/main and refuses dirty or occupie
     writeFileSync(join(work, 'README.md'), 'release branch test\n');
     for (const name of ['contracts', 'core', 'engine-workbox', 'build-verifier', 'sw-runtime', 'client-runtime', 'vite', 'entry-resilience', 'vue', 'react']) {
       mkdirSync(join(work, 'packages', name), { recursive: true });
-      writeFileSync(join(work, 'packages', name, 'package.json'), JSON.stringify({ name: `@pwa-platform/${name}`, version: '0.3.1' }));
+      writeFileSync(join(work, 'packages', name, 'package.json'), JSON.stringify({ name: `@pwa-platform/${name}`, version: '0.3.0' }));
     }
+    mkdirSync(join(work, 'packages/vite/skills/pwa-onboarding'), { recursive: true });
+    writeFileSync(join(work, 'packages/vite/skills/pwa-onboarding/SKILL.md'), '---\nmetadata:\n  version: "0.3.0"\n---\n');
     run('git', ['add', '.'], work);
     run('git', ['commit', '-m', 'Initial'], work);
     run('git', ['remote', 'add', 'origin', remote], work);
     run('git', ['push', '-u', 'origin', 'main'], work);
-    const main = run('git', ['rev-parse', 'origin/main'], work);
 
-    const wrongVersion = spawnSync(process.execPath, [script, 'npm', '--version', '0.3.2', '--create'], { cwd: work, encoding: 'utf8' });
-    assert.notEqual(wrongVersion.status, 0);
-    assert.match(wrongVersion.stderr, /version.*main/);
+    writeFileSync(join(work, 'packages/react/package.json'), JSON.stringify({ name: '@pwa-platform/react', version: '0.2.9' }));
+    run('git', ['add', '.'], work);
+    run('git', ['commit', '-m', 'Inconsistent versions'], work);
+    run('git', ['push', 'origin', 'main'], work);
+    const inconsistent = spawnSync(process.execPath, [script, 'npm', '--version', '0.3.1', '--create'], { cwd: work, encoding: 'utf8' });
+    assert.notEqual(inconsistent.status, 0);
+    assert.match(inconsistent.stderr, /differs from/);
     assert.equal(run('git', ['branch', '--show-current'], work), 'main');
+    writeFileSync(join(work, 'packages/react/package.json'), JSON.stringify({ name: '@pwa-platform/react', version: '0.3.0' }));
+    run('git', ['add', '.'], work);
+    run('git', ['commit', '-m', 'Align versions'], work);
+    run('git', ['push', 'origin', 'main'], work);
+    const alignedMain = run('git', ['rev-parse', 'origin/main'], work);
 
     const created = run(process.execPath, [script, 'npm', '--version', '0.3.1', '--create'], work);
     assert.match(created, /Created release\/npm-0\.3\.1/);
     assert.equal(run('git', ['branch', '--show-current'], work), 'release/npm-0.3.1');
-    assert.equal(run('git', ['rev-parse', 'HEAD'], work), main);
+    assert.equal(run('git', ['rev-parse', 'HEAD'], work), alignedMain);
+    for (const name of ['contracts', 'core', 'engine-workbox', 'build-verifier', 'sw-runtime', 'client-runtime', 'vite', 'entry-resilience', 'vue', 'react']) {
+      assert.equal(JSON.parse(run('git', ['show', `HEAD:packages/${name}/package.json`], work)).version, '0.3.0');
+      assert.equal(JSON.parse(readFileSync(join(work, 'packages', name, 'package.json'), 'utf8')).version, '0.3.1');
+    }
+    assert.match(readFileSync(join(work, 'packages/vite/skills/pwa-onboarding/SKILL.md'), 'utf8'), /version: "0\.3\.1"/);
+    run('git', ['add', '.'], work);
+    run('git', ['commit', '-m', 'Prepare release'], work);
 
     const duplicate = spawnSync(process.execPath, [script, 'npm', '--version', '0.3.1', '--create'], { cwd: work, encoding: 'utf8' });
     assert.notEqual(duplicate.status, 0);
