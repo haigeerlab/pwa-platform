@@ -59,14 +59,16 @@ describe("readPublicFiles", () => {
     const root = publicDir({
       "static/images/live/gifts/中奖了.svga": "gift",
       "static/images/live/gifts/space #?%.svga": "reserved",
+      "static/images/ç» 2 10@2x.png": "at-sign",
     });
     const files = readPublicFiles(root, true);
 
     expect(files.map(({ path }) => path).sort()).toEqual([
+      "static/images/%C3%A7%C2%BB%202%2010@2x.png",
       "static/images/live/gifts/%E4%B8%AD%E5%A5%96%E4%BA%86.svga",
       "static/images/live/gifts/space%20%23%3F%25.svga",
     ]);
-    expect(files.map(({ content }) => decode(content)).sort()).toEqual(["gift", "reserved"]);
+    expect(files.map(({ content }) => decode(content)).sort()).toEqual(["at-sign", "gift", "reserved"]);
   });
 
   it("reads nothing when the directory is disabled", () => {

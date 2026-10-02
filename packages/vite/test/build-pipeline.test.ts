@@ -157,10 +157,11 @@ describe("the plugin inside a real build", () => {
   });
 
   it("builds with a Unicode public filename without changing the copied file", async () => {
-    const root = app({ "assets/中奖了.svga": "gift" });
+    const root = app({ "assets/中奖了.svga": "gift", "assets/ç» 2 10@2x.png": "image" });
 
     await expect(runBuild(root, true)).resolves.toBeDefined();
     expect(readFileSync(join(root, "dist/assets/中奖了.svga"), "utf8")).toBe("gift");
+    expect(readFileSync(join(root, "dist/assets/ç» 2 10@2x.png"), "utf8")).toBe("image");
   });
 
   it("compiles after default generateBundle hooks that finalize chunks", async () => {

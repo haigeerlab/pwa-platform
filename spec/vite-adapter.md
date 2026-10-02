@@ -69,7 +69,7 @@ export function pwa(options: PwaViteOptions): Plugin;
    - `path`：条目的 `fileName`（相对 `outDir` 的 POSIX 路径）；
    - `contentHash`：内容的 sha256，以 URL-safe base64 截断到 43 字符（落在契约要求的 8–128 位内）；
    - `fingerprinted`：文件名是否匹配 Vite 的指纹模式。
-   **其二，`publicDir`**：Vite 把该目录原样复制到输出，这些文件不进 bundle，因此由 `public-files.ts` 递归读盘补齐。磁盘文件名保持原样；清单里的相对路径逐段做 URL 编码，使中文、空格、`%` 等文件名成为浏览器实际请求的规范 URL。它们一律记为 `fingerprinted: false`——文件名是人写的，其中的 `-<hash>` 与内容无关，判成带指纹会让 `revision` 变为 `null`，文件更新后 worker 永不重取。`publicDir` 为空串（目录被禁用）或 `build.copyPublicDir` 为 `false` 时不采集：Vite 此时不复制，清单也不能声称它发布了。public 文件与 bundle 条目同名时构建失败——Vite 会让一方覆盖另一方且不报错，而同一 URL 两份字节正是计划要排除的分叉。
+   **其二，`publicDir`**：Vite 把该目录原样复制到输出，这些文件不进 bundle，因此由 `public-files.ts` 递归读盘补齐。磁盘文件名保持原样；清单里的相对路径逐段做 URL 编码：中文、空格、`%` 转为百分号编码，路径中可直接使用的 `@` 等字符保持原样，`?`、`#` 作为分隔符转义。中文、空格与 `@` 混合的名称已在 Vite 预览中核对资源 URL。它们一律记为 `fingerprinted: false`——文件名是人写的，其中的 `-<hash>` 与内容无关，判成带指纹会让 `revision` 变为 `null`，文件更新后 worker 永不重取。`publicDir` 为空串（目录被禁用）或 `build.copyPublicDir` 为 `false` 时不采集：Vite 此时不复制，清单也不能声称它发布了。public 文件与 bundle 条目同名时构建失败——Vite 会让一方覆盖另一方且不报错，而同一 URL 两份字节正是计划要排除的分叉。
 
    `publicPath` 取 `config.base`，`serviceWorkerFile` 与 `manifestFile` 由身份的 `serviceWorkerUrl`、`manifestUrl` 去掉 `publicPath` 前缀得到。
 2. **编译计划**：`compilePlan({ identity, install, policy, topology, hostBuildOutput })`。失败则构建失败，错误列出诊断码与路径，不回显输入值。
