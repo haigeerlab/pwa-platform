@@ -21,7 +21,7 @@ pageClass: header-evidence
 | `/app/manifest.webmanifest` | `Cache-Control: no-cache`；建议 `Content-Type: application/manifest+json` | `Cache-Control: immutable` 或长期缓存 | 长缓存使页面再次读取时仍得到旧名称；本次**未证明**已安装应用的系统显示名因此更新失败。 |
 | 带内容指纹的 JS/CSS 等资产 | `Cache-Control` 含正数 `max-age` 与 `immutable`；`public, max-age=31536000, immutable` 是示例，不固定一年 | `Cache-Control: no-cache`、`no-store` 或 `max-age=0` | 正数 `max-age` 将本次重复读取的源站请求从 2 次降到 1 次。`immutable` 的独立增益未由本实验测出。仍须保留旧版本文件。 |
 | `pwa-recovery-worker.js` | 建议与主 worker 一样返回 `no-cache` 和 JavaScript MIME；复制到主 worker URL 后按主 worker 规则检查 | 长缓存、错误 MIME 或缺失时回退成 HTML | 恢复发布要让浏览器取得新的脚本字节；独立恢复文件的头目前不在机器发布检查内。 |
-| 主 worker URL 的 `HEAD` 响应 | 状态码为 2xx，且指向真实 worker | 非 2xx，或由 SPA 回退页冒充 | 离线页用 `HEAD` 探测网络恢复；本组响应头因果实验未单独改变该状态码，需按[服务器自检](/operations/hosting#自检)验收。 |
+| 默认离线页恢复所需的原导航文档 | npm `0.4.0`：实际路由（含查询参数）正常返回 200 HTML 与非空正文 | 由离线页、错误页或跳转冒充成功；只核对 worker HEAD | 新版从网络探测原文档；本组历史响应头实验没有验证新恢复逻辑，需另按[默认离线页](/guide/offline#默认离线页)验收。 |
 | 显式启用的公共运行时 JSON/HTML | 返回符合业务数据的 MIME，且满足公共缓存准入策略 | 对要写入公共缓存的响应加 `private`、`no-store`、`Vary: Cookie` 或错误 MIME | 这些反例在线读取仍可用，但平台 worker 拒绝写公共缓存，离线读取失败。此规则只适用于已明确开启的公共读取缓存。 |
 | 私有 HTML/API | `Cache-Control: private, no-store`；人工核对 | `Cache-Control: public`、`immutable` | 私有响应不由发布头检查代替业务安全审查。 |
 
@@ -38,7 +38,7 @@ pageClass: header-evidence
 
 ## 实测时发生了什么
 
-“请求数”只计该用例观测窗口内抵达临时服务器的目标 URL 请求；不是线上流量估计。表中“门禁”指 npm `0.3.2` **已发布**的检查结果，包含新增的 `worker-mime`。
+“请求数”只计该用例观测窗口内抵达临时服务器的目标 URL 请求；不是线上流量估计。本页保留此前实验记录，没有把它重记为 0.4.0 实验；当前 npm `0.4.0` **已包含** `worker-mime`，响应头检查规则与该历史对照一致。
 
 | 对照条件 | 请求数 | Chrome 观察 | 发布检查结论 |
 | --- | ---: | --- | --- |
@@ -54,7 +54,7 @@ pageClass: header-evidence
 
 ## 如何在自己的环境验收
 
-下面四条 GET 命令覆盖 worker、入口 HTML、manifest 和**一个**带指纹资产，是缓存头与 worker MIME 的核心抽样。四条都合格，说明这四个实际 URL 在采集时的最终响应符合对应规则；**不能据此判定整个服务端配置已完成**。还要检查不同的安装 `startUrl`、离线页、其他公开 HTML、其余资源，以及适用时的恢复 worker、公共运行时缓存和私有接口；主 worker 的 `HEAD`、缺失文件的 404、HTTPS、worker scope 和浏览器功能也需另行验收。
+下面四条 GET 命令覆盖 worker、入口 HTML、manifest 和**一个**带指纹资产，是缓存头与 worker MIME 的核心抽样。四条都合格，说明这四个实际 URL 在采集时的最终响应符合对应规则；**不能据此判定整个服务端配置已完成**。还要检查不同的安装 `startUrl`、离线页、其他公开 HTML、其余资源，以及适用时的恢复 worker、公共运行时缓存和私有接口；原导航文档的恢复探测、缺失文件的 404、HTTPS、worker scope 和浏览器功能也需另行验收。
 
 1. 用不带 Cookie 的 **GET** 请求每个实际路径，跟随重定向，检查最后一个 HTTP 响应块的状态码、`Cache-Control` 和 `Content-Type`。入口、离线页尤其要看最终地址，不能只看 301/308 响应头。
 2. 在源站和 CDN 出口各测一次。如果两处不同，先找覆盖规则；不要只看 Nginx 配置文件或构建产物。部署新版本后重复采集，并保存路径、时间和最终头值。
@@ -67,10 +67,10 @@ curl -sS -L -D - -o /dev/null https://app.example.com/app/manifest.webmanifest
 curl -sS -L -D - -o /dev/null https://app.example.com/app/assets/index-EXAMPLE1.js
 ```
 
-上面最后一个资产路径必须换成**本次真实构建生成的指纹文件**。worker 的额外 `HEAD` 探测另按[服务器自检](/operations/hosting#自检)核对。不要在命令中附带生产 Cookie 或访问令牌。
+上面最后一个资产路径必须换成**本次真实构建生成的指纹文件**。默认离线页的原文档 GET 探测另按[服务器自检](/operations/hosting#自检)核对。不要在命令中附带生产 Cookie 或访问令牌。
 
 ## 证据边界与版本
 
 - 本地对照自动化 **23/23 通过**；Vue/React 的真实构建发布报告用例 **2/2 通过**。复现见仓库中的[浏览器用例](https://github.com/haigeerlab/pwa-platform/blob/main/packages/examples-browser-e2e/browser-tests/header-causality.spec.ts)与[完整验证记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/examples-browser-e2e/header-causality-verification.md)。
-- npm `0.3.2` **已包含**独立的 `worker-mime` 检查和本地正反例；业务发布系统须采集 worker `Content-Type` 并执行该检查。旧版 `0.2.5` 没有这项检查，须人工核对。`response-headers` 仍只判断缓存头。
+- npm `0.4.0` **已包含**独立的 `worker-mime` 检查和本地正反例；业务发布系统须采集 worker `Content-Type` 并执行该检查。旧版 `0.2.5` 没有这项检查，须人工核对。`response-headers` 仍只判断缓存头。
 - 原生安装后的 manifest 系统显示名更新周期、其他浏览器与移动端、真实 Nginx/CDN 的共享缓存与失效传播、worker 导入脚本和长期自动检查时序均未由这组实验确认。不要把表中的本地差异写成某个线上站点已经发生的故障。

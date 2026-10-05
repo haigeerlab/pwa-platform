@@ -14,7 +14,7 @@
 
 ## 所有路径共用的基础
 
-先按[选择接入包](/start/choose)安装 0.3.2，再在 `pwa.config.ts` 中声明生产部署的真实 identity 与
+先按[选择接入包](/start/choose)安装 0.4.0，再在 `pwa.config.ts` 中声明生产部署的真实 identity 与
 install metadata。完整字段、根路径／子路径区别和稳定性要求见[身份与策略配置](/guide/configuration)；
 下文片段里的 `IDENTITY`、`INSTALL`、`POLICY` 都来自那里的完整配置，`pwa()` 片段基于其中的
 `vite.config.ts`，不再重复声明。
@@ -251,7 +251,7 @@ export const POLICY: PwaPolicy = {
 恢复 worker 由 `@pwa-platform/vite` 随构建生成，不是页面中的开关。发布团队必须按
 [部署与发布](/operations/release#回滚与恢复)保存并演练，不能靠修改 scope 或 worker URL 绕过事故。
 
-入口恢复需要额外安装 `@pwa-platform/entry-resilience@0.3.2`：
+入口恢复需要额外安装 `@pwa-platform/entry-resilience@0.4.0`：
 
 ```ts
 import { pwa } from "@pwa-platform/vite";

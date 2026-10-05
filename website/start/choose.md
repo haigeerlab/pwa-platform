@@ -8,8 +8,8 @@ Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code
 
 | 项目 | 直接安装 | 公开状态 |
 | --- | --- | --- |
-| Vite 5／8 + Vue >=3.4、<4 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/vue</code> | npm 0.3.2 |
-| Vite 5／8 + React >=19.2、<20 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/react</code> | npm 0.3.2 |
+| Vite 5／8 + Vue >=3.4、<4 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/vue</code> | npm 0.4.0 |
+| Vite 5／8 + React >=19.2、<20 | <code>@pwa-platform/vite</code>、<code>@pwa-platform/react</code> | npm 0.4.0 |
 | Nuxt 4.5.x | <code>@pwa-platform/nuxt</code> | 工作区私有，尚未公开 |
 | TanStack Start / Next.js | 暂无可用的公开适配包 | 不在当前接入范围 |
 
@@ -20,18 +20,18 @@ Vite 插件在 <code>vite dev</code> 中也提供 <code>virtual:pwa-config</code
 Vue：
 
 ~~~bash
-pnpm add @pwa-platform/vue@0.3.2
-pnpm add -D @pwa-platform/vite@0.3.2 @pwa-platform/contracts@0.3.2
+pnpm add @pwa-platform/vue@0.4.0
+pnpm add -D @pwa-platform/vite@0.4.0 @pwa-platform/contracts@0.4.0
 ~~~
 
 React：
 
 ~~~bash
-pnpm add @pwa-platform/react@0.3.2
-pnpm add -D @pwa-platform/vite@0.3.2 @pwa-platform/contracts@0.3.2
+pnpm add @pwa-platform/react@0.4.0
+pnpm add -D @pwa-platform/vite@0.4.0 @pwa-platform/contracts@0.4.0
 ~~~
 
-安装命令固定 0.3.2；npm `latest` 指向该正式包版本。业务应用仍需单独完成生产部署验收。
+安装命令固定 0.4.0；npm `latest` 指向该正式包版本。业务应用仍需单独完成生产部署验收。
 
 ::: warning 同一次构建中的平台包必须是同一版本
 带新字段的构建计划不能被旧版本的平台包校验；升级 <code>@pwa-platform/vite</code>、框架绑定或 <code>@pwa-platform/contracts</code> 时要一起升级，不要只升级其中一个。
