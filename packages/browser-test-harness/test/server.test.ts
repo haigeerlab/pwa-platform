@@ -159,6 +159,28 @@ describe("server-side offline", () => {
 });
 
 describe("server-side faults", () => {
+  it("delays the document's headers and restores ordinary responses", async () => {
+    const server = await start();
+    const undo = server.delay("/", 150);
+    const started = Date.now();
+    expect((await send(server, "GET", "/")).status).toBe(200);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(140);
+    undo();
+    expect((await send(server, "GET", "/")).status).toBe(200);
+    expect(() => server.delay("/", -1)).toThrow();
+  });
+
+  it("can fail a navigation while the identical document probe succeeds", async () => {
+    const server = await start();
+    const undo = server.resetNavigation("/");
+    await expect(send(server, "GET", "/", { headers: { "sec-fetch-mode": "navigate" } })).rejects.toThrow();
+    // Firefox's worker-forwarded navigation loses fetch metadata but retains the browser's navigation Accept.
+    await expect(send(server, "GET", "/", { headers: { "sec-fetch-mode": "same-origin", "sec-fetch-dest": "empty", accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" } })).rejects.toThrow();
+    expect((await send(server, "GET", "/", { headers: { "sec-fetch-mode": "same-origin", "sec-fetch-dest": "empty", accept: "text/html" } })).status).toBe(200);
+    expect((await send(server, "GET", "/", { headers: { "sec-fetch-mode": "same-origin" } })).status).toBe(200);
+    undo();
+    expect((await send(server, "GET", "/", { headers: { "sec-fetch-mode": "navigate" } })).status).toBe(200);
+  });
   it("stalls one path until released, then resets it; other paths are unaffected", async () => {
     const server = await start();
     const release = server.stall("/");

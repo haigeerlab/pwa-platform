@@ -73,6 +73,10 @@ export type FixtureServer = {
   stall(path: string): () => void;
   /** Resets the connection of every request for exactly `path`, a network failure; the returned function undoes it. */
   reset(path: string): () => void;
+  /** Delays response headers for every request on this exact path; requests already delayed retain their delay. */
+  delay(path: string, milliseconds: number): () => void;
+  /** Resets document navigations only, allowing recovery probes to expose a false-positive recovery boundary. */
+  resetNavigation(path: string): () => void;
   readonly offline: boolean;
   close(): Promise<void>;
 };
@@ -118,6 +122,9 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
   let offline = false;
   const stalled = new Map<string, Set<IncomingMessage>>();
   const resetPaths = new Set<string>();
+  const navigationResetPaths = new Set<string>();
+  const delays = new Map<string, number>();
+  const delayed = new Map<ReturnType<typeof setTimeout>, () => void>();
   const sockets = new Set<Socket>();
 
   const server = createServer((request, response) => {
@@ -143,7 +150,10 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
     records.push({ method, path, time: Date.now(), headers: request.headers });
 
     // Faults come before every other rule: they model the network between browser and server, not a response.
-    if (resetPaths.has(path)) {
+    // Firefox's worker fetch sends same-origin/empty metadata for a navigation, preserving its XHTML Accept.
+    // The recovery probe explicitly requests only text/html, so it remains outside this document-only fault.
+    const navigation = request.headers["sec-fetch-mode"] === "navigate" || request.headers.accept?.includes("application/xhtml+xml") === true;
+    if (resetPaths.has(path) || (navigationResetPaths.has(path) && navigation)) {
       request.socket.destroy();
       return;
     }
@@ -151,6 +161,13 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
     if (held !== undefined) {
       held.add(request);
       return;
+    }
+    const milliseconds = delays.get(path);
+    if (milliseconds !== undefined) {
+      await new Promise<void>((resolveDelay) => {
+        const timer = setTimeout(() => { delayed.delete(timer); resolveDelay(); }, milliseconds);
+        delayed.set(timer, resolveDelay);
+      });
     }
 
     // Only this server's own origins: a DNS-rebound hostname must not read fixture files.
@@ -228,6 +245,10 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
     prepareCleanup: () => {
       offline = false;
       resetPaths.clear();
+      navigationResetPaths.clear();
+      delays.clear();
+      for (const [timer, resolveDelay] of delayed) { clearTimeout(timer); resolveDelay(); }
+      delayed.clear();
       for (const held of stalled.values()) for (const request of held) request.socket.destroy();
       stalled.clear();
     },
@@ -282,10 +303,21 @@ export async function startFixtureServer(options: FixtureServerOptions): Promise
         resetPaths.delete(path);
       };
     },
+    delay(path, milliseconds) {
+      if (!Number.isInteger(milliseconds) || milliseconds < 0 || milliseconds > 30_000) throw new Error("Fixture delay must be 0-30,000 integer milliseconds");
+      delays.set(path, milliseconds);
+      return () => { if (delays.get(path) === milliseconds) delays.delete(path); };
+    },
+    resetNavigation(path) {
+      navigationResetPaths.add(path);
+      return () => { navigationResetPaths.delete(path); };
+    },
     get offline() {
       return offline;
     },
     close() {
+      for (const [timer, resolveDelay] of delayed) { clearTimeout(timer); resolveDelay(); }
+      delayed.clear();
       return new Promise<void>((resolveClose, rejectClose) => {
         server.close((error) => (error ? rejectClose(error) : resolveClose()));
         server.closeAllConnections();

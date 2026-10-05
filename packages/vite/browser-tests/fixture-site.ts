@@ -146,6 +146,9 @@ export const SITE_OFFLINE_EN_OUT: string = here("../browser-build/site-offline-e
 export const EN_HEADING_OVERRIDE = "No connection right now";
 export const OFFLINE_PAGE_SITE_ZH: FixtureServerOptions = { versions: { v1: SITE_OFFLINE_ZH_ROOT } };
 export const OFFLINE_PAGE_SITE_EN: FixtureServerOptions = { versions: { v1: SITE_OFFLINE_EN_ROOT } };
+export const SITE_RESILIENT_ROOT: string = here("../browser-build/site-resilient/");
+export const SITE_RESILIENT_OUT: string = here("../browser-build/site-resilient/app/");
+export const RESILIENT_SITE: FixtureServerOptions = { versions: { v1: SITE_RESILIENT_ROOT } };
 
 // Manifest extension members (spec/contracts-foundation.md "修订：安装元数据的扩展字段", task MX5). A separate site
 // tree built from a copy of the public directory that also holds the referenced screenshot and shortcut icon, so the

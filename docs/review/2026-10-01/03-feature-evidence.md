@@ -2,7 +2,7 @@
 
 当前快照 `9662e6d`；公开包以 `0.2.5` 发布树为界。维护规则：每新增功能，添加“默认/条件—实现—断言—环境结果—未验证”一行，并给原始记录链接；每次升级浏览器或发布版本，更新**对应行**而非只提高总等级。L1 实现、L2 自动化断言/构建、L3 真实桌面浏览器、L4 实体手机。L4 不能替代发布门禁，也不能把 Playwright WebKit 当 macOS Safari。
 
-当前台账共 **33 项**。新增功能时保持连续编号并更新此数；运行 `pnpm docs:check-evidence` 检查行结构、实现/测试引用、审查文档的本地链接和历史入口。该检查只确认引用的文件存在，**不会证明断言内容、浏览器结果或手机记录真实有效**，这些仍须人工核对原始证据。
+当前台账共 **34 项**。新增功能时保持连续编号并更新此数；运行 `pnpm docs:check-evidence` 检查行结构、实现/测试引用、审查文档的本地链接和历史入口。该检查只确认引用的文件存在，**不会证明断言内容、浏览器结果或手机记录真实有效**，这些仍须人工核对原始证据。
 
 浏览器栏缩写：C=桌面 Chrome，E=桌面 Edge，S=macOS Safari，F=桌面 Firefox（这些是 L3），A=实体 Android Chrome，I=实体 iPhone Safari（这些是 L4）；`自`=该环境自动化断言通过，`人`=人工记录通过，`—`=本项未找到专项证据。L1 的实现位置与 L2 的自动化断言在第三列分别链接；浏览器栏不能替代这些链接。各环境版本、跳过项与原始结果见[跨平台测试矩阵](../../../website/reference/platform-test-matrix.md)、[0.2.5 发布记录](../../../tasks/package-distribution/release-0.2.5.md)、[正式版验证记录](../../../tasks/stable-release-qualification/verification.md)。**矩阵的横向“功能”行是浏览器覆盖索引；下表给具体代码与断言。**
 
@@ -45,6 +45,8 @@ Safari/Firefox/iPhone 的测试行即使显示“自”，其中被 WebDriver �
 | 31 Push | **工作区私有**；订阅/权限 | [客户端](../../../packages/push/src/client/index.ts)、[联网 E2E](../../../packages/examples-browser-e2e/browser-tests-network/push.network.spec.ts) | C自 E自 A自；S/F/I —（矩阵 13） | iPhone Safari 标签页不支持；安装形态未验 |
 | 32 离线写队列 | **工作区私有**；v2/v3 明确目标与 `flush` | [包](../../../packages/offline-write/src/index.ts)、[worker E2E](../../../packages/sw-runtime/browser-tests/offline-write.spec.ts) | C自 E自 S自 F自 A自 I自（矩阵 14） | 未发布；不提供恰好一次投递或后台自动重放 |
 | 33 在线/离线业务状态 API | **不提供**；无配置 | 平台离线页自有[重连探针](../../../packages/vite/src/offline-page.ts) | 不适用 | 业务需自己处理 fetch 重试和页面状态 |
+| 34 弱网导航宽限与有界离线恢复 | **工作区候选，未发布**；`navigationRetry` 显式开启，默认页升级后使用新恢复脚本 | [导航实现](../../../packages/sw-runtime/src/worker/handlers.ts)、[网络探测](../../../packages/sw-runtime/src/worker/offline-document-probe.ts)、[默认页](../../../packages/vite/src/offline-page.ts)；[重试契约断言](../../../packages/contracts/test/navigation-retry.test.ts)、[预算断言](../../../packages/vite/test/offline-recovery.test.ts)、[60 秒浏览器边界](../../../packages/vite/browser-tests/offline-resilience.spec.ts) | C自（154.0.8037.98；N-1 CfT 153.0.8010.12，2026-10-05）；S自/F自（仅四项核心边界，恢复时可能模拟可见性；历史／标签页跳过）；[候选消费与升级证据](../../../tasks/offline-experience-resilience/verification.md)；E/A/I — | 0.4.0-next.20261005.2 仅本地 tarball；真机/原生安装、真实丢包和 PRE 新版上线未验；正式发布门禁未完成；文档可达不代表全部业务恢复 |
+
 
 ## 运行证据与下一次更新
 
@@ -52,5 +54,7 @@ Safari/Firefox/iPhone 的测试行即使显示“自”，其中被 WebDriver �
 - **当前工作区**：新 portable/MIME 和跨端测试属于 `0.2.5` 之后的代码。本轮 `pnpm test` 16 包 2575/2575、Chrome 响应头因果实验 23/23、Vite portable 双本地源/共享源与离线页 13/13、当前工作区打包接入冒烟 4/4 通过；[审查首页](README.md)说明环境。工作区包版本号仍为 0.2.5，**这些包的字节不是已发布 registry 0.2.5**。没有在实体手机上重新运行；旧真机记录保持其版本标签，不升为当前工作区的真机结果。
 - **同日文档修复复核**：修正 portable 配置后，`pnpm docs:build` 通过；Chrome 154 中原有 `portable-deployment.spec.ts` 与 `offline-page.spec.ts` 合计 12/12 通过。随后新增与文档关键配置相同的根路径、`install:null`、宿主 manifest、生成离线页组合夹具；两文件组合回归 13/13、Vite 包类型检查与单元测试 281/281、`pnpm lint`、文档构建和差异格式检查通过。浏览器断言核对了离线页预缓存、未访问路径断网回退和离线应用壳。它从测试常量构建，并未直接执行 Markdown 代码块；仍不等于真实 HTTPS 多域验收。首次单元测试因本机 npm 缓存目录不可写导致 `npm pack --dry-run` 失败；把缓存指向可写临时目录后全绿。仓库自带发布验证示例已有 MIME 错误反例；外部业务编排器未复核。
 - **同日公开版本门禁**：[脚本](../../../scripts/check-doc-public-api.mjs)从 npm `latest` 读取 `vite`、`contracts`、`build-verifier` 的正式 tarball 类型声明，并逐页核对 portable/worker MIME 的网站版本说明；本机实际返回 `latest=0.2.5`、两项均未发布，检查通过。[正反例](../../../scripts/check-doc-public-api.test.mjs) 4/4、`pnpm lint` 与 `pnpm docs:build` 通过，已加入 GitHub CI quality job；远端 CI 运行结果另按 PR 记录。该脚本只证明这两项 API 的版本边界，不核验 npm 包运行行为或全部配置字段。
-- **同日台账维护门禁**：[脚本](../../../scripts/check-feature-evidence.mjs)核对 33 行连续编号、列内容、实现/自动化测试链接、审查文档本地文件链接与历史入口；[正反例](../../../scripts/check-feature-evidence.test.mjs) 5/5、`pnpm docs:check-evidence`、`pnpm lint` 与差异格式检查通过，已加入 GitHub CI quality job，尚无远端 CI 运行结果。它不解析链接锚点、不访问外网，也不判定测试断言或浏览器/手机记录是否支持对应结论。
+- **同日台账维护门禁**：[脚本](../../../scripts/check-feature-evidence.mjs)核对当时 33 行连续编号、列内容、实现/自动化测试链接、审查文档本地文件链接与历史入口；[正反例](../../../scripts/check-feature-evidence.test.mjs) 5/5、`pnpm docs:check-evidence`、`pnpm lint` 与差异格式检查通过，已加入 GitHub CI quality job，尚无远端 CI 运行结果。它不解析链接锚点、不访问外网，也不判定测试断言或浏览器/手机记录是否支持对应结论。
 - 新证据最优先补：Android Chrome N-1、真实 DNS/证书故障、安装形态下的公共缓存/更新、worker 导入脚本与 manifest MIME 的发布观测，以及 portable 在实体设备、业务宿主和固定身份迁移上的缺口。双真实 HTTPS Origin 的专用夹具演练已完成，不能代替这些项目。每次补测应填日期、提交、包版本、设备/浏览器版本、操作/断言、结果及证据文件。
+
+- **2026-10-05 增量**：第 34 项记录本地弱网优化候选，既有发布行保持其历史范围；新协议、重试和预算的实测详见本模块 verification，不将桌面受控模拟填写为手机或生产证据。

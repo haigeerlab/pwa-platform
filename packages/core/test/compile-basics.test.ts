@@ -332,6 +332,13 @@ describe("compilePlan: v3 runtime cache", () => {
 });
 
 describe("compilePlan: networkTimeoutSeconds", () => {
+  it("compiles the optional navigation retry and rejects a delay without a shared timeout", () => {
+    const result = compile({ ...input, policy: { ...input.policy, networkTimeoutSeconds: 5, navigationRetry: { delayMilliseconds: 1000 } } });
+    expect(result.ok && result.value.navigationRetry).toEqual({ delayMilliseconds: 1000 });
+    expectRejected(compile({ ...input, policy: { ...input.policy, navigationRetry: { delayMilliseconds: 1000 } } }), [
+      ["schema.invalid-value", "/policy/navigationRetry/delayMilliseconds"],
+    ]);
+  });
   it("omits the key from the plan when the policy does not set it", () => {
     const result = compile(input);
     expect(result.ok).toBe(true);

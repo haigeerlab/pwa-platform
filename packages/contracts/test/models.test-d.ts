@@ -42,6 +42,7 @@ describe("PwaPlan v1", () => {
       | "updateMode"
       | "diagnostics"
       | "networkTimeoutSeconds"
+      | "navigationRetry"
     >();
   });
 
@@ -71,6 +72,7 @@ describe("PwaPolicyV3", () => {
       | "offlineWrites"
       | "runtimeCache"
       | "networkTimeoutSeconds"
+      | "navigationRetry"
     >();
     expectTypeOf<PwaPolicyV3["schemaVersion"]>().toEqualTypeOf<3>();
     expectTypeOf<PwaPolicyV3["runtimeCache"]>().toEqualTypeOf<PwaRuntimeCachePolicy>();
@@ -113,6 +115,7 @@ describe("PwaPlanV3", () => {
       | "offlineWrites"
       | "runtimeCache"
       | "networkTimeoutSeconds"
+      | "navigationRetry"
     >();
     expectTypeOf<PwaPlanV3["schemaVersion"]>().toEqualTypeOf<3>();
     expectTypeOf<PwaPlanV3["runtimeCache"]>().toEqualTypeOf<PwaRuntimeCachePlan>();

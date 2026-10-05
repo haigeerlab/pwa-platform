@@ -57,6 +57,12 @@ export type PwaOfflineWritePolicy = {
   readonly targets: readonly PwaOfflineWriteTarget[];
 };
 
+/** One serial navigation retry after a network failure, sharing the explicit network timeout (ADR-0052). */
+export type PwaNavigationRetryPolicy = {
+  /** Integer milliseconds (100-3,000), strictly less than networkTimeoutSeconds * 1,000. */
+  readonly delayMilliseconds: number;
+};
+
 export type PwaPolicyV1 = {
   readonly schemaVersion: 1;
   readonly install: { readonly enabled: boolean };
@@ -66,6 +72,7 @@ export type PwaPolicyV1 = {
   readonly extensions?: PwaExtensions;
   /** Integer seconds (1-30). Applies to navigation and network-first runtime cache. Absent: no timeout. */
   readonly networkTimeoutSeconds?: number;
+  readonly navigationRetry?: PwaNavigationRetryPolicy;
 };
 
 export type PwaPolicyV2 = {
@@ -78,6 +85,7 @@ export type PwaPolicyV2 = {
   readonly offlineWrites: PwaOfflineWritePolicy;
   /** Integer seconds (1-30). Applies to navigation and network-first runtime cache. Absent: no timeout. */
   readonly networkTimeoutSeconds?: number;
+  readonly navigationRetry?: PwaNavigationRetryPolicy;
 };
 
 /** Limits for the platform's explicit opt-in runtime cache (public-read data and dynamic HTML). */
@@ -99,6 +107,7 @@ export type PwaPolicyV3 = {
   readonly runtimeCache: PwaRuntimeCachePolicy;
   /** Integer seconds (1-30). Applies to navigation and network-first runtime cache. Absent: no timeout. */
   readonly networkTimeoutSeconds?: number;
+  readonly navigationRetry?: PwaNavigationRetryPolicy;
 };
 
 export type PwaPolicy = PwaPolicyV1 | PwaPolicyV2 | PwaPolicyV3;

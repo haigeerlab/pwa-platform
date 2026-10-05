@@ -182,6 +182,7 @@ function compile(input: unknown): PwaValidationResult<PwaPlan> {
     ...(policy.networkTimeoutSeconds !== undefined
       ? { networkTimeoutSeconds: policy.networkTimeoutSeconds }
       : {}),
+    ...(policy.navigationRetry === undefined ? {} : { navigationRetry: policy.navigationRetry }),
   };
   const plan: PwaPlan =
     portable && policy.schemaVersion === 3

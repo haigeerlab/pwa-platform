@@ -310,6 +310,106 @@ describe("navigate network timeout (ADR-0038)", () => {
     vi.useRealTimers();
   });
 
+  it("waits for one retry after a transient failure instead of immediately returning the offline page", async () => {
+    const h = createHarness();
+    h.fetch.mockRejectedValueOnce(new TypeError("transient failure")).mockResolvedValueOnce(new Response("recovered"));
+    const retryConfig = { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } };
+    attachPlatformWorker({ scope: h.scope, config: retryConfig, engine: h.engine });
+    const responded = fetchEventOn(h, request(`${ORIGIN}/app/products/42?q=1`, { mode: "navigate" }));
+    await vi.advanceTimersByTimeAsync(999);
+    expect(h.match).not.toHaveBeenCalled();
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(await (await responded)?.text()).toBe("recovered");
+    expect(h.fetch).toHaveBeenCalledTimes(2);
+    expect(h.match).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("does not restart the deadline for the retry or launch a retry while the first request hangs", async () => {
+    const h = createHarness();
+    h.fetch.mockImplementationOnce(() => new Promise((_resolve, reject) => setTimeout(() => reject(new TypeError("late failure")), 3500)))
+      .mockImplementationOnce(() => new Promise(() => {}));
+    attachPlatformWorker({ scope: h.scope, config: { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } }, engine: h.engine });
+    const responded = fetchEventOn(h, request(`${ORIGIN}/app/products/42`, { mode: "navigate" }));
+    await vi.advanceTimersByTimeAsync(3499);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1001);
+    expect(h.fetch).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(await (await responded)?.text()).toBe("offline");
+    expect(h.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not issue a retry after the shared deadline or for a returned HTTP error", async () => {
+    for (const failureAt of [4500, 5500]) {
+      const h = createHarness();
+      h.fetch.mockImplementationOnce(() => new Promise((_resolve, reject) => setTimeout(() => reject(new TypeError("failed")), failureAt)));
+      attachPlatformWorker({ scope: h.scope, config: { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } }, engine: h.engine });
+      const responded = fetchEventOn(h, request(`${ORIGIN}/app/products/42`, { mode: "navigate" }));
+      await vi.advanceTimersByTimeAsync(6500);
+      expect(await (await responded)?.text()).toBe("offline");
+      expect(h.fetch).toHaveBeenCalledTimes(1);
+    }
+    const h = createHarness();
+    h.fetch.mockResolvedValueOnce(new Response("server error", { status: 500 }));
+    attachPlatformWorker({ scope: h.scope, config: { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } }, engine: h.engine });
+    const response = await fetchEventOn(h, request(`${ORIGIN}/app/products/42`, { mode: "navigate" }));
+    expect(response?.status).toBe(500);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("permits a six-second document under ten seconds and only times response headers", async () => {
+    const h = createHarness();
+    h.fetch.mockImplementationOnce(() => new Promise((resolve) => setTimeout(() => resolve(new Response("slow but available")), 6000)));
+    attachPlatformWorker({ scope: h.scope, config: { ...timeoutConfig, networkTimeoutSeconds: 10, navigationRetry: { delayMilliseconds: 1000 } }, engine: h.engine });
+    const responded = fetchEventOn(h, request(`${ORIGIN}/app/products/42`, { mode: "navigate" }));
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(await (await responded)?.text()).toBe("slow but available");
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+    const body = createHarness();
+    const response = new Response(new ReadableStream());
+    body.fetch.mockResolvedValueOnce(response);
+    attachPlatformWorker({ scope: body.scope, config: { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } }, engine: body.engine });
+    const headers = fetchEventOn(body, request(`${ORIGIN}/app/products/42`, { mode: "navigate" }));
+    expect(await headers).toBe(response);
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(body.match).not.toHaveBeenCalled();
+    await response.body?.cancel();
+  });
+
+  it("never retries after the timer expired even if the wall clock moves backwards", async () => {
+    const h = createHarness();
+    let rejectNetwork: ((error: Error) => void) | undefined;
+    h.fetch.mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectNetwork = reject; }));
+    attachPlatformWorker({ scope: h.scope, config: { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } }, engine: h.engine });
+    const responded = fetchEventOn(h, request(`${ORIGIN}/app/products/42`, { mode: "navigate" }));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(await (await responded)?.text()).toBe("offline");
+    vi.setSystemTime(Date.now() - 60_000);
+    rejectNetwork?.(new TypeError("late failure"));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(h.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("stops after two failed requests and still permits a late success when no fallback exists", async () => {
+    const h = createHarness();
+    h.fetch.mockRejectedValue(new TypeError("offline"));
+    attachPlatformWorker({ scope: h.scope, config: { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } }, engine: h.engine });
+    const responded = fetchEventOn(h, request(`${ORIGIN}/app/products/42`, { mode: "navigate" }));
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(await (await responded)?.text()).toBe("offline");
+    expect(h.fetch).toHaveBeenCalledTimes(2);
+    const late = createHarness();
+    late.cached.clear();
+    late.fetch.mockImplementationOnce(() => new Promise((resolve) => setTimeout(() => resolve(new Response("late")), 6000)));
+    attachPlatformWorker({ scope: late.scope, config: { ...timeoutConfig, navigationRetry: { delayMilliseconds: 1000 } }, engine: late.engine });
+    const lateResponse = fetchEventOn(late, request(`${ORIGIN}/app/products/42?q=1`, { mode: "navigate" }));
+    await vi.advanceTimersByTimeAsync(6000);
+    expect(await (await lateResponse)?.text()).toBe("late");
+    expect(late.fetch).toHaveBeenCalledTimes(1);
+  });
+
   it("answers within the timeout, including a 5xx response, without the timer ever firing", async () => {
     const h = createHarness();
     h.fetch.mockResolvedValueOnce(new Response("err", { status: 500 }));

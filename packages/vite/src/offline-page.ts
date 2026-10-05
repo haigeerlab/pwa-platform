@@ -19,46 +19,106 @@ export type PwaOfflinePageMessages = {
 /** Built-in copy per locale, spec's "内置文案" table, character for character. */
 export const OFFLINE_PAGE_MESSAGES: Readonly<Record<PwaOfflinePageLocale, PwaOfflinePageMessages>> = {
   "zh-CN": {
-    documentTitle: "离线",
-    heading: "当前处于离线状态",
-    body: "网络恢复后页面会自动重新加载。",
+    documentTitle: "暂时无法连接",
+    heading: "暂时无法连接",
+    body: "网络连接或服务响应暂时异常，请稍后重试。",
     retry: "重试",
   },
   en: {
-    documentTitle: "Offline",
-    heading: "You're offline",
-    body: "This page will reload when your connection is back.",
+    documentTitle: "Temporarily unavailable",
+    heading: "Temporarily unable to connect",
+    body: "The connection or service may be temporarily unavailable. Please try again shortly.",
     retry: "Try again",
   },
 };
 
-/**
- * Fixed inline script text — spec/vite-adapter.md's iPhone reconnection amendment. HEAD requests to the public
- * controlling worker bypass the platform's GET-only cache router and avoid probing a business route. Never contains
- * any value from plugin configuration; tests assert the same text is emitted for every config so this stays true.
- */
-export const OFFLINE_PAGE_SCRIPT = `document.querySelector(".pwa-offline__retry").addEventListener("click", () => {
+/** Fixed script: ADR-0052's document probe and per-tab budget, independent of host configuration. */
+export const OFFLINE_PAGE_SCRIPT = `let reloadStarted = false;
+let recoveryEnabled = false;
+let storageKey;
+const initialController = navigator.serviceWorker?.controller;
+try {
+  if (initialController) {
+    storageKey = "pwa:offline-recovery:v1:" + new URL(initialController.scriptURL).pathname;
+    const budget = sessionStorage.getItem(storageKey);
+    if (budget === null || budget === "0") {
+      sessionStorage.setItem(storageKey, "0");
+      recoveryEnabled = sessionStorage.getItem(storageKey) === "0";
+    }
+  }
+} catch {}
+document.querySelector(".pwa-offline__retry").addEventListener("click", () => {
+  if (reloadStarted) return;
+  reloadStarted = true;
+  recoveryEnabled = false;
+  try { if (storageKey) sessionStorage.removeItem(storageKey); } catch {}
   location.reload();
 });
 let probeInFlight = false;
+let successes = 0;
+let failures = 0;
+let visibilityEpoch = 0;
+let nextProbeAt = Date.now() + 10_000;
+let probeTimer;
+const scheduleProbe = () => {
+  clearTimeout(probeTimer);
+  if (recoveryEnabled && !reloadStarted && document.visibilityState === "visible") {
+    probeTimer = setTimeout(probeConnection, Math.max(0, nextProbeAt - Date.now()));
+  }
+};
 const probeConnection = () => {
-  const workerUrl = navigator.serviceWorker?.controller?.scriptURL;
-  if (probeInFlight || document.visibilityState !== "visible" || !workerUrl) return;
+  if (!recoveryEnabled || reloadStarted || probeInFlight || document.visibilityState !== "visible" || Date.now() < nextProbeAt) return;
+  const controller = navigator.serviceWorker?.controller;
+  if (!controller || controller !== initialController) { recoveryEnabled = false; return; }
   probeInFlight = true;
-  const abort = new AbortController();
-  const timeout = setTimeout(() => abort.abort(), 3_000);
-  fetch(workerUrl, { method: "HEAD", cache: "no-store", signal: abort.signal })
-    .then((response) => {
-      if (response.ok) location.reload();
-    })
-    .catch(() => {})
-    .finally(() => {
-      clearTimeout(timeout);
-      probeInFlight = false;
-    });
+  const epoch = visibilityEpoch;
+  const channel = new MessageChannel();
+  let finished = false;
+  let timeout;
+  const finish = (reachable, supported) => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timeout);
+    channel.port1.close();
+    probeInFlight = false;
+    if (!supported) { recoveryEnabled = false; return; }
+    if (reloadStarted || navigator.serviceWorker?.controller !== controller || epoch !== visibilityEpoch || document.visibilityState !== "visible") {
+      successes = 0;
+      nextProbeAt = Date.now() + 10_000;
+      scheduleProbe();
+      return;
+    }
+    successes = reachable ? successes + 1 : 0;
+    failures = reachable ? 0 : failures + 1;
+    nextProbeAt = Date.now() + (reachable ? 10_000 : Math.min(60_000, 10_000 * 2 ** Math.min(failures - 1, 3)));
+    if (successes < 2) { scheduleProbe(); return; }
+    recoveryEnabled = false;
+    try {
+      if (sessionStorage.getItem(storageKey) !== "0") return;
+      sessionStorage.setItem(storageKey, "1");
+      if (sessionStorage.getItem(storageKey) !== "1") return;
+    } catch { return; }
+    reloadStarted = true;
+    location.reload();
+  };
+  timeout = setTimeout(() => finish(false, false), 4_000);
+  channel.port1.onmessage = (event) => {
+    const result = event.data;
+    const supported = result && typeof result === "object" && Object.keys(result).length === 3 &&
+      result.type === "pwa:offline:probe-result" && result.version === 1 && typeof result.reachable === "boolean";
+    finish(supported && result.reachable, supported);
+  };
+  try { controller.postMessage({ type: "pwa:offline:probe", version: 1 }, [channel.port2]); }
+  catch { finish(false, false); }
 };
 window.addEventListener("online", probeConnection);
-setInterval(probeConnection, 10_000);
+document.addEventListener("visibilitychange", () => {
+  visibilityEpoch++;
+  successes = 0;
+  if (document.visibilityState === "visible") scheduleProbe();
+  else clearTimeout(probeTimer);
+});
+scheduleProbe();
 `;
 
 const HTML_ESCAPES: Readonly<Record<string, string>> = {

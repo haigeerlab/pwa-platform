@@ -1,0 +1,28 @@
+新行:
+  | offline-experience-resilience | 改进页面导航失败与慢响应的提示、有限重试和恢复防抖，避免短暂故障立即兜底及离线页反复重载，并交付可复现的边界验收与包升级说明。 | contracts-foundation, policy-compiler, network-timeout, sw-runtime, vite-adapter, browser-test-harness, package-distribution |
+
+新的 Build order:
+  Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation → ai-onboarding → portable-deployment → offline-experience-resilience
+
+能力图 diff:
+--- spec/CAPABILITY-MAP.md
++++ spec/CAPABILITY-MAP.md
+@@ -41,8 +41,9 @@
+ | production-readiness-documentation | 基于正式包、源码、自动化与真机证据审计生产就绪度；在文档站公开多端测试矩阵、可追溯的能力对比，补齐十个公开包 README，并按功能目标重组接入说明。 | stable-release-qualification, capability-comparison |
+ | ai-onboarding | 随 @pwa-platform/vite 发布、与所装版本匹配的一页 AI 接入清单（skills/pwa-onboarding/SKILL.md，一个 Markdown 文件）：只交代接入中最易出错的几件事——先查能不能接、冲突不自动删除、身份字段不可变须逐项确认、公共缓存规则逐个接口由人确认、不推送不部署不切换 worker；其余规则指向文档站，不复述；仅开发期辅助，不进入生产构建。 | vite-adapter, package-distribution, production-readiness-documentation |
+ | portable-deployment | 以显式可移植模式生成与域名无关的 PWA 产物，并按每个实际 HTTPS 源验证发布证据、身份历史与共享源顺序。 | contracts-foundation, policy-compiler, vite-adapter, shared-origin-topology, release-gate-contract, release-orchestration-protocol, ai-onboarding |
++| offline-experience-resilience | 改进页面导航失败与慢响应的提示、有限重试和恢复防抖，避免短暂故障立即兜底及离线页反复重载，并交付可复现的边界验收与包升级说明。 | contracts-foundation, policy-compiler, network-timeout, sw-runtime, vite-adapter, browser-test-harness, package-distribution |
+ 
+-Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation → ai-onboarding → portable-deployment
++Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation → ai-onboarding → portable-deployment → offline-experience-resilience
+ 
+ ---
+ 
+
+插入后当前模块不变: cloudflare-test-deployment
+插队：被暂停的模块 `cloudflare-test-deployment`，进度 已勾 41/46
+插入后当前模块仍是 `cloudflare-test-deployment`；请把 .agent/state.json 的 activeModule 改为 `offline-experience-resilience` 再开始构建
+
+提示: spec/offline-experience-resilience.md 已存在——插入后该模块阶段为 NEEDS_PLAN（视为已评审）；若这份 Spec 尚未评审，先评审再 --confirm。
+
+警告: 本地存在 spec/proposals/offline-experience-resilience.md；若该 Proposal 之后发布，将被判为 proposal-module-already-present。

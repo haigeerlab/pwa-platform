@@ -121,6 +121,20 @@ if (import.meta.env.PROD) await client.register();
 Install `@pwa-platform/client-runtime` explicitly when using that direct example. Vue and React applications should
 instead install their framework binding, which owns the client facade for the application lifetime.
 
+## Upcoming offline resilience candidate
+
+This workspace adds optional `policy.navigationRetry: { delayMilliseconds: 1000 }` alongside an explicit
+`networkTimeoutSeconds: 5`. The delay must be an integer from 100 to 3000 milliseconds and shorter than the total
+timeout. One settled navigation network failure can trigger one serial retry within the original total budget.
+Omitting the field preserves existing navigation behavior; HTTP errors, API calls and runtime caching are unchanged.
+
+The generated offline page uses neutral copy and probes its controlled document through the worker. Two successful
+checks at least ten seconds apart can trigger one automatic reload per tab and worker path, persisted across reloads.
+Only manual retry re-arms that budget. Unsupported workers or unavailable session storage retain manual retry.
+Slow document probes can fail while a longer manual navigation still succeeds. Rebuild and deploy the complete
+release and update its CSP hashes. Host-authored offline pages need their own recovery changes.
+These are upcoming candidate changes, not a claim about the currently published 0.3.1 package.
+
 ## Options and outputs
 
 | Option | Meaning |

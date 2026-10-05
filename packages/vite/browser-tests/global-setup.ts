@@ -26,6 +26,7 @@ import {
   SITE_MANIFEST_EXT_OUT,
   SITE_OFFLINE_EN_OUT,
   SITE_OFFLINE_ZH_OUT,
+  SITE_RESILIENT_OUT,
   SITE_V1_OUT,
   SITE_V2_OUT,
 } from "./fixture-site.js";
@@ -75,6 +76,14 @@ export default async function globalSetup(): Promise<void> {
     policy: POLICY_WITH_DEFAULT_OFFLINE,
     offlinePage: { locale: "en", messages: { heading: EN_HEADING_OVERRIDE } },
   });
+  // A real, uncached document for recovery. Add after compilation so it is deliberately absent from the manifest.
+  await buildVersion(SITE_RESILIENT_OUT, {
+    policy: { ...POLICY_WITH_DEFAULT_OFFLINE, networkTimeoutSeconds: 5, navigationRetry: { delayMilliseconds: 1000 } },
+    offlinePage: {},
+  });
+  for (const outDir of [SITE_OFFLINE_ZH_OUT, SITE_OFFLINE_EN_OUT, SITE_RESILIENT_OUT]) {
+    await cp(join(outDir, "index.html"), join(outDir, "never-visited.html"));
+  }
 
   // Manifest extension members: a public-directory copy that also holds the screenshot and shortcut icon.
   await cp(join(APP_ROOT, "public"), MANIFEST_EXT_PUBLIC, { recursive: true });

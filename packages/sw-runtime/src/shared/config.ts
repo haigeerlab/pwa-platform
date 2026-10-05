@@ -98,6 +98,7 @@ export type PwaPlatformWorkerConfig = {
    * navigation fallback timeout and the runtime cache's network-first `networkTimeoutSeconds`.
    */
   readonly networkTimeoutSeconds?: number;
+  readonly navigationRetry?: { readonly delayMilliseconds: number };
 };
 
 export type PwaRecoveryWorkerConfig = {
@@ -143,7 +144,8 @@ const RECOVERY_KEYS = ["kind", "version", "appCachePrefix", "offlineWriteDatabas
 export function validatePlatformWorkerConfig(value: unknown): PwaPlatformWorkerConfig {
   const config = plainObject(value, "config");
   const hasNetworkTimeout = Object.hasOwn(config, "networkTimeoutSeconds");
-  exactKeys(config, hasNetworkTimeout ? [...PLATFORM_KEYS, "networkTimeoutSeconds"] : PLATFORM_KEYS, "config");
+  const hasNavigationRetry = Object.hasOwn(config, "navigationRetry");
+  exactKeys(config, [...PLATFORM_KEYS, ...(hasNetworkTimeout ? ["networkTimeoutSeconds"] : []), ...(hasNavigationRetry ? ["navigationRetry"] : [])], "config");
   if (config["kind"] !== "platform") fail('config.kind must be "platform"');
   if (config["version"] !== 1) fail("config.version must be 1");
 
@@ -193,6 +195,16 @@ export function validatePlatformWorkerConfig(value: unknown): PwaPlatformWorkerC
   const networkTimeoutSeconds = hasNetworkTimeout
     ? boundedInteger(config["networkTimeoutSeconds"], 1, 30, "config.networkTimeoutSeconds")
     : undefined;
+  let navigationRetry: PwaPlatformWorkerConfig["navigationRetry"];
+  if (hasNavigationRetry) {
+    const retry = plainObject(config["navigationRetry"], "config.navigationRetry");
+    exactKeys(retry, ["delayMilliseconds"], "config.navigationRetry");
+    const delayMilliseconds = boundedInteger(retry["delayMilliseconds"], 100, 3000, "config.navigationRetry.delayMilliseconds");
+    if (networkTimeoutSeconds === undefined || delayMilliseconds >= networkTimeoutSeconds * 1000) {
+      fail("config.navigationRetry requires a network timeout greater than its retry delay");
+    }
+    navigationRetry = { delayMilliseconds };
+  }
 
   return {
     kind: "platform",
@@ -206,6 +218,7 @@ export function validatePlatformWorkerConfig(value: unknown): PwaPlatformWorkerC
     offlineWrites,
     runtimeCache,
     ...(networkTimeoutSeconds === undefined ? {} : { networkTimeoutSeconds }),
+    ...(navigationRetry === undefined ? {} : { navigationRetry }),
   };
 }
 

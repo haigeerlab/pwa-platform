@@ -91,6 +91,7 @@ export { CACHE_STRATEGIES, RESOURCE_CLASSES, UPDATE_MODES } from "./policy.js";
 export type {
   MountRelativePath,
   PwaCacheStrategy,
+  PwaNavigationRetryPolicy,
   PwaOfflineFallback,
   PwaOfflineWritePolicy,
   PwaOfflineWriteTarget,

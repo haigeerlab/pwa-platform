@@ -40,7 +40,7 @@ for (const example of EXAMPLES) {
       try {
         await page.goto(fixtureServer.url(UNCACHED_ROUTE));
         // The generated offline page (docs/guides/offline-page.md), not the example's own hand-written one.
-        await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("You're offline");
+        await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("Temporarily unable to connect");
         await expect.poll(() => page.locator(".pwa-offline__app").textContent()).toBe(INSTALL.name);
         // The acceptance matrix: apart from offlineFallback.path, no other route's cached content may be returned.
         // Serving the shell here would look friendlier and still be wrong.
@@ -64,7 +64,7 @@ for (const example of EXAMPLES) {
         await page.goto(target, { timeout: TIMEOUT_UPPER_BOUND_MS });
         const elapsedMs = Date.now() - startedAt;
 
-        await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("You're offline");
+        await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("Temporarily unable to connect");
         expect(elapsedMs).toBeGreaterThanOrEqual(TIMEOUT_LOWER_BOUND_MS);
         expect(elapsedMs).toBeLessThanOrEqual(TIMEOUT_UPPER_BOUND_MS);
       } finally {
