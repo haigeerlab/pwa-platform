@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/client-runtime",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Browser registration and update lifecycle for PWA Platform.",
   "license": "MIT",
   "type": "module",
