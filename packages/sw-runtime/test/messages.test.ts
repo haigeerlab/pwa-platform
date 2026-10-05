@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isOfflineProbeMessage,
   isOfflineWriteClearResult,
   isOfflineWriteMessage,
   isRuntimeCachePendingMessage,
@@ -8,6 +9,16 @@ import {
   isSkipWaitingMessage,
   SKIP_WAITING_MESSAGE,
 } from "../src/messages/index.js";
+
+describe("offline document probe envelope", () => {
+  it("accepts only the versioned closed request, without invoking accessors", () => {
+    expect(isOfflineProbeMessage({ type: "pwa:offline:probe", version: 1 })).toBe(true);
+    for (const candidate of [null, { type: "pwa:offline:probe", version: 2 }, { type: "pwa:offline:probe", version: 1, url: "https://other.example/" },
+      Object.defineProperty({ version: 1 }, "type", { get: () => { throw new Error("must not run"); } })]) {
+      expect(isOfflineProbeMessage(candidate)).toBe(false);
+    }
+  });
+});
 
 describe("SKIP_WAITING_MESSAGE", () => {
   it("is the frozen message { type: \"pwa:skip-waiting\" }", () => {

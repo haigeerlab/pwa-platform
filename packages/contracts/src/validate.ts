@@ -259,6 +259,7 @@ function createSchemas() {
       { params: { diagnostic: "schema.invalid-value" } },
     ),
   );
+  const navigationRetry = z.strictObject({ delayMilliseconds: z.number().int().min(100).max(3000) }).readonly();
   const policyFields = {
     install: z.strictObject({ enabled: z.boolean() }).readonly(),
     offlineFallback,
@@ -266,6 +267,7 @@ function createSchemas() {
     resources,
     extensions: z.exactOptional(extensions),
     networkTimeoutSeconds: z.exactOptional(networkTimeoutSeconds),
+    navigationRetry: z.exactOptional(navigationRetry),
   };
   const nonNegativeBoundedInteger = (maximum: number) => z.number().int().min(0).max(maximum);
   const positiveBoundedInteger = (maximum: number) => z.number().int().min(1).max(maximum);
@@ -352,6 +354,7 @@ function createSchemas() {
         )
         .readonly(),
       networkTimeoutSeconds: z.exactOptional(networkTimeoutSeconds),
+      navigationRetry: z.exactOptional(navigationRetry),
   };
   const planOfflineWrites = z
     .discriminatedUnion("enabled", [
@@ -597,11 +600,19 @@ function policyInvariants(policy: PwaPolicy): PwaDiagnostic[] {
       ? [diagnostic("policy.unsafe-cache-strategy", ["resources", index, "cache"])]
       : [],
   );
+  findings.push(...navigationRetryInvariants(policy));
   if (policy.schemaVersion === 1) return findings;
 
   findings.push(...offlineWriteInvariants(policy.offlineWrites));
   if (policy.schemaVersion === 3) findings.push(...runtimeCacheInvariants(policy.runtimeCache));
   return findings;
+}
+
+function navigationRetryInvariants(value: Pick<PwaPolicy, "navigationRetry" | "networkTimeoutSeconds">): PwaDiagnostic[] {
+  return value.navigationRetry !== undefined &&
+    (value.networkTimeoutSeconds === undefined || value.navigationRetry.delayMilliseconds >= value.networkTimeoutSeconds * 1000)
+    ? [diagnostic("schema.invalid-value", ["navigationRetry", "delayMilliseconds"])]
+    : [];
 }
 
 function offlineWriteInvariants(offlineWrites: PwaOfflineWritePolicy): PwaDiagnostic[] {
@@ -841,6 +852,7 @@ function excludeRuleInvariants(pathRules: readonly PwaPathRule[]): PwaDiagnostic
 
 function planInvariants(plan: PwaPlan): PwaDiagnostic[] {
   const findings: PwaDiagnostic[] = [
+    ...navigationRetryInvariants(plan),
     ...identityInvariants(plan.identity, ["identity"]),
     ...(plan.install ? installInvariants(plan.install, plan.identity, ["install"]) : []),
     ...(plan.cacheNamespace.prefix === cacheNamespacePrefix(plan.identity)

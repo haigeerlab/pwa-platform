@@ -54,3 +54,7 @@ network-first 的运行时缓存把超时交给 Workbox `NetworkFirst` 的 `netw
 - **只放在 v3 的 `runtimeCache` 里**：v1 业务的导航用不上，而那正是最常见的场景。
 - **超时后中止网络请求**：可以省流量，但会让运行时缓存无法用晚到的响应更新，也可能中止一个即将成功的请求。
 - **复用 `network-failed` 作为超时的 `reason`**：页面无法区分网络慢与网络断，而两者对用户的提示不同。
+
+## 2026-10-05 增补：显式导航重试
+
+[ADR-0052](0052-offline-experience-resilience.md) 增加可选 `navigationRetry.delayMilliseconds`：首次请求明确失败后最多一次串行重试，共享从首次请求开始的 `networkTimeoutSeconds` 总预算。字段缺省保留本 ADR 的旧导航行为；挂起请求和 HTTP 错误不重试，运行时缓存语义不变。

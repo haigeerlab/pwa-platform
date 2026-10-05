@@ -25,6 +25,7 @@ export function createPlatformWorkerConfig(plan: PwaPlan): PwaPlatformWorkerConf
     offlineWrites: validated.schemaVersion === 1 ? { enabled: false } : validated.offlineWrites,
     runtimeCache: runtimeCacheWorkerConfig(validated),
     ...(validated.networkTimeoutSeconds === undefined ? {} : { networkTimeoutSeconds: validated.networkTimeoutSeconds }),
+    ...(validated.navigationRetry === undefined ? {} : { navigationRetry: validated.navigationRetry }),
   });
 }
 

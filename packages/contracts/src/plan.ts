@@ -2,6 +2,7 @@ import type { PwaWarningDiagnostic } from "./diagnostics.js";
 import type { AbsolutePath, PwaIdentity, PwaPortableIdentity, PwaInstallMetadata } from "./identity.js";
 import type {
   PwaCacheStrategy,
+  PwaNavigationRetryPolicy,
   PwaResourceClass,
   PwaUpdateMode,
 } from "./policy.js";
@@ -146,11 +147,12 @@ type PwaPlanFields = {
   readonly diagnostics: readonly PwaWarningDiagnostic[];
   /** Same value as the policy; absent (not `undefined`) when the policy did not set it. */
   readonly networkTimeoutSeconds?: number;
+  readonly navigationRetry?: PwaNavigationRetryPolicy;
 };
 
 type Expand<T> = { readonly [Key in keyof T]: T[Key] };
 
-/** Compiled v1 plan. Closed shape: exactly these 15 required fields plus the optional `networkTimeoutSeconds`, no extensions. */
+/** Compiled v1 plan. Closed shape: exactly these 15 required fields plus optional `networkTimeoutSeconds` and `navigationRetry`, no extensions. */
 export type PwaPlanV1 = Expand<PwaPlanFields & {
   readonly schemaVersion: 1;
   readonly planVersion: 1;

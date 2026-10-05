@@ -33,6 +33,12 @@ npm install @pwa-platform/contracts
 
 常量 `RESOURCE_CLASSES`、`CACHE_STRATEGIES`、`UPDATE_MODES`、`TOPOLOGY_KINDS` 和安装元数据常量可用于表单、配置生成器或静态检查。
 
+## 下一候选版本的导航重试
+
+`PwaNavigationRetryPolicy` 与 v1／v2／v3 的可选 `navigationRetry` 同步到编译计划。
+`{ delayMilliseconds: 1000 }` 要求显式 `networkTimeoutSeconds`；延迟须为 100–3,000 的整数且小于总超时。
+缺省保持旧行为；非法配置由运行时校验拒绝。当前工作区的新增契约尚未发布到 NPM 0.3.1。
+
 ## 校验示例
 
 ```ts

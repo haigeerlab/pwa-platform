@@ -3,6 +3,15 @@ export type PwaSkipWaitingMessage = { readonly type: "pwa:skip-waiting" };
 
 export const SKIP_WAITING_MESSAGE: PwaSkipWaitingMessage = Object.freeze({ type: "pwa:skip-waiting" });
 
+/** Bounded network-only probe of the sending controlled window's document (ADR-0052). */
+export type PwaOfflineProbeMessage = { readonly type: "pwa:offline:probe"; readonly version: 1 };
+export type PwaOfflineProbeResult = { readonly type: "pwa:offline:probe-result"; readonly version: 1; readonly reachable: boolean };
+
+export function isOfflineProbeMessage(value: unknown): value is PwaOfflineProbeMessage {
+  const message = dataObject(value, ["type", "version"]);
+  return message !== undefined && read(message, "type") === "pwa:offline:probe" && read(message, "version") === 1;
+}
+
 /**
  * True only for a plain object (this realm's `Object.prototype` or a null prototype) whose single own property is a
  * `type` data property equal to `"pwa:skip-waiting"`. Structured-cloned messages have that shape; accessors are

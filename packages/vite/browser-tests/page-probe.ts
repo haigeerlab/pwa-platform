@@ -1,6 +1,6 @@
 // Page-side helpers. The fixture app exposes its client, its collected events and its config on `window`; these
 // read them back through page.evaluate so the specs stay about behaviour rather than plumbing.
-import { waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
+import { readRealBrowserKind, test, waitForController, type FixtureServer } from "@pwa-platform/browser-test-harness";
 import type { Page } from "@playwright/test";
 
 export async function pageRegister(page: Page): Promise<void> {
@@ -136,4 +136,27 @@ export function fetchFromPage(page: Page, url: string, marker: string): Promise<
     },
     [url, marker],
   );
+}
+
+/**
+ * WebDriver windows may report `visibilityState` "hidden", correctly disabling offline probes.
+ * Recovery cases emulate a visible document only when needed and annotate that limitation; they do not prove
+ * native foreground behavior.
+ */
+export async function lookAtPage(page: Page): Promise<void> {
+  if (readRealBrowserKind(process.env) === undefined || (await page.evaluate(() => document.visibilityState)) !== "hidden") return;
+  test.info().annotations.push({ type: "simulated-document-visibility", description: "WebDriver page reported hidden; visible-page recovery is tested with a visibility override, not native foreground observation" });
+  await page.evaluate(() => {
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+}
+
+/** Marks this document only; navigation replaces its Window, unlike unstable timeOrigin readings. */
+export async function markDocument(page: Page): Promise<void> {
+  await page.evaluate(() => Reflect.set(window, "__beforeReconnect", true));
+}
+
+export function isMarkedDocument(page: Page): Promise<boolean> {
+  return page.evaluate(() => Reflect.get(window, "__beforeReconnect") === true);
 }

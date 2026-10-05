@@ -20,18 +20,18 @@ async function sha256Base64(text: string): Promise<string> {
 describe("OFFLINE_PAGE_MESSAGES", () => {
   it("matches spec's built-in copy table exactly for zh-CN", () => {
     expect(OFFLINE_PAGE_MESSAGES["zh-CN"]).toEqual({
-      documentTitle: "离线",
-      heading: "当前处于离线状态",
-      body: "网络恢复后页面会自动重新加载。",
+      documentTitle: "暂时无法连接",
+      heading: "暂时无法连接",
+      body: "网络连接或服务响应暂时异常，请稍后重试。",
       retry: "重试",
     });
   });
 
   it("matches spec's built-in copy table exactly for en", () => {
     expect(OFFLINE_PAGE_MESSAGES.en).toEqual({
-      documentTitle: "Offline",
-      heading: "You're offline",
-      body: "This page will reload when your connection is back.",
+      documentTitle: "Temporarily unavailable",
+      heading: "Temporarily unable to connect",
+      body: "The connection or service may be temporarily unavailable. Please try again shortly.",
       retry: "Try again",
     });
   });
@@ -40,16 +40,16 @@ describe("OFFLINE_PAGE_MESSAGES", () => {
 describe("renderOfflinePage: built-in copy and overrides", () => {
   it("uses the built-in zh-CN copy when no messages are given", async () => {
     const { html } = await renderOfflinePage({ locale: "zh-CN", appName: null });
-    expect(html).toContain("<title>离线</title>");
-    expect(html).toContain('<h1 class="pwa-offline__heading">当前处于离线状态</h1>');
-    expect(html).toContain('<p class="pwa-offline__body">网络恢复后页面会自动重新加载。</p>');
+    expect(html).toContain("<title>暂时无法连接</title>");
+    expect(html).toContain('<h1 class="pwa-offline__heading">暂时无法连接</h1>');
+    expect(html).toContain('<p class="pwa-offline__body">网络连接或服务响应暂时异常，请稍后重试。</p>');
     expect(html).toContain('<button type="button" class="pwa-offline__retry">重试</button>');
   });
 
   it("uses the built-in en copy when locale is en", async () => {
     const { html } = await renderOfflinePage({ locale: "en", appName: null });
-    expect(html).toContain("<title>Offline</title>");
-    expect(html).toContain('<h1 class="pwa-offline__heading">You&#39;re offline</h1>');
+    expect(html).toContain("<title>Temporarily unavailable</title>");
+    expect(html).toContain('<h1 class="pwa-offline__heading">Temporarily unable to connect</h1>');
   });
 
   it("a partial messages override replaces only the given keys", async () => {
@@ -60,8 +60,8 @@ describe("renderOfflinePage: built-in copy and overrides", () => {
     });
     expect(html).toContain('<h1 class="pwa-offline__heading">自定义标题</h1>');
     // Untouched keys keep the built-in zh-CN copy.
-    expect(html).toContain("<title>离线</title>");
-    expect(html).toContain('<p class="pwa-offline__body">网络恢复后页面会自动重新加载。</p>');
+    expect(html).toContain("<title>暂时无法连接</title>");
+    expect(html).toContain('<p class="pwa-offline__body">网络连接或服务响应暂时异常，请稍后重试。</p>');
     expect(html).toContain('<button type="button" class="pwa-offline__retry">重试</button>');
   });
 
@@ -157,8 +157,8 @@ describe("OFFLINE_PAGE_SCRIPT", () => {
     expect(OFFLINE_PAGE_SCRIPT).toContain('.pwa-offline__retry');
     expect(OFFLINE_PAGE_SCRIPT).toContain("location.reload()");
     expect(OFFLINE_PAGE_SCRIPT).toContain('addEventListener("online", probeConnection)');
-    expect(OFFLINE_PAGE_SCRIPT).toContain("navigator.serviceWorker?.controller?.scriptURL");
-    expect(OFFLINE_PAGE_SCRIPT).toContain('method: "HEAD", cache: "no-store"');
+    expect(OFFLINE_PAGE_SCRIPT).toContain("initialController.scriptURL");
+    expect(OFFLINE_PAGE_SCRIPT).toContain('type: "pwa:offline:probe", version: 1');
   });
 
   it("is identical across renders regardless of locale, messages, css or appName", async () => {

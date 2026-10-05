@@ -71,6 +71,15 @@ const worker = injectWorkerConfig(workerTemplate, platformConfig);
 
 `checkPushPayload()`／`checkPushPayloadText()`／`validatePushPayload()` 只验证 payload 契约；它们不代表 `@pwa-platform/push` 已公开。公开接入面不包含 Push 订阅与后端发送服务。
 
+## 下一候选版本的离线恢复
+
+可选 `navigationRetry` 只为适用导航的明确网络失败增加至多一次串行请求，共享原有超时预算。
+默认离线页使用版本 1 的 `pwa:offline:probe` / `pwa:offline:probe-result` MessageChannel 协议；
+worker 从受控 WindowClient 派生原文档目标，拒绝排除路径、跨源和跳转，直接网络 GET、三秒超时，
+要求 200 HTML 与非空首个正文块。消息不接受页面指定 URL，不返回正文，不写缓存。
+该协议与默认页的跨重载预算共同防止错误恢复循环，不能证明所有业务接口可用；旧 worker 不支持时页面降级手动恢复。
+这描述下一候选版本，NPM 0.3.1 尚不包含新增协议。
+
 ## 安全边界
 
 - 不要绕过 `@pwa-platform/core` 自行构造 worker 配置。

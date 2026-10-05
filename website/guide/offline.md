@@ -53,7 +53,13 @@ pwa({
 
 语言在**构建时固定**，默认 <code>zh-CN</code>，不会按浏览器语言切换；<code>messages</code> 可逐项覆盖内置的 <code>documentTitle</code>、<code>heading</code>、<code>body</code>、<code>retry</code> 四个键，应用名称取自 <code>install.name</code>。<code>css</code> 只能**追加**为第二个 `<style>`，不能替换默认样式；可覆盖的变量为 <code>--pwa-offline-bg</code>、<code>-fg</code>、<code>-muted</code>、<code>-accent</code>、<code>-accent-fg</code>、<code>-radius</code>、<code>-max-width</code>、<code>-font</code>，class 为 <code>pwa-offline</code>、<code>pwa-offline__app</code>、<code>pwa-offline__heading</code>、<code>pwa-offline__body</code>、<code>pwa-offline__retry</code>；表上没有的都不是契约。离线页是独立静态文档，CSS 支持 <code>[data-theme]</code> 选择器写法，但没有任何脚本会去设置它，实际只跟随系统的亮暗偏好。
 
-页面自带一段固定脚本：点击“重试”按钮刷新；收到浏览器 <code>online</code> 事件时、以及页面可见时每 10 秒，用不经过平台缓存的同源 <code>HEAD</code> 请求探测当前控制页面的 worker 脚本（没有 controller 时不探测；每次探测 3 秒后中止），只有返回 2xx 才自动刷新（探测不访问业务接口或第三方域名）。严格 CSP 下需要把构建日志打印的默认样式、宿主 `css`、脚本三段内联内容的哈希分别放行 `style-src`／`script-src`，并让 `connect-src` 允许 `'self'` 以支持同源探测；平台升级或修改 `css` 后需要重新取值。
+本工作区下一候选版本的默认提示为“暂时无法连接”，覆盖网络失败和服务慢响应。新恢复脚本通过控制它的 worker 从网络读取当前文档，不再以 HEAD worker 成功判断业务恢复。worker 校验受控客户端、同源和 scope；探测采用 GET、`no-store`、禁止跳转，要求 200 HTML 和非空首个正文块，三秒超时，不写入平台缓存。这仅证明文档入口可达，不证明全部 API、脚本或渲染已恢复，也不保证绕过 CDN。
+
+可见页至少等待十秒后检查，两次相隔至少十秒的连续成功才自动刷新；失败按十、二十、四十、六十秒退避。隐藏页不刷新，online 事件不绕过冷却。每标签页、每 worker 脚本路径最多自动刷新一次，预算通过 sessionStorage 跨重载保存；时间经过和探测成功不重置它，用户点击“重试”才开启新周期。一次自动恢复成功后，再次发生故障也可能需要手动重试。这是防止循环刷新所采用的保守边界。
+
+旧 worker 不支持协议、没有 controller、存储不可用或回复不可信时，只保留手动重试。探测慢于三秒时可能无法自动恢复，但手动导航仍可以在宿主的五／十秒预算内成功。脚本被 CSP 阻断时文案和按钮仍可见，按钮刷新及自动恢复均需要脚本获准执行。严格 CSP 下，把构建日志打印的默认样式、宿主 `css`、脚本哈希分别放行 `style-src`／`script-src`；升级后重新取值，并确保 worker 的 CSP 允许同源连接。
+
+以上变更须升级包、重新构建并部署后才生效；不能视为当前 NPM 0.3.2 或现有线上产物已经具有此行为。
 
 ## 弱网超时
 
@@ -79,6 +85,17 @@ networkTimeoutSeconds: 5,
 
 超时不会把一个本来能成功的请求变成错误，也不会中止背后的网络请求（弱网下仍会消耗流量）。对运行时缓存（下一节）而言，超时命中缓存时页面收到的 <code>served-from-cache</code> 事件 <code>reason</code> 为 <code>network-timeout</code>，与网络直接失败的 <code>network-failed</code>、SWR 的 <code>stale-while-revalidate</code> 是三个不同取值；按 <code>reason</code> 分支处理的业务代码需要接住这个新值。
 
+## 短暂导航失败的重试
+
+下一候选版本可在 v1、v2、v3 策略中显式添加：
+
+~~~ts
+networkTimeoutSeconds: 5,
+navigationRetry: { delayMilliseconds: 1000 },
+~~~
+
+`delayMilliseconds` 必须为 100–3,000 的整数，并小于显式设置的总超时。第一次网络读取明确失败后等待该宽限，最多再发送一次串行文档请求；两次请求共享首次开始的五秒总预算。正在等待的请求、及时返回的 4xx／5xx、API、图片、写入和运行时缓存不加入这项重试。未填写 `navigationRetry` 时保持旧导航行为；六秒响应在五秒预算下仍会展示暂时不可用提示，不能承诺“只要设备联网就不兜底”。等待限制针对响应头，不覆盖整个正文和业务 loading。
+
 ## 公共读取的运行时缓存
 
 <code>PwaPolicy v3</code> 可显式开启公共读取缓存。它只适用于明确允许的同源 GET 公共响应，并要求数量、单项大小与最长存活时间上限。<code>public-data</code> 支持 network-first 或 stale-while-revalidate；<code>navigation-public-dynamic</code> 仅支持 network-first。v1、v2 或 v3 且未开启时，这些未预缓存请求照旧透传。
@@ -87,4 +104,4 @@ networkTimeoutSeconds: 5,
 
 ## 断网与恢复
 
-无需任何配置。平台**不提供**在线／离线状态 API：客户端 facade、Vue 和 React 绑定都没有暴露 <code>online</code>／<code>offline</code> 事件或状态。网络恢复后，只有平台生成的默认离线页会自动探测并 <code>location.reload()</code> 自己——这段脚本只存在于离线页本身，不是给业务路由页面用的能力。业务页面停留在断网状态下发出的请求，需要自己实现重试；平台不会在网络恢复时通知应用或自动重放任何请求。
+无需任何配置。平台**不提供**在线／离线状态 API：客户端 facade、Vue 和 React 绑定都没有暴露 <code>online</code>／<code>offline</code> 事件或状态。网络恢复后，只有平台生成的默认离线页会按上述有界规则探测，并在满足条件时 <code>location.reload()</code> 自己——这段脚本只存在于离线页本身，不是给业务路由页面用的能力。业务页面停留在断网状态下发出的请求，需要自己实现重试；平台不会在网络恢复时通知应用或自动重放任何请求。

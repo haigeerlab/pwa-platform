@@ -163,8 +163,8 @@ describe("the default offline page inside a real build", () => {
     await runBuild(root, FALLBACK_ENABLED, {});
     const html = readFileSync(join(root, "dist/offline.html"), "utf8");
     expect(html).toContain('<html lang="zh-CN">');
-    expect(html).toContain("<title>离线</title>");
-    expect(html).toContain('<h1 class="pwa-offline__heading">当前处于离线状态</h1>');
+    expect(html).toContain("<title>暂时无法连接</title>");
+    expect(html).toContain('<h1 class="pwa-offline__heading">暂时无法连接</h1>');
     expect(html).toContain('<p class="pwa-offline__app">Storefront</p>');
   });
 
@@ -175,7 +175,7 @@ describe("the default offline page inside a real build", () => {
     expect(html).toContain('<html lang="en">');
     expect(html).toContain('<h1 class="pwa-offline__heading">Custom heading</h1>');
     // Every other en message stays the built-in copy: a partial override replaces only the given key.
-    expect(html).toContain("<title>Offline</title>");
+    expect(html).toContain("<title>Temporarily unavailable</title>");
   });
 
   it("enters the compiled plan's precache at the resolved offline-fallback URL", async () => {

@@ -23,6 +23,12 @@ const storefront = readPlan("storefront");
 const rootMinimal = readPlan("root-minimal");
 
 describe("createPlatformWorkerConfig", () => {
+  it("injects the explicit retry, validates its budget, and omits it for old plans", () => {
+    const config = createPlatformWorkerConfig({ ...storefront, networkTimeoutSeconds: 5, navigationRetry: { delayMilliseconds: 1000 } });
+    expect(config.navigationRetry).toEqual({ delayMilliseconds: 1000 });
+    expect(Object.hasOwn(createPlatformWorkerConfig(storefront), "navigationRetry")).toBe(false);
+    expect(() => createPlatformWorkerConfig({ ...storefront, navigationRetry: { delayMilliseconds: 1000 } })).toThrow();
+  });
   it("derives each field of the storefront config from the plan", () => {
     const config = createPlatformWorkerConfig(storefront);
     expect(config).toEqual({

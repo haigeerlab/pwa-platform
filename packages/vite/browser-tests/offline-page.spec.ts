@@ -17,29 +17,12 @@ import {
   SHELL_URL,
   WORKER_URL,
 } from "./fixture-site.js";
-import { fetchFromPage, installAndControl } from "./page-probe.js";
+import { fetchFromPage, installAndControl, lookAtPage, markDocument } from "./page-probe.js";
 
-const NEVER_VISITED = "/app/never-visited";
+const NEVER_VISITED = "/app/never-visited.html";
 const REAL_BROWSER = readRealBrowserKind(process.env) !== undefined;
 
 /** Puts a value on this document's window: a reload builds a new window, so its absence proves the reload happened. */
-async function markDocument(page: Page): Promise<void> {
-  await page.evaluate(() => Reflect.set(window, "__beforeReconnect", true));
-}
-
-/**
- * Safari's automation window is never frontmost, so its pages report `visibilityState` "hidden" and the offline page
- * rightly skips its connectivity probe (it only probes a page someone is looking at). These specs mean a page the user
- * is looking at, so on a real browser that reports "hidden" the same override a tab switch would produce says so.
- */
-async function lookAtPage(page: Page): Promise<void> {
-  if (!REAL_BROWSER || (await page.evaluate(() => document.visibilityState)) !== "hidden") return;
-  await page.evaluate(() => {
-    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" });
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-}
-
 /** Waits until the document `markDocument` marked has been replaced by a new one (WebDriver has no `load` event). */
 async function expectDocumentReplaced(page: Page, timeout: number): Promise<void> {
   await expect
@@ -98,12 +81,12 @@ test.describe("default offline page, built-in zh-CN copy", () => {
     fixtureServer.goOffline();
     await page.goto(fixtureServer.url(NEVER_VISITED));
 
-    await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("当前处于离线状态");
-    await expect.poll(() => page.locator(".pwa-offline__body").textContent()).toBe("网络恢复后页面会自动重新加载。");
+    await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe("暂时无法连接");
+    await expect.poll(() => page.locator(".pwa-offline__body").textContent()).toBe("网络连接或服务响应暂时异常，请稍后重试。");
     await expect.poll(() => page.locator(".pwa-offline__retry").textContent()).toBe("重试");
     await expect.poll(() => page.locator(".pwa-offline__app").textContent()).toBe("Vite Fixture");
     expect(await page.locator("html").getAttribute("lang")).toBe("zh-CN");
-    expect(await page.title()).toBe("离线");
+    expect(await page.title()).toBe("暂时无法连接");
   });
 
   test("the generated page itself is precached", async ({ page, fixtureServer }) => {
@@ -269,6 +252,7 @@ test.describe("default offline page, built-in zh-CN copy", () => {
   }
 
   test("the page reloads by itself when the connection returns", async ({ page, context, fixtureServer }) => {
+    test.setTimeout(45_000);
     await installAndControl(page, fixtureServer, SHELL_URL, WORKER_URL);
     await cutNetwork(context, fixtureServer);
     await page.goto(fixtureServer.url(NEVER_VISITED));
@@ -276,7 +260,7 @@ test.describe("default offline page, built-in zh-CN copy", () => {
     await lookAtPage(page);
     await markDocument(page);
 
-    // No click: the online event probes connectivity immediately instead of waiting for the interval.
+    // No click: online is only a hint; the cooldown and two-success requirement still apply.
     // (Real browsers: the event is synthetic, see `restoreNetwork`.)
     await restoreNetwork(page, context, fixtureServer, true);
     await expectDocumentReplaced(page, 25_000);
@@ -339,9 +323,9 @@ test.describe("default offline page, en with a messages override", () => {
     await page.goto(fixtureServer.url(NEVER_VISITED));
 
     await expect.poll(() => page.locator(".pwa-offline__heading").textContent()).toBe(EN_HEADING_OVERRIDE);
-    await expect.poll(() => page.locator(".pwa-offline__body").textContent()).toBe("This page will reload when your connection is back.");
+    await expect.poll(() => page.locator(".pwa-offline__body").textContent()).toBe("The connection or service may be temporarily unavailable. Please try again shortly.");
     await expect.poll(() => page.locator(".pwa-offline__retry").textContent()).toBe("Try again");
     expect(await page.locator("html").getAttribute("lang")).toBe("en");
-    expect(await page.title()).toBe("Offline");
+    expect(await page.title()).toBe("Temporarily unavailable");
   });
 });

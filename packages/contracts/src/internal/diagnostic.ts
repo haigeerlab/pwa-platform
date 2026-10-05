@@ -57,6 +57,8 @@ const KNOWN_FIELD_NAMES = [
   "mountPath",
   "name",
   "networkTimeoutSeconds",
+  "navigationRetry",
+  "delayMilliseconds",
   "offlineFallback",
   "orientation",
   "origin",

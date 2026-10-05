@@ -4,7 +4,8 @@
 // soon as any of its modules loads, which breaks a plain Node import — see worker/index.ts, which does import the
 // real values and is the only place that needs `self` stubbed first).
 import type { createRuntimeCacheEngine, PwaPrecacheEngine, PwaRuntimeCacheEngine, registerRuntimeCacheQuotaCleanup } from "@pwa-platform/engine-workbox/worker";
-import { isOfflineWriteMessage, isRuntimeCachePendingMessage, isSkipWaitingMessage } from "../messages/index.js";
+import { isOfflineProbeMessage, isOfflineWriteMessage, isRuntimeCachePendingMessage, isSkipWaitingMessage } from "../messages/index.js";
+import { createOfflineDocumentProbe } from "./offline-document-probe.js";
 import type { PwaOfflineWriteMessage, PwaRuntimeCachePendingResult, PwaRuntimeCacheReason } from "../messages/index.js";
 import { validatePushPayload } from "../push-payload/index.js";
 import type { PwaPlatformWorkerConfig } from "../shared/config.js";
@@ -99,6 +100,7 @@ export function attachPlatformWorker({
     });
   }
   const pendingSignals = createPendingSignalStore();
+  const probeDocument = createOfflineDocumentProbe(scope, config);
 
   scope.addEventListener("install", (event) => {
     // The engine passes its work to event.waitUntil, so a failed download fails the install; the rejection is only
@@ -135,11 +137,21 @@ export function attachPlatformWorker({
       event.respondWith(respondFromRuntimeCache(scope, engine, runtimeEngineFor(runtimeEngines, decision), decision, event, pendingSignals));
       return;
     }
-    event.respondWith(navigate(scope, engine, decision.fallbacks, event.request, config.networkTimeoutSeconds));
+    event.respondWith(navigate(scope, engine, decision.fallbacks, event.request, config.networkTimeoutSeconds, config.navigationRetry));
   });
 
   scope.addEventListener("message", (event) => {
     if (!isSameOriginWindow(event.source, origin)) return;
+    if (isOfflineProbeMessage(event.data)) {
+      const [port, ...rest] = event.ports;
+      const clientId = windowClientId(event.source);
+      if (port === undefined || rest.length !== 0 || clientId === undefined) return;
+      event.waitUntil(probeDocument(clientId).then((reachable) => {
+        try { port.postMessage({ type: "pwa:offline:probe-result", version: 1, reachable }); } catch { /* The document may have closed. */ }
+        finally { port.close(); }
+      }));
+      return;
+    }
     if (isSkipWaitingMessage(event.data)) {
       // Prompted updates: the new worker takes over only after a page confirmed it (ADR-0005).
       event.waitUntil(scope.skipWaiting());
@@ -386,6 +398,7 @@ async function navigate(
   fallbacks: readonly string[],
   request: Request,
   networkTimeoutSeconds: number | undefined,
+  navigationRetry: PwaPlatformWorkerConfig["navigationRetry"],
 ): Promise<Response> {
   if (networkTimeoutSeconds === undefined) {
     try {
@@ -397,12 +410,16 @@ async function navigate(
     return fallbackResponse(engine, fallbacks);
   }
 
-  const networkPromise = scope.fetch(request);
+  const deadline = Date.now() + networkTimeoutSeconds * 1000;
+  let expired = false;
+  const networkPromise = navigationRetry === undefined
+    ? scope.fetch(request)
+    : fetchWithNavigationRetry(scope, request, navigationRetry.delayMilliseconds, deadline, () => expired);
   let timer: ReturnType<typeof setTimeout> | undefined;
   // Whichever settles first: the network (success or failure) clears the timer; the timer never rejects, so it
   // cannot itself produce an unhandled rejection.
   const timedOut = await new Promise<boolean>((resolve) => {
-    timer = setTimeout(() => resolve(true), networkTimeoutSeconds * 1000);
+    timer = setTimeout(() => { expired = true; resolve(true); }, networkTimeoutSeconds * 1000);
     networkPromise.then(
       () => resolve(false),
       () => resolve(false),
@@ -441,6 +458,20 @@ async function navigate(
     // Falls through to fallbackResponse, which finds nothing (again) and returns Response.error().
   }
   return fallbackResponse(engine, fallbacks);
+}
+
+/** ADR-0052: only a settled network failure gets one extra request; it never receives a fresh timeout budget. */
+async function fetchWithNavigationRetry(scope: ServiceWorkerGlobalScope, request: Request, delay: number, deadline: number, isExpired: () => boolean): Promise<Response> {
+  try {
+    const response = await scope.fetch(request);
+    if (response.type !== "error") return response;
+  } catch {
+    // Retry only a network failure, not an HTTP error or a still-pending request.
+  }
+  if (isExpired() || request.signal?.aborted || Date.now() >= deadline) return Response.error();
+  await new Promise<void>((resolve) => setTimeout(resolve, Math.min(delay, deadline - Date.now())));
+  if (isExpired() || request.signal?.aborted || Date.now() >= deadline) return Response.error();
+  return scope.fetch(request);
 }
 
 /** The first precached fallback that exists, in order, or a network error when none does. */
