@@ -4,7 +4,7 @@ pageClass: platform-test-matrix
 
 # 跨平台测试证据
 
-本页按功能列出每个平台、每个浏览器做过什么验证。核查日期 **2026-10-02**。下表的逐平台证据基线仍为十个公开包 **0.2.5**；`0.3.1` 的 Node 22／24、Chrome、Edge 和引擎冒烟发布 CI 已通过，见[0.3.1 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.1.md)。可移植部署与 worker MIME 的新增浏览器用例见[0.3.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.0.md)。PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`。每一格只依据仓库里的测试记录；没有记录一律标 ○，不按"代码支持"推断。
+本页按功能列出每个平台、每个浏览器做过什么验证。历史基线核查日期 **2026-10-02**；`0.4.0` 的新增证据见下方增量。下表的逐平台证据基线仍为十个公开包 **0.2.5**；`0.3.1` 的 Node 22／24、Chrome、Edge 和引擎冒烟发布 CI 已通过，见[0.3.1 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.1.md)。可移植部署与 worker MIME 的新增浏览器用例见[0.3.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.0.md)。PC Edge／Safari／Firefox 的本机真实浏览器运行基于 0.2.4 发布后的 `main`。每一格只依据仓库里的测试记录；没有记录一律标 ○，不按"代码支持"推断。
 
 ## 符号与证据等级
 
@@ -65,9 +65,9 @@ pageClass: platform-test-matrix
 | 14 离线写队列（未发布） | ▲ | ▲ | ▲ | ▲ | ▲ | ▲ | |
 | 15 Nuxt 适配（未发布） | ▲ | ▲ | ○ | ○ | ▲ | ▲ | |
 
-## 本地候选增量：弱网导航与离线恢复
+## 0.4.0 增量：弱网导航与离线恢复
 
-2026-10-05，`codex/offline-experience-resilience`：对应本地候选 `0.4.0-next.20261005.2`，未发布。该增量独立于上表历史发布树；不能提高上表的发布等级。完整结果和原始日志见仓库内 `tasks/offline-experience-resilience/verification.md`（本地记录，尚未合并）。
+2026-10-06：十包 `0.4.0` 已公开并完成注册表读回、归档比对与全新安装；[发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.4.0.md)关联 main 的七项正式 CI。以下本机专项与此前临时候选的 dist 一致，仍按各自环境记录，不提高上表历史平台等级。完整结果见[模块验证记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/offline-experience-resilience/verification.md)。
 
 | 本轮环境 | 专项结果 | 限制 |
 | --- | --- | --- |
@@ -75,7 +75,9 @@ pageClass: platform-test-matrix
 | Chrome for Testing 153.0.8010.12 / macOS 15.7.3 | 冷却修复后完整一轮：九包 327 项通过、1 项既有跳过 | 本机既有官方 CfT；非正式发布门禁；完整日志和复测同时保留 |
 | Firefox 157.0 / geckodriver | 四项核心专项通过 | 历史／标签页专项跳过；最新恢复复核未模拟可见性 |
 | Safari 18.6 / safaridriver | 四项核心专项覆盖，恢复两项在冷却修复后再次通过 | 历史／标签页专项跳过；最新恢复复核模拟可见性，不证明原生窗口 |
-| Edge、实体 Android／iPhone、原生安装窗口 | 本轮未验证 | 不用历史通过记录代替新能力验收 |
+| Edge | main 正式 CI 327 项通过、1 项既有跳过 | CI 不证明原生安装窗口 |
+| Chrome 154／153 × Vue／React 原生窗口 | 四个组合安装、图标启动、更新与基础离线恢复通过 | 900 ms 原生故障窗口、真实 hidden 等缺口保留，见模块原生验收记录 |
+| 实体 Android／iPhone、真实丢包、现场 PRE | 本轮未验证 | 不用历史通过记录代替新能力验收 |
 
 核心专项为 900 毫秒连接失败后正常显示、4 秒文档正常／6 秒文档在 5 秒预算后提示、业务文档失败时 60 秒零自动刷新，以及探测成功但导航失败时 60 秒仅一次自动刷新。服务器连接重置不等于真实丢包；模拟可见性不证明原生窗口体验。
 
@@ -121,6 +123,7 @@ pageClass: platform-test-matrix
 
 ## 原始记录
 
+- [0.4.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.4.0.md)
 - [0.3.1 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.1.md)
 - [0.3.0 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.3.0.md)
 - [0.2.5 发布记录](https://github.com/haigeerlab/pwa-platform/blob/main/tasks/package-distribution/release-0.2.5.md)

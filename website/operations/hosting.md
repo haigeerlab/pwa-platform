@@ -38,8 +38,8 @@
 
 | 项目 | 要求 |
 | --- | --- |
-| <code>Content-Type</code> | <code>sw.js</code> 必须是 JavaScript MIME 类型（推荐 <code>text/javascript</code>；现有 <code>application/javascript</code> 也合格），配错可使 worker 注册失败。npm <code>0.3.2</code> **已支持**独立的 <code>worker-mime</code> 机器检查。manifest 建议使用 <code>application/manifest+json</code>，当前不做 MIME 发布检查 |
-| <code>HEAD</code> 请求 | <code>sw.js</code> 的 <code>HEAD</code> 请求必须返回 2xx：离线页在断网时用它探测网络是否恢复，返回非 2xx 页面就不会自动重新加载 |
+| <code>Content-Type</code> | <code>sw.js</code> 必须是 JavaScript MIME 类型（推荐 <code>text/javascript</code>；现有 <code>application/javascript</code> 也合格），配错可使 worker 注册失败。npm <code>0.4.0</code> **已支持**独立的 <code>worker-mime</code> 机器检查。manifest 建议使用 <code>application/manifest+json</code>，当前不做 MIME 发布检查 |
+| 文档恢复探测 | npm `0.4.0` 默认离线页通过 worker 对原导航 URL（含查询参数）发网络 GET；该 URL 须正常返回 200 HTML，不能由离线页或错误页冒充业务文档。worker HEAD 可达不作为恢复依据 |
 | <code>Vary</code> | 只有启用公共读取缓存时相关：运行时缓存只接受 <code>Vary</code> 中仅含 <code>Accept</code> 与 <code>Accept-Encoding</code> 的响应，CDN 或开发服务器额外加的 <code>Vary: Origin</code> 会让响应不被缓存 |
 
 ## Nginx 示例
@@ -203,7 +203,7 @@ Cloudflare Pages 用发布目录里的 <code>_headers</code> 文件配置响应�
 ## 更新检查对服务端的负载
 
 - 开启 <code>updateCheck</code> 后，页面按间隔请求一次 <code>sw.js</code>，并且**绕过 HTTP 缓存**（浏览器对主脚本的更新检查总是如此）。最小间隔 60 秒，即每个**可见**标签页每小时最多约 60 次请求；页面在后台时跳过。每个标签页各自轮询。
-- 离线页显示期间，每 10 秒对当前控制页面的 worker 脚本地址发一次 <code>HEAD</code> 请求（3 秒超时），仅在页面可见时发送；成功（2xx）就重新加载页面。
+- npm `0.4.0` 默认离线页仅在可见时对原导航文档做网络 GET（3 秒超时），首次至少等待 10 秒；连续两次成功、相隔至少 10 秒才尝试刷新，失败按 10／20／40／60 秒退避。每标签页、每 worker 路径最多自动刷新一次，之后保留手动重试。旧版 `0.3.2` 才使用 worker HEAD 探测。详见[默认离线页](/guide/offline#默认离线页)。
 - 所以 <code>sw.js</code> 请求要便宜：应由源站或 CDN 边缘直接返回并做条件请求（<code>ETag</code>／<code>Last-Modified</code> 返回 304），不要让它每次穿透到应用服务器。
 
 ## 自检
@@ -254,7 +254,7 @@ if (!report.ok || !coverage.ok) {
 
 - 固定模式下的输入省略即跳过：<code>published</code>、<code>observed</code>、<code>workerMimeObserved</code>、<code>htmlObserved</code>、<code>baseline</code>、<code>retention</code>（以及子应用的 <code>deployedRootPlan</code>）。所以要同时使用 <code>requiredReleaseChecks(plan)</code> 和 <code>verifyReleaseGateCoverage</code>：前者按拓扑给出必需检查（共享 origin 子应用多一项 <code>release-order</code>），后者确认报告里真的有这些检查。
 - <code>ok</code> 与“覆盖完整”是两件事，门禁要同时满足。
-- 上述示例适用于已发布的 npm <code>0.3.2</code>；`workerMimeObserved` 为独立的 <code>worker-mime</code> 检查提供已采集的响应头。旧版 <code>0.2.5</code> 没有该检查，其对应的本地功能正反例见[实测依据](/operations/header-evidence#实测时发生了什么)。
+- 上述示例适用于已发布的 npm <code>0.4.0</code>；`workerMimeObserved` 为独立的 <code>worker-mime</code> 检查提供已采集的响应头。旧版 <code>0.2.5</code> 没有该检查，其对应的本地功能正反例见[实测依据](/operations/header-evidence#实测时发生了什么)。
 - 私有 HTML 与 API 的响应头不在检查内，需人工确认。
 
 **手工用 curl 核对**（使用 GET；<code>-L</code> 跟随重定向，看输出中最后一个 HTTP 响应块）：
@@ -270,8 +270,8 @@ curl -sS -L -D - -o /dev/null https://app.example.com/offline.html
 # 指纹资源：应有 immutable 和正数的 max-age
 curl -sS -L -D - -o /dev/null https://app.example.com/assets/index-BGTT0tj4.js
 
-# 离线页用 HEAD 探测 sw.js：必须是 2xx
-curl -sI https://app.example.com/sw.js -o /dev/null -w '%{http_code}\n'
+# 恢复探测需要原导航文档正常返回 200 HTML；换成实际业务路由与查询参数
+curl -sS -D - -o /dev/null 'https://app.example.com/main?channel_code=example'
 ```
 
-最后一条单独使用 <code>HEAD</code>，是为了确认离线页恢复探测能得到 2xx；上面的 GET 才用来核对浏览器实际会取得的资源响应头。
+最后一条 GET 用于核对实际导航文档的状态与 HTML MIME；它只是一项服务端抽样，不代替浏览器对连续成功、冷却和自动刷新预算的验收。

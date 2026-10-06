@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 (2026-10-06)
+
+Upgrade all ten public `@pwa-platform/*` packages together. This release improves weak-network navigation and the generated offline page; it adds no business response caching.
+
+- **Optional navigation retry:** `navigationRetry: { delayMilliseconds }` permits one additional serial document GET after a network failure. The 100–3000 ms delay must be below an explicit `networkTimeoutSeconds` budget; both attempts share that budget. Omission preserves existing navigation behavior. Pending requests are not retried in parallel, and HTTP 4xx/5xx responses pass through.
+- **Generated offline page:** the default message is now “暂时无法连接” / “Temporarily unable to connect”. Recovery probes the original document through the controlling worker using a network-only GET; worker HEAD availability is no longer enough. Two qualifying successes separated by at least ten seconds, failure backoff, visibility checks and a sessionStorage budget limit automatic reloads to one per tab/worker path. The retry button starts a new cycle; unsupported protocol or unavailable budget storage leaves manual recovery.
+- **Upgrade:** rebuild and deploy the host, refresh its generated CSP hashes and complete worker takeover. Custom offline pages must align their own recovery behavior. PWA identity, scope, worker URL, cache admission and user-confirmed update takeover are unchanged.
+
+See [the upgrade guide](tasks/offline-experience-resilience/upgrade.md) and [actual package release record](tasks/package-distribution/release-0.4.0.md). npm distribution does not certify PRE or another application's production deployment.
+
 ## 0.3.1 (2026-10-02)
 
 Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, or cache policy changes.

@@ -53,13 +53,13 @@ pwa({
 
 语言在**构建时固定**，默认 <code>zh-CN</code>，不会按浏览器语言切换；<code>messages</code> 可逐项覆盖内置的 <code>documentTitle</code>、<code>heading</code>、<code>body</code>、<code>retry</code> 四个键，应用名称取自 <code>install.name</code>。<code>css</code> 只能**追加**为第二个 `<style>`，不能替换默认样式；可覆盖的变量为 <code>--pwa-offline-bg</code>、<code>-fg</code>、<code>-muted</code>、<code>-accent</code>、<code>-accent-fg</code>、<code>-radius</code>、<code>-max-width</code>、<code>-font</code>，class 为 <code>pwa-offline</code>、<code>pwa-offline__app</code>、<code>pwa-offline__heading</code>、<code>pwa-offline__body</code>、<code>pwa-offline__retry</code>；表上没有的都不是契约。离线页是独立静态文档，CSS 支持 <code>[data-theme]</code> 选择器写法，但没有任何脚本会去设置它，实际只跟随系统的亮暗偏好。
 
-本工作区下一候选版本的默认提示为“暂时无法连接”，覆盖网络失败和服务慢响应。新恢复脚本通过控制它的 worker 从网络读取当前文档，不再以 HEAD worker 成功判断业务恢复。worker 校验受控客户端、同源和 scope；探测采用 GET、`no-store`、禁止跳转，要求 200 HTML 和非空首个正文块，三秒超时，不写入平台缓存。这仅证明文档入口可达，不证明全部 API、脚本或渲染已恢复，也不保证绕过 CDN。
+npm `0.4.0` **已包含**默认提示与有界恢复改进：默认提示为“暂时无法连接”，覆盖网络失败和服务慢响应。新恢复脚本通过控制它的 worker 从网络读取当前文档，不再以 HEAD worker 成功判断业务恢复。worker 校验受控客户端、同源和 scope；探测采用 GET、`no-store`、禁止跳转，要求 200 HTML 和非空首个正文块，三秒超时，不写入平台缓存。这仅证明文档入口可达，不证明全部 API、脚本或渲染已恢复，也不保证绕过 CDN。
 
 可见页至少等待十秒后检查，两次相隔至少十秒的连续成功才自动刷新；失败按十、二十、四十、六十秒退避。隐藏页不刷新，online 事件不绕过冷却。每标签页、每 worker 脚本路径最多自动刷新一次，预算通过 sessionStorage 跨重载保存；时间经过和探测成功不重置它，用户点击“重试”才开启新周期。一次自动恢复成功后，再次发生故障也可能需要手动重试。这是防止循环刷新所采用的保守边界。
 
 旧 worker 不支持协议、没有 controller、存储不可用或回复不可信时，只保留手动重试。探测慢于三秒时可能无法自动恢复，但手动导航仍可以在宿主的五／十秒预算内成功。脚本被 CSP 阻断时文案和按钮仍可见，按钮刷新及自动恢复均需要脚本获准执行。严格 CSP 下，把构建日志打印的默认样式、宿主 `css`、脚本哈希分别放行 `style-src`／`script-src`；升级后重新取值，并确保 worker 的 CSP 允许同源连接。
 
-以上变更须升级包、重新构建并部署后才生效；不能视为当前 NPM 0.3.2 或现有线上产物已经具有此行为。
+以上变更已随 npm `0.4.0` 发布，但宿主须升级包、重新构建、部署并完成 worker 接管后才生效；旧版 `0.3.2` 和未升级的线上产物仍保留原行为。
 
 ## 弱网超时
 
@@ -87,7 +87,7 @@ networkTimeoutSeconds: 5,
 
 ## 短暂导航失败的重试
 
-下一候选版本可在 v1、v2、v3 策略中显式添加：
+npm `0.4.0` 可在 v1、v2、v3 策略中显式添加：
 
 ~~~ts
 networkTimeoutSeconds: 5,

@@ -1,6 +1,6 @@
 # 实现计划：offline-experience-resilience
 
-依据 [模块规格](../../spec/offline-experience-resilience.md)、[设计记录](../../spec/proposals/offline-experience-resilience.md) 与 [优化前实测](../../docs/review/2026-10-05/offline-experience-boundaries.md)。产品目标、技术方案与末尾追加预览均已确认；模块已激活，导航重试与有界恢复已实现，正在完成候选消费和交付验收。
+依据 [模块规格](../../spec/offline-experience-resilience.md)、[设计记录](../../spec/proposals/offline-experience-resilience.md) 与 [优化前实测](../../docs/review/2026-10-05/offline-experience-boundaries.md)。产品目标、技术方案与末尾追加预览均已确认；模块已激活，导航重试与有界恢复已实现，候选消费与 npm 0.4.0 分发已完成，继续保留 OE5 剩余环境和 R1 宿主验收。
 
 ## 排期与进入条件
 
