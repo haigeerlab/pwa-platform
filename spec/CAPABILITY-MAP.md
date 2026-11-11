@@ -140,11 +140,11 @@ Build order: contracts-foundation → policy-compiler, platform-governance, brow
 评审人：项目所有者（本次需求）
 日期：2026-10-01
 
-### 2026-11-11 修订草案：新增 `browser-compat-baseline`（待评审）
+### 2026-11-11 修订：新增 `browser-compat-baseline`（已评审通过）
 
-- [ ] 模块边界：只做最低浏览器版本的 ADR 与构建期检测，另含 worker 构建目标与提示条间距两项产物变化；缺陷修复已随 0.4.1 交付，不在本模块
-- [ ] 依赖方向：检测与改动落在既有运行时、Vite 适配、Vue／React 绑定与提示条模块，发布沿用 package-distribution；不新增运行时依赖
-- [ ] 构建位置：追加末尾；`cloudflare-test-deployment` 剩余待办与已暂停模块保持原状，决策详见 ADR-0053
+- [x] 模块边界：只做最低浏览器版本的 ADR 与构建期检测，另含 worker 构建目标与提示条间距两项产物变化；缺陷修复已随 0.4.1 交付，不在本模块
+- [x] 依赖方向：检测与改动落在既有运行时、Vite 适配、Vue／React 绑定与提示条模块，发布沿用 package-distribution；不新增运行时依赖
+- [x] 构建位置：追加末尾；`cloudflare-test-deployment` 剩余待办与已暂停模块保持原状，决策详见 ADR-0053
 
-评审人：项目所有者（待）
+评审人：项目所有者
 日期：2026-11-11

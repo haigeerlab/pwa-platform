@@ -2,7 +2,7 @@
 
 ## 状态
 
-提议（2026-11-11）。决策要点已由项目所有者在需求确认中逐项选定，本文待其审阅后改为已接受。服务 [browser-compat-baseline](../../spec/browser-compat-baseline.md)。
+已接受（2026-11-11，项目所有者审阅规格、本 ADR 与计划后批准）。服务 [browser-compat-baseline](../../spec/browser-compat-baseline.md)。
 
 ## 背景
 

@@ -1,6 +1,6 @@
 # 实施计划：browser-compat-baseline
 
-> 2026-11-11 草案，与[规格](../../spec/browser-compat-baseline.md)、[ADR-0053](../../docs/adr/0053-browser-compat-baseline.md) 一并交项目所有者审阅；批准前不改代码。
+> 2026-11-11 与[规格](../../spec/browser-compat-baseline.md)、[ADR-0053](../../docs/adr/0053-browser-compat-baseline.md) 一并经项目所有者批准。
 
 ## 排期与进入条件
 

@@ -1,6 +1,6 @@
 # 规格：browser-compat-baseline
 
-> 2026-11-11 草案，待项目所有者审阅。这是“分两步”中的第二步。第一步的缺陷修复已随 0.4.1 发布（[PR #138](https://github.com/haigeerlab/pwa-platform/pull/138)、[发布记录](../tasks/package-distribution/release-0.4.1.md)）。本步只定正式的最低浏览器版本，并用构建期检测守住它。决策见 [ADR-0053](../docs/adr/0053-browser-compat-baseline.md)。
+> 2026-11-11 项目所有者已批准（含 Codex 审查修订）。这是“分两步”中的第二步。第一步的缺陷修复已随 0.4.1 发布（[PR #138](https://github.com/haigeerlab/pwa-platform/pull/138)、[发布记录](../tasks/package-distribution/release-0.4.1.md)）。本步只定正式的最低浏览器版本，并用构建期检测守住它。决策见 [ADR-0053](../docs/adr/0053-browser-compat-baseline.md)。
 
 ## 目标
 
