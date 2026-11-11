@@ -28,6 +28,8 @@
 
 2026-11-11 的 0.4.1 文档发布：版本分支 `release/docs-2026-11-11` 固定于 [PR #140](https://github.com/haigeerlab/pwa-platform/pull/140) 合并提交 `9c5e7689f4e617cecd8431c8faca6a11e562d0bc`；该提交的 [main CI](https://github.com/haigeerlab/pwa-platform/actions/runs/42959304230) 七项全部成功。上传前经 Pages API 读取：生产与预览自动部署均关闭，无 Functions 或绑定，本月尚无非跳过部署；产物 122 个文件、共 4.0 MiB，最大单文件 442 KiB；本次未打开 Billing 页面复核套餐。本地预览检查首页、`/start/choose`、Vue／React 接入页、`/reference/packages` 与 404，搜索和代码复制可用。把 Production branch 从 `release/docs-2026-10-06-1`（0.4.0，部署 `52fef6ad-d77b-41ec-9415-a38354dad44f`）切到新分支后读回，线上部署未变；随后用 Wrangler 手动上传，生产部署 `de54ac75-8f90-4218-b6c1-483eaa0f134d`。部署后在独立浏览器中复查相同路径：状态码正确，安装命令为 0.4.1，搜索返回结果，代码复制可用。
 
+2026-11-11 的 0.4.2 文档发布（当天第二次）：版本分支 `release/docs-2026-11-11-1` 固定于 [PR #145](https://github.com/haigeerlab/pwa-platform/pull/145) 合并提交 `4424c0271be34a42aebbe9bb9bbf187c8c4c4abc`，该提交的 main CI 七项全部成功。上传前经 Pages API 读取：生产与预览自动部署均关闭，无 Functions 或绑定，当天已有 1 次部署；产物 122 个文件、共 4.0 MiB；本次未打开 Billing 页面复核套餐。Production branch 从 `release/docs-2026-11-11`（部署 `de54ac75-8f90-4218-b6c1-483eaa0f134d`）切到新分支并读回，线上部署未变；随后用 Wrangler 手动上传，生产部署 `4fc88c43-bef6-4960-8247-d84a5a060e5b`。部署后在独立浏览器中复查：首页、`/start/choose`、Vue／React 接入页、`/reference/packages` 返回 200，未知路径返回 404，安装命令为 0.4.2，搜索返回结果，代码复制可用。
+
 ## 本地检查
 
 在仓库根目录运行：
@@ -66,7 +68,7 @@ pnpm exec wrangler pages deploy website/.vitepress/dist \
   --project-name=pwa-platform-docs --branch="$(git branch --show-current)"
 ```
 
-本项目在 2026-09-25 已通过 Pages API 关闭生产分支自动部署，并把预览分支设为 `none`；项目仍连接 `haigeerlab/pwa-platform`，设置变更没有创建部署。Pages 的 `Production branch` 当前指向 `release/docs-2026-11-11`，上线后生产和预览自动部署仍保持关闭。每次推送或发布前重新核对这些控制项；Build watch paths 仍为 include `*`、exclude 空，它不是此流程的部署门禁。来源：[Git 集成与手动部署](https://developers.cloudflare.com/pages/configuration/git-integration/)、[分支部署控制](https://developers.cloudflare.com/pages/configuration/branch-build-controls/)与[Wrangler 生产分支参数](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)。
+本项目在 2026-09-25 已通过 Pages API 关闭生产分支自动部署，并把预览分支设为 `none`；项目仍连接 `haigeerlab/pwa-platform`，设置变更没有创建部署。Pages 的 `Production branch` 当前指向 `release/docs-2026-11-11-1`，上线后生产和预览自动部署仍保持关闭。每次推送或发布前重新核对这些控制项；Build watch paths 仍为 include `*`、exclude 空，它不是此流程的部署门禁。来源：[Git 集成与手动部署](https://developers.cloudflare.com/pages/configuration/git-integration/)、[分支部署控制](https://developers.cloudflare.com/pages/configuration/branch-build-controls/)与[Wrangler 生产分支参数](https://developers.cloudflare.com/pages/functions/wrangler-configuration/)。
 
 2026-09-25 后续审计发现：只关闭生产与预览的细分自动部署开关时，GitHub 推送仍留下 `is_skipped=true`、状态为 `idle` 的预览记录；这些记录不是新的成功站点发布，不能直接当作每月构建次数。为减少这种记录，已同时将 Pages Git source 的总开关 `deployments_enabled` 设为 `false`，并经独立 API GET 核对三个开关为 `false`／`false`／`none`；生产部署 ID 保持 `69f08e16-03d4-4cdf-a9e1-427ca8a7fc79`。该总开关在 Cloudflare API 中标记为 deprecated，后续仍应以细分开关和实际部署记录共同核验；审计记录分支 `codex/cloudflare-free-audit-2026-09-25` 的正常推送后，部署记录总数仍为 22、最新记录 ID 未变；合并到 `main` 后再复核一次，不为核验而额外推送。来源：[Pages API 配置字段](https://developers.cloudflare.com/api/resources/pages/)。
 
