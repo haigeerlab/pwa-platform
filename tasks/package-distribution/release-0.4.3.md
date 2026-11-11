@@ -1,6 +1,6 @@
 # npm 发布记录：0.4.3
 
-> 2026-11-11：十个公开包已发布到 `latest`，完成公开读回与全新消费。接入方在 Safari 13.1／14.1 上的复测待补记。
+> 2026-11-11：十个公开包已发布到 `latest`，完成公开读回与全新消费；接入方在 BrowserStack 真实 Safari 13.1、14.1 与 iPadOS 14 上复测通过。
 
 ## 范围与基点
 
@@ -44,6 +44,25 @@
 - 打包后的 CSS 保留了 `@supports` 定位回退和外边距间距。
 - **宿主 CSS 压缩会删掉宽度回退**：Vite 8 默认按新版浏览器压缩 CSS，把被 `min()` 覆盖的 `width: 24rem` 删掉了；Vite 5 保留了它。这只影响 Firefox 74 上提示条的宽度。需要支持旧浏览器的宿主应把 `build.cssTarget` 设为最低版本，这已写进文档站兼容页。
 
+## 接入方复测（BrowserStack 真机）：通过
+
+2026-11-11，一个接入方把直接依赖升级到 0.4.3，用 Vite 5 构建（锁文件只有十个平台包变化），然后在 BrowserStack Automate 上复测。Safari 与 iPad 通过临时 https 地址访问，只放行静态文件，业务接口有意返回 421。
+
+产物检查：
+- `sw.js` 含 2 处 `base === void 0` 分支，没有 `URL.canParse` 和 `Object.hasOwn`；
+- 提示条 CSS 同时保留 `width:24rem` 与 `min()`（Vite 5 不删回退），没有 `gap`，`@supports` 定位回退仍在。
+
+| 项 | Safari 13.1.2 / Catalina | Safari 14.1.2 / Big Sur | iPad Pro 12.9（2020）/ iPadOS 14 |
+| --- | --- | --- | --- |
+| 刷新后 worker 接管 | 是 | 是 | 是 |
+| 提示条位置 | 右下角 16px、宽 384，视口内 | 右下角 | 距右 16、距底 36、宽 384，视口内 |
+| 点“更新”后 8 秒 | controllerchange 1 次，waiting 清空，提示条消失 | 同左 | 同左 |
+| 服务端挂起后导航新地址 | 默认离线页 | 默认离线页 | 默认离线页 |
+
+- 0.4.2 在 Safari 13.1 上失败的两项（点“更新”不接管、挂起时看不到离线页）在 0.4.3 中通过。接入方在本机 Chromium 80 真内核上复测同样通过。
+- 首页的 5 条未处理 Promise 异常来自有意返回 421 的业务接口，三个环境相同，与平台无关。
+
 ## 未完成
 
-- 接入方用 BrowserStack 在 Safari 13.1 上复测（点“更新”能接管、服务端挂起时出现离线页、原有整套检查），并在 Safari 14.1 上作对照。有余力时加测 iOS 13.x。
+- iOS／iPadOS 13.x 未验证：BrowserStack Automate 最老的 iPad 是 iPadOS 14。iPadOS 14 的结果只能作为对照，不能证明 iOS 13 已修复。
+- Firefox 74 上提示条宽度依赖宿主是否保留 `width: 24rem` 回退（见上文 CSS 压缩说明）。
