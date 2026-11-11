@@ -4,13 +4,14 @@ import { describe, expect, it } from "vitest";
 import { GATE_COMMANDS } from "../src/gate-commands.js";
 
 describe("GATE_COMMANDS", () => {
-  it("lists the ADR-0031 commands, plus the ADR-0042 engine smoke and the push network suite, in run order", () => {
+  it("lists the ADR-0031 commands, plus the ADR-0053 browser floor check, the ADR-0042 engine smoke and the push network suite, in run order", () => {
     expect(GATE_COMMANDS.map((entry) => entry.command)).toEqual([
       "pnpm install --frozen-lockfile",
       "pnpm lint",
       "pnpm build",
       "pnpm test",
       "pnpm typecheck",
+      "pnpm check:browser-floor",
       "pnpm test:browser",
       "pnpm test:onboarding-smoke",
       "pnpm test:browser:engines",

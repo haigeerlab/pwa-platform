@@ -59,23 +59,8 @@ jobs:
       - name: Build documentation site
         run: pnpm docs:build
 
-      - name: Test browser baseline reader
-        run: node --test scripts/browser-baseline.test.mjs
-
-      - name: Check browser floor types
-        run: node --test scripts/browser-floor-types.test.mjs
-
-      - name: Check worker build target against the browser floor
-        run: node --test scripts/browser-floor-targets.test.mjs
-
-      - name: Check browser floor lint rules
-        run: node --test scripts/browser-floor-lint.test.mjs
-
-      - name: Test browser floor artifact checker and runtime helpers
-        run: node --test scripts/check-browser-artifacts.test.mjs scripts/test-support/without-builtin.test.mjs
-
-      - name: Check browser artifacts against the supported floor
-        run: node scripts/check-browser-artifacts.mjs
+      - name: Check the supported browser floor
+        run: pnpm check:browser-floor
 
       - name: Test documentation API status checker
         run: node --test scripts/check-doc-public-api.test.mjs

@@ -36,6 +36,7 @@
     "test:browser:ios": "node scripts/run-workspace.mjs test:browser:ios",
     "test:browser:network": "node scripts/run-workspace.mjs test:browser:network",
     "typecheck": "node scripts/run-workspace.mjs typecheck",
+    "check:browser-floor": "node --test scripts/browser-baseline.test.mjs scripts/browser-floor-types.test.mjs scripts/browser-floor-targets.test.mjs scripts/browser-floor-lint.test.mjs scripts/check-browser-artifacts.test.mjs scripts/test-support/without-builtin.test.mjs && node scripts/check-browser-artifacts.mjs",
     "check:publish": "node scripts/check-package-distribution.mjs",
     "release:branch": "node scripts/release-branch.mjs",
     "test:release-branch": "node --test scripts/release-branch.test.mjs",

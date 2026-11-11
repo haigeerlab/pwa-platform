@@ -13,6 +13,7 @@ export const GATE_COMMANDS: readonly PwaGateCommand[] = [
   { command: "pnpm build", blocking: true },
   { command: "pnpm test", blocking: true },
   { command: "pnpm typecheck", blocking: true },
+  { command: "pnpm check:browser-floor", blocking: true },
   { command: "pnpm test:browser", blocking: true },
   { command: "pnpm test:onboarding-smoke", blocking: true },
   { command: "pnpm test:browser:engines", blocking: false },
