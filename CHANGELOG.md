@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.2 (unreleased)
+
+Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, worker or cache policy changes.
+
+- **Default update notice visible in older browsers (`vue`, `react`):** `update-notice.css` positioned the notice only with logical inset properties, which Chrome/Edge before 87 and Safari before 14.1 (iOS before 14.5) ignore. There the fixed notice stayed at its static position at the end of the page, usually outside the viewport, so users never saw the update prompt. A physical `top`/`right`/`bottom`/`left` fallback now applies only in browsers without logical properties (`@supports not (inset-inline-start: 0)`); browsers that support them, including right-to-left pages, keep the previous rules unchanged.
+- **Upgrade:** update the packages and rebuild; hosts that import `@pwa-platform/vue/update-notice.css` or `@pwa-platform/react/update-notice.css` get the fix with no code change.
+
 ## 0.4.1 (2026-11-11)
 
 Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, worker URL or cache policy changes.
