@@ -1,6 +1,6 @@
 {
   "name": "@pwa-platform/contracts",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Validated identity, policy, and plan contracts for PWA Platform.",
   "license": "MIT",
   "type": "module",
