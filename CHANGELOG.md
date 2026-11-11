@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Generated workers target the supported browser floor (`@pwa-platform/vite`):** the platform and recovery workers are bundled with an explicit build target of Chrome 80, Edge 80, Firefox 74, Safari 13.1 and iOS 13.4 (ADR-0053) instead of the host Vite's default (Chrome 111 / Safari 16.4 in Vite 8). Newer syntax in the worker is lowered, for example optional chaining becomes equivalent null checks; behaviour is unchanged. The worker script content changes, so hosts take one ordinary worker update after upgrading.
+
 ## 0.4.2 (2026-11-11)
 
 Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, worker or cache policy changes.

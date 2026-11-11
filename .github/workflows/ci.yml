@@ -65,6 +65,9 @@ jobs:
       - name: Check browser floor types
         run: node --test scripts/browser-floor-types.test.mjs
 
+      - name: Check worker build target against the browser floor
+        run: node --test scripts/browser-floor-targets.test.mjs
+
       - name: Check browser floor lint rules
         run: node --test scripts/browser-floor-lint.test.mjs
 
