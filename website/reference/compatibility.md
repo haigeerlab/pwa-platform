@@ -26,6 +26,15 @@ V1 计划先按桌面端通道发布，**Chrome 桌面端当前版与上一个�
 | macOS 上的系统 Safari 与 Firefox | 非阻塞本机运行 | 维护者本机经 `safaridriver`／`geckodriver` 驱动系统安装的浏览器跑同一批浏览器用例，是真实浏览器证据但不进 CI、不阻塞发布，WebDriver 取不到的检查标注为无法验证（ADR-0047） |
 | 移动端（Chrome Android、iOS Safari） | 渐进 | 按渐进增强处理；需业务用真机自行验收 |
 
+### 最低浏览器版本
+
+平台在浏览器中运行的代码最低支持 **Safari 13.1、iOS Safari 13.4、Chrome 80、Edge 80、Firefox 74**（[ADR-0053](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0053-browser-compat-baseline.md)）。范围包括页面端包、生成的 Service Worker、离线页与恢复页脚本。
+
+- 在这些版本及以上，平台代码**不会因语法或缺失的 API 报错**，宿主页面不会因此白屏；某项能力缺失时退回普通网页。
+- 这**不表示**这些版本上 PWA 功能齐全：例如 Safari 13 没有安装提示，Firefox 桌面版不能安装。功能可用性仍按上表分档。
+- 0.4.0 及更早的版本在 Chrome 120、Safari 17、Firefox 115 以下会出现页面初始化报错或 Service Worker 装不上；需要支持旧浏览器的宿主请使用 0.4.1 及以上。0.4.1 中默认更新提示条在 Chrome 87、Safari 14.1 以下不可见，0.4.2 已修复。
+- 宿主自己的业务代码不在此范围内，仍需宿主自行处理兼容（例如 `@vitejs/plugin-legacy`）。
+
 ## 不支持 Service Worker 的环境
 
 Vue 与 React 入门示例假设浏览器提供 <code>navigator.serviceWorker</code>。当前绑定在创建客户端时会读取此 API；若浏览器或 WebView 不提供它，直接挂载绑定会报错。当前包没有无 Service Worker 的空绑定；安装提示不可用与整个 API 缺失是两种情况。

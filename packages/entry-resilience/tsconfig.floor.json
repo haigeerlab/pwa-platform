@@ -1,0 +1,12 @@
+{
+  // Browser floor type check (ADR-0053): browser-side source only, with lib limited to the supported baseline.
+  // Checked by scripts/browser-floor-types.test.mjs; src/vite runs in Node at build time and keeps its own tsconfig.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "types": [],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/vite/**"]
+}

@@ -59,6 +59,9 @@ jobs:
       - name: Build documentation site
         run: pnpm docs:build
 
+      - name: Check the supported browser floor
+        run: pnpm check:browser-floor
+
       - name: Test documentation API status checker
         run: node --test scripts/check-doc-public-api.test.mjs
 
@@ -118,6 +121,9 @@ jobs:
 
       - name: Test pnpm subprocess launch
         run: node --test scripts/spawn-pnpm.test.mjs
+
+      - name: Test browser floor type fixtures and runtime trap paths on Windows
+        run: node --test scripts/browser-floor-types.test.mjs scripts/test-support/legacy-engine.test.mjs
 
   browser:
     # Gating jobs: every non-draft PR, every push to main, manual runs; not the nightly schedule.

@@ -24,6 +24,10 @@ npm install @pwa-platform/sw-runtime
 | `./platform-worker-entry` | 构建适配器 | 平台 worker 模板入口，不供页面直接 import |
 | `./recovery-worker-entry` | 构建适配器 | 恢复 worker 模板入口，不供页面直接 import |
 
+## 浏览器支持
+
+本包在浏览器中运行的代码按平台最低版本检查：Safari 13.1、iOS Safari 13.4、Chrome 80、Edge 80、Firefox 74（[ADR-0053](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0053-browser-compat-baseline.md)）。在这些版本及以上，不会因新语法或缺失的内置 API 报错或解析失败；浏览器缺少的能力按不可用处理。这不表示所有 PWA 功能在这些版本上都可用，详见[兼容性参考](https://github.com/haigeerlab/pwa-platform/blob/main/website/reference/compatibility.md)。
+
 ## 平台 worker 行为
 
 `registerPlatformWorker()` 会：

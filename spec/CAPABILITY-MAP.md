@@ -42,8 +42,9 @@
 | ai-onboarding | 随 @pwa-platform/vite 发布、与所装版本匹配的一页 AI 接入清单（skills/pwa-onboarding/SKILL.md，一个 Markdown 文件）：只交代接入中最易出错的几件事——先查能不能接、冲突不自动删除、身份字段不可变须逐项确认、公共缓存规则逐个接口由人确认、不推送不部署不切换 worker；其余规则指向文档站，不复述；仅开发期辅助，不进入生产构建。 | vite-adapter, package-distribution, production-readiness-documentation |
 | portable-deployment | 以显式可移植模式生成与域名无关的 PWA 产物，并按每个实际 HTTPS 源验证发布证据、身份历史与共享源顺序。 | contracts-foundation, policy-compiler, vite-adapter, shared-origin-topology, release-gate-contract, release-orchestration-protocol, ai-onboarding |
 | offline-experience-resilience | 改进页面导航失败与慢响应的提示、有限重试和恢复防抖，避免短暂故障立即兜底及离线页反复重载，并交付可复现的边界验收与包升级说明。 | contracts-foundation, policy-compiler, network-timeout, sw-runtime, vite-adapter, browser-test-harness, package-distribution |
+| browser-compat-baseline | 为浏览器中运行的平台代码写明最低版本（Safari 13.1 / iOS 13.4 / Chrome 80 / Edge 80 / Firefox 74），只承诺不报错、能降级；以类型、lint、产物与运行时四层检测防回归，worker 显式设构建目标。缺陷修复已随 0.4.1 先行发布。 | sw-runtime, client-runtime, pwa-entry-resilience, vite-adapter, vue-react-adapters, update-notice-ui, package-distribution, platform-governance |
 
-Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation → ai-onboarding → portable-deployment → offline-experience-resilience
+Build order: contracts-foundation → policy-compiler, platform-governance, browser-test-harness → workbox-engine → sw-runtime → client-runtime, build-verifier → vite-adapter → vue-react-adapters → examples-browser-e2e → update-notice-ui, ssr-adapters, shared-origin-topology, push-module, offline-write-extension, pwa-entry-resilience, release-gate-contract, browser-release-evidence → release-orchestration-protocol, package-distribution, cloudflare-test-deployment, public-read-cache → network-timeout, capability-comparison → stable-release-qualification → production-readiness-documentation → ai-onboarding → portable-deployment → offline-experience-resilience → browser-compat-baseline
 
 ---
 
@@ -138,3 +139,12 @@ Build order: contracts-foundation → policy-compiler, platform-governance, brow
 
 评审人：项目所有者（本次需求）
 日期：2026-10-01
+
+### 2026-11-11 修订：新增 `browser-compat-baseline`（已评审通过）
+
+- [x] 模块边界：只做最低浏览器版本的 ADR 与构建期检测，另含 worker 构建目标与提示条间距两项产物变化；缺陷修复已随 0.4.1 交付，不在本模块
+- [x] 依赖方向：检测与改动落在既有运行时、Vite 适配、Vue／React 绑定与提示条模块，发布沿用 package-distribution；不新增运行时依赖
+- [x] 构建位置：追加末尾；`cloudflare-test-deployment` 剩余待办与已暂停模块保持原状，决策详见 ADR-0053
+
+评审人：项目所有者
+日期：2026-11-11

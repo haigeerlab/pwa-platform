@@ -40,6 +40,12 @@ export async function bundleWorkers(plan: PwaPlan): Promise<PwaWorkerSources> {
   };
 }
 
+/**
+ * Build target for the generated workers: the supported browser floor (ADR-0053), in the form Vite accepts. Kept equal
+ * to the repository's .browserslistrc by scripts/browser-floor-targets.test.mjs.
+ */
+export const WORKER_BUILD_TARGET: readonly string[] = ["chrome80", "edge80", "firefox74", "ios13.4", "safari13.1"];
+
 async function bundleEntry(specifier: string, name: string): Promise<string> {
   const entry = fileURLToPath(import.meta.resolve(specifier));
   // `dist/entries/<name>.js` sits three levels below sw-runtime's package root, which is what the sub-build runs
@@ -68,6 +74,10 @@ async function bundleEntry(specifier: string, name: string): Promise<string> {
       copyPublicDir: false,
       minify: false,
       sourcemap: false,
+      // Pinned to the supported browser floor (ADR-0053) instead of the host Vite's default, which in Vite 8 is
+      // Chrome 111 / Safari 16.4 and would leave syntax such as `??=` or class fields in the worker. Only syntax is
+      // lowered; built-ins are not polyfilled, so the worker source itself must stay within the floor.
+      target: [...WORKER_BUILD_TARGET],
       lib: { entry, formats: ["iife"], name: "pwaWorker", fileName: () => `${name}.js` },
     },
   });

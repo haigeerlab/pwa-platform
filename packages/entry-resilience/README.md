@@ -36,6 +36,10 @@ script (normally through `/assets`). The build rejects a recovery page that is n
 accepts 1–90 and defaults to 30. `locale` accepts `"zh-CN"` or `"en"`; `messages` overrides individual strings;
 `css` is appended after the default page style and must not contain a closing `</style` sequence.
 
+## Browser support
+
+Code from this package that runs in a browser is checked against the platform's supported floor: Safari 13.1, iOS Safari 13.4, Chrome 80, Edge 80 and Firefox 74 ([ADR-0053](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0053-browser-compat-baseline.md)). On those versions and later it does not throw or fail to parse because of newer syntax or a missing built-in; a capability the browser lacks is treated as unavailable. This is not a promise that every PWA feature works there — see the [compatibility reference](https://github.com/haigeerlab/pwa-platform/blob/main/website/reference/compatibility.md).
+
 ## Browser integration
 
 The application owns fetching, authentication, authorization, decryption and polling. Hand the already-decoded

@@ -1,0 +1,7 @@
+# Supported browser floor for platform code that runs in a browser (ADR-0053).
+# Raising any entry is a breaking change: it needs a new ADR and a major version.
+safari 13.1
+ios_saf 13.4
+chrome 80
+edge 80
+firefox 74

@@ -10,6 +10,10 @@ platform worker, recovery worker and optional offline page. It supports Vite 5 a
 npm install @pwa-platform/vite @pwa-platform/contracts
 ```
 
+## Browser support
+
+Code from this package that runs in a browser is checked against the platform's supported floor: Safari 13.1, iOS Safari 13.4, Chrome 80, Edge 80 and Firefox 74 ([ADR-0053](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0053-browser-compat-baseline.md)). On those versions and later it does not throw or fail to parse because of newer syntax or a missing built-in; a capability the browser lacks is treated as unavailable. This is not a promise that every PWA feature works there — see the [compatibility reference](https://github.com/haigeerlab/pwa-platform/blob/main/website/reference/compatibility.md).
+
 ## Onboarding skill
 
 The package ships a short AI-assistant checklist, `skills/pwa-onboarding/SKILL.md` (one Markdown file; no runtime code). It does not restate the docs; it tells an assistant the few rules that are easy to get wrong: check feasibility first, never delete anything without your explicit yes, read the identity fields out before writing them, confirm public-cache rules per interface, and leave deploying and switching the worker to you.

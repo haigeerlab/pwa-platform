@@ -23,7 +23,7 @@
   "scripts": {
     "build": "tsc --project tsconfig.build.json && node -e \"require('node:fs').copyFileSync('src/update-notice.css', 'dist/update-notice.css')\"",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit --project tsconfig.json"
+    "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.floor.json"
   },
   "peerDependencies": {
     "react": "^19.2.0"
