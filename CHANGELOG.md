@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.4.3 (2026-11-11)
+
+Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, worker URL or cache policy changes. Rebuild and deploy the host; the generated worker script changes, so hosts take one ordinary worker update.
 
 - **Service worker inactive on Safari 13 (`sw-runtime`, `engine-workbox`, `client-runtime`, `entry-resilience`):** since 0.4.1 the internal URL check called `new URL(value, undefined)` when no base was given, and Safari 13 throws for an explicit `undefined` base. On Safari 13 the worker activated but treated every request as unparsable and passed it through, so a hanging network never showed the offline page, and it dropped the update confirmation as coming from an unknown window, so "Update" did nothing. The check now omits the base when there is none. Safari 14 and later, Chromium and Firefox were not affected.
 - **Default update notice spacing in older browsers (`vue`, `react`):** the button row no longer uses flex `gap` (Chrome/Edge 84, Safari 14.1, iOS 14.5); each button carries half the gap as margin and the row pulls back by the same amount, so buttons keep their 0.5rem spacing on older browsers. The width gets a fixed `24rem` fallback before `min()` for Firefox before 75. In current Chrome the layout is identical, measured for all positions, narrow screens, a single button, long custom text and every width from 150 to 420px.
