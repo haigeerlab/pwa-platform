@@ -19,7 +19,7 @@
 4. 四层防护，每层都配一个故意违规的样例，证明检测确实会失败（见“行为要求”）。
 5. 三项会改变产物的改动：
    - 更新提示条按钮间距改为不依赖 flex `gap` 的写法；
-   - 更新提示条的定位改为在逻辑定位属性前先写物理定位作回退，宽度 `min()` 前先写固定宽度回退；
+   - 更新提示条宽度 `min()` 前先写固定宽度回退（定位回退已随 0.4.2 发布，见 [PR #143](https://github.com/haigeerlab/pwa-platform/pull/143)）；
    - worker 打包时显式设定构建目标。
 
 ## 现状（origin/main `d04350b`，0.4.1）
@@ -29,7 +29,7 @@
 - 所有包以 `tsc` 按 ES2022 构建，`lib` 未限制，新语法原样进入产物。
 - `bundleEntry()`（`packages/vite/src/workers.ts`）打包 worker 时没有设构建目标。Vite 8 的默认值是 `baseline-widely-available`，即 Chrome 111、Safari 16.4，不会降级 `??=`、类字段等语法。
 - 更新提示条 `.pwa-update-notice__actions` 用 flex `gap`，Chrome 84、Safari 14.1、iOS 14.5 起才支持；更低版本的按钮之间没有间距。
-- 更新提示条四种位置及小屏布局只用逻辑定位属性 `inset-block-*`／`inset-inline-*`（`update-notice.css:26-44,108-109`），Chrome 87、Safari 14.1、iOS 14.5 起才支持。更低版本中这些声明被忽略，固定定位的提示条停在静态位置而不在角落；宽度 `min()`（`:11`）在 Firefox 74 不生效（75 起）。**0.4.1 已发布版本同样受影响**，不报错但位置错乱。
+- 更新提示条四种位置及小屏布局只用逻辑定位属性 `inset-block-*`／`inset-inline-*`（`update-notice.css:26-44,108-109`），Chrome 87、Safari 14.1、iOS 14.5 起才支持。更低版本中这些声明被忽略，固定定位的提示条停在静态位置而不在角落；宽度 `min()`（`:11`）在 Firefox 74 不生效（75 起）。0.4.1 中提示条在这些浏览器上停在页面末尾、完全不可见；0.4.2 已在 `@supports not (inset-inline-start: 0)` 中补物理定位回退，并经接入方在 Chromium 80 真实页面上验证。本模块只剩 `min()` 宽度回退。
 - 生成的离线页脚本以字符串形式存放（`vite/src/offline-page.ts:36-122`），类型检查和源码 lint 都看不到；恢复页模块由 `entry-resilience/src/vite/index.ts` 以 `emitFile` 生成并外链引用，属于宿主构建产物。
 - `legacy-engine.mjs` 是“调用即抛错”的陷阱，属性仍然存在，`typeof` 检测会通过，因此不能模拟“API 缺失”下的降级分支。
 - `FetchEvent.resultingClientId` 要 Safari 16 才有。缺失时，导航的缓存来源信号静默丢失，不报错。
@@ -71,7 +71,7 @@
 6. **worker 构建目标**：`bundleEntry()` 显式传入 `["chrome80","edge80","firefox74","ios13.4","safari13.1"]`，不再随宿主所装的 Vite 版本变化。
 7. **更新提示条样式**：vue 与 react 的 `update-notice.css`：
    - 不再使用 flex `gap`，改为按钮外边距加容器负外边距；
-   - 四种位置与小屏布局先写物理定位（`top`／`right`／`bottom`／`left`）作回退，再写原有的逻辑定位属性；宽度先写固定宽度回退，再写 `min()`。
+   - 宽度先写固定宽度回退，再写 `min()`；0.4.2 的定位回退块保持不变，由其回归测试守住。
    - 新版浏览器中的外观不变，由界面截图回归确认。验收覆盖：首个按钮与正文的间距、左右内容边界、最后一行到容器底部的距离、两按钮换行阈值（临界宽度两侧）、单按钮状态、长自定义文案、四种位置与小屏布局。
    - `--pwa-update-*` 变量与 `colors` 属性这两个公开定制点不变。
 8. **违规样例**：每层至少一个样例，放在测试夹具中，不进入发布包。测试断言该层对样例报错：

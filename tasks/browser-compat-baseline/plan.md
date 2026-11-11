@@ -61,7 +61,7 @@
 
 - vue、react `update-notice.css`：
   - `.pwa-update-notice__actions` 去掉 `gap`，改为按钮外边距加容器负外边距，保持 0.5rem 间距与 0.875rem 上边距；
-  - 四种位置与小屏布局先写物理定位回退，再写逻辑定位；宽度先写固定宽度回退，再写 `min()`。
+  - 宽度先写固定宽度回退，再写 `min()`。0.4.2 已发布的定位回退块（`@supports not (inset-inline-start: 0)`）保持不变。
 - 用 `ui-browser-tests/update-notice.spec.ts` 在 Chrome 当前版本截图对比改前改后。覆盖首按钮与正文间距、左右内容边界、最后一行到容器底部距离、两按钮换行阈值（临界宽度两侧）、单按钮、长自定义文案、四种位置与小屏布局。
 - 两包样式保持一致，由现有对等测试校验。
 
