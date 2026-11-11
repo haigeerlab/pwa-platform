@@ -21,7 +21,9 @@ export function isNormalizedOrigin(value: string): boolean {
  */
 function canParseUrl(value: string, base?: string): boolean {
   try {
-    new URL(value, base);
+    // Not `new URL(value, base)` with `base` undefined: Safari 13 throws for an explicit undefined base.
+    if (base === undefined) new URL(value);
+    else new URL(value, base);
     return true;
   } catch {
     return false;

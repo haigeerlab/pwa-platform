@@ -77,6 +77,15 @@
 
 影响：用户看不到“有新版本”的提示，也点不到更新；新 worker 一直等待，直到用户关闭该站点的全部标签页。宽度 `min()` 在 Chrome 80 上正常（79 起支持），Firefox 74 未测。
 
+## 更正（2026-11-11）：Safari 13 上 worker 实际未生效
+
+接入方在 BrowserStack 的真实 Safari 13.1.2 上加诊断日志复测，发现本版在 Safari 13 上 worker 虽然注册并激活，**实际上没有接管任何请求，也不响应“更新”确认**：
+- 根因：0.4.1 用内部函数 `canParseUrl` 替换 `URL.canParse` 时，只传一个参数的调用会执行 `new URL(value, undefined)`，而 Safari 13 对显式传入的 `undefined` 基址会抛 `TypeError`（Safari 14 起不再抛）。异常被函数内部吞掉，于是每个 URL 检查都失败：
+  - 每个请求都被判为“无法解析”而放行，服务端挂起时导航一直停住，看不到离线页；
+  - 页面发来的更新确认被判为“非同源窗口”而丢弃，点“更新”不生效。
+- 上文中“worker 接管通过”的结论在 Safari 13 上只说明 worker 已激活，不说明它在工作。Safari 14.1、Chromium 80 与新版浏览器不受影响。
+- 修复见 `fix-safari13-url-base` PR，随下一个补丁版本发布；单测的运行时模拟层已加入同一行为，修复前 sw-runtime 87 项、entry-resilience 48 项单测失败。
+
 ## 未完成
 
 - Safari 13.1、iOS Safari 13.4、Firefox 74 的验证尚未取得：Firefox 74 无法在当前 macOS 上启动，与被测代码无关。接入方将改用线上真机服务测试，结果回来后补记；不通过则发 0.4.2。
