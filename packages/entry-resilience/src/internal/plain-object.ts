@@ -15,5 +15,5 @@ export function hasKeysWithin(
   optional: readonly string[] = [],
 ): boolean {
   const allowed = new Set<string>([...required, ...optional]);
-  return Object.keys(value).every((key) => allowed.has(key)) && required.every((key) => Object.hasOwn(value, key));
+  return Object.keys(value).every((key) => allowed.has(key)) && required.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }

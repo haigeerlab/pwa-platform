@@ -96,11 +96,24 @@ function baseResult(value: unknown, requestId: string): { readonly status: strin
 function exactKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype) return false;
   const actual = Reflect.ownKeys(value);
-  return actual.length === keys.length && keys.every((key) => Object.hasOwn(value, key));
+  return actual.length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
 
 function isScope(value: string): boolean {
-  return value.startsWith("/") && value.endsWith("/") && !value.includes("?") && !value.includes("#") && URL.canParse(value, "https://offline-write.invalid");
+  return value.startsWith("/") && value.endsWith("/") && !value.includes("?") && !value.includes("#") && canParseUrl(value, "https://offline-write.invalid");
+}
+
+/**
+ * Whether `new URL(value, base)` would succeed: the same answer as `URL.canParse`, which browsers below the supported
+ * floor (Safari 13.1 / Chrome 80 / Firefox 74) do not have — it arrived in Chrome 120, Firefox 115 and Safari 17.
+ */
+function canParseUrl(value: string, base?: string): boolean {
+  try {
+    new URL(value, base);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function serviceWorkerContainer(): ServiceWorkerContainer {

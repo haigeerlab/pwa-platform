@@ -31,7 +31,11 @@ export const DEFAULT_OFFLINE_PAGE_STYLE = `.pwa-offline {
   /* Covers the whole viewport, whatever the body's default margin: the background is the page's, not a column's.
      Measured 2026-09-24: a centred max-width column left white bands around the dark background. */
   position: fixed;
-  inset: 0;
+  /* Not "inset: 0": Safari 13.1 lacks it (14.1+), and the cover would collapse. */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   overflow-y: auto;
   color-scheme: light;
   display: flex;

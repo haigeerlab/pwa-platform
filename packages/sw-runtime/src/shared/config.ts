@@ -1,5 +1,6 @@
-// Worker config shapes and their validation, shared by the build-time entry and both workers. It imports nothing,
-// so the same rules run before injection and again when a worker starts.
+// Worker config shapes and their validation, shared by the build-time entry and both workers. It imports no package
+// (only the dependency-free URL helper), so the same rules run before injection and again when a worker starts.
+import { canParseUrl } from "./url.js";
 
 /** contracts' `REQUEST_BASELINE_DENIALS`, in the same canonical order (a unit test keeps them equal). */
 export const WORKER_BASELINE_DENIALS = [
@@ -143,8 +144,8 @@ const RECOVERY_KEYS = ["kind", "version", "appCachePrefix", "offlineWriteDatabas
 /** Validates a platform worker config and returns a fresh copy with keys in canonical order. Messages name fields only. */
 export function validatePlatformWorkerConfig(value: unknown): PwaPlatformWorkerConfig {
   const config = plainObject(value, "config");
-  const hasNetworkTimeout = Object.hasOwn(config, "networkTimeoutSeconds");
-  const hasNavigationRetry = Object.hasOwn(config, "navigationRetry");
+  const hasNetworkTimeout = Object.prototype.hasOwnProperty.call(config, "networkTimeoutSeconds");
+  const hasNavigationRetry = Object.prototype.hasOwnProperty.call(config, "navigationRetry");
   exactKeys(config, [...PLATFORM_KEYS, ...(hasNetworkTimeout ? ["networkTimeoutSeconds"] : []), ...(hasNavigationRetry ? ["navigationRetry"] : [])], "config");
   if (config["kind"] !== "platform") fail('config.kind must be "platform"');
   if (config["version"] !== 1) fail("config.version must be 1");
@@ -259,7 +260,7 @@ function plainObject(value: unknown, label: string): Record<string, unknown> {
 
 function exactKeys(record: Record<string, unknown>, keys: readonly string[], label: string): void {
   const actual = Reflect.ownKeys(record);
-  if (actual.length !== keys.length || !keys.every((key) => Object.hasOwn(record, key))) {
+  if (actual.length !== keys.length || !keys.every((key) => Object.prototype.hasOwnProperty.call(record, key))) {
     fail(`${label} must have exactly the fields ${keys.join(", ")}`);
   }
 }
@@ -400,7 +401,7 @@ function canonicalPath(value: unknown, label: string): PwaWorkerPath {
     value.startsWith("/") &&
     !value.includes("//") &&
     !value.includes("\\") &&
-    URL.canParse(value, PATH_BASE) &&
+    canParseUrl(value, PATH_BASE) &&
     new URL(value, PATH_BASE).pathname === value;
   if (!canonical) fail(`${label} must be a canonical absolute path`);
   return value as PwaWorkerPath;

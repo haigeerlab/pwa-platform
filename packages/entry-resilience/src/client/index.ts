@@ -26,7 +26,7 @@ let ports: EntryPorts | undefined;
 
 /** Builds the shared browser ports on first use and returns the same instance on every later call. */
 function sharedPorts(): EntryPorts {
-  ports ??= createEntryRuntimePorts(config);
+  if (ports === undefined) ports = createEntryRuntimePorts(config);
   return ports;
 }
 

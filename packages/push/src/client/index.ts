@@ -32,7 +32,8 @@ export type PwaPushClientErrorCode = (typeof PUSH_CLIENT_ERROR_CODES)[number];
 
 /** Thrown by every function in this module. `message` is always exactly `code`; never carries endpoint, key or input. */
 export class PwaPushClientError extends Error {
-  readonly code: PwaPushClientErrorCode;
+  // `declare`: assigned in the constructor, so no class field is emitted — Safari 13.1 cannot parse class fields.
+  declare readonly code: PwaPushClientErrorCode;
 
   constructor(code: PwaPushClientErrorCode) {
     super(code);

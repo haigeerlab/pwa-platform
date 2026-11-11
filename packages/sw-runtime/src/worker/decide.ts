@@ -2,6 +2,7 @@
 // listener only carries out what `decide` returns, so every row is testable in Node.
 import type { PwaPlatformWorkerConfig, PwaWorkerRuntimeCacheRule } from "../shared/config.js";
 import { createPathMatcher } from "../shared/path-match.js";
+import { canParseUrl } from "../shared/url.js";
 
 export type PwaPassthroughReason =
   /** Baseline denials that are visible on the request itself. */
@@ -101,7 +102,7 @@ export function createRouter({ config, manifestUrls, origin }: PwaRouterOptions)
   return {
     decide({ method, url, navigation, range, authorization }): PwaRequestDecision {
       if (method !== "GET") return PASSTHROUGH("non-get");
-      if (!URL.canParse(url)) return PASSTHROUGH("unparsable");
+      if (!canParseUrl(url)) return PASSTHROUGH("unparsable");
       const requested = new URL(url);
       if (requested.origin !== origin) return PASSTHROUGH("cross-origin");
 

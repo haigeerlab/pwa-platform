@@ -58,6 +58,19 @@ export function validatePrecacheEngineOptions(options: unknown): PwaPrecacheEngi
 }
 
 /**
+ * Whether `new URL(value, base)` would succeed: the same answer as `URL.canParse`, which browsers below the supported
+ * floor (Safari 13.1 / Chrome 80 / Firefox 74) do not have — it arrived in Chrome 120, Firefox 115 and Safari 17.
+ */
+export function canParseUrl(value: string, base?: string): boolean {
+  try {
+    new URL(value, base);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The rule contracts' `isCanonicalPath` applies to `PwaPlan.precache` URLs, repeated here because the worker entry
  * does not import contracts. The URL parser treats `\` as `/` and drops tabs and newlines, so without the final
  * comparison `/\evil.example/a.js` would resolve to another origin.
@@ -67,7 +80,7 @@ function isCanonicalPath(value: string): boolean {
     value.startsWith("/") &&
     !value.includes("//") &&
     !value.includes("\\") &&
-    URL.canParse(value, PATH_BASE) &&
+    canParseUrl(value, PATH_BASE) &&
     new URL(value, PATH_BASE).pathname === value
   );
 }
