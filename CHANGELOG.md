@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 (unreleased)
+
+Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, worker URL or cache policy changes.
+
+- **Older browsers no longer fail at startup (`client-runtime`, `sw-runtime`, `engine-workbox`, `entry-resilience`):** browser-side code no longer calls `URL.canParse` (Chrome 120 / Firefox 115 / Safari 17), `Object.hasOwn` (Chrome 93 / Firefox 92 / Safari 15.4) or `AbortSignal.timeout` (Chrome 103 / Firefox 100 / Safari 16), and no longer uses `??=`. Before, `createPwaClient` threw during config validation and the generated `sw.js` and recovery worker threw on start-up in browsers without them, so the page could white-screen and the worker never installed; on Safari 13.1 / Chrome 80 / Firefox 74 both now start. Entry-recovery probes keep their 5-second timeout with an `AbortController` and timer, so they no longer report every origin unreachable on those browsers.
+- **Offline and entry-recovery pages (`vite`, `entry-resilience`):** the full-viewport cover uses `top`/`right`/`bottom`/`left` instead of `inset`, which Safari before 14.1 ignores. Generated CSP hashes change; deploy the rebuilt pages together with their headers as usual.
+- **Upgrade:** rebuild and deploy the host. The worker script content changes, so hosts take the update through their normal worker update flow.
+
 ## 0.4.0 (2026-10-06)
 
 Upgrade all ten public `@pwa-platform/*` packages together. This release improves weak-network navigation and the generated offline page; it adds no business response caching.

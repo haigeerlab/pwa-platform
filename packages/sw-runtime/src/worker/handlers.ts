@@ -9,6 +9,7 @@ import { createOfflineDocumentProbe } from "./offline-document-probe.js";
 import type { PwaOfflineWriteMessage, PwaRuntimeCachePendingResult, PwaRuntimeCacheReason } from "../messages/index.js";
 import { validatePushPayload } from "../push-payload/index.js";
 import type { PwaPlatformWorkerConfig } from "../shared/config.js";
+import { canParseUrl } from "../shared/url.js";
 import { runtimeAdmissionRejection, type PwaRuntimeAdmitOptions, type PwaRuntimeRejectionReason } from "./admit.js";
 import { createRouter } from "./decide.js";
 import type { PwaRequestDecision } from "./decide.js";
@@ -485,7 +486,7 @@ async function fallbackResponse(engine: PwaPrecacheEngine, fallbacks: readonly s
 
 function isSameOriginWindow(source: ExtendableMessageEvent["source"], origin: string): boolean {
   if (source === null || !("type" in source) || source.type !== "window") return false;
-  return URL.canParse(source.url) && new URL(source.url).origin === origin;
+  return canParseUrl(source.url) && new URL(source.url).origin === origin;
 }
 
 /** The requesting window client's id, read without invoking an accessor other than the plain property itself. */
@@ -581,7 +582,7 @@ async function admitAndReport(
 }
 
 function rejectionMessage(response: Response, reason: PwaRuntimeRejectionReason): string {
-  const path = URL.canParse(response.url) ? new URL(response.url).pathname : "(unknown path)";
+  const path = canParseUrl(response.url) ? new URL(response.url).pathname : "(unknown path)";
   const vary = reason === "vary" ? ` (Vary: ${response.headers.get("vary") ?? ""})` : "";
   return `[pwa-platform] runtime cache did not store ${path}: ${reason}${vary}. Further ${reason} rejections from this cache are not reported.`;
 }

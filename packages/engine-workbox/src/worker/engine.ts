@@ -1,5 +1,5 @@
 import { PrecacheController } from "workbox-precaching";
-import { resolveManifestUrl, validatePrecacheEngineOptions, type PwaPrecacheEngineOptions } from "./options.js";
+import { canParseUrl, resolveManifestUrl, validatePrecacheEngineOptions, type PwaPrecacheEngineOptions } from "./options.js";
 
 export type PwaPrecacheInstallResult = {
   /** Absolute URLs, without `__WB_REVISION__`, of the manifest entries downloaded into the precache during this install. */
@@ -54,7 +54,7 @@ export function createPrecacheEngine(options: PwaPrecacheEngineOptions): PwaPrec
       return { deletedUrls: [...deletedURLs] };
     },
     async match(url) {
-      if (!URL.canParse(url, self.location.href)) return undefined;
+      if (!canParseUrl(url, self.location.href)) return undefined;
       // Workbox keys its URL-to-cache-key map by the exact absolute URL of each manifest entry, so any other URL
       // (another query, a missing index.html, another origin) has no cache key and is never looked up.
       const cacheKey = controller.getCacheKeyForURL(resolveManifestUrl(url, self.location.href));

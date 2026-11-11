@@ -27,7 +27,11 @@ export const DEFAULT_RECOVERY_PAGE_STYLE = `.pwa-entry {
      keeps its width through the inline padding instead of a max-width on the root. */
   display: block;
   position: fixed;
-  inset: 0;
+  /* Not "inset: 0": Safari 13.1 lacks it (14.1+), and the cover would collapse. */
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   overflow-y: auto;
   box-sizing: border-box;
   color-scheme: light;

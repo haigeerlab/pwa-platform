@@ -1,5 +1,6 @@
 import type { PwaPlatformWorkerConfig } from "../shared/config.js";
 import { createPathMatcher } from "../shared/path-match.js";
+import { canParseUrl } from "../shared/url.js";
 
 /** ADR-0052: derive the target from a controlled window, never from a page-supplied URL or a cache. */
 export function createOfflineDocumentProbe(scope: ServiceWorkerGlobalScope, config: Pick<PwaPlatformWorkerConfig, "scope" | "pathRules" | "offlineFallback">): (clientId: string) => Promise<boolean> {
@@ -13,7 +14,7 @@ export function createOfflineDocumentProbe(scope: ServiceWorkerGlobalScope, conf
     try {
       const clients = await scope.clients.matchAll({ type: "window" });
       const client = clients.find((candidate) => candidate.id === clientId);
-      if (client === undefined || !URL.canParse(client.url)) return false;
+      if (client === undefined || !canParseUrl(client.url)) return false;
       const url = new URL(client.url);
       const action = matcher.match(url.pathname)?.action;
       if (url.origin !== scope.location.origin || !url.pathname.startsWith(config.scope) ||

@@ -60,7 +60,7 @@ function plainObject(value: unknown, label: string): Record<string, unknown> {
 
 function exactKeys(record: Record<string, unknown>, keys: readonly string[], label: string): void {
   const actual = Reflect.ownKeys(record);
-  if (actual.length !== keys.length || !keys.every((key) => Object.hasOwn(record, key))) {
+  if (actual.length !== keys.length || !keys.every((key) => Object.prototype.hasOwnProperty.call(record, key))) {
     fail(`${label} must have exactly the fields ${keys.join(", ")}`);
   }
 }
@@ -75,8 +75,21 @@ function canonicalPath(value: unknown, label: string): PwaClientPath {
     value.startsWith("/") &&
     !value.includes("//") &&
     !value.includes("\\") &&
-    URL.canParse(value, PATH_BASE) &&
+    canParseUrl(value, PATH_BASE) &&
     new URL(value, PATH_BASE).pathname === value;
   if (!canonical) fail(`${label} must be a canonical absolute path`);
   return value as PwaClientPath;
+}
+
+/**
+ * Whether `new URL(value, base)` would succeed: the same answer as `URL.canParse`, which browsers below the supported
+ * floor (Safari 13.1 / Chrome 80 / Firefox 74) do not have — it arrived in Chrome 120, Firefox 115 and Safari 17.
+ */
+function canParseUrl(value: string, base?: string): boolean {
+  try {
+    new URL(value, base);
+    return true;
+  } catch {
+    return false;
+  }
 }

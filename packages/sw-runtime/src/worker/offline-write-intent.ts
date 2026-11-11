@@ -1,5 +1,6 @@
 import type { PwaOfflineWriteMessage } from "../messages/index.js";
 import type { PwaPlatformWorkerConfig } from "../shared/config.js";
+import { canParseUrl } from "../shared/url.js";
 
 type EnqueueMessage = Extract<PwaOfflineWriteMessage, { readonly type: "pwa:offline-write:enqueue" }>;
 type FlushMessage = Extract<PwaOfflineWriteMessage, { readonly type: "pwa:offline-write:flush" }>;
@@ -55,7 +56,7 @@ export function validateOfflineWriteFlush(message: FlushMessage, config: PwaPlat
 }
 
 function canonicalSameOriginPath(value: string, origin: string): string | undefined {
-  if (!value.startsWith("/") || !URL.canParse(value, origin)) return undefined;
+  if (!value.startsWith("/") || !canParseUrl(value, origin)) return undefined;
   const url = new URL(value, origin);
   return url.origin === origin && url.search === "" && url.hash === "" && url.pathname === value ? value : undefined;
 }
