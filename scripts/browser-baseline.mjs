@@ -69,4 +69,14 @@ export const RESTRICTED_PROPERTIES = [
   { object: 'AbortSignal', property: 'timeout', message: 'AbortSignal.timeout needs Chrome 103 / Safari 16 / Firefox 100 (ADR-0053); use AbortController with a timer.' },
   { object: 'AbortSignal', property: 'any', message: 'AbortSignal.any needs Chrome 116 / Safari 17.4 / Firefox 124 (ADR-0053).' },
   { object: 'Object', property: 'hasOwn', message: 'Object.hasOwn needs Chrome 93 / Safari 15.4 / Firefox 92 (ADR-0053); use Object.prototype.hasOwnProperty.call.' },
+  // Explicit resource management: nuxt's type check is allowed lib.esnext.disposable (see browser-floor-types.test.mjs),
+  // so neither the type layer nor es-check stops these; the lint and artifact layers do.
+  { object: 'Symbol', property: 'dispose', message: 'Symbol.dispose is newer than the supported floor (ADR-0053).' },
+  { object: 'Symbol', property: 'asyncDispose', message: 'Symbol.asyncDispose is newer than the supported floor (ADR-0053).' },
+];
+
+/** Syntax newer than the floor that neither es-check 9.8.1 nor the type layer reports. */
+export const RESTRICTED_SYNTAX = [
+  { selector: "VariableDeclaration[kind='using']", message: '`using` declarations are newer than the supported floor (ADR-0053).' },
+  { selector: "VariableDeclaration[kind='await using']", message: '`await using` declarations are newer than the supported floor (ADR-0053).' },
 ];

@@ -1,7 +1,7 @@
 import eslint from "@eslint/js";
 import compat from "eslint-plugin-compat";
 import tseslint from "typescript-eslint";
-import { BROWSER_SOURCE, BUILD_TIME_SOURCE, RESTRICTED_PROPERTIES } from "./scripts/browser-baseline.mjs";
+import { BROWSER_SOURCE, BUILD_TIME_SOURCE, RESTRICTED_PROPERTIES, RESTRICTED_SYNTAX } from "./scripts/browser-baseline.mjs";
 
 // Browser floor lint layer (ADR-0053): code that runs in a page or worker is checked against .browserslistrc.
 const browserSource = Object.entries(BROWSER_SOURCE).flatMap(([name, dirs]) => dirs.map((dir) => `packages/${name}/${dir}/**/*.ts`));
@@ -62,6 +62,7 @@ export default tseslint.config(
     ignores: buildTimeSource,
     rules: {
       "no-restricted-properties": ["error", ...RESTRICTED_PROPERTIES],
+      "no-restricted-syntax": ["error", ...RESTRICTED_SYNTAX],
     },
   },
 );

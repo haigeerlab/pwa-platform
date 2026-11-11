@@ -15,10 +15,16 @@ const PLATFORM_CODE = /[\\/]packages[\\/][^\\/]+[\\/](?:src|dist)[\\/]/;
 const BUILD_TIME_CODE =
   /[\\/]packages[\\/](?:contracts|core|vite|build-verifier|release-tools)[\\/]|[\\/](?:src|dist)[\\/](?:build|vite|server)[\\/]/;
 
-/** The file of the frame that called the trap: line 0 is the message, 1 this function, 2 the trap, 3 its caller. */
-function callerFile() {
-  const frame = new Error().stack?.split("\n")[3] ?? "";
-  return frame.includes("node_modules") ? "" : frame;
+/**
+ * Whether the code that called a trapped built-in is platform browser code. `stack` starts at the trap itself; the
+ * caller is the first later frame with a file location, so a call made through a native callback (for example
+ * `[x].map(Object.hasOwn.bind(...))`, where the next frame is `Array.map (<anonymous>)`) is still attributed to the
+ * source that set it up. Dependencies (node_modules) are never platform code.
+ */
+export function isPlatformBrowserCaller(stack) {
+  const frames = stack.split("\n").slice(1);
+  const caller = frames.slice(1).find((frame) => /\(?(?:file:\/\/)?[A-Za-z]?:?[\\/][^()]*:\d+:\d+\)?\s*$/.test(frame)) ?? "";
+  return !caller.includes("node_modules") && PLATFORM_CODE.test(caller) && !BUILD_TIME_CODE.test(caller);
 }
 
 for (const { object, property: key } of RESTRICTED_PROPERTIES) {
@@ -31,8 +37,7 @@ for (const { object, property: key } of RESTRICTED_PROPERTIES) {
     configurable: true,
     writable: true,
     value: function (...args) {
-      const caller = callerFile();
-      if (PLATFORM_CODE.test(caller) && !BUILD_TIME_CODE.test(caller)) throw new TypeError(`${name} is not a function (not in the supported browser floor)`);
+      if (isPlatformBrowserCaller(new Error().stack ?? "")) throw new TypeError(`${name} is not a function (not in the supported browser floor)`);
       return original.apply(this, args);
     },
   });

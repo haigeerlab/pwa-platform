@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
-import { assertCategories, checkFiles, collectModuleClosure, collectPackageDist, extractInlineScripts } from './check-browser-artifacts.mjs';
+import { assertInputs, checkFiles, collectModuleClosure, collectPackageDist, extractInlineScripts } from './check-browser-artifacts.mjs';
 
 function fixture(files) {
   const dir = mkdtempSync(join(tmpdir(), 'browser-floor-'));
@@ -66,6 +66,62 @@ test('the recovery page module closure follows static imports', () => {
   assert.deepEqual(closure, ['assets/entry.js', 'assets/leaf.js', 'assets/shared.js', 'assets/side.js']);
 });
 
-test('a missing category of input fails instead of passing silently', () => {
-  assert.throws(() => assertCategories([{ category: 'worker' }], ['worker', 'inline-script']), /inline-script/);
+test('missing inputs fail per category, per package and per source, and empty files fail', () => {
+  const dir = fixture({ 'a.js': 'export {};\n', 'empty.js': '' });
+  const file = join(dir, 'a.js');
+  const all = { categories: ['worker'], packages: ['vue', 'react'], sources: [['worker', 'react'], ['worker', 'vue']] };
+  const present = [
+    { file, category: 'worker', source: 'react' },
+    { file, category: 'worker', source: 'vue' },
+    { file, category: 'package-dist', source: 'vue' },
+    { file, category: 'package-dist', source: 'react' },
+  ];
+  assert.doesNotThrow(() => assertInputs(present, all));
+  assert.throws(() => assertInputs(present.filter((entry) => entry.source !== 'react' || entry.category !== 'package-dist'), all), /package react/);
+  assert.throws(() => assertInputs(present.filter((entry) => entry.source !== 'vue' || entry.category !== 'worker'), all), /worker from vue/);
+  assert.throws(() => assertInputs([...present, { file: join(dir, 'empty.js'), category: 'worker', source: 'vue' }], all), /empty/);
+});
+
+test('script tags are read by attribute, in any order, spacing or case', () => {
+  const dir = fixture({
+    'page.html': [
+      '<script data-src="/not-a-src.js">window.a = 1;</script>',
+      '<SCRIPT TYPE = "module">window.b = 2;</SCRIPT>',
+      '<script src="/app/assets/entry.js" type="module"></script>',
+    ].join('\n'),
+    'assets/entry.js': 'export const e = 1;\n',
+  });
+  const scripts = extractInlineScripts(join(dir, 'page.html'), join(dir, 'extracted'));
+  assert.deepEqual(scripts.map((script) => script.module), [false, true]);
+  assert.deepEqual(collectModuleClosure(join(dir, 'page.html'), dir, '/app/').map((entry) => entry.file.slice(dir.length + 1)), ['assets/entry.js']);
+});
+
+test('the module closure follows imports split by comments and site-root paths, and ignores strings', () => {
+  const dir = fixture({
+    'page.html': '<script type="module" src="/app/assets/entry.js"></script>',
+    'assets/entry.js': 'import/*keep*/"./a.js";export*from/*keep*/"./b.js";import"/app/assets/c.js";const s="import \'./not-a-module.js\'";export{s};\n',
+    'assets/a.js': 'export {};\n',
+    'assets/b.js': 'export {};\n',
+    'assets/c.js': 'export {};\n',
+  });
+  const closure = collectModuleClosure(join(dir, 'page.html'), dir, '/app/').map((entry) => entry.file.slice(dir.length + 1)).sort();
+  assert.deepEqual(closure, ['assets/a.js', 'assets/b.js', 'assets/c.js', 'assets/entry.js']);
+});
+
+test('APIs the nuxt type exception lets through are still caught here', async () => {
+  const dir = fixture({
+    'f16.js': 'export const a = new Float16Array(1);\n',
+    'f16round.js': 'export const a = Math.f16round(1.5);\n',
+    'dispose.js': 'export const a = Symbol.dispose;\n',
+    'using.js': 'export function f(r) { using x = r; return x; }\n',
+  });
+  const failures = await checkFiles(modules(dir, 'f16.js', 'f16round.js', 'dispose.js', 'using.js'));
+  assert.deepEqual([...new Set(failures.map((failure) => failure.file.split('/').at(-1)))].sort(), ['dispose.js', 'f16.js', 'f16round.js', 'using.js']);
+});
+
+test('a file that cannot be checked is reported and the rest are still checked', async () => {
+  const dir = fixture({ 'own.js': 'export const a = Object.hasOwn({}, "a");\n' });
+  const failures = await checkFiles([...modules(dir, 'missing.js'), ...modules(dir, 'own.js')]);
+  const files = new Set(failures.map((failure) => failure.file.split('/').at(-1)));
+  assert.ok(files.has('missing.js') && files.has('own.js'));
 });

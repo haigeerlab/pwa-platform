@@ -9,7 +9,8 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ESLint } from 'eslint';
 import compat from 'eslint-plugin-compat';
-import { BROWSER_SOURCE, BUILD_TIME_SOURCE, readBaseline, RESTRICTED_PROPERTIES } from './browser-baseline.mjs';
+import ts from 'typescript';
+import { BROWSER_SOURCE, BUILD_TIME_SOURCE, readBaseline, RESTRICTED_PROPERTIES, RESTRICTED_SYNTAX } from './browser-baseline.mjs';
 import { spawnPnpm } from './spawn-pnpm.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -37,43 +38,76 @@ export function collectPackageDist(base = root) {
     return dirs
       .flatMap((dir) => walk(join(base, 'packages', name, dir.replace(/^src/, 'dist'))))
       .filter((file) => file.endsWith('.js') && !skip.some((dir) => file.startsWith(dir + '/') || file.startsWith(dir + '\\')))
-      .map((file) => ({ file, module: true, category: 'package-dist' }));
+      .map((file) => ({ file, module: true, category: 'package-dist', source: name }));
   });
 }
+
+/** The `<script>` elements of an HTML file with their attributes (any order, spacing or case) and inline text. */
+function scriptElements(html) {
+  return [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script\s*>/gi)].map((match) => {
+    const attributes = {};
+    for (const attribute of match[1].matchAll(/([^\s"'=<>/]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g)) {
+      attributes[attribute[1].toLowerCase()] = attribute[2] ?? attribute[3] ?? attribute[4] ?? '';
+    }
+    return { attributes, text: match[2] };
+  });
+}
+
+const isModule = (attributes) => (attributes.type ?? '').trim().toLowerCase() === 'module';
 
 /** Writes each inline `<script>` of an HTML file to its own file, so it can be checked like any other script. */
 export function extractInlineScripts(htmlFile, outDir) {
   mkdirSync(outDir, { recursive: true });
-  const html = readFileSync(htmlFile, 'utf8');
-  return [...html.matchAll(/<script(?![^>]*\bsrc=)([^>]*)>([\s\S]*?)<\/script>/g)].map((match, index) => {
-    const file = join(outDir, `${basename(htmlFile, '.html')}-inline-${index}.js`);
-    writeFileSync(file, match[2]);
-    return { file, module: /type=["']?module/.test(match[1]), category: 'inline-script' };
-  });
+  return scriptElements(readFileSync(htmlFile, 'utf8'))
+    .filter((element) => element.attributes.src === undefined)
+    .map((element, index) => {
+      const file = join(outDir, `${basename(htmlFile, '.html')}-inline-${index}.js`);
+      writeFileSync(file, element.text);
+      return { file, module: isModule(element.attributes), category: 'inline-script', source: htmlFile };
+    });
 }
 
-/** The module scripts an HTML page loads, plus everything they import statically, resolved inside `outDir`. */
+/**
+ * The module scripts an HTML page loads, plus everything they import or re-export statically, resolved inside
+ * `outDir`. Import specifiers come from TypeScript's pre-processor, which skips comments and strings; paths starting
+ * with the page's `base` are site-root references.
+ */
 export function collectModuleClosure(htmlFile, outDir, base = '/') {
-  const html = readFileSync(htmlFile, 'utf8');
-  const pending = [...html.matchAll(/<script[^>]*type=["']?module["']?[^>]*\bsrc=["']([^"']+)["']/g)].map((match) =>
-    join(outDir, match[1].startsWith(base) ? match[1].slice(base.length) : match[1]),
-  );
+  const resolveFrom = (from, specifier) => {
+    if (specifier.startsWith(base)) return join(outDir, specifier.slice(base.length));
+    if (specifier.startsWith('/')) return join(outDir, specifier.slice(1));
+    return join(dirname(from), specifier);
+  };
+  const pending = scriptElements(readFileSync(htmlFile, 'utf8'))
+    .filter((element) => element.attributes.src !== undefined && isModule(element.attributes))
+    .map((element) => resolveFrom(join(outDir, 'index.html'), element.attributes.src));
   const seen = new Set();
   while (pending.length > 0) {
     const file = pending.pop();
     if (seen.has(file)) continue;
     if (!existsSync(file)) throw new Error(`Module referenced from ${basename(htmlFile)} is missing: ${relative(outDir, file)}`);
     seen.add(file);
-    for (const match of readFileSync(file, 'utf8').matchAll(/(?:\bfrom|\bimport)\s*["'](\.{1,2}\/[^"']+)["']/g)) {
-      pending.push(join(dirname(file), match[1]));
+    for (const { fileName } of ts.preProcessFile(readFileSync(file, 'utf8'), true, true).importedFiles) {
+      if (/^(?:\.{1,2}\/|\/)/.test(fileName)) pending.push(resolveFrom(file, fileName));
     }
   }
-  return [...seen].map((file) => ({ file, module: true, category: 'recovery-module' }));
+  return [...seen].map((file) => ({ file, module: true, category: 'recovery-module', source: htmlFile }));
 }
 
-export function assertCategories(entries, required = REQUIRED_CATEGORIES) {
-  const missing = required.filter((category) => !entries.some((entry) => entry.category === category));
+/**
+ * Fails unless every expected input is present: each category, each browser package, and each source within a
+ * category (each example's workers, inline scripts and recovery modules), with no empty file. A scan that silently
+ * lost one package or one example would otherwise still pass on the rest.
+ */
+export function assertInputs(entries, { categories = REQUIRED_CATEGORIES, packages = Object.keys(BROWSER_SOURCE), sources = [] } = {}) {
+  const missing = [
+    ...categories.filter((category) => !entries.some((entry) => entry.category === category)),
+    ...packages.filter((name) => !entries.some((entry) => entry.category === 'package-dist' && entry.source === name)).map((name) => `package ${name}`),
+    ...sources.filter(([category, source]) => !entries.some((entry) => entry.category === category && entry.source === source)).map(([category, source]) => `${category} from ${source}`),
+  ];
+  const empty = entries.filter((entry) => !existsSync(entry.file) || statSync(entry.file).size === 0).map((entry) => entry.file);
   if (missing.length > 0) throw new Error(`No files found for: ${missing.join(', ')} — the scan would pass without checking them`);
+  if (empty.length > 0) throw new Error(`Missing or empty files: ${empty.join(', ')}`);
 }
 
 function run(command, args) {
@@ -82,6 +116,7 @@ function run(command, args) {
     let output = '';
     child.stdout.on('data', (chunk) => (output += chunk));
     child.stderr.on('data', (chunk) => (output += chunk));
+    child.on('error', (error) => resolveRun({ code: -1, output: `could not start ${command}: ${error.message}` }));
     child.on('close', (code) => resolveRun({ code, output }));
   });
 }
@@ -100,7 +135,7 @@ function webApiLinter(sourceType) {
     overrideConfig: [
       { files: ['**/*.js'], languageOptions: { ecmaVersion: 'latest', sourceType } },
       { ...compat.configs['flat/recommended'], files: ['**/*.js'], settings: { browsers: readBaseline() } },
-      { files: ['**/*.js'], rules: { 'no-restricted-properties': ['error', ...RESTRICTED_PROPERTIES] } },
+      { files: ['**/*.js'], rules: { 'no-restricted-properties': ['error', ...RESTRICTED_PROPERTIES], 'no-restricted-syntax': ['error', ...RESTRICTED_SYNTAX] } },
     ],
   });
 }
@@ -109,7 +144,7 @@ async function webApis(entry, linters) {
   const [result] = await linters[entry.module ? 'module' : 'script'].lintText(readFileSync(entry.file, 'utf8'), {
     filePath: join(root, 'browser-floor-scan', basename(entry.file)),
   });
-  const problems = result.messages.filter((message) => message.ruleId === 'compat/compat' || message.ruleId === 'no-restricted-properties' || message.fatal);
+  const problems = result.messages.filter((message) => ['compat/compat', 'no-restricted-properties', 'no-restricted-syntax'].includes(message.ruleId) || message.fatal);
   return problems.length === 0 ? undefined : problems.map((message) => `${message.line}:${message.column} ${message.message}`).join('\n');
 }
 
@@ -122,7 +157,9 @@ export async function checkFiles(entries, concurrency = 8) {
     Array.from({ length: Math.min(concurrency, entries.length) }, async () => {
       while (next < entries.length) {
         const entry = entries[next++];
-        for (const reason of [await esCheck(entry), await webApis(entry, linters)]) {
+        for (const check of [esCheck, webApis]) {
+          // One file's error is recorded as that file's failure; the scan carries on so every result is reported.
+          const reason = await check(entry, linters).catch((error) => `check failed to run: ${error.message}`);
           if (reason !== undefined) failures.push({ file: entry.file, reason });
         }
       }
@@ -148,14 +185,16 @@ function base(appOut) {
 async function main() {
   const outDir = mkdtempSync(join(tmpdir(), 'browser-floor-scan-'));
   const entries = [...collectPackageDist()];
-  for (const appOut of buildExamples(outDir)) {
-    for (const name of ['sw.js', 'pwa-recovery-worker.js']) entries.push({ file: join(appOut, name), module: false, category: 'worker' });
+  const apps = buildExamples(outDir);
+  for (const appOut of apps) {
+    for (const name of ['sw.js', 'pwa-recovery-worker.js']) entries.push({ file: join(appOut, name), module: false, category: 'worker', source: appOut });
     for (const html of readdirSync(appOut).filter((name) => name.endsWith('.html'))) {
       entries.push(...extractInlineScripts(join(appOut, html), join(outDir, 'inline', basename(appOut))));
     }
     entries.push(...collectModuleClosure(join(appOut, 'pwa-entry.html'), appOut, base(appOut)));
   }
-  assertCategories(entries);
+  const sources = apps.flatMap((appOut) => [['worker', appOut], ['inline-script', join(appOut, 'offline.html')], ['recovery-module', join(appOut, 'pwa-entry.html')]]);
+  assertInputs(entries, { sources });
   for (const category of REQUIRED_CATEGORIES) {
     const list = entries.filter((entry) => entry.category === category);
     console.log(`${category} (${list.length}):`);

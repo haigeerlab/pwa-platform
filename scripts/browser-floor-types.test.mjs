@@ -26,6 +26,9 @@ const FIXTURE = [
   'export const last = [1].at(-1);',
 ].join('\n');
 
+/** TypeScript reports file names with forward slashes on every platform; compare in that form. */
+const normalize = (path) => path.replaceAll('\\', '/');
+
 const floors = readdirSync(join(root, 'packages'))
   .map((name) => join(root, 'packages', name, 'tsconfig.floor.json'))
   .filter((path) => existsSync(path));
@@ -36,9 +39,9 @@ function program(configPath, extra) {
   if (extra) {
     const original = host.getSourceFile.bind(host);
     host.getSourceFile = (fileName, languageVersion, ...rest) =>
-      fileName === extra.fileName ? ts.createSourceFile(fileName, extra.text, languageVersion) : original(fileName, languageVersion, ...rest);
+      normalize(fileName) === extra.fileName ? ts.createSourceFile(fileName, extra.text, languageVersion) : original(fileName, languageVersion, ...rest);
     const exists = host.fileExists.bind(host);
-    host.fileExists = (fileName) => fileName === extra.fileName || exists(fileName);
+    host.fileExists = (fileName) => normalize(fileName) === extra.fileName || exists(fileName);
   }
   return { config, program: ts.createProgram([...config.fileNames, ...(extra ? [extra.fileName] : [])], config.options, host) };
 }
@@ -67,10 +70,10 @@ for (const configPath of floors) {
   });
 
   test(`${name}: built-ins newer than the baseline fail to type-check`, () => {
-    const fileName = join(dirname(configPath), 'src', '__floor_fixture__.ts');
+    const fileName = normalize(join(dirname(configPath), 'src', '__floor_fixture__.ts'));
     const { program: built } = program(configPath, { fileName, text: FIXTURE });
     const lines = ts.getPreEmitDiagnostics(built)
-      .filter((d) => d.file?.fileName === fileName)
+      .filter((d) => d.file !== undefined && normalize(d.file.fileName) === fileName)
       .map((d) => d.file.getLineAndCharacterOfPosition(d.start).line);
     assert.deepEqual([...new Set(lines)].sort(), [0, 1, 2]);
   });

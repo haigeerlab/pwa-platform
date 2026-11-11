@@ -51,6 +51,9 @@ const CI_RUN_EXCLUSIONS: ReadonlySet<string> = new Set([
   "pnpm --filter @pwa-platform/vite test",
   "pnpm --filter @pwa-platform/entry-resilience test",
   "node --test scripts/spawn-pnpm.test.mjs",
+  // The browser floor check itself is the gate command `pnpm check:browser-floor` (Linux CI); on Windows only the parts
+  // with platform-specific paths (TypeScript file names, stack frames) are re-run (ADR-0053).
+  "node --test scripts/browser-floor-types.test.mjs scripts/test-support/legacy-engine.test.mjs",
   // Installs the engine-smoke browsers with their Linux system libraries; the gate's own command downloads the same
   // browsers without system packages (ADR-0042).
   "pnpm --filter @pwa-platform/sw-runtime exec playwright install --with-deps webkit firefox",

@@ -16,7 +16,7 @@ GitHub Issues 是任务事实源。不要添加仓库内的 todo 列表。
 
 - `pnpm typecheck`、`pnpm lint` 和 CI 的产物检查会拦住超基线的语法、JS 内置 API，以及禁用名单里的网页 API。
 - 要用较新的网页 API 时，先在 MDN 兼容数据中查最低版本。低于基线的 API：
-  - 加入 `scripts/browser-baseline.mjs` 的 `RESTRICTED_PROPERTIES`（运行时陷阱会自动跟随）；
+  - 加入 `scripts/browser-baseline.mjs` 的 `RESTRICTED_PROPERTIES`（运行时陷阱会自动跟随）；超基线的语法加入同文件的 `RESTRICTED_SYNTAX`；
   - 代码先做特性检测再使用，并在该行用 `eslint-disable-next-line no-restricted-properties` 写明理由；
   - 降级分支用 `scripts/test-support/without-builtin.mjs` 的 `withoutBuiltin()` 在测试中验证。
 - CSS 没有自动检测：会破坏布局的属性要先写可用的回退，例如物理定位或固定值。

@@ -43,7 +43,7 @@
   - `FetchEvent.resultingClientId` 要 Safari 16，缺失时导航的缓存来源信号静默丢失；
   - 恢复页的 `max()` 在 Firefox 74 上不生效；
   - 更新提示条在不支持逻辑定位的浏览器上使用物理定位回退（0.4.2 起），从右往左排版时不会镜像。
-- **nuxt 例外**：nuxt 运行时插件经 `nuxt/app` 带入 `@types/node` 引用的 `esnext.disposable`、`es2025.float16`。类型层仅为 nuxt 放行这两个 lib，违规样例仍须报错。
+- **nuxt 例外**：nuxt 运行时插件经 `nuxt/app` 带入 `@types/node` 引用的 `esnext.disposable`、`es2025.float16`。类型层仅为 nuxt 放行这两个 lib，违规样例仍须报错；这两个 lib 带来的 API 由其他层拦住：`Float16Array`、`Math.f16round` 由 compat 规则拦，`Symbol.dispose`、`Symbol.asyncDispose` 由禁用名单拦，`using` 声明由 `no-restricted-syntax` 拦，各有违规样例。
 - **基线变更**：提高任一浏览器的最低版本是破坏性变更，必须新增 ADR 并升主版本号；降低版本或修复违规可在补丁版本中进行。
 
 Push 在 iOS 上只对**已安装到主屏幕的 Web App**提供；未安装的 Safari 页面不应把它当作可用能力。Safari 与 Firefox 都属于渐进兼容档：应用必须先做特性检测，不能将订阅或通知作为基础体验的前提。

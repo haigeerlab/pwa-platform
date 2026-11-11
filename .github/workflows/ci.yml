@@ -122,6 +122,9 @@ jobs:
       - name: Test pnpm subprocess launch
         run: node --test scripts/spawn-pnpm.test.mjs
 
+      - name: Test browser floor type fixtures and runtime trap paths on Windows
+        run: node --test scripts/browser-floor-types.test.mjs scripts/test-support/legacy-engine.test.mjs
+
   browser:
     # Gating jobs: every non-draft PR, every push to main, manual runs; not the nightly schedule.
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.draft == false)
