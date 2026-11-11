@@ -8,6 +8,8 @@
   position: fixed;
   z-index: var(--pwa-update-z-index, 1200);
   box-sizing: border-box;
+  /* Fixed width first for browsers without min() (Firefox before 75); the next line wins wherever min() exists. */
+  width: 24rem;
   width: min(24rem, calc(100vw - 2rem));
   padding: 1rem;
   border: 1px solid var(--pwa-update-border, var(--pwa-update-default-border));
@@ -56,11 +58,19 @@
   color: var(--pwa-update-muted, var(--pwa-update-default-muted));
 }
 
+/*
+ * 0.5rem between buttons, also across wrapped rows, without flex `gap` (Chrome/Edge 84, Safari 14.1, iOS 14.5): each
+ * button gets half the gap on every side and the row pulls back by the same amount, so its outer edges, the 0.875rem
+ * above it and the wrap point are what `gap: 0.5rem` gave.
+ */
 .pwa-update-notice__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.875rem;
+  margin: calc(0.875rem - 0.25rem) -0.25rem -0.25rem;
+}
+
+.pwa-update-notice__actions > * {
+  margin: 0.25rem;
 }
 
 .pwa-update-notice__button {

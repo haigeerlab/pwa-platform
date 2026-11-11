@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Default update notice spacing in older browsers (`vue`, `react`):** the button row no longer uses flex `gap` (Chrome/Edge 84, Safari 14.1, iOS 14.5); each button carries half the gap as margin and the row pulls back by the same amount, so buttons keep their 0.5rem spacing on older browsers. The width gets a fixed `24rem` fallback before `min()` for Firefox before 75. In current Chrome the layout is identical, measured for all positions, narrow screens, a single button, long custom text and every width from 150 to 420px.
 - **Generated workers target the supported browser floor (`@pwa-platform/vite`):** the platform and recovery workers are bundled with an explicit build target of Chrome 80, Edge 80, Firefox 74, Safari 13.1 and iOS 13.4 (ADR-0053) instead of the host Vite's default (Chrome 111 / Safari 16.4 in Vite 8). Newer syntax in the worker is lowered, for example optional chaining becomes equivalent null checks; behaviour is unchanged. The worker script content changes, so hosts take one ordinary worker update after upgrading.
 
 ## 0.4.2 (2026-11-11)
