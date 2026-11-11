@@ -53,6 +53,6 @@
 
 ## 待核实
 
-- Workbox 7.4.1 被打进 worker 部分的语法与 API 下限（由 BC1 的产物检测覆盖）。
+- Workbox 7.4.1 被打进 worker 部分的语法与 API 下限（由 BC4 的产物检查覆盖：语法与 JS 内置 API 由 es-check，名单内网页 API 由网页 API 规则）。
 - `FetchEvent.resultingClientId` 在基线浏览器上是否可用。
 - 表中版本号未逐一对照兼容数据表。

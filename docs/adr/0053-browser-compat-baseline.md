@@ -8,7 +8,7 @@
 
 - 平台一直没有承诺最低浏览器版本。[兼容性策略](../architecture/compatibility.md)只要求做特性检测，能力不可用时基础 Web 体验仍须可用；[浏览器矩阵](../architecture/browser-matrix.md)只规定必测和参考的当前版本。
 - 0.4.0 的页面初始化和生成的 worker 启动时调用了 `URL.canParse`、`Object.hasOwn`，没有做检测。结果是有接入方的 Safari 13.1 用户白屏，worker 在 Chrome 120／Safari 17 以下装不上。
-- worker 由 `@pwa-platform/vite` 单独打包，宿主无法降级，页面上的 polyfill 也进不了 worker，只能由平台修复。0.4.1 已修复这些调用，但仓库没有检测能阻止复发。
+- worker 由 `@pwa-platform/vite` 单独打包，宿主无法降级，页面上的 polyfill 也进不了 worker，只能由平台修复。0.4.1 已修复这些调用，并加了针对这三个方法的单测调用陷阱；语法、其他 API、生成脚本与产物仍无检测。
 - 2026-11-11 实测（见规格“工具实测结论”）：
   - 没有单个工具能同时覆盖语法、JS 内置 API 和网页 API。
   - eslint-plugin-compat 不检查语法，实际使用的兼容数据也过旧，恰好漏掉这次出事的 `URL.canParse` 与 `AbortSignal.timeout`。
@@ -29,8 +29,8 @@
 | --- | --- | --- | --- |
 | 类型 | 浏览器端源码 | tsconfig `lib: ES2020`，`target` 不变 | JS 内置新 API |
 | lint | 浏览器端源码 | eslint-plugin-compat，加 `no-restricted-properties` 禁用名单 | 网页 API |
-| 产物 | 浏览器端 `dist`、生成的 worker 与内联脚本 | es-check `checkBrowser --checkFeatures`，`allowList` 仅放行 `OptionalChaining,NullishCoalescing` | 语法与 JS 内置新 API，包括 Workbox 等依赖和构建工具生成的代码 |
-| 运行时 | 单元测试 | `legacy-engine.mjs` 让禁用名单中的 API 被平台浏览器端代码调用时抛错 | 已知 API 在实际执行路径上的使用 |
+| 产物 | 浏览器端 `dist`（排除 build／vite／server）、生成的 worker、内联脚本、恢复页模块闭包 | es-check `checkBrowser --checkFeatures`（`allowList` 仅放行 `OptionalChaining,NullishCoalescing`），加与 lint 层相同的网页 API 规则 | 语法、JS 内置新 API，以及字符串脚本和 Workbox 等依赖中的名单内网页 API |
+| 运行时 | 单元测试 | `legacy-engine.mjs` 调用陷阱；对有特性检测的代码，在单测内真正删除 API 验证降级 | 平台代码直接调用名单内 API；降级分支确实可走 |
 
 每层都保留故意违规的样例，并断言该层失败。产物层另设一个数字分隔符样例，断言它通过。
 
@@ -64,7 +64,8 @@ eslint-plugin-compat 漏掉的、而平台曾经或可能用到的网页 API，�
   - 实例属性；
   - CSS；
   - 运行时才构造的代码，例如 `new RegExp` 中的新正则语法。
-- 已知降级：`resultingClientId` 在 Safari 16 以下缺失，信号静默丢失；`max()` 在 Firefox 74 上不生效。
+- 已知降级：`resultingClientId` 在 Safari 16 以下缺失，信号静默丢失；恢复页 `max()` 在 Firefox 74 上不生效。
+- 更新提示条的逻辑定位属性（Chrome 87、Safari 14.1 起）与 `min()`（Firefox 75 起）在 0.4.1 中没有回退，旧浏览器上提示条位置错乱；本模块补物理定位与固定宽度回退，随下一个补丁版本发布。
 - 这些都靠评审与旧版本真机抽查弥补。抽查在基线变更和大版本发布时进行。
 
 ## 被否决的方案
