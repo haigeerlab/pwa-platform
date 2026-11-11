@@ -68,6 +68,12 @@ jobs:
       - name: Check browser floor lint rules
         run: node --test scripts/browser-floor-lint.test.mjs
 
+      - name: Test browser floor artifact checker and runtime helpers
+        run: node --test scripts/check-browser-artifacts.test.mjs scripts/test-support/without-builtin.test.mjs
+
+      - name: Check browser artifacts against the supported floor
+        run: node scripts/check-browser-artifacts.mjs
+
       - name: Test documentation API status checker
         run: node --test scripts/check-doc-public-api.test.mjs
 
