@@ -25,3 +25,11 @@ test('dependencies, build-time code, tests and the runner are not platform code'
   assert.equal(isPlatformBrowserCaller(stack('x (/repo/packages/sw-runtime/test/config.test.ts:1:1)')), false);
   assert.equal(isPlatformBrowserCaller(stack('Array.map (<anonymous>)')), false);
 });
+
+test('the wrapped URL constructor still behaves as URL for everything else', () => {
+  const url = new URL('https://example.invalid/a?b=1', undefined);
+  assert.ok(url instanceof URL);
+  assert.equal(url.pathname, '/a');
+  assert.equal(new URL('/x', 'https://example.invalid/').href, 'https://example.invalid/x');
+  assert.equal(typeof URL.createObjectURL, 'function');
+});

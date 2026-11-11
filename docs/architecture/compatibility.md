@@ -39,6 +39,7 @@
   - 对象实例上的属性（如 `FetchEvent.resultingClientId`）；
   - CSS；
   - 运行时构造的代码（如 `new RegExp` 中的新正则语法）。
+- **已知引擎差异**：Safari 13 对 `new URL(value, undefined)` 抛 `TypeError`，显式传入的 `undefined` 基址不会被当作“没有基址”。浏览器端代码在基址可能缺失时必须只传一个参数。四层检测中只有运行时层能发现这一类问题：单测的运行时模拟会让平台浏览器端代码中的这种调用抛错。
 - **已知降级**：
   - `FetchEvent.resultingClientId` 要 Safari 16，缺失时导航的缓存来源信号静默丢失；
   - 恢复页的 `max()` 在 Firefox 74 上不生效；

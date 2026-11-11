@@ -42,3 +42,18 @@ for (const { object, property: key } of RESTRICTED_PROPERTIES) {
     },
   });
 }
+
+// Safari 13 throws "TypeError: Type error" from `new URL(value, undefined)`: an explicitly passed `undefined` base is
+// not treated as absent (Safari 14 and Chromium accept it). 0.4.1 shipped a helper that did exactly that, so on Safari
+// 13 every URL check failed and the worker ignored every request and the update confirmation (found on a real Safari
+// 13.1). The URL constructor is wrapped so platform browser code that passes an undefined base fails here too.
+const NativeURL = URL;
+globalThis.URL = new Proxy(NativeURL, {
+  construct(target, args, newTarget) {
+    if (args.length >= 2 && args[1] === undefined && isPlatformBrowserCaller(new Error().stack ?? "")) {
+      throw new TypeError("Type error (new URL with an undefined base, as Safari 13 throws)");
+    }
+    return Reflect.construct(target, args, newTarget);
+  },
+});
+
