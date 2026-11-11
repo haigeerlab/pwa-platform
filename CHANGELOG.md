@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.1 (unreleased)
+## 0.4.1 (2026-11-11)
 
 Patch release of all ten public `@pwa-platform/*` packages. No public API, PWA identity, scope, worker URL or cache policy changes.
 
