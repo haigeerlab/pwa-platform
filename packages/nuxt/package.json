@@ -20,7 +20,7 @@
     "test:browser": "playwright test",
     "test:browser:android": "playwright test --config playwright.android.config.ts",
     "test:browser:ios": "playwright test --config playwright.ios.config.ts",
-    "typecheck": "tsc --noEmit --project tsconfig.json"
+    "typecheck": "tsc --noEmit --project tsconfig.json && tsc --noEmit --project tsconfig.floor.json"
   },
   "peerDependencies": {
     "nuxt": ">=4.5.0 <4.6.0",

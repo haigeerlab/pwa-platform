@@ -30,3 +30,11 @@ export function baselineTargets(queries) {
     return `${target}${versions.split('-')[0]}`;
   });
 }
+
+/**
+ * The TypeScript `lib` that matches the floor. It cannot be derived from browserslist, so it is stated here and the
+ * floor type check asserts every browser program uses it. ES2021 adds `replaceAll`, `Promise.any` and logical
+ * assignment; ES2022 adds `Object.hasOwn` and `.at()` — all newer than Safari 13.1. ES2020 still declares BigInt,
+ * which Safari 13.1 lacks; BigInt literals are caught by the artifact scan.
+ */
+export const BASELINE_ES_LIB = 'ES2020';

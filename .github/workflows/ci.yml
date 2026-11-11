@@ -62,6 +62,9 @@ jobs:
       - name: Test browser baseline reader
         run: node --test scripts/browser-baseline.test.mjs
 
+      - name: Check browser floor types
+        run: node --test scripts/browser-floor-types.test.mjs
+
       - name: Test documentation API status checker
         run: node --test scripts/check-doc-public-api.test.mjs
 

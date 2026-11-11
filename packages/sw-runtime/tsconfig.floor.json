@@ -1,0 +1,11 @@
+{
+  // Browser floor type check (ADR-0053): browser-side source only, with lib limited to the supported baseline.
+  // Checked by scripts/browser-floor-types.test.mjs; build-time code keeps its own tsconfig.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2020", "WebWorker"],
+    "types": [],
+    "noEmit": true
+  },
+  "include": ["src/worker/**/*.ts", "src/recovery-worker/**/*.ts", "src/entries/**/*.ts", "src/shared/**/*.ts", "src/messages/**/*.ts", "src/push-payload/**/*.ts"]
+}
