@@ -1,75 +1,79 @@
 # 实施计划：browser-compat-baseline
 
-> 2026-11-11 草案，与[规格](../../spec/browser-compat-baseline.md)和 [ADR-0053](../../docs/adr/0053-browser-compat-baseline.md) 一并交项目所有者审阅；批准前不改代码。
+> 2026-11-11 草案，与[规格](../../spec/browser-compat-baseline.md)、[ADR-0053](../../docs/adr/0053-browser-compat-baseline.md) 一并交项目所有者审阅；批准前不改代码。
 
 ## 排期与进入条件
 
-- 能力图末尾追加本模块，构建顺序同步追加。`cloudflare-test-deployment` 剩余 5 项（第二台机器等外部前提和所有者暂缓项）、已暂停的 `stable-release-qualification` 和 `offline-experience-resilience` 都保持原状。
-- 审阅通过后，把本机 `.agent/state.json` 的 `activeModule` 切到本模块。该文件不入库，本 worktree 中没有，需要先确认它在主检出中的位置。
-- 工具版本于 2026-11-11 从 npm 读取：`eslint-plugin-compat` 7.0.2（peer `eslint ^9 || ^10`，内含 `@mdn/browser-compat-data` 与 `browserslist`），`es-check` 9.8.1。实施时以官方文档核对配置项，不凭记忆写参数。
+- 能力图末尾追加本模块。`cloudflare-test-deployment` 剩余项（外部前提与所有者暂缓项），以及已暂停的 `stable-release-qualification`、`offline-experience-resilience` 保持原状。
+- 审阅通过后切换本机 `.agent/state.json` 的 `activeModule`；该文件不入库，需在主检出中操作。
+- 工具版本以 2026-11-11 实测为准：eslint-plugin-compat 7.0.2、es-check 9.8.1。实施时再读一次最新版本，有变化则重新实测违规样例。
 
 ## 顺序原则
 
-先建检测、确认它在现有代码上报错，再修代码让它通过。这样每一处修复都由检测驱动，修完后检测本身就是防回归手段。
+先建检测，确认它在违规样例上报错、在当前代码上通过，再做产物变化（worker 目标、提示条样式）。每个任务一条提交。
 
-## BC0：盘点（已完成）
+## BC1：基线文件与一致性
 
-27 项功能 × 浏览器 API 清单见 [feature-api-inventory.md](feature-api-inventory.md)；超基线用法见规格现状表。
+- 新增根目录 `.browserslistrc`，写入五个最低版本。
+- 新增一致性测试：用 browserslist 解析 `.browserslistrc`，断言它与 worker 构建目标常量、浏览器端 tsconfig 的 `lib` 一致。
+- 把 browserslist 列为根开发依赖。
 
-## BC1：基线与三层检测（先让它报错）
+**验收**：测试通过；改动任一处，测试即失败。
 
-1. 在仓库根目录新增 browserslist 配置，写入五个最低版本。
-2. 类型层：给浏览器端源码（`sw-runtime` 的 worker 与 shared、`client-runtime` 的 client 与 shared、`entry-resilience` 的浏览器部分、`engine-workbox/src/worker`、`vue`、`react`、`offline-write`、`push` 的客户端部分）的 tsconfig 设 `lib: ["ES2020", ...]`。构建期目录保持原样。
-3. lint 层：在 `eslint.config.js` 中只对上述浏览器端目录启用 `eslint-plugin-compat`，读取 browserslist。
-4. 产物层：新增脚本，对浏览器端包的 `dist`、示例应用生成的 `sw.js` 与恢复 worker、生成页面中的内联脚本运行 `es-check es2020`，并接入 CI。
-5. 一致性测试：browserslist 与 tsconfig `lib` 不分叉。
-6. 每层一个违规样例（放在测试夹具中，不进入发布包），断言该层失败。
+## BC2：类型层
 
-**验收**：三层在现有代码上报出规格现状表中的各项，不多不少；若多出未知项，补进规格后再继续。违规样例确实失败。
+- 为浏览器端源码设 `lib: ["ES2020", "DOM", ...]`。涉及 `sw-runtime` 的 worker 与 shared 部分、`client-runtime` 的 client 与 shared 部分、`entry-resilience` 浏览器部分、`engine-workbox/src/worker`、`vue`、`react`、`offline-write`、`push` 客户端、`nuxt` 运行时插件。`target` 不变，构建期 tsconfig 不受限。
+- 盘点受影响的类型。若某个依赖的类型声明需要更新的 `lib`，记录下来，并用 `skipLibCheck` 或局部声明解决；不放宽浏览器端源码的 `lib`。
+- 违规样例：`Object.hasOwn`，`tsc` 报错。
 
-## BC2：替换 JS 用法
+**验收**：`pnpm typecheck` 通过；样例失败。
 
-- `URL.canParse`：各包内用 `try { new URL(value, base) }` 实现同名内部函数，不新增跨包依赖。涉及 `client-runtime`、`sw-runtime`、`engine-workbox/worker`、`entry-resilience`、`offline-write`。
-- `Object.hasOwn` 换成 `Object.prototype.hasOwnProperty.call`：涉及 `client-runtime`、`sw-runtime`、`entry-resilience`、`offline-write`。
-- 单元测试：属性在原型链上而非自身、无法解析的 URL、`null` 原型对象。
+## BC3：lint 层
 
-**验收**：既有单元测试全部通过，新增测试通过，类型层和 lint 层对这些位置不再报错。
+- `eslint.config.js` 对浏览器端源码 glob 启用 `compat.configs["flat/recommended"]` 与 `no-restricted-properties` 禁用名单。
+- 核实插件在 typescript-eslint 解析器下对 `.ts` 文件生效。若不生效，停下来提交决策。
+- 违规样例：`URL.canParse`，以及插件可报的 `structuredClone`，断言 ESLint 报错。
 
-## BC3：入口探测、语法与样式
+**验收**：`pnpm lint` 通过；样例失败。
 
-- `entry-resilience/src/browser/probes.ts`：`AbortSignal.timeout` 换成 `AbortController` 加 `setTimeout`，结束后清除计时器；测试计时器被清理、超时后中止。
-- `entry-resilience/src/client/index.ts:29` 的 `??=` 换成普通赋值。
-- `push/src/client/index.ts` 的类字段改为在构造函数中赋值；`message` 与 `code` 的行为不变。
-- `inset: 0` 换成 `top/right/bottom/left: 0`：`vite/src/offline-page-style.ts`、`entry-resilience/src/vite/default-style.ts`。离线页 CSP 哈希随样式重算，检查生成测试的快照。
-- `gap` 与 `max()` 保留，在兼容文档中记录为可接受的降级。
+## BC4：产物层与运行时层
 
-## BC4：worker 打包目标与依赖盘点
+- 新增脚本，对浏览器端包 `dist` 与示例应用生成的 `sw.js`、恢复 worker、内联脚本运行 es-check（`checkBrowser --checkFeatures`，`--browserslistPath .browserslistrc`，`--allowList=OptionalChaining,NullishCoalescing`）。内联脚本先抽出为临时文件。
+- 接入 CI 的 Quality 任务，在构建之后执行。
+- 违规样例：`??=`、类字段应失败；数字分隔符应通过。
+- `legacy-engine.mjs` 加入 `AbortSignal.any`，与禁用名单一致，并由测试校验两者一致。
 
-- `packages/vite/src/workers.ts` 的 `bundleEntry()` 显式传入与 browserslist 一致的构建目标，并核对 Vite 8 中该选项的写法与默认值（以官方文档为准）。
-- 对生成的 `sw.js` 与恢复 worker 跑产物层检测，确认 Workbox 7.4.1 部分不超出基线。
-- 核实 `FetchEvent.resultingClientId` 在基线浏览器上的支持情况。缺失时缓存来源事件只是静默丢失，按降级处理，但要在兼容文档中写明。
+**验收**：当前产物通过；样例按预期失败或通过；CI 实际执行该步骤。
 
-**停止条件**：如果 Workbox 自身用了构建工具无法降级的 API，停下来提交决策，不擅自加 polyfill。
+## BC5：worker 构建目标
 
-## BC5：文档
+- `bundleEntry()` 传入 `build.target: ["chrome80","edge80","firefox74","ios13.4","safari13.1"]`（常量，与 BC1 一致性测试关联）。
+- 对比改前改后的生成 `sw.js`，确认差异只来自语法降级；运行 sw-runtime、vite 单测与 Chrome 浏览器套件。
+- 降不下来的语法只警告。构建出现 `TOLERATED_TRANSFORM` 警告时，必须由 BC4 的产物层失败兜住。
 
-- `docs/architecture/compatibility.md`：最低版本、承诺含义、三层检测、CSS 降级、基线变更规则。
-- `docs/architecture/browser-matrix.md`：在既有分档之外写明最低版本。
-- 受影响包 README 与 `website/guide/` 接入说明：写明最低版本。
-- 功能 × API 清单的定稿版本转入文档站或 `docs/architecture/`，供运营和上线检查使用。
+## BC6：提示条间距
 
-## BC6：门禁与自审
+- vue、react `update-notice.css` 的 `.pwa-update-notice__actions` 去掉 `gap`，改为按钮外边距加容器负外边距，保持 0.5rem 间距与 0.875rem 上边距。
+- 用 `ui-browser-tests/update-notice.spec.ts` 在 Chrome 当前版本截图，对比改前改后：单行和换行两种布局都要看。
+- 两包样式保持一致，由现有对等测试校验。
 
-- 本地：`pnpm typecheck`、`pnpm lint`、单元测试、构建、`check:publish`、产物层检测、Chrome 浏览器套件。
-- 候选 tarball 在全新 Vite 项目中构建，生成的 `sw.js` 通过产物层检测。
-- 差异自审，然后开 PR，正式 CI（Node 22／24、Windows、Chrome，及非阻塞的 Edge 和 WebKit／Firefox）全部通过后交所有者合并。
+## BC7：文档
 
-## BC7：发布 0.4.1
+- `compatibility.md`、`browser-matrix.md`、`website/reference/compatibility.md`、受影响包 README：写明最低版本、承诺含义、四层检测、检测不到的范围、已知降级与基线变更规则。
+- `CONTRIBUTING.md`：用新 API 时如何查 MDN、如何增补禁用名单、如何写局部豁免。
+- 更新功能 × API 清单到 0.4.1 之后的状态。
 
-- 沿用既有流程：十个包版本号统一改为 0.4.1，冻结候选；所有者做 npm 身份验证，并按依赖顺序批准；集中读回完整性，再做全新消费验证。
-- 写 `tasks/package-distribution/release-0.4.1.md`，并通知接入方版本号和改动点。
+## BC8：门禁与交付
 
-## BC8：真机补记
+- 本地：typecheck、lint、单测、构建、`check:publish`、产物检测、Chrome 浏览器套件、docs 检查。
+- 候选 tarball 消费：全新 Vite 项目构建，生成的 `sw.js` 通过产物检测。
+- 自审后开 PR，正式 CI 全部通过后交所有者合并。
+- 产物变化（worker 目标、提示条样式）随下一个补丁版本发布，版本号与时间由所有者决定。
 
-- 接入方在 Safari 13.1 上升级 0.4.1 后反馈：页面不白屏、worker 注册并安装、离线页可用。结果补记到验证记录。
-- 不通过时按规格发 0.4.2。
+## 停止条件
+
+- eslint-plugin-compat 在 TS 源码上不生效。
+- 某个依赖必须使用超基线 API，且无法通过降级解决（例如 Workbox 新版本）。
+- 提示条截图出现非预期差异。
+
+出现以上情况时停下来提交决策，不擅自放宽基线或加 polyfill。

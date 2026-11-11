@@ -6,47 +6,50 @@
 
 ## 背景
 
-- 平台一直没有承诺最低浏览器版本。[兼容性策略](../architecture/compatibility.md)只要求做特性检测、不可用时基础 Web 体验仍须可用；[浏览器矩阵](../architecture/browser-matrix.md)只规定了必测和参考的当前版本。
-- 0.4.0 在浏览器中运行的代码用了 `URL.canParse`、`Object.hasOwn`、`AbortSignal.timeout`、`??=` 和类字段，而且没有做检测（见[规格现状表](../../spec/browser-compat-baseline.md)）。
-- 后果：接入方的 Safari 13.1 用户白屏；页面初始化和 worker 启动的实际下限约为 Chrome 120 / Safari 17。
-- worker 由 `@pwa-platform/vite` 单独打包，宿主无法降级、也补不了 polyfill，只有平台能修。
+- 平台一直没有承诺最低浏览器版本。[兼容性策略](../architecture/compatibility.md)只要求做特性检测，能力不可用时基础 Web 体验仍须可用；[浏览器矩阵](../architecture/browser-matrix.md)只规定必测和参考的当前版本。
+- 0.4.0 的页面初始化和生成的 worker 启动时调用了 `URL.canParse`、`Object.hasOwn`，没有做检测。结果是有接入方的 Safari 13.1 用户白屏，worker 在 Chrome 120／Safari 17 以下装不上。
+- worker 由 `@pwa-platform/vite` 单独打包，宿主无法降级，页面上的 polyfill 也进不了 worker，只能由平台修复。0.4.1 已修复这些调用，但仓库没有检测能阻止复发。
+- 2026-11-11 实测（见规格“工具实测结论”）：
+  - 没有单个工具能同时覆盖语法、JS 内置 API 和网页 API。
+  - eslint-plugin-compat 不检查语法，实际使用的兼容数据也过旧，恰好漏掉这次出事的 `URL.canParse` 与 `AbortSignal.timeout`。
 
 ## 决策
 
 ### 1. 最低版本，只承诺“不报错、能降级”
 
-最低浏览器版本定为 Safari 13.1、iOS Safari 13.4、Chrome 80、Edge 80、Firefox 74。
+最低版本定为 Safari 13.1、iOS Safari 13.4、Chrome 80、Edge 80、Firefox 74。在这些版本及以上，平台在浏览器中运行的代码不得抛出未捕获的异常，也不得解析失败。范围包括页面端包、`sw.js`、恢复 worker、生成页面中的脚本，以及私有包的浏览器端代码。能力缺失时按“该能力不可用”处理；功能可用性仍按浏览器矩阵分档记录。
 
-- 在这些版本及以上，平台在浏览器中运行的代码不得因语法或缺失 API 抛出未捕获的异常，也不得解析失败。范围包括：页面端包、`sw.js`、恢复 worker、生成页面中的脚本，以及私有包的浏览器端代码。
-- 能力缺失时按“该能力不可用”处理。
-- 不承诺这些版本上 PWA 功能齐全，功能可用性仍由特性检测和[浏览器矩阵](../architecture/browser-matrix.md)的分档记录决定。
+### 2. 版本只写在 `.browserslistrc`
 
-### 2. 版本号只写在一处
+仓库根目录 `.browserslistrc` 是唯一来源，es-check 与 eslint-plugin-compat 直接读取它。worker 构建目标和 TypeScript `lib` 无法直接读取，各由一个单元测试校验与它一致。
 
-最低版本写在仓库根目录的 browserslist 配置中。lint 与产物检测读取它；TypeScript 的 `lib` 设定由测试校验与之一致。
+### 3. 四层检测，按工具实际能力分工
 
-### 3. 修源码，不降构建目标，不带 polyfill
+| 层 | 对象 | 手段 | 负责拦住 |
+| --- | --- | --- | --- |
+| 类型 | 浏览器端源码 | tsconfig `lib: ES2020`，`target` 不变 | JS 内置新 API |
+| lint | 浏览器端源码 | eslint-plugin-compat，加 `no-restricted-properties` 禁用名单 | 网页 API |
+| 产物 | 浏览器端 `dist`、生成的 worker 与内联脚本 | es-check `checkBrowser --checkFeatures`，`allowList` 仅放行 `OptionalChaining,NullishCoalescing` | 语法与 JS 内置新 API，包括 Workbox 等依赖和构建工具生成的代码 |
+| 运行时 | 单元测试 | `legacy-engine.mjs` 让禁用名单中的 API 被平台浏览器端代码调用时抛错 | 已知 API 在实际执行路径上的使用 |
 
-- 公开包的 `tsc` 构建目标保持 ES2022，超基线的用法在源码中改成等价写法。这样其他宿主拿到的产物只因修复而变化，也不向宿主注入 polyfill。
-- 浏览器端包的 tsconfig `lib` 限制到 ES2020，让较新的 JS 内置 API 在类型检查时就报错。
-- 不改 `target`，因为降级会改写所有宿主产物中的类字段语义。
+每层都保留故意违规的样例，并断言该层失败。产物层另设一个数字分隔符样例，断言它通过。
 
-### 4. worker 打包显式设定构建目标
+### 4. 网页 API 用禁用名单补工具缺口，不自写 MDN 检查脚本
 
-`bundleEntry()` 显式传入与基线一致的构建目标，产物不再随宿主所装的 Vite 版本变化。
+eslint-plugin-compat 漏掉的、而平台曾经或可能用到的网页 API，写入 `no-restricted-properties` 名单。初始名单为 `URL.canParse`、`AbortSignal.timeout`、`AbortSignal.any`、`Object.hasOwn`。
 
-- `sw.js` 的内容会因此改变，宿主升级后按既有流程更新 worker。
-- Service Worker URL、scope 和缓存命名空间不变，不需要迁移计划。
+增补规则：
+- 新代码要用较新的网页 API 时，先查 MDN 兼容数据；
+- 低于基线就加入名单，并改为特性检测后使用；
+- 局部豁免必须在该行写明理由与检测方式。
 
-### 5. 三层检测，每层都有违规样例
+不自写基于 MDN 数据的检查脚本（项目所有者 2026-11-11 选择）。这样的脚本也查不了实例属性（如 `FetchEvent.resultingClientId`），却要长期跟着数据升级。
 
-| 层 | 检查对象 | 工具 |
-| --- | --- | --- |
-| 类型 | 浏览器端源码使用的 JS 内置 API | TypeScript `lib: ES2020` |
-| lint | 浏览器端源码使用的 Web API | `eslint-plugin-compat`（开发依赖） |
-| 产物 | 浏览器端包的 `dist`、生成的 worker 与内联脚本的语法 | `es-check`（开发依赖） |
+### 5. 公开包不降构建目标，worker 显式设构建目标
 
-每层至少保留一个故意违规的样例并断言检测失败，证明检测真正生效。CSS 不在自动检测范围内：会破坏布局的属性在评审时替换，只影响外观的作为可接受降级记录。
+- 公开包 `tsc` 的 `target` 保持 ES2022，宿主产物不因本决策改变；也不带 polyfill。
+- `bundleEntry()` 显式传入 `["chrome80","edge80","firefox74","ios13.4","safari13.1"]`。worker 的语法降级因此由平台控制，不再取决于宿主所装 Vite 的默认值（Vite 8 默认 Chrome 111／Safari 16.4）。
+- worker 内容会变化，宿主升级时按既有流程更新 worker；Service Worker URL、scope 与缓存命名空间不变。
 
 ### 6. 提高最低版本是破坏性变更
 
@@ -54,13 +57,21 @@
 
 ## 后果
 
-- 0.4.1 起宿主可以依赖这个最低版本；接入方的旧浏览器用户不再白屏，Service Worker 能在 Chrome 80+ / Safari 13.1+ 上安装。
-- 新代码要用基线以外的 API，必须先做特性检测，或者走第 6 条的流程。
-- 仓库新增两个开发依赖，它们不进入发布包。
-- 本仓库没有旧版本浏览器真机。真机验证由接入方在升级后完成，或在基线变更和大版本发布时抽查；工具保证不了旧浏览器自身的行为差异。
+- 新代码超出基线时，在编辑器、`pnpm typecheck`、`pnpm lint` 或 CI 中失败，不再等到用户白屏才发现。
+- 新增开发依赖：eslint-plugin-compat、es-check。它们不进入发布包。
+- 仍检测不到的范围，写入兼容文档：
+  - 名单外的网页 API；
+  - 实例属性；
+  - CSS；
+  - 运行时才构造的代码，例如 `new RegExp` 中的新正则语法。
+- 已知降级：`resultingClientId` 在 Safari 16 以下缺失，信号静默丢失；`max()` 在 Firefox 74 上不生效。
+- 这些都靠评审与旧版本真机抽查弥补。抽查在基线变更和大版本发布时进行。
 
 ## 被否决的方案
 
-- **把公开包构建目标降到 ES2020**：会改变所有宿主的产物和类字段语义，需要全量回归。项目所有者 2026-11-11 选择只限制 `lib`。
+- **只用 eslint-plugin-compat**：不检查语法，兼容数据过旧，漏掉这次出事的 API。
+- **只用 es-check `es2020`**：会误报数字分隔符，且查不到网页 API。
+- **自写 MDN 数据检查脚本**：覆盖面增益有限，维护成本高，项目所有者未选。
+- **把公开包构建目标降到 ES2020**：会改变所有宿主的产物和类字段语义。
 - **随包提供或注入 polyfill**：会改变宿主的全局环境，而且进不了 worker。
-- **只靠仓库内的禁用名单脚本**：只能拦住已知的用法，新 API 会漏过去。
+- **引入 `browserslist-to-esbuild` 生成 worker 目标**：自 2024 年起未更新，改为显式写目标，加一致性测试。

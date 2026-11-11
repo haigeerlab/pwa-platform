@@ -1,14 +1,14 @@
 # Todo：browser-compat-baseline
 
-当前状态：规格、ADR-0053、计划与能力图修订草案已写，待项目所有者审阅；尚未改代码。
+当前状态：第一步（缺陷修复）已随 0.4.1 发布；本模块规格、ADR-0053、计划与能力图修订待项目所有者审阅，尚未改代码。
 
-- [x] BC0 盘点 27 项功能的浏览器 API 与超基线用法（[清单](feature-api-inventory.md)），并告知 接入方。
+- [x] BC0 盘点 27 项功能的浏览器 API 与超基线用法（[清单](feature-api-inventory.md)），并实测检测工具能力（规格“工具实测结论”）。
 - [ ] G0 项目所有者审阅规格、ADR-0053、计划与能力图修订；通过后切换 activeModule。
-- [ ] BC1 新增 browserslist 基线与类型、lint、产物三层检测，各带违规样例，确认在现有代码上报出现状表各项。
-- [ ] BC2 替换 `URL.canParse` 与 `Object.hasOwn`，补单元测试。
-- [ ] BC3 替换 `AbortSignal.timeout`、`??=`、push 类字段与 CSS `inset`。
-- [ ] BC4 worker 打包显式构建目标，盘点 Workbox 部分并核实 `resultingClientId`。
-- [ ] BC5 更新兼容文档、浏览器矩阵、README 与文档站说明，定稿功能 × API 清单。
-- [ ] BC6 本地门禁、候选消费、自审，PR 正式 CI 通过。
-- [ ] BC7 发布 0.4.1 并集中读回，通知接入方。
-- [ ] BC8 接入方 Safari 13.1 真机验证结果补记。
+- [ ] BC1 新增 `.browserslistrc` 与一致性测试。
+- [ ] BC2 类型层：浏览器端源码 `lib: ES2020`，带违规样例。
+- [ ] BC3 lint 层：eslint-plugin-compat 加禁用名单，带违规样例。
+- [ ] BC4 产物层 es-check 接入 CI，运行时模拟与禁用名单对齐，带违规样例。
+- [ ] BC5 worker 构建目标显式设为基线。
+- [ ] BC6 提示条间距改为外边距写法，截图回归。
+- [ ] BC7 更新兼容文档、贡献指南、README 与功能 × API 清单。
+- [ ] BC8 本地门禁、候选消费、PR 正式 CI 通过；产物变化随下一个补丁版本发布。
