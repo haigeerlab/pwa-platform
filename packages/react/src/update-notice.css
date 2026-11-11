@@ -111,3 +111,38 @@
     transform: none;
   }
 }
+
+/*
+ * Physical-offset fallback for browsers without the logical inset properties above (Chrome/Edge before 87, Safari
+ * before 14.1, iOS before 14.5). There, a fixed element with no usable offset stays at its static position — at the
+ * end of the page, often outside the viewport — so the notice is never seen. Gated by @supports so browsers that do
+ * support logical properties, including right-to-left pages, keep exactly the rules above.
+ */
+@supports not (inset-inline-start: 0) {
+  .pwa-update-notice[data-position="bottom-right"] {
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    right: calc(1rem + env(safe-area-inset-right));
+  }
+
+  .pwa-update-notice[data-position="bottom-center"] {
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    left: 50%;
+  }
+
+  .pwa-update-notice[data-position="top-right"] {
+    top: calc(1rem + env(safe-area-inset-top));
+    right: calc(1rem + env(safe-area-inset-right));
+  }
+
+  .pwa-update-notice[data-position="top-center"] {
+    top: calc(1rem + env(safe-area-inset-top));
+    left: 50%;
+  }
+
+  @media (max-width: 480px) {
+    .pwa-update-notice[data-position] {
+      left: 1rem;
+      right: 1rem;
+    }
+  }
+}
