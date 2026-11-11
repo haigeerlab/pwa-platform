@@ -46,6 +46,10 @@ client.dispose();
 Call `register()` only in the browser, normally only for a production build. `vite dev` exposes the virtual config
 but does not emit the production worker or precache.
 
+## Browser support
+
+Code from this package that runs in a browser is checked against the platform's supported floor: Safari 13.1, iOS Safari 13.4, Chrome 80, Edge 80 and Firefox 74 ([ADR-0053](https://github.com/haigeerlab/pwa-platform/blob/main/docs/adr/0053-browser-compat-baseline.md)). On those versions and later it does not throw or fail to parse because of newer syntax or a missing built-in; a capability the browser lacks is treated as unavailable. This is not a promise that every PWA feature works there — see the [compatibility reference](https://github.com/haigeerlab/pwa-platform/blob/main/website/reference/compatibility.md).
+
 ## Public API
 
 | API | Purpose |

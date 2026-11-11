@@ -1,5 +1,11 @@
 # 功能 × 浏览器 API 盘点（BC0）
 
+> **2026-11-11 状态更新**：
+> - 下文标粗的超基线用法（`URL.canParse`、`Object.hasOwn`、`AbortSignal.timeout`、`??=`、push 类字段、CSS `inset`）已在 0.4.1 全部修复。
+> - 更新提示条的逻辑定位已在 0.4.2 补物理回退；flex `gap` 与 `min()` 回退由本模块 BC6 处理。
+> - 以后的变化由四层检测守住，见[兼容性策略](../../docs/architecture/compatibility.md)。
+> - 下表保留 0.4.0 时的原始盘点。
+
 > 2026-11-11，基于 origin/main `3f927d0`（0.4.0 源码）只读梳理，行号指当时的源码。功能行取自 [2026-10-01 功能支持表](../../docs/review/2026-10-01/02-feature-support.md)。版本号来自经验，标“待核实”的未与兼容数据表核对；最低版本请以 MDN browser-compat-data 为准。超出最低版本 Safari 13.1 / iOS 13.4 / Chrome 80 / Edge 80 / Firefox 74 的用法汇总在[规格](../../spec/browser-compat-baseline.md)“现状”一节。
 
 ## 先看这三条
