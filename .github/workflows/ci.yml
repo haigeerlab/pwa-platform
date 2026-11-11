@@ -65,6 +65,9 @@ jobs:
       - name: Check browser floor types
         run: node --test scripts/browser-floor-types.test.mjs
 
+      - name: Check browser floor lint rules
+        run: node --test scripts/browser-floor-lint.test.mjs
+
       - name: Test documentation API status checker
         run: node --test scripts/check-doc-public-api.test.mjs
 

@@ -1,5 +1,11 @@
 import eslint from "@eslint/js";
+import compat from "eslint-plugin-compat";
 import tseslint from "typescript-eslint";
+import { BROWSER_SOURCE, BUILD_TIME_SOURCE, RESTRICTED_PROPERTIES } from "./scripts/browser-baseline.mjs";
+
+// Browser floor lint layer (ADR-0053): code that runs in a page or worker is checked against .browserslistrc.
+const browserSource = Object.entries(BROWSER_SOURCE).flatMap(([name, dirs]) => dirs.map((dir) => `packages/${name}/${dir}/**/*.ts`));
+const buildTimeSource = Object.entries(BUILD_TIME_SOURCE).flatMap(([name, dirs]) => dirs.map((dir) => `packages/${name}/${dir}/**`));
 
 export default tseslint.config(
   {
@@ -40,6 +46,21 @@ export default tseslint.config(
         console: "readonly",
         URL: "readonly",
       },
+    },
+  },
+  {
+    ...compat.configs["flat/recommended"],
+    files: browserSource,
+    ignores: buildTimeSource,
+    // The plugin's own browser globals would hide undefined-variable mistakes in worker code; TypeScript already
+    // checks names, so only the compat rule is taken from the preset.
+    languageOptions: {},
+  },
+  {
+    files: browserSource,
+    ignores: buildTimeSource,
+    rules: {
+      "no-restricted-properties": ["error", ...RESTRICTED_PROPERTIES],
     },
   },
 );
