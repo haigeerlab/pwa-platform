@@ -4,9 +4,7 @@
   "description": "Vue 3 binding for PWA Platform.",
   "license": "MIT",
   "type": "module",
-  "sideEffects": [
-    "./dist/update-notice.css"
-  ],
+  "sideEffects": ["./dist/update-notice.css"],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
