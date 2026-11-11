@@ -14,7 +14,7 @@ import { IDENTITY } from "./identity.js";
 const SEEDS = ["react", "vue"] as const;
 
 /** Fixed instant so the test's result does not depend on when it runs; both seeds' `expiresAt` are well after it. */
-const NOW_MS = Date.UTC(2026, 8, 23, 0, 0, 0);
+const NOW_MS = Date.UTC(2026, 10, 10, 0, 0, 0);
 
 /** Matches `pwaEntryResilience({ identity, maxValidityDays: 30 })` in both examples' vite.config.ts. */
 const MAX_VALIDITY_DAYS = 30;
